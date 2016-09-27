@@ -3,7 +3,7 @@
 /// @author  Sylvain
 ///
 #include <InfoLogger/InfoLogger.hxx>
-#include <Configuration/Configuration.h>
+#include <Common/Configuration.h>
 #include <DataFormat/DataBlock.h>
 #include <DataFormat/DataBlockContainer.h>
 #include <DataFormat/MemPool.h>
@@ -14,14 +14,14 @@
 #include <chrono>
 
   
-#include "CThread.h"
+//#include "CThread.h"
 
 #include <Common/Timer.h>
 #include <Common/Fifo.h>
-
+#include <Common/Thread.h>
 
 using namespace AliceO2::InfoLogger;
-
+using namespace AliceO2::Common;
   
  
   
@@ -33,10 +33,10 @@ using namespace AliceO2::InfoLogger;
   
   
   
-CThread::CallbackResult  testloop(void *arg) {
+Thread::CallbackResult  testloop(void *arg) {
   printf("testloop ( %p)...\n",arg);
   sleep(1);
-  return CThread::CallbackResult::Ok;
+  return Thread::CallbackResult::Ok;
 }
 
 
@@ -56,9 +56,9 @@ class CReadout {
   AliceO2::Common::Fifo<DataBlockContainer> *dataOut;
 
   private:
-  CThread *readoutThread;  
-  static CThread::CallbackResult  threadCallback(void *arg);
-  virtual CThread::CallbackResult  populateFifoOut()=0;  // function called iteratively in dedicated thread to populate FIFO
+  Thread *readoutThread;  
+  static Thread::CallbackResult  threadCallback(void *arg);
+  virtual Thread::CallbackResult  populateFifoOut()=0;  // function called iteratively in dedicated thread to populate FIFO
   AliceO2::Common::Timer clk;
   AliceO2::Common::Timer clk0;
   
@@ -69,7 +69,7 @@ class CReadout {
 CReadout::CReadout(ConfigFile *cfg, std::string name) {
   // todo: take thread name from config, or as argument
   
-  readoutThread=new CThread(CReadout::threadCallback,this,name,1000);
+  readoutThread=new Thread(CReadout::threadCallback,this,name,1000);
   //readoutThread->start();
   int outFifoSize=1000;
   dataOut=new AliceO2::Common::Fifo<DataBlockContainer>(outFifoSize);
@@ -103,7 +103,7 @@ DataBlockContainer* CReadout::getBlock() {
   return b;
 }
 
-CThread::CallbackResult  CReadout::threadCallback(void *arg) {
+Thread::CallbackResult  CReadout::threadCallback(void *arg) {
   CReadout *ptr=(CReadout *)arg;
   //printf("cb = %p\n",arg);
   //return TTHREAD_LOOP_CB_IDLE;
@@ -111,11 +111,11 @@ CThread::CallbackResult  CReadout::threadCallback(void *arg) {
   // todo: check rate reached
     
   if ((!ptr->clk.isTimeout()) && (ptr->nBlocksOut!=0) && (ptr->nBlocksOut>=ptr->readoutRate*ptr->clk0.getTime())) {
-    return CThread::CallbackResult::Idle;
+    return Thread::CallbackResult::Idle;
   }
   
-  CThread::CallbackResult  res=ptr->populateFifoOut();
-  if (res==CThread::CallbackResult::Ok) {
+  Thread::CallbackResult  res=ptr->populateFifoOut();
+  if (res==Thread::CallbackResult::Ok) {
     //printf("new data @ %lf - %lf\n",ptr->clk0.getTime(),ptr->clk.getTime());
     ptr->clk.increment();
     ptr->nBlocksOut++;
@@ -131,7 +131,7 @@ class CReadoutDummy : public CReadout {
   
   private:
     MemPool *mp;
-    CThread::CallbackResult  populateFifoOut();
+    Thread::CallbackResult  populateFifoOut();
     DataBlockId currentId;    
 };
 
@@ -145,9 +145,9 @@ CReadoutDummy::~CReadoutDummy() {
   delete mp;
 } 
 
-CThread::CallbackResult  CReadoutDummy::populateFifoOut() {
+Thread::CallbackResult  CReadoutDummy::populateFifoOut() {
   if (dataOut->isFull()) {
-    return CThread::CallbackResult::Idle;
+    return Thread::CallbackResult::Idle;
   }
 
   DataBlockContainer *d=NULL;
@@ -155,12 +155,12 @@ CThread::CallbackResult  CReadoutDummy::populateFifoOut() {
     d=new DataBlockContainerFromMemPool(mp);
   }
   catch (std::string err) {
-    return CThread::CallbackResult::Idle;
+    return Thread::CallbackResult::Idle;
   }
   //printf("push %p\n",(void *)d);
   
   if (d==NULL) {
-    return CThread::CallbackResult::Idle;
+    return Thread::CallbackResult::Idle;
   }
   
   DataBlock *b=d->getData();
@@ -182,7 +182,7 @@ CThread::CallbackResult  CReadoutDummy::populateFifoOut() {
   dataOut->push(d); 
 
   //printf("populateFifoOut()\n");
-  return CThread::CallbackResult::Ok;
+  return Thread::CallbackResult::Ok;
 }
 
 
@@ -204,20 +204,20 @@ class CAggregator {
   void stop(int waitStopped=1);  // stop processing thread (and possibly wait it terminates)
 
 
-  static CThread::CallbackResult  threadCallback(void *arg);  
+  static Thread::CallbackResult  threadCallback(void *arg);  
  
   private:
   std::vector<AliceO2::Common::Fifo<DataBlockContainer> *> inputs;
   AliceO2::Common::Fifo<std::vector<DataBlockContainer *>> *output;
   
-  CThread *aggregateThread;
+  Thread *aggregateThread;
   AliceO2::Common::Timer incompletePendingTimer;
   int isIncompletePending;
 };
 
 CAggregator::CAggregator(AliceO2::Common::Fifo<std::vector<DataBlockContainer *>> *v_output, std::string name){
   output=v_output;
-  aggregateThread=new CThread(CAggregator::threadCallback,this,name,100);
+  aggregateThread=new Thread(CAggregator::threadCallback,this,name,100);
   isIncompletePending=0;
 }
 
@@ -232,10 +232,10 @@ int CAggregator::addInput(AliceO2::Common::Fifo<DataBlockContainer> *input) {
   return 0;
 }
 
-CThread::CallbackResult CAggregator::threadCallback(void *arg) {
+Thread::CallbackResult CAggregator::threadCallback(void *arg) {
   CAggregator *dPtr=(CAggregator*)arg;
   if (dPtr==NULL) {
-    return CThread::CallbackResult::Error;
+    return Thread::CallbackResult::Error;
   }
   
   int someEmpty=0;
@@ -264,7 +264,7 @@ CThread::CallbackResult CAggregator::threadCallback(void *arg) {
   }
 
   if (allEmpty) {
-    return CThread::CallbackResult::Idle;
+    return Thread::CallbackResult::Idle;
   }
   
   if (someEmpty) {
@@ -274,7 +274,7 @@ CThread::CallbackResult CAggregator::threadCallback(void *arg) {
     }
 
     if (dPtr->isIncompletePending && (!dPtr->incompletePendingTimer.isTimeout())) {
-      return CThread::CallbackResult::Idle;
+      return Thread::CallbackResult::Idle;
     }
   }
 
@@ -284,7 +284,7 @@ CThread::CallbackResult CAggregator::threadCallback(void *arg) {
   
   std::vector<DataBlockContainer *> *bcv=new std::vector<DataBlockContainer *>();
   if (bcv==NULL) {
-    return CThread::CallbackResult::Error;
+    return Thread::CallbackResult::Error;
   }
   
   
@@ -306,7 +306,7 @@ CThread::CallbackResult CAggregator::threadCallback(void *arg) {
   // todo: add timeout for standalone pieces - or wait if some FIFOs empty
   // add flag in output data to say it is incomplete
   
-  return CThread::CallbackResult::Ok;
+  return Thread::CallbackResult::Ok;
 }
  
 void CAggregator::start() {
@@ -630,7 +630,7 @@ int main(int argc, char* argv[])
   
 
   void *p=NULL;
-  CThread tt(testloop,p,"CThread");
+  Thread tt(testloop,p,"Thread");
   tt.start();
   sleep(2);
 
