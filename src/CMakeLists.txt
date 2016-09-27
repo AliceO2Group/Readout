@@ -3,7 +3,6 @@ set(APP_HEADERS
 
 set(APP_SOURCES
   mainReadout.cxx
-  CThread.cxx
 )
 
 # Set the build version. It will be used in the name of the lib, with corresponding
