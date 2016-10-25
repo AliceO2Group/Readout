@@ -18,16 +18,12 @@
 #include <Common/Fifo.h>
 #include <Common/Thread.h>
 
+#include "RORC/Parameters.h"
+#include "RORC/ChannelFactory.h"
+
+
 using namespace AliceO2::InfoLogger;
 using namespace AliceO2::Common;
-  
- 
-  
-  
-  
-
-  
-  
   
   
   
@@ -194,6 +190,82 @@ Thread::CallbackResult  CReadoutDummy::populateFifoOut() {
 
 // keeps track of mem alloc free
 // use shared_ptr for data blocks tracking ???
+
+
+
+
+
+
+
+
+
+
+
+class CReadoutRORC : public CReadout {
+
+  public:
+    CReadoutRORC(ConfigFile *cfg, std::string name="rorcReadout");
+    ~CReadoutRORC();
+  
+  private:
+    Thread::CallbackResult  populateFifoOut();
+    DataBlockId currentId;
+    AliceO2::Rorc::ChannelFactory::MasterSharedPtr channel;
+    int pageCount;
+    int isInitialized=0;
+};
+
+
+
+CReadoutRORC::CReadoutRORC(ConfigFile *cfg, std::string name) : CReadout(cfg, name) {
+  try {
+    int serialNumber = AliceO2::Rorc::ChannelFactory::DUMMY_SERIAL_NUMBER; //pcaldref23: 33333
+    int channelNumber = 0;
+
+    AliceO2::Rorc::Parameters::Map params;
+    params[AliceO2::Rorc::Parameters::Keys::dmaBufferSize()]=std::to_string(128*1024*1024);
+    params[AliceO2::Rorc::Parameters::Keys::dmaPageSize()]=std::to_string(8*1024);
+    params[AliceO2::Rorc::Parameters::Keys::generatorDataSize()]=std::to_string(8*1024);
+    params[AliceO2::Rorc::Parameters::Keys::generatorEnabled()]=std::to_string(true);
+
+    channel = AliceO2::Rorc::ChannelFactory().getMaster(serialNumber, channelNumber, params);
+
+    channel->resetCard(AliceO2::Rorc::ResetLevel::Rorc);
+    channel->startDma();
+
+
+  }
+  catch (const std::exception& e) {
+    std::cout << "Error: " << e.what() << '\n' << boost::diagnostic_information(e, 1) << "\n";
+    return;
+  }
+  isInitialized=1;
+}
+
+
+
+CReadoutRORC::~CReadoutRORC() {
+  if (isInitialized) {
+    channel->stopDma();
+  }
+  
+//  printf("count: %d\n",(int)channel.use_count());
+}
+
+
+Thread::CallbackResult  CReadoutRORC::populateFifoOut() {
+  if (!isInitialized) return  Thread::CallbackResult::Error;
+  
+  channel->fillFifo();
+ 
+  if (boost::optional<AliceO2::Rorc::ChannelMasterInterface::Page> page = channel->getPage()) {
+    channel->acknowledgePage(page);
+  }
+  
+  return Thread::CallbackResult::Ok;
+}
+
+
 
 
 
@@ -517,6 +589,8 @@ int main(int argc, char* argv[])
     if (!cfgEquipmentType.compare("dummy")) {
     // todo: how to pass extra params: rate, size, etc. Handle to config subsection?
       newDevice=new CReadoutDummy(&cfg,kName);
+    } else if (!cfgEquipmentType.compare("rorc")) {
+      newDevice=new CReadoutRORC(&cfg,kName);
     } else {
       theLog.log("Unknown equipment type '%s' for [%s]",cfgEquipmentType.c_str(),kName.c_str());
     }
