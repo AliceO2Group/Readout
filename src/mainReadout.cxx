@@ -48,6 +48,7 @@ class CReadout {
 
   void start();
   void stop();
+  const std::string & getName();
 
 //  protected: 
 // todo: give direct access to output FIFO?
@@ -62,10 +63,13 @@ class CReadout {
   
   unsigned long long nBlocksOut;
   double readoutRate;
+  std::string name;
 };
 
-CReadout::CReadout(ConfigFile *cfg, std::string name) {
+CReadout::CReadout(ConfigFile *cfg, std::string _name) {
   // todo: take thread name from config, or as argument
+  
+  name=_name;
   
   readoutThread=new Thread(CReadout::threadCallback,this,name,1000);
   //readoutThread->start();
@@ -76,6 +80,10 @@ CReadout::CReadout(ConfigFile *cfg, std::string name) {
   readoutRate=cfg->getValue<double>("readout.rate");
 
   nBlocksOut=0;
+}
+
+const std::string & CReadout::getName() {
+  return name;
 }
 
 void CReadout::start() {
@@ -174,7 +182,7 @@ Thread::CallbackResult  CReadoutDummy::populateFifoOut() {
   b->header.dataSize=dSize;
   b->header.id=currentId;
   
-
+  usleep(10000);
   
   // push new page to mem
   dataOut->push(d); 
@@ -487,53 +495,57 @@ int main(int argc, char* argv[])
   theLog.log("Readout starting");
   theLog.log("Reading configuration from %s",cfgFile);  
 
-  std::string cfgEquipmentType="";
+
+
   try {
     cfg.load(cfgFile);
-    cfgEquipmentType=cfg.getValue<std::string>("readout.equipmentType");
-  }
+   }
   catch (std::string err) {
     theLog.log("Error : %s",err.c_str());
     return -1;
   }
 
-  /*
-  CReadout *r=NULL; 
-  if (cfgEquipmentType=="dummy") {
-    r=new CReadoutDummy(&cfg);
-  } else {
-    theLog.log("Unknown equipment type %s",cfgEquipmentType.c_str());
+  std::vector<CReadout*> readoutDevices;
+
+  for (auto kName : ConfigFileBrowser (&cfg,"equipment-")) {     
+    std::string cfgEquipmentType="";
+    cfgEquipmentType=cfg.getValue<std::string>(kName + ".equipmentType");
+
+    //std::cout << kName << "=" << cfgEquipmentType <<std::endl;
+    
+    CReadout *newDevice=nullptr;
+    if (!cfgEquipmentType.compare("dummy")) {
+    // todo: how to pass extra params: rate, size, etc. Handle to config subsection?
+      newDevice=new CReadoutDummy(&cfg,kName);
+    } else {
+      theLog.log("Unknown equipment type '%s' for [%s]",cfgEquipmentType.c_str(),kName.c_str());
+    }
+    
+    if (newDevice!=nullptr) {
+      readoutDevices.push_back(newDevice);
+    }
+    
   }
-  */
-  
-  
+
   AliceO2::Common::Fifo<std::vector<DataBlockContainer *>> agg_output(1000);  
   CAggregator agg(&agg_output,"Aggregator");
 
-  int nReadoutDevice=10;
-  CReadout **readoutDevices=new CReadout* [nReadoutDevice];
-  
-  for (int i=0;i<nReadoutDevice;i++) {
-    std::string name = str( boost::format("Readout %d") % i );
-    readoutDevices[i]=new CReadoutDummy(&cfg,name);
-    agg.addInput(readoutDevices[i]->dataOut);
-  }
-  agg.start();
-  
-  /*CReadout *r2=new CReadoutDummy(&cfg);   
-  agg.addInput(r->dataOut);
-  agg.addInput(r2->dataOut);
-
-  agg.start();
-  r2->start();
-  */
-
-  for (int i=0;i<nReadoutDevice;i++) {
-    readoutDevices[i]->start();
+  for (auto readoutDevice : readoutDevices) {
+      theLog.log("Equipment : %s",readoutDevice->getName().c_str());
+      agg.addInput(readoutDevice->dataOut);
   }
 
-  
-  
+  agg.start();
+
+
+  for (auto readoutDevice : readoutDevices) {
+      readoutDevice->start();
+  }
+
+
+
+
+
   AliceO2::Common::Timer t;
   t.reset(5000000);
   int isRunning=1;
@@ -549,8 +561,8 @@ int main(int argc, char* argv[])
       if (isRunning) {
         isRunning=0;
         theLog.log("stopping readout");
-        for (int i=0;i<nReadoutDevice;i++) {
-          readoutDevices[i]->stop();
+        for (auto readoutDevice : readoutDevices) {
+          readoutDevice->stop();
         }
         /*
         r->stop();
@@ -586,7 +598,7 @@ int main(int argc, char* argv[])
       }
       delete bc;      
     } else {
-      usleep(100);
+      usleep(1000);
     }
 
     /*
@@ -603,19 +615,95 @@ int main(int argc, char* argv[])
 
   printf("%llu blocks in %.3lf seconds => %.1lf block/s\n",nBlocks,t1,nBlocks/t1);
   printf("%.1lf MB received\n",nBytes/(1024.0*1024.0));
-    
-/*  if (r!=NULL) {
-  }
-*/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   theLog.log("stopping aggregator");
   agg.stop();
   theLog.log("aggregator stopped");
+
+
+  for (auto readoutDevice : readoutDevices) {
+      delete readoutDevice;
+  }
+
+  return 0;
+
+  std::string cfgEquipmentType="";
+  try {
+    cfg.load(cfgFile);
+    cfgEquipmentType=cfg.getValue<std::string>("readout.equipmentType");
+  }
+  catch (std::string err) {
+    theLog.log("Error : %s",err.c_str());
+    return -1;
+  }
+
+  /*
+  CReadout *r=NULL; 
+  if (cfgEquipmentType=="dummy") {
+    r=new CReadoutDummy(&cfg);
+  } else {
+    theLog.log("Unknown equipment type %s",cfgEquipmentType.c_str());
+  }
+  */
+  
+  
+ 
+
+
+  int nReadoutDevice=1;
+//  CReadout **readoutDevices=new CReadout* [nReadoutDevice];
+  
+  for (int i=0;i<nReadoutDevice;i++) {
+    std::string name = str( boost::format("Readout %d") % i );
+    readoutDevices[i]=new CReadoutDummy(&cfg,name);
+    agg.addInput(readoutDevices[i]->dataOut);
+  }
+  agg.start();
+  
+  /*CReadout *r2=new CReadoutDummy(&cfg);   
+  agg.addInput(r->dataOut);
+  agg.addInput(r2->dataOut);
+
+  agg.start();
+  r2->start();
+  */
+
+  for (int i=0;i<nReadoutDevice;i++) {
+    readoutDevices[i]->start();
+  }
+
+  
+      
+/*  if (r!=NULL) {
+  }
+*/
   
   for (int i=0;i<nReadoutDevice;i++) {
     delete readoutDevices[i];
     readoutDevices[i]=NULL;
   }
-  delete [] readoutDevices;
+//  delete [] readoutDevices;
     
   /*  
   delete r2;  
