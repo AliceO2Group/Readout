@@ -25,6 +25,8 @@
 using namespace AliceO2::InfoLogger;
 using namespace AliceO2::Common;
   
+
+InfoLogger theLog;
   
   
 Thread::CallbackResult  testloop(void *arg) {
@@ -59,6 +61,7 @@ class CReadout {
   
   unsigned long long nBlocksOut;
   double readoutRate;
+  protected:
   std::string name;
 };
 
@@ -72,8 +75,13 @@ CReadout::CReadout(ConfigFile *cfg, std::string _name) {
   int outFifoSize=1000;
   dataOut=new AliceO2::Common::Fifo<DataBlockContainer>(outFifoSize);
   
-  readoutRate=10.0; //(target readout rate in Hz)
-  readoutRate=cfg->getValue<double>("readout.rate");
+  readoutRate=-1; //(target readout rate in Hz, -1 for unlimited)
+  try {
+    readoutRate=cfg->getValue<double>("readout.rate");
+  }
+  catch(std::string e) {
+    theLog.log("Configuration error: %s",e.c_str());
+  }
 
   nBlocksOut=0;
 }
@@ -84,7 +92,9 @@ const std::string & CReadout::getName() {
 
 void CReadout::start() {
   readoutThread->start();
-  clk.reset(1000000.0/readoutRate);
+  if (readoutRate>0) {
+    clk.reset(1000000.0/readoutRate);
+  }
   clk0.reset();
 }
 
@@ -112,10 +122,12 @@ Thread::CallbackResult  CReadout::threadCallback(void *arg) {
   
   // todo: check rate reached
     
-  if ((!ptr->clk.isTimeout()) && (ptr->nBlocksOut!=0) && (ptr->nBlocksOut>=ptr->readoutRate*ptr->clk0.getTime())) {
-    return Thread::CallbackResult::Idle;
+  if (ptr->readoutRate>0) {
+    if ((!ptr->clk.isTimeout()) && (ptr->nBlocksOut!=0) && (ptr->nBlocksOut+1>ptr->readoutRate*ptr->clk0.getTime())) {
+      return Thread::CallbackResult::Idle;
+    }
   }
-  
+    
   Thread::CallbackResult  res=ptr->populateFifoOut();
   if (res==Thread::CallbackResult::Ok) {
     //printf("new data @ %lf - %lf\n",ptr->clk0.getTime(),ptr->clk.getTime());
@@ -124,6 +136,11 @@ Thread::CallbackResult  CReadout::threadCallback(void *arg) {
   }
   return res;
 }
+
+
+
+
+
 
 class CReadoutDummy : public CReadout {
 
@@ -167,18 +184,35 @@ Thread::CallbackResult  CReadoutDummy::populateFifoOut() {
   
   DataBlock *b=d->getData();
   
-  int dSize=(int)(rand()*1000.0/RAND_MAX);
+  int dSize=(int)(1024+rand()*1024.0/RAND_MAX);
   //dSize=100;
   //printf("%d\n",dSize);
+
+  // todo: check size fits in page!
+  // todo: align begin of data
+  
   
   currentId++;  // don't start from 0
-
   b->header.blockType=DataBlockType::H_BASE;
   b->header.headerSize=sizeof(DataBlockHeaderBase);
   b->header.dataSize=dSize;
   b->header.id=currentId;
+  // say it's contiguous header+data 
+  b->data=&(((char *)b)[sizeof(DataBlock)]);
+
+  //printf("(1) header=%p\nbase=%p\nsize=%d,%d\n",(void *)&(b->header),b->data,(int)b->header.headerSize,(int)b->header.dataSize);
+//  b->data=NULL;
   
-  usleep(10000);
+  
+ 
+  for (int k=0;k<100;k++) {
+    //printf("[%d]=%p\n",k,&(b->data[k]));
+    b->data[k]=(char)k;
+  }
+  
+  //printf("(2)header=%p\nbase=%p\nsize=%d,%d\n",(void *)&(b->header),b->data,(int)b->header.headerSize,(int)b->header.dataSize);
+    
+  //usleep(10000);
   
   // push new page to mem
   dataOut->push(d); 
@@ -188,11 +222,87 @@ Thread::CallbackResult  CReadoutDummy::populateFifoOut() {
 }
 
 
-// keeps track of mem alloc free
-// use shared_ptr for data blocks tracking ???
 
 
 
+
+
+
+
+
+
+class DataBlockContainerFromRORC : public DataBlockContainer {
+  private:
+  AliceO2::Rorc::ChannelMasterInterface::PageSharedPtr pagePtr;
+   
+  public:
+  DataBlockContainerFromRORC(AliceO2::Rorc::ChannelFactory::MasterSharedPtr v_channel) {
+    data=nullptr;
+    
+
+    
+    
+    pagePtr=AliceO2::Rorc::ChannelMasterInterface::popPage(v_channel);
+    
+    if (pagePtr!=nullptr) {
+    
+//      printf("got page: %p -> evId=%d\n",(*v_page).getAddress(),*((*v_page).getAddressU32()));
+//      v_channel->freePage(v_page);    
+//      return;
+      
+      DataBlock *v_data=new DataBlock;
+      if (v_data==nullptr) {
+        throw __LINE__;
+      }
+      data=v_data;
+      data->header.blockType=DataBlockType::H_BASE;
+      data->header.headerSize=sizeof(DataBlockHeaderBase);
+      data->header.dataSize=8*1024;
+      data->header.id=*(pagePtr->getAddressU32());
+      data->data=(char *)(pagePtr->getAddress());
+
+//      pagePtr.reset();
+
+//      pageIndexLog[page.index]=1;
+
+      //printf("page new = %p %d\n",page.getAddress(),page.index);
+
+//      printf("got page: %p -> evId=%d\n",(*v_page).getAddress(),*((*v_page).getAddressU32()));
+//      usleep(1000000);
+ 
+
+//      printf("page = %p\n",&page);
+//      printf("got page data: %p -> evId=%d\n",data->data,(int)data->header.id);
+//      usleep(1000000);
+    } else {
+      printf("No new page available!");
+      throw __LINE__;
+    }
+  }
+  ~DataBlockContainerFromRORC() {
+//    delete data;
+
+//    channel->freePage(page);    
+    if (data!=nullptr) {
+      delete data;
+      //printf("page delete=%p %d\n",page.getAddress(),page.index);
+      //fflush(stdout);
+/*      if (pageIndexLog[page.index]==0) {
+        printf("error - index not used\n");
+      }
+      */
+      try {
+        pagePtr.reset();
+//        pageIndexLog[page.index]=0;
+        //channel->freePage(page);  
+      }
+      catch (const std::exception& e) {
+        std::cout << "Error: " << e.what() << '\n' << boost::diagnostic_information(e, 1) << "\n";
+      }
+
+    }
+  }
+};
 
 
 
@@ -211,26 +321,32 @@ class CReadoutRORC : public CReadout {
     Thread::CallbackResult  populateFifoOut();
     DataBlockId currentId;
     AliceO2::Rorc::ChannelFactory::MasterSharedPtr channel;
-    int pageCount;
+    int pageCount=0;
     int isInitialized=0;
 };
 
 
 
 CReadoutRORC::CReadoutRORC(ConfigFile *cfg, std::string name) : CReadout(cfg, name) {
+  
   try {
-    int serialNumber = AliceO2::Rorc::ChannelFactory::DUMMY_SERIAL_NUMBER; //pcaldref23: 33333
-    int channelNumber = 0;
+
+    int serialNumber=cfg->getValue<int>(name + ".serial");
+    int channelNumber=cfg->getValue<int>(name + ".channel");
+  
+    theLog.log("Opening RORC %d:%d",serialNumber,channelNumber);
+
+    //AliceO2::Rorc::ChannelFactory::DUMMY_SERIAL_NUMBER; //pcaldref23: 33333
 
     AliceO2::Rorc::Parameters::Map params;
-    params[AliceO2::Rorc::Parameters::Keys::dmaBufferSize()]=std::to_string(128*1024*1024);
+    params[AliceO2::Rorc::Parameters::Keys::dmaBufferSize()]=std::to_string(32*1024*1024);
     params[AliceO2::Rorc::Parameters::Keys::dmaPageSize()]=std::to_string(8*1024);
     params[AliceO2::Rorc::Parameters::Keys::generatorDataSize()]=std::to_string(8*1024);
     params[AliceO2::Rorc::Parameters::Keys::generatorEnabled()]=std::to_string(true);
 
     channel = AliceO2::Rorc::ChannelFactory().getMaster(serialNumber, channelNumber, params);
 
-    channel->resetCard(AliceO2::Rorc::ResetLevel::Rorc);
+    //channel->resetCard(AliceO2::Rorc::ResetLevel::Rorc);
     channel->startDma();
 
 
@@ -248,21 +364,66 @@ CReadoutRORC::~CReadoutRORC() {
   if (isInitialized) {
     channel->stopDma();
   }
-  
+
+  theLog.log("Equipment %s : %d pages read",name.c_str(),(int)pageCount);
 //  printf("count: %d\n",(int)channel.use_count());
 }
-
+/*
+void processChannel(AliceO2::Rorc::ChannelFactory::MasterSharedPtr channel) {
+  if (boost::optional<AliceO2::Rorc::ChannelMasterInterface::Page> page = channel->getPage()) {    
+   int eventId=0;
+   eventId=*((*page).getAddressU32());
+    printf("ev=%d\n",eventId);
+      channel->freePage(page);
+  }
+}
+*/
 
 Thread::CallbackResult  CReadoutRORC::populateFifoOut() {
   if (!isInitialized) return  Thread::CallbackResult::Error;
   
   channel->fillFifo();
  
-  if (boost::optional<AliceO2::Rorc::ChannelMasterInterface::Page> page = channel->getPage()) {
-    channel->acknowledgePage(page);
+  if (dataOut->isFull()) {
+    return Thread::CallbackResult::Idle;
   }
+
+//  processChannel(channel);
+//  return Thread::CallbackResult::Idle;
   
-  return Thread::CallbackResult::Ok;
+/*  if (boost::optional<AliceO2::Rorc::ChannelMasterInterface::Page> page = channel->getPage()) {    
+   int eventId=0;
+   eventId=*((*page).getAddressU32());
+    printf("%s : ev=%d\n",name.c_str(),eventId);
+      channel->freePage(page);
+  }
+  return Thread::CallbackResult::Idle;
+*/  
+      
+    int nPagesAvailable=channel->getAvailableCount();
+    if (!nPagesAvailable) {
+      return Thread::CallbackResult::Idle;
+    }
+    
+    for (int i=0;i<nPagesAvailable;i++) {
+      DataBlockContainerFromRORC *d=nullptr;
+      try {
+        d=new DataBlockContainerFromRORC(channel);
+      }
+      catch (int err) {
+        return Thread::CallbackResult::Idle;
+      }
+      if (d==nullptr) {
+        return Thread::CallbackResult::Idle;
+      }
+      dataOut->push(d); 
+      pageCount++;
+      
+      break;
+      // todo: if looping, check status of throttle, or receive as parameter max number of fifo slots to populate
+    }
+    
+    return Thread::CallbackResult::Ok;
 }
 
 
@@ -554,7 +715,7 @@ int main(int argc, char* argv[])
 */
 
 
-  InfoLogger theLog;
+
   ConfigFile cfg;
 
 
@@ -583,7 +744,8 @@ int main(int argc, char* argv[])
     std::string cfgEquipmentType="";
     cfgEquipmentType=cfg.getValue<std::string>(kName + ".equipmentType");
 
-    //std::cout << kName << "=" << cfgEquipmentType <<std::endl;
+
+    theLog.log("Configuring equipment %s: %s",kName.c_str(),cfgEquipmentType.c_str());
     
     CReadout *newDevice=nullptr;
     if (!cfgEquipmentType.compare("dummy")) {
@@ -599,24 +761,44 @@ int main(int argc, char* argv[])
       readoutDevices.push_back(newDevice);
     }
     
-  }
+  }  
 
   AliceO2::Common::Fifo<std::vector<DataBlockContainer *>> agg_output(1000);  
   CAggregator agg(&agg_output,"Aggregator");
 
+  theLog.log("Creating aggregator");
   for (auto readoutDevice : readoutDevices) {
-      theLog.log("Equipment : %s",readoutDevice->getName().c_str());
+      theLog.log("Adding equipment: %s",readoutDevice->getName().c_str());
       agg.addInput(readoutDevice->dataOut);
   }
 
-  agg.start();
 
-
-  for (auto readoutDevice : readoutDevices) {
-      readoutDevice->start();
+  int recordingEnabled=0;
+  std::string recordingFile="";
+  
+  recordingEnabled=cfg.getValue<int>("recording.enabled");
+  recordingFile=cfg.getValue<std::string>("recording.fileName");
+  
+  FILE *fp=NULL;
+  if (recordingEnabled) {
+    if (recordingFile.length()>0) {
+      theLog.log("Recording to %s",recordingFile.c_str());
+      fp=fopen(recordingFile.c_str(),"wb");
+      if (fp==NULL) {
+        theLog.log("Failed to create file");
+        recordingEnabled=0;
+      }
+    }
   }
 
 
+  theLog.log("Starting aggregator");
+  agg.start();
+  
+    theLog.log("Starting readout");
+  for (auto readoutDevice : readoutDevices) {
+      readoutDevice->start();
+  }
 
 
 
@@ -628,13 +810,15 @@ int main(int argc, char* argv[])
   t0.reset();
   unsigned long long nBlocks=0;
   unsigned long long nBytes=0;
-  double t1;
+  double t1=0.0;
+
+  
 
   while (1) {
     if (t.isTimeout()) {
       if (isRunning) {
         isRunning=0;
-        theLog.log("stopping readout");
+        theLog.log("Stopping readout");
         for (auto readoutDevice : readoutDevices) {
           readoutDevice->stop();
         }
@@ -658,13 +842,40 @@ int main(int argc, char* argv[])
     if (bc!=NULL) {
       unsigned int nb=(int)bc->size();
       //printf("received 1 vector made of %u blocks\n",nb);
-
+      
+      // todo: file rec: add header to vector of blocks
+      
+      
       for (unsigned int i=0;i<nb;i++) {
         //printf("pop %d\n",i);
         DataBlockContainer *b=bc->at(i);
 
         nBlocks++;
         nBytes+=b->getData()->header.dataSize;
+
+        if (fp!=NULL) {
+          void *ptr;
+          size_t size;
+          
+          ptr=&b->getData()->header;
+          size=b->getData()->header.headerSize;
+          fwrite(ptr,size, 1, fp);
+          
+          //printf("WRITE: header @ %p - %d\n",ptr,(int)size);
+
+          ptr=&b->getData()->data;
+          size=b->getData()->header.dataSize;          
+          fwrite(ptr,size, 1, fp);
+          
+          //printf("WRITE: data @ %p - %d\n",ptr,(int)size);
+
+          /*
+          fwrite(&b->getData()->header, b->getData()->header.headerSize, 1, fp);
+          if (b->getData()->data!=NULL) {
+            fwrite(b->getData()->data, b->getData()->header.dataSize, 1, fp);
+          }
+          */
+        }
 
         delete b;
         //printf("pop %p\n",(void *)b);
@@ -687,117 +898,27 @@ int main(int argc, char* argv[])
 
   }
 
-  printf("%llu blocks in %.3lf seconds => %.1lf block/s\n",nBlocks,t1,nBlocks/t1);
-  printf("%.1lf MB received\n",nBytes/(1024.0*1024.0));
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  theLog.log("stopping aggregator");
+  theLog.log("Stopping aggregator");
   agg.stop();
-  theLog.log("aggregator stopped");
+
+  
+  if (fp!=NULL) {
+    theLog.log("Closing %s",recordingFile.c_str());
+    fclose(fp);
+  }
 
 
   for (auto readoutDevice : readoutDevices) {
       delete readoutDevice;
   }
 
+  theLog.log("%llu blocks in %.3lf seconds => %.1lf block/s",nBlocks,t1,nBlocks/t1);
+  theLog.log("%.1lf MB received",nBytes/(1024.0*1024.0));
+  theLog.log("%.3lf MB/s",nBytes/(1024.0*1024.0)/t1);
+
+
+  theLog.log("Operations completed");
+
   return 0;
 
-  std::string cfgEquipmentType="";
-  try {
-    cfg.load(cfgFile);
-    cfgEquipmentType=cfg.getValue<std::string>("readout.equipmentType");
-  }
-  catch (std::string err) {
-    theLog.log("Error : %s",err.c_str());
-    return -1;
-  }
-
-  /*
-  CReadout *r=NULL; 
-  if (cfgEquipmentType=="dummy") {
-    r=new CReadoutDummy(&cfg);
-  } else {
-    theLog.log("Unknown equipment type %s",cfgEquipmentType.c_str());
-  }
-  */
-  
-  
- 
-
-
-  int nReadoutDevice=1;
-//  CReadout **readoutDevices=new CReadout* [nReadoutDevice];
-  
-  for (int i=0;i<nReadoutDevice;i++) {
-    std::string name = str( boost::format("Readout %d") % i );
-    readoutDevices[i]=new CReadoutDummy(&cfg,name);
-    agg.addInput(readoutDevices[i]->dataOut);
-  }
-  agg.start();
-  
-  /*CReadout *r2=new CReadoutDummy(&cfg);   
-  agg.addInput(r->dataOut);
-  agg.addInput(r2->dataOut);
-
-  agg.start();
-  r2->start();
-  */
-
-  for (int i=0;i<nReadoutDevice;i++) {
-    readoutDevices[i]->start();
-  }
-
-  
-      
-/*  if (r!=NULL) {
-  }
-*/
-  
-  for (int i=0;i<nReadoutDevice;i++) {
-    delete readoutDevices[i];
-    readoutDevices[i]=NULL;
-  }
-//  delete [] readoutDevices;
-    
-  /*  
-  delete r2;  
-  if (r!=NULL) {
-    delete r;
-  }
-  */
-  return 0;
-  
-  
-
-  void *p=NULL;
-  Thread tt(testloop,p,"Thread");
-  tt.start();
-  sleep(2);
-
-
-
-
-
-  return 0;  
- 
 }
