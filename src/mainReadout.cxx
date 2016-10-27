@@ -12,7 +12,9 @@
 #include <malloc.h>
 #include <boost/format.hpp>
 #include <chrono>
+#include <signal.h>
 
+#include <DataSampling/InjectSamples.h>
   
 #include <Common/Timer.h>
 #include <Common/Fifo.h>
@@ -36,6 +38,10 @@ Thread::CallbackResult  testloop(void *arg) {
 }
 
 
+static int ShutdownRequest=0;      // set to 1 to request termination, e.g. on SIGTERM/SIGQUIT signals
+static void signalHandler(int){
+  ShutdownRequest=1;
+}
 
 class CReadout {
   public:
@@ -156,7 +162,7 @@ class CReadoutDummy : public CReadout {
 
 
 CReadoutDummy::CReadoutDummy(ConfigFile *cfg, std::string name) : CReadout(cfg, name) {
-  mp=new MemPool(1000,1024*1024);
+  mp=new MemPool(1000,0.01*1024*1024);
   currentId=0;
 }
 
@@ -725,7 +731,7 @@ int main(int argc, char* argv[])
     return -1;
   }
   cfgFile=argv[1];
-  theLog.log("Readout starting");
+  theLog.log("Readout process starting");
   theLog.log("Reading configuration from %s",cfgFile);  
 
 
@@ -738,12 +744,30 @@ int main(int argc, char* argv[])
     return -1;
   }
 
+  double cfgExitTimeout=-1;
+  try {
+    cfgExitTimeout=cfg.getValue<double>("readout.exitTimeout");
+  }
+  catch(std::string e) {
+  }
+
+
+
   std::vector<CReadout*> readoutDevices;
 
   for (auto kName : ConfigFileBrowser (&cfg,"equipment-")) {     
+
+    int enabled=1;
+    try {
+      enabled=cfg.getValue<int>(kName + ".enabled");
+    }
+    catch (std::string err) {
+    }
+    // skip disabled equipments
+    if (!enabled) {continue;}
+
     std::string cfgEquipmentType="";
     cfgEquipmentType=cfg.getValue<std::string>(kName + ".equipmentType");
-
 
     theLog.log("Configuring equipment %s: %s",kName.c_str(),cfgEquipmentType.c_str());
     
@@ -773,6 +797,8 @@ int main(int argc, char* argv[])
   }
 
 
+  // configuration of data recording
+
   int recordingEnabled=0;
   std::string recordingFile="";
   
@@ -791,6 +817,19 @@ int main(int argc, char* argv[])
     }
   }
 
+  // configuration of data sampling
+
+  int dataSampling=0; 
+  dataSampling=cfg.getValue<int>("sampling.enabled");
+  
+  if (dataSampling) {
+    theLog.log("Data sampling enabled");
+  } else {
+    theLog.log("Data sampling disabled");
+  }
+  // todo: add time counter to measure how much time is spent waiting for data sampling injection
+  
+
 
   theLog.log("Starting aggregator");
   agg.start();
@@ -800,10 +839,14 @@ int main(int argc, char* argv[])
       readoutDevice->start();
   }
 
+  theLog.log("Running");
 
 
   AliceO2::Common::Timer t;
-  t.reset(5000000);
+  if (cfgExitTimeout>0) {
+    t.reset(cfgExitTimeout*1000000);
+    theLog.log("Automatic exit in %.2f seconds",cfgExitTimeout);
+  }
   int isRunning=1;
   //r->start();
   AliceO2::Common::Timer t0;
@@ -812,10 +855,17 @@ int main(int argc, char* argv[])
   unsigned long long nBytes=0;
   double t1=0.0;
 
-  
+  // configure signal handlers for clean exit
+  struct sigaction signalSettings;
+  bzero(&signalSettings,sizeof(signalSettings));
+  signalSettings.sa_handler=signalHandler;
+  sigaction(SIGTERM,&signalSettings,NULL);
+  sigaction(SIGQUIT,&signalSettings,NULL);
+  sigaction(SIGINT,&signalSettings,NULL);
+
 
   while (1) {
-    if (t.isTimeout()) {
+    if (((cfgExitTimeout>0)&&(t.isTimeout()))||(ShutdownRequest)) {
       if (isRunning) {
         isRunning=0;
         theLog.log("Stopping readout");
@@ -837,13 +887,20 @@ int main(int argc, char* argv[])
     //newBlock=r->getBlock();
 
     std::vector<DataBlockContainer *> *bc=NULL;
-    agg_output.pop(bc);
+    agg_output.pop(bc);    
+    
 
     if (bc!=NULL) {
+    
+    
+      // push to data sampling, if configured
+      if (dataSampling) {
+        injectSamples(*bc);
+      }
+    
+    
       unsigned int nb=(int)bc->size();
       //printf("received 1 vector made of %u blocks\n",nb);
-      
-      // todo: file rec: add header to vector of blocks
       
       
       for (unsigned int i=0;i<nb;i++) {
@@ -853,6 +910,9 @@ int main(int argc, char* argv[])
         nBlocks++;
         nBytes+=b->getData()->header.dataSize;
 
+
+        // recording, if configured
+        
         if (fp!=NULL) {
           void *ptr;
           size_t size;
@@ -866,7 +926,8 @@ int main(int argc, char* argv[])
           ptr=&b->getData()->data;
           size=b->getData()->header.dataSize;          
           fwrite(ptr,size, 1, fp);
-          
+      
+      // todo: file rec: add header to vector of blocks               
           //printf("WRITE: data @ %p - %d\n",ptr,(int)size);
 
           /*
