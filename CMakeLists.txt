@@ -53,6 +53,7 @@ link_o2_subproject(Configuration)
 link_o2_subproject(DataFormat)
 link_o2_subproject(Common)
 link_o2_subproject(RORC)
+link_o2_subproject(DataSampling)
 
 # This sets the include directory for the reference project. This is the -I flag in gcc.
 # All the includes should be in this variable To add new directories to the include path,
