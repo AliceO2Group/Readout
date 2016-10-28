@@ -179,7 +179,7 @@ Thread::CallbackResult  CReadoutDummy::populateFifoOut() {
   try {
     d=new DataBlockContainerFromMemPool(mp);
   }
-  catch (std::string err) {
+  catch (...) {
     return Thread::CallbackResult::Idle;
   }
   //printf("push %p\n",(void *)d);
@@ -255,9 +255,10 @@ class DataBlockContainerFromRORC : public DataBlockContainer {
 //      printf("got page: %p -> evId=%d\n",(*v_page).getAddress(),*((*v_page).getAddressU32()));
 //      v_channel->freePage(v_page);    
 //      return;
-      
-      DataBlock *v_data=new DataBlock;
-      if (v_data==nullptr) {
+      DataBlock *v_data=nullptr;
+      try {
+         v_data=new DataBlock;
+      } catch (...) {
         throw __LINE__;
       }
       data=v_data;
@@ -416,10 +417,7 @@ Thread::CallbackResult  CReadoutRORC::populateFifoOut() {
       try {
         d=new DataBlockContainerFromRORC(channel);
       }
-      catch (int err) {
-        return Thread::CallbackResult::Idle;
-      }
-      if (d==nullptr) {
+      catch (...) {
         return Thread::CallbackResult::Idle;
       }
       dataOut->push(d); 
@@ -527,8 +525,11 @@ Thread::CallbackResult CAggregator::threadCallback(void *arg) {
     dPtr->isIncompletePending=0;
   } 
   
-  std::vector<DataBlockContainer *> *bcv=new std::vector<DataBlockContainer *>();
-  if (bcv==NULL) {
+  std::vector<DataBlockContainer *> *bcv=nullptr;
+  try {
+    bcv=new std::vector<DataBlockContainer *>();
+  }
+  catch(...) {
     return Thread::CallbackResult::Error;
   }
   
@@ -761,7 +762,7 @@ int main(int argc, char* argv[])
     try {
       enabled=cfg.getValue<int>(kName + ".enabled");
     }
-    catch (std::string err) {
+    catch (...) {
     }
     // skip disabled equipments
     if (!enabled) {continue;}
@@ -772,20 +773,26 @@ int main(int argc, char* argv[])
     theLog.log("Configuring equipment %s: %s",kName.c_str(),cfgEquipmentType.c_str());
     
     CReadout *newDevice=nullptr;
-    if (!cfgEquipmentType.compare("dummy")) {
-    // todo: how to pass extra params: rate, size, etc. Handle to config subsection?
-      newDevice=new CReadoutDummy(&cfg,kName);
-    } else if (!cfgEquipmentType.compare("rorc")) {
-      newDevice=new CReadoutRORC(&cfg,kName);
-    } else {
-      theLog.log("Unknown equipment type '%s' for [%s]",cfgEquipmentType.c_str(),kName.c_str());
+    try {
+      if (!cfgEquipmentType.compare("dummy")) {
+      // todo: how to pass extra params: rate, size, etc. Handle to config subsection?
+        newDevice=new CReadoutDummy(&cfg,kName);
+      } else if (!cfgEquipmentType.compare("rorc")) {
+        newDevice=new CReadoutRORC(&cfg,kName);
+      } else {
+        theLog.log("Unknown equipment type '%s' for [%s]",cfgEquipmentType.c_str(),kName.c_str());
+      }
     }
-    
+    catch (...) {
+        theLog.log("Failed to configure equipment %s",kName.c_str());
+        continue;
+    }
+        
     if (newDevice!=nullptr) {
       readoutDevices.push_back(newDevice);
     }
     
-  }  
+  }
 
   AliceO2::Common::Fifo<std::vector<DataBlockContainer *>> agg_output(1000);  
   CAggregator agg(&agg_output,"Aggregator");
