@@ -345,13 +345,13 @@ CReadoutRORC::CReadoutRORC(ConfigFile *cfg, std::string name) : CReadout(cfg, na
 
     //AliceO2::Rorc::ChannelFactory::DUMMY_SERIAL_NUMBER; //pcaldref23: 33333
 
-    AliceO2::Rorc::Parameters::Map params;
-    params[AliceO2::Rorc::Parameters::Keys::dmaBufferSize()]=std::to_string(32*1024*1024);
-    params[AliceO2::Rorc::Parameters::Keys::dmaPageSize()]=std::to_string(8*1024);
-    params[AliceO2::Rorc::Parameters::Keys::generatorDataSize()]=std::to_string(8*1024);
-    params[AliceO2::Rorc::Parameters::Keys::generatorEnabled()]=std::to_string(true);
+    AliceO2::Rorc::Parameters params = AliceO2::Rorc::Parameters::makeParameters(serialNumber,channelNumber);
+    params.put<AliceO2::Rorc::Parameters::DmaBufferSize>(32*1024*1024);
+    params.put<AliceO2::Rorc::Parameters::DmaPageSize>(8*1024);
+    params.put<AliceO2::Rorc::Parameters::GeneratorDataSize>(8*1024);
+    params.put<AliceO2::Rorc::Parameters::GeneratorEnabled>(true);
 
-    channel = AliceO2::Rorc::ChannelFactory().getMaster(serialNumber, channelNumber, params);
+    channel = AliceO2::Rorc::ChannelFactory().getMaster(params);
 
     //channel->resetCard(AliceO2::Rorc::ResetLevel::Rorc);
     channel->startDma();
