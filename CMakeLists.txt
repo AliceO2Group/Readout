@@ -49,11 +49,13 @@ find_package(Boost COMPONENTS unit_test_framework program_options REQUIRED)
 #    include_directories(../InfoLogger/include)
 #endif()
 link_o2_subproject(InfoLogger)
-link_o2_subproject(Configuration)
+#link_o2_subproject(Configuration)
 link_o2_subproject(DataFormat)
 link_o2_subproject(Common)
 link_o2_subproject(RORC)
 link_o2_subproject(DataSampling)
+
+find_package(Configuration REQUIRED)
 
 # This sets the include directory for the reference project. This is the -I flag in gcc.
 # All the includes should be in this variable To add new directories to the include path,
@@ -63,6 +65,7 @@ include_directories(
     ${PROJECT_SOURCE_DIR}/include
     ${PROJECT_BINARY_DIR}/include   # add the binary tree to the search path so that we will find Version.h
     ${Boost_INCLUDE_DIRS}
+    ${Configuration_INCLUDE_DIRS}
 )
 
 # Mac needed variables (adapt according to your needs)

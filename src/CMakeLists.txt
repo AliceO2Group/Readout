@@ -18,7 +18,7 @@ set(APPLICATION_NAME readout.exe)
 add_executable(${APPLICATION_NAME} ${APP_SOURCES})
 
 # Links the target exe (projArunner) against the library (libprojA) and other required libraries
-target_link_libraries(${APPLICATION_NAME} ${LIBRARY_NAME} InfoLogger-static Configuration-static pthread DataFormat Common rorc DataSampling)
+target_link_libraries(${APPLICATION_NAME} ${LIBRARY_NAME} InfoLogger-static ${Configuration_LIBRARIES} pthread DataFormat Common rorc DataSampling)
 
 # Says how and where to install software
 install(TARGETS ${LIBRARY_NAME} ${APPLICATION_NAME}
