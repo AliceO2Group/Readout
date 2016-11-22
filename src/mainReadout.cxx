@@ -345,11 +345,11 @@ CReadoutRORC::CReadoutRORC(ConfigFile *cfg, std::string name) : CReadout(cfg, na
 
     //AliceO2::Rorc::ChannelFactory::DUMMY_SERIAL_NUMBER; //pcaldref23: 33333
 
-    AliceO2::Rorc::Parameters params = AliceO2::Rorc::Parameters::makeParameters(serialNumber,channelNumber);
-    params.put<AliceO2::Rorc::Parameters::DmaBufferSize>(32*1024*1024);
-    params.put<AliceO2::Rorc::Parameters::DmaPageSize>(8*1024);
-    params.put<AliceO2::Rorc::Parameters::GeneratorDataSize>(8*1024);
-    params.put<AliceO2::Rorc::Parameters::GeneratorEnabled>(true);
+    AliceO2::Rorc::Parameters params = AliceO2::Rorc::Parameters::makeParameters(serialNumber,channelNumber)
+        .setDmaBufferSize(32*1024*1024)
+        .setDmaPageSize(8*1024)
+        .setGeneratorDataSize(8*1024)
+        .setGeneratorEnabled(true);
 
     channel = AliceO2::Rorc::ChannelFactory().getMaster(params);
 
