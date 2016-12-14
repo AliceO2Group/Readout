@@ -42,6 +42,7 @@ endif()
 set(Boost_NO_BOOST_CMAKE ON) #  Don't do a find_package in config mode before searching for a regular boost install.
 find_package(Boost COMPONENTS unit_test_framework program_options REQUIRED)
 
+
 # Dependency on another subproject (InfoLogger)
 #if(NOT TARGET InfoLogger) # target unknown because we build only this subproject, ProjA must have been built AND installed
 #    find_package(InfoLogger CONFIG REQUIRED)
@@ -55,7 +56,21 @@ link_o2_subproject(Common)
 link_o2_subproject(RORC)
 link_o2_subproject(DataSampling)
 
-find_package(Configuration REQUIRED)
+#find_package(Configuration REQUIRED)
+
+
+# Alfa
+find_package(FairRoot)
+if(FAIRROOT_FOUND)
+    link_directories(${FAIRROOT_LIBRARY_DIR})
+    find_package(ROOT REQUIRED)
+    find_package(Boost COMPONENTS unit_test_framework program_options log thread system REQUIRED)
+else(FAIRROOT_FOUND)
+    message(WARNING "FairRoot not found, corresponding classes will not be compiled.")
+endif(FAIRROOT_FOUND)
+
+
+
 
 # This sets the include directory for the reference project. This is the -I flag in gcc.
 # All the includes should be in this variable To add new directories to the include path,
