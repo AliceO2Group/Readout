@@ -13,12 +13,19 @@ set_target_properties(${LIBRARY_NAME} PROPERTIES
   PUBLIC_HEADER "${LIB_HEADERS}" # specify the public headers
 )
 
+if (FAIRROOT_FOUND) 
+  ADD_DEFINITIONS(-DWITH_FAIRMQ)
+  link_directories(${FAIRROOT_LIBRARY_DIR})
+  set(FAIRROOT_LIBRARIES ${Boost_PROGRAM_OPTIONS_LIBRARY} ${Boost_LOG_LIBRARY} ${Boost_THREAD_LIBRARY} ${Boost_SYSTEM_LIBRARY} Base FairMQ BaseMQ fairmq_logger ${ROOT_LIBRARIES})
+endif()
+
 # This is a make target, so you can do a "make projArunner"
 set(APPLICATION_NAME readout.exe)
 add_executable(${APPLICATION_NAME} ${APP_SOURCES})
 
 # Links the target exe (projArunner) against the library (libprojA) and other required libraries
-target_link_libraries(${APPLICATION_NAME} ${LIBRARY_NAME} InfoLogger-static ${Configuration_LIBRARIES} pthread DataFormat Common rorc DataSampling)
+target_link_libraries(${APPLICATION_NAME} ${LIBRARY_NAME} ${FAIRROOT_LIBRARIES} InfoLogger-static Configuration-static pthread DataFormat Common rorc DataSampling)
+
 
 # Says how and where to install software
 install(TARGETS ${LIBRARY_NAME} ${APPLICATION_NAME}
