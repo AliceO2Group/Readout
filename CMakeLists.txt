@@ -80,7 +80,7 @@ include_directories(
     ${PROJECT_SOURCE_DIR}/include
     ${PROJECT_BINARY_DIR}/include   # add the binary tree to the search path so that we will find Version.h
     ${Boost_INCLUDE_DIRS}
-    ${Configuration_INCLUDE_DIRS}
+#    ${Configuration_INCLUDE_DIRS}
 )
 
 # Mac needed variables (adapt according to your needs)
