@@ -13,6 +13,7 @@
 #include <boost/format.hpp>
 #include <chrono>
 #include <signal.h>
+#include <math.h>
 
 #include <memory>
 
@@ -251,12 +252,14 @@ Thread::CallbackResult  CReadoutDummy::populateFifoOut() {
     b->data[k]=(char)k;
   }
   
-  //printf("(2)header=%p\nbase=%p\nsize=%d,%d\n",(void *)&(b->header),b->data,(int)b->header.headerSize,(int)b->header.dataSize);
+//  printf("(2)header=%p\nbase=%p\nsize=%d,%d\n",(void *)&(b->header),b->data,(int)b->header.headerSize,(int)b->header.dataSize);
     
   //usleep(10000);
   
   // push new page to mem
   dataOut->push(d); 
+
+//  printf("readout dummy loop FIFO out= %d items\n",dataOut->getNumberOfUsedSlots());
 
   //printf("populateFifoOut()\n");
   return Thread::CallbackResult::Ok;
@@ -515,7 +518,12 @@ Thread::CallbackResult CAggregator::threadCallback(void *arg) {
   if (dPtr==NULL) {
     return Thread::CallbackResult::Error;
   }
-  
+   
+  if (dPtr->output->isFull()) {
+    return Thread::CallbackResult::Idle;
+  }
+   
+   
   int someEmpty=0;
   int allEmpty=1;
   int allSame=1;
@@ -585,8 +593,10 @@ Thread::CallbackResult CAggregator::threadCallback(void *arg) {
   }
   
   //if (!allSame) {printf("!incomplete block pushed\n");}
+  // todo: add error check
   dPtr->output->push(bcv);
-
+  
+//  printf("readout output: pushed %llu\n",dPtr->output->getNumberIn());
   // todo: add timeout for standalone pieces - or wait if some FIFOs empty
   // add flag in output data to say it is incomplete
   //printf("agg: new block\n");
@@ -602,6 +612,19 @@ void CAggregator::stop(int waitStop) {
   if (waitStop) {
     aggregateThread->join();
   }
+  for (unsigned int i=0; i<inputs.size(); i++) {
+
+//    printf("aggregator input %d: in=%llu  out=%llu\n",i,inputs[i]->getNumberIn(),inputs[i]->getNumberOut());      
+//    printf("Aggregator FIFO in %d clear: %d items\n",i,inputs[i]->getNumberOfUsedSlots());
+    
+    inputs[i]->clear();
+  }
+//  printf("Aggregator FIFO out after clear: %d items\n",output->getNumberOfUsedSlots());
+  std::vector<std::shared_ptr<DataBlockContainer>> *bc=nullptr;
+  while (!output->pop(bc)) {
+    bc->clear();
+  }
+  output->clear();
 }
 
 
@@ -715,6 +738,31 @@ FLP hackaton meeting 3rd
 /* todo: shared_ptr for data pointers? */
 
 
+// macro to get number of element in static array
+#define STATIC_ARRAY_ELEMENT_COUNT(x) sizeof(x)/sizeof(x[0]) 
+
+// function to convert a value in bytes to a prefixed number 3+3 digits
+// suffix is the "base unit" to add after calculated prefix, e.g. Byte-> kBytes
+std::string NumberOfBytesToString(double value,const char*suffix) {
+  const char *prefixes[]={"","k","M","G","T","P"};
+  int maxPrefixIndex=STATIC_ARRAY_ELEMENT_COUNT(prefixes)-1;
+  int prefixIndex=log(value)/log(1024);
+  if (prefixIndex>maxPrefixIndex) {
+    prefixIndex=maxPrefixIndex;
+  }
+  if (prefixIndex<0) {
+    prefixIndex=0;
+  }
+  double scaledValue=value/pow(1024,prefixIndex);
+  char bufStr[64];
+  if (suffix==nullptr) {
+    suffix="";
+  }
+  snprintf(bufStr,sizeof(bufStr)-1,"%.03lf %s%s",scaledValue,prefixes[prefixIndex],suffix);
+  return std::string(bufStr);  
+}
+
+
 
 class Consumer {
   public:
@@ -731,6 +779,7 @@ class ConsumerStats: public Consumer {
   unsigned long long counterBytesTotal;
   unsigned long long counterBytesHeader;
   unsigned long long counterBytesDiff;
+  AliceO2::Common::Timer runningTime;
   AliceO2::Common::Timer t;
   int monitoringEnabled;
   int monitoringUpdatePeriod;
@@ -764,11 +813,18 @@ class ConsumerStats: public Consumer {
     counterBytesHeader=0;
     counterBlocks=0;
     counterBytesDiff=0;
+    runningTime.reset();
   }
   ~ConsumerStats() {
+    double elapsedTime=runningTime.getTime();
+    if (counterBytesTotal>0) {
     theLog.log("Stats: %llu blocks, %.2f MB, %.2f%% header overhead",counterBlocks,counterBytesTotal/(1024*1024.0),counterBytesHeader*100.0/counterBytesTotal);
     theLog.log("Stats: average block size=%llu bytes",counterBytesTotal/counterBlocks);
+    theLog.log("Stats: average throughput = %s",NumberOfBytesToString(counterBytesTotal/elapsedTime,"B/s").c_str());
     publishStats();
+    } else {
+      theLog.log("Stats: no data received");
+    }
   }
   int pushData(std::shared_ptr<DataBlockContainer>b) {
     counterBlocks++;
@@ -831,9 +887,11 @@ class ConsumerFileRecorder: public Consumer {
         }     
         counterBytesTotal+=size;
         ptr=&b->getData()->data;
-        size=b->getData()->header.dataSize;          
-        if (fwrite(ptr,size, 1, fp)!=1) {
-          break;
+        size=b->getData()->header.dataSize; 
+        if ((size>0)&&(ptr!=nullptr)) {
+          if (fwrite(ptr,size, 1, fp)!=1) {
+            break;
+          }
         }
         counterBytesTotal+=size;
         success=1;
@@ -1018,7 +1076,6 @@ class ConsumerFMQ: public Consumer {
 
 int main(int argc, char* argv[])
 {
-
   ConfigFile cfg;
   const char* cfgFileURI="";
   if (argc<2) {
@@ -1191,12 +1248,15 @@ int main(int argc, char* argv[])
   }
   int isRunning=1;
   AliceO2::Common::Timer t0;
-  t0.reset();
-  
+  t0.reset(); 
+
+
+/*
   // reset stats
   unsigned long long nBlocks=0;
   unsigned long long nBytes=0;
   double t1=0.0;
+*/
 
 
  theLog.log("Entering loop");
@@ -1238,14 +1298,17 @@ int main(int argc, char* argv[])
       
       
       for (unsigned int i=0;i<nb;i++) {
-        //printf("pop %d\n",i);
-        //printf("%p : %d use count\n",(void *)bc->at(i).get(), bc->at(i).use_count());
+/*
+        printf("pop %d\n",i);
+        printf("%p : %d use count\n",(void *)bc->at(i).get(), (int)bc->at(i).use_count());
+*/
         std::shared_ptr<DataBlockContainer>b=bc->at(i);
 
+/*
         nBlocks++;
         nBytes+=b->getData()->header.dataSize;
-        //printf("%p : %d use count\n",(void *)b.get(), b.use_count());
-        
+*/
+//        printf("%p : %d use count\n",(void *)b.get(), (int)b.use_count());        
         
 //        printf("pushed\n");
         for (auto c : dataConsumers) {
@@ -1269,6 +1332,8 @@ int main(int argc, char* argv[])
   theLog.log("Stopping aggregator");
   agg.stop();
 
+//  t1=t0.getTime();
+  
   theLog.log("Wait a bit");
   sleep(1);
   theLog.log("Stop consumers");
@@ -1276,21 +1341,30 @@ int main(int argc, char* argv[])
   // close consumers before closing readout equipments (owner of data blocks)
   dataConsumers.clear();
 
-  return 0;
-  
+  agg_output.clear();
   
   // todo: check nothing in the input pipeline
   // flush & stop equipments
+  for (auto readoutDevice : readoutDevices) {
+      // ensure nothing left in output FIFO to allow releasing memory
+//      printf("readout: in=%llu  out=%llu\n",readoutDevice->dataOut->getNumberIn(),readoutDevice->dataOut->getNumberOut());      
+      readoutDevice->dataOut->clear();
+  }
+
+
+//  printf("agg: in=%llu  out=%llu\n",agg_output.getNumberIn(),agg_output.getNumberOut());
+
   
   theLog.log("Closing readout devices");  
   for (auto readoutDevice : readoutDevices) {
       delete readoutDevice;
   }
 
+/*
   theLog.log("%llu blocks in %.3lf seconds => %.1lf block/s",nBlocks,t1,nBlocks/t1);
   theLog.log("%.1lf MB received",nBytes/(1024.0*1024.0));
   theLog.log("%.3lf MB/s",nBytes/(1024.0*1024.0)/t1);
-
+*/
 
   theLog.log("Operations completed");
 
