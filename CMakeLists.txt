@@ -80,6 +80,8 @@ include_directories(
     ${PROJECT_SOURCE_DIR}/include
     ${PROJECT_BINARY_DIR}/include   # add the binary tree to the search path so that we will find Version.h
     ${Boost_INCLUDE_DIRS}
+    ${FAIRROOT_INCLUDE_DIR}
+    ${ZEROMQ_INCLUDE_DIR}
 #    ${Configuration_INCLUDE_DIRS}
 )
 
