@@ -25,6 +25,8 @@
 #include "RORC/Parameters.h"
 #include "RORC/ChannelFactory.h"
 
+#include <Monitoring/MonitoringFactory.h>
+
 #ifdef WITH_FAIRMQ
 #include <FairMQDevice.h>
 #include <FairMQMessage.h>
@@ -35,6 +37,7 @@
 
 using namespace AliceO2::InfoLogger;
 using namespace AliceO2::Common;
+using namespace AliceO2::Monitoring;
   
 #define LOG_TRACE printf("%d\n",__LINE__);fflush(stdout);
 
@@ -723,26 +726,67 @@ class Consumer {
 };
 
 class ConsumerStats: public Consumer {
+  private:
+  unsigned long long counterBlocks;
+  unsigned long long counterBytesTotal;
+  unsigned long long counterBytesHeader;
+  unsigned long long counterBytesDiff;
+  AliceO2::Common::Timer t;
+  int monitoringEnabled;
+  int monitoringUpdatePeriod;
+  std::unique_ptr<Collector> monitoringCollector;
+
+  void publishStats() {
+    if (monitoringEnabled) {
+      // todo: support for long long types
+      // https://alice.its.cern.ch/jira/browse/FLPPROT-69
+      monitoringCollector->send((int)counterBlocks, "readout.Blocks");
+      monitoringCollector->send((int)counterBytesTotal, "readout.BytesTotal");
+      monitoringCollector->send((int)counterBytesDiff, "readout.BytesInterval");
+      counterBytesDiff=0;
+    }
+  }
+  
+  
   public: 
   ConsumerStats(ConfigFile &cfg, std::string cfgEntryPoint):Consumer(cfg,cfgEntryPoint) {
+    
+    cfg.getOptionalValue(cfgEntryPoint + ".monitoringEnabled", monitoringEnabled, 0);
+    if (monitoringEnabled) {
+      cfg.getOptionalValue(cfgEntryPoint + ".monitoringUpdatePeriod", monitoringUpdatePeriod, 10);
+      const std::string configFile=cfg.getValue<std::string>(cfgEntryPoint + ".monitoringConfig");
+      theLog.log("Monitoring enabled - period %ds - using configuration %s",monitoringUpdatePeriod,configFile.c_str());
+      monitoringCollector=MonitoringFactory::Create(configFile);
+      t.reset(monitoringUpdatePeriod*1000000);
+    }
+    
     counterBytesTotal=0;
     counterBytesHeader=0;
     counterBlocks=0;
+    counterBytesDiff=0;
   }
   ~ConsumerStats() {
     theLog.log("Stats: %llu blocks, %.2f MB, %.2f%% header overhead",counterBlocks,counterBytesTotal/(1024*1024.0),counterBytesHeader*100.0/counterBytesTotal);
     theLog.log("Stats: average block size=%llu bytes",counterBytesTotal/counterBlocks);
+    publishStats();
   }
   int pushData(std::shared_ptr<DataBlockContainer>b) {
     counterBlocks++;
-    counterBytesTotal+=b->getData()->header.dataSize;
+    int newBytes=b->getData()->header.dataSize;
+    counterBytesTotal+=newBytes;
+    counterBytesDiff+=newBytes;
     counterBytesHeader+=b->getData()->header.headerSize;
+
+    if (monitoringEnabled) {
+      // todo: do not check time every push() if it goes fast...      
+      if (t.isTimeout()) {
+        publishStats();
+        t.increment();
+      }
+    }
+    
     return 0;
   }
-  private:
-    unsigned long long counterBlocks;
-    unsigned long long counterBytesTotal;
-    unsigned long long counterBytesHeader;
 };
 
 
@@ -1112,7 +1156,11 @@ int main(int argc, char* argv[])
       } else {
         theLog.log("Unknown consumer type '%s' for [%s]",cfgType.c_str(),kName.c_str());
       }
-    }
+    } 
+    catch (const std::exception& ex) {
+        theLog.log("Failed to configure consumer %s : %s",kName.c_str(), ex.what());
+        continue;
+    } 
     catch (...) {
         theLog.log("Failed to configure consumer %s",kName.c_str());
         continue;
