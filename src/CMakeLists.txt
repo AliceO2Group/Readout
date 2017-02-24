@@ -27,6 +27,7 @@ add_executable(${APPLICATION_NAME} ${APP_SOURCES})
 target_link_libraries(${APPLICATION_NAME} ${LIBRARY_NAME} ${FAIRROOT_LIBRARIES} InfoLogger-static pthread DataFormat Common rorc DataSampling DataCollector)
 
 
+
 # Says how and where to install software
 install(TARGETS ${LIBRARY_NAME} ${APPLICATION_NAME}
   EXPORT ${PROJECT_NAME}Targets            # for downstream dependencies
