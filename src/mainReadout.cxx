@@ -7,6 +7,7 @@
 #include <DataFormat/DataBlock.h>
 #include <DataFormat/DataBlockContainer.h>
 #include <DataFormat/MemPool.h>
+#include <DataFormat/DataSet.h>
 
 #include <atomic>
 #include <malloc.h>
@@ -64,7 +65,7 @@ class ReadoutEquipment {
   ReadoutEquipment(ConfigFile &cfg, std::string cfgEntryPoint);
   virtual ~ReadoutEquipment();
   
-  std::shared_ptr<DataBlockContainer>getBlock();
+  DataBlockContainerReference getBlock();
 
   void start();
   void stop();
@@ -72,7 +73,7 @@ class ReadoutEquipment {
 
 //  protected: 
 // todo: give direct access to output FIFO?
-  std::shared_ptr<AliceO2::Common::Fifo<std::shared_ptr<DataBlockContainer>>> dataOut;
+  std::shared_ptr<AliceO2::Common::Fifo<DataBlockContainerReference>> dataOut;
 
   private:
   std::unique_ptr<Thread> readoutThread;  
@@ -108,7 +109,7 @@ ReadoutEquipment::ReadoutEquipment(ConfigFile &cfg, std::string cfgEntryPoint) {
 
   int outFifoSize=1000;
   
-  dataOut=std::make_shared<AliceO2::Common::Fifo<std::shared_ptr<DataBlockContainer>>>(outFifoSize);
+  dataOut=std::make_shared<AliceO2::Common::Fifo<DataBlockContainerReference>>(outFifoSize);
   nBlocksOut=0;
 }
 
@@ -134,8 +135,8 @@ ReadoutEquipment::~ReadoutEquipment() {
 //  printf("deleted %s\n",name.c_str());
 }
 
-std::shared_ptr<DataBlockContainer> ReadoutEquipment::getBlock() {
-  std::shared_ptr<DataBlockContainer>b=nullptr;
+DataBlockContainerReference ReadoutEquipment::getBlock() {
+  DataBlockContainerReference b=nullptr;
   dataOut->pop(b);
   return b;
 }
@@ -210,7 +211,7 @@ Thread::CallbackResult  ReadoutEquipmentDummy::populateFifoOut() {
     return Thread::CallbackResult::Idle;
   }
 
-  std::shared_ptr<DataBlockContainer>d=NULL;
+  DataBlockContainerReference d=NULL;
   try {
     d=std::make_shared<DataBlockContainerFromMemPool>(mp);
   }
@@ -478,10 +479,10 @@ Thread::CallbackResult  ReadoutEquipmentRORC::populateFifoOut() {
 
 class DataBlockAggregator {
   public:
-  DataBlockAggregator(AliceO2::Common::Fifo<std::vector<std::shared_ptr<DataBlockContainer>>*> *output, std::string name="Aggregator");
+  DataBlockAggregator(AliceO2::Common::Fifo<DataSetReference> *output, std::string name="Aggregator");
   ~DataBlockAggregator();
   
-  int addInput(std::shared_ptr<AliceO2::Common::Fifo<std::shared_ptr<DataBlockContainer>>> input); // add a FIFO to be used as input
+  int addInput(std::shared_ptr<AliceO2::Common::Fifo<DataBlockContainerReference>> input); // add a FIFO to be used as input
   
   void start(); // starts processing thread
   void stop(int waitStopped=1);  // stop processing thread (and possibly wait it terminates)
@@ -490,15 +491,15 @@ class DataBlockAggregator {
   static Thread::CallbackResult  threadCallback(void *arg);  
  
   private:
-  std::vector<std::shared_ptr<AliceO2::Common::Fifo<std::shared_ptr<DataBlockContainer>>>> inputs;
-  AliceO2::Common::Fifo<std::vector<std::shared_ptr<DataBlockContainer>> *> *output;
+  std::vector<std::shared_ptr<AliceO2::Common::Fifo<DataBlockContainerReference>>> inputs;
+  AliceO2::Common::Fifo<DataSetReference> *output;    //todo: unique_ptr
   
   std::unique_ptr<Thread> aggregateThread;
   AliceO2::Common::Timer incompletePendingTimer;
   int isIncompletePending;
 };
 
-DataBlockAggregator::DataBlockAggregator(AliceO2::Common::Fifo<std::vector<std::shared_ptr<DataBlockContainer>> *> *v_output, std::string name){
+DataBlockAggregator::DataBlockAggregator(AliceO2::Common::Fifo<DataSetReference> *v_output, std::string name){
   output=v_output;
   aggregateThread=std::make_unique<Thread>(DataBlockAggregator::threadCallback,this,name,100);
   isIncompletePending=0;
@@ -508,7 +509,7 @@ DataBlockAggregator::~DataBlockAggregator() {
   // todo: flush out FIFOs ?
 }
   
-int DataBlockAggregator::addInput(std::shared_ptr<AliceO2::Common::Fifo<std::shared_ptr<DataBlockContainer>>>input) {
+int DataBlockAggregator::addInput(std::shared_ptr<AliceO2::Common::Fifo<DataBlockContainerReference>>input) {
   //inputs.push_back(input);
   inputs.push_back(input);
   return 0;
@@ -535,7 +536,7 @@ Thread::CallbackResult DataBlockAggregator::threadCallback(void *arg) {
   for (unsigned int i=0; i<dPtr->inputs.size(); i++) {
     if (!dPtr->inputs[i]->isEmpty()) {
       allEmpty=0;
-      std::shared_ptr<DataBlockContainer>bc=nullptr;
+      DataBlockContainerReference bc=nullptr;
       dPtr->inputs[i]->front(bc);
       DataBlock *b=bc->getData();
       DataBlockId newId=b->header.id;
@@ -571,9 +572,9 @@ Thread::CallbackResult DataBlockAggregator::threadCallback(void *arg) {
     dPtr->isIncompletePending=0;
   } 
   
-  std::vector<std::shared_ptr<DataBlockContainer>> *bcv=nullptr;
+  DataSetReference bcv=nullptr;
   try {
-    bcv=new std::vector<std::shared_ptr<DataBlockContainer>>();
+    bcv=std::make_shared<DataSet>();
   }
   catch(...) {
     return Thread::CallbackResult::Error;
@@ -582,7 +583,7 @@ Thread::CallbackResult DataBlockAggregator::threadCallback(void *arg) {
   
   for (unsigned int i=0; i<dPtr->inputs.size(); i++) {
     if (!dPtr->inputs[i]->isEmpty()) {    
-      std::shared_ptr<DataBlockContainer>b=nullptr;
+      DataBlockContainerReference b=nullptr;
       dPtr->inputs[i]->front(b);
       DataBlockId newId=b->getData()->header.id;
       if (newId==minId) {
@@ -621,7 +622,9 @@ void DataBlockAggregator::stop(int waitStop) {
     inputs[i]->clear();
   }
 //  printf("Aggregator FIFO out after clear: %d items\n",output->getNumberOfUsedSlots());
-  std::vector<std::shared_ptr<DataBlockContainer>> *bc=nullptr;
+  /* todo: do we really need to clear? should be automatic */
+  
+  DataSetReference bc=nullptr;
   while (!output->pop(bc)) {
     bc->clear();
   }
@@ -765,13 +768,17 @@ std::string NumberOfBytesToString(double value,const char*suffix) {
 
 
 
+
+// todo : replace DataBlockContainerReference by DataSetReference
+
+
 class Consumer {
   public:
   Consumer(ConfigFile &cfg, std::string cfgEntryPoint) {
   };
   virtual ~Consumer() {
   };
-  virtual int pushData(std::shared_ptr<DataBlockContainer>b)=0;
+  virtual int pushData(DataBlockContainerReference b)=0;
 };
 
 class ConsumerStats: public Consumer {
@@ -830,7 +837,7 @@ class ConsumerStats: public Consumer {
       theLog.log("Stats: no data received");
     }
   }
-  int pushData(std::shared_ptr<DataBlockContainer>b) {
+  int pushData(DataBlockContainerReference b) {
     counterBlocks++;
     int newBytes=b->getData()->header.dataSize;
     counterBytesTotal+=newBytes;
@@ -875,7 +882,7 @@ class ConsumerFileRecorder: public Consumer {
   ~ConsumerFileRecorder() {
     closeRecordingFile();
   }
-  int pushData(std::shared_ptr<DataBlockContainer>b) {
+  int pushData(DataBlockContainerReference b) {
 
     int success=0;
     
@@ -932,7 +939,7 @@ class ConsumerDataSampling: public Consumer {
   ~ConsumerDataSampling() {
  
   }
-  int pushData(std::shared_ptr<DataBlockContainer>b) {
+  int pushData(DataBlockContainerReference b) {
     return 0;
   }
   private:
@@ -1162,7 +1169,7 @@ int main(int argc, char* argv[])
 
   // aggregator
   theLog.log("Creating aggregator");
-  AliceO2::Common::Fifo<std::vector<std::shared_ptr<DataBlockContainer>> *> agg_output(1000);
+  AliceO2::Common::Fifo<DataSetReference> agg_output(1000);
   int nEquipmentsAggregated=0;
   DataBlockAggregator agg(&agg_output,"Aggregator");
   for (auto && readoutDevice : readoutDevices) {
@@ -1284,18 +1291,17 @@ int main(int argc, char* argv[])
     //DataBlockContainer *newBlock=NULL;
     //newBlock=r->getBlock();
 
-    std::vector<std::shared_ptr<DataBlockContainer>> *bc=NULL;
+    DataSetReference bc=nullptr;
     agg_output.pop(bc);    
     
 
     if (bc!=NULL) {
     
     
-/*      // push to data sampling, if configured
+      // push to data sampling, if configured
       if (dataSampling) {
-        injectSamples(*bc);
+        injectSamples(bc);
       }
-  */
     
     
       unsigned int nb=(int)bc->size();
@@ -1327,7 +1333,8 @@ int main(int argc, char* argv[])
         //printf("pop %p\n",(void *)b);
 
       }
-      delete bc;      
+      // todo: check if following needed or not... in principle not as it is a shared_ptr
+      // delete bc;
     } else {
       usleep(1000);
     }
