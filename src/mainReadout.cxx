@@ -18,7 +18,7 @@
 
 #include <memory>
 
-#include <DataSampling/InjectSamples.h>
+#include <DataSampling/InjectorFactory.h>
   
 #include <Common/Timer.h>
 #include <Common/Fifo.h>
@@ -1183,8 +1183,11 @@ int main(int argc, char* argv[])
   // configuration of data sampling
   int dataSampling=0; 
   dataSampling=cfg.getValue<int>("sampling.enabled");
+  AliceO2::DataSampling::InjectorInterface *dataSamplingInjector = nullptr;
   if (dataSampling) {
     theLog.log("Data sampling enabled");
+    // todo: create(...) should not need an argument and should get its configuration by itself.
+    dataSamplingInjector = AliceO2::DataSampling::InjectorFactory::create("FairInjector");
   } else {
     theLog.log("Data sampling disabled");
   }
@@ -1296,13 +1299,10 @@ int main(int argc, char* argv[])
     
 
     if (bc!=NULL) {
-    
-    
       // push to data sampling, if configured
-      if (dataSampling) {
-        injectSamples(bc);
+      if (dataSampling && dataSamplingInjector) {
+        dataSamplingInjector->injectSamples(*bc);
       }
-    
     
       unsigned int nb=(int)bc->size();
       //printf("received 1 vector made of %u blocks\n",nb);
@@ -1373,6 +1373,9 @@ int main(int argc, char* argv[])
   }
   readoutDevices.clear(); // to do it all in one go
 
+  if(dataSamplingInjector) {
+    delete dataSamplingInjector;
+  }
 
 /*
   theLog.log("%llu blocks in %.3lf seconds => %.1lf block/s",nBlocks,t1,nBlocks/t1);
