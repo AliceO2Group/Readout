@@ -59,10 +59,10 @@ static void signalHandler(int){
 
 
 
-class CReadout {
+class ReadoutEquipment {
   public:
-  CReadout(ConfigFile &cfg, std::string cfgEntryPoint);
-  virtual ~CReadout();
+  ReadoutEquipment(ConfigFile &cfg, std::string cfgEntryPoint);
+  virtual ~ReadoutEquipment();
   
   std::shared_ptr<DataBlockContainer>getBlock();
 
@@ -72,10 +72,10 @@ class CReadout {
 
 //  protected: 
 // todo: give direct access to output FIFO?
-  AliceO2::Common::Fifo<std::shared_ptr<DataBlockContainer>> *dataOut;
+  std::shared_ptr<AliceO2::Common::Fifo<std::shared_ptr<DataBlockContainer>>> dataOut;
 
   private:
-  Thread *readoutThread;  
+  std::unique_ptr<Thread> readoutThread;  
   static Thread::CallbackResult  threadCallback(void *arg);
   virtual Thread::CallbackResult  populateFifoOut()=0;  // function called iteratively in dedicated thread to populate FIFO
   AliceO2::Common::Timer clk;
@@ -88,7 +88,7 @@ class CReadout {
 };
 
 
-CReadout::CReadout(ConfigFile &cfg, std::string cfgEntryPoint) {
+ReadoutEquipment::ReadoutEquipment(ConfigFile &cfg, std::string cfgEntryPoint) {
   
   // example: browse config keys
   //for (auto cfgKey : ConfigFileBrowser (&cfg,"",cfgEntryPoint)) {
@@ -104,19 +104,19 @@ CReadout::CReadout(ConfigFile &cfg, std::string cfgEntryPoint) {
   cfg.getOptionalValue<double>("readout.rate",readoutRate,-1.0);
 
 
-  readoutThread=new Thread(CReadout::threadCallback,this,name,1000);
+  readoutThread=std::make_unique<Thread>(ReadoutEquipment::threadCallback,this,name,1000);
 
   int outFifoSize=1000;
   
-  dataOut=new AliceO2::Common::Fifo<std::shared_ptr<DataBlockContainer>>(outFifoSize);
+  dataOut=std::make_shared<AliceO2::Common::Fifo<std::shared_ptr<DataBlockContainer>>>(outFifoSize);
   nBlocksOut=0;
 }
 
-const std::string & CReadout::getName() {
+const std::string & ReadoutEquipment::getName() {
   return name;
 }
 
-void CReadout::start() {
+void ReadoutEquipment::start() {
   readoutThread->start();
   if (readoutRate>0) {
     clk.reset(1000000.0/readoutRate);
@@ -124,25 +124,24 @@ void CReadout::start() {
   clk0.reset();
 }
 
-void CReadout::stop() {
+void ReadoutEquipment::stop() {
   readoutThread->stop();
   //printf("%llu blocks in %.3lf seconds => %.1lf block/s\n",nBlocksOut,clk0.getTimer(),nBlocksOut/clk0.getTime());
   readoutThread->join();
 }
 
-CReadout::~CReadout() {
-  delete readoutThread;
-  delete dataOut;
+ReadoutEquipment::~ReadoutEquipment() {
+//  printf("deleted %s\n",name.c_str());
 }
 
-std::shared_ptr<DataBlockContainer> CReadout::getBlock() {
+std::shared_ptr<DataBlockContainer> ReadoutEquipment::getBlock() {
   std::shared_ptr<DataBlockContainer>b=nullptr;
   dataOut->pop(b);
   return b;
 }
 
-Thread::CallbackResult  CReadout::threadCallback(void *arg) {
-  CReadout *ptr=(CReadout *)arg;
+Thread::CallbackResult  ReadoutEquipment::threadCallback(void *arg) {
+  ReadoutEquipment *ptr=static_cast<ReadoutEquipment *>(arg);
   //printf("cb = %p\n",arg);
   //return TTHREAD_LOOP_CB_IDLE;
   
@@ -169,14 +168,14 @@ Thread::CallbackResult  CReadout::threadCallback(void *arg) {
 
 
 
-class CReadoutDummy : public CReadout {
+class ReadoutEquipmentDummy : public ReadoutEquipment {
 
   public:
-    CReadoutDummy(ConfigFile &cfg, std::string name="dummyReadout");
-    ~CReadoutDummy();
+    ReadoutEquipmentDummy(ConfigFile &cfg, std::string name="dummyReadout");
+    ~ReadoutEquipmentDummy();
   
   private:
-    MemPool *mp;
+    std::shared_ptr<MemPool> mp;
     Thread::CallbackResult  populateFifoOut();
     DataBlockId currentId;
     int eventMaxSize;
@@ -184,7 +183,7 @@ class CReadoutDummy : public CReadout {
 };
 
 
-CReadoutDummy::CReadoutDummy(ConfigFile &cfg, std::string cfgEntryPoint) : CReadout(cfg, cfgEntryPoint) {
+ReadoutEquipmentDummy::ReadoutEquipmentDummy(ConfigFile &cfg, std::string cfgEntryPoint) : ReadoutEquipment(cfg, cfgEntryPoint) {
 
   int memPoolNumberOfElements=10000;
   int memPoolElementSize=0.01*1024*1024;
@@ -192,18 +191,21 @@ CReadoutDummy::CReadoutDummy(ConfigFile &cfg, std::string cfgEntryPoint) : CRead
   cfg.getOptionalValue<int>(cfgEntryPoint + ".memPoolNumberOfElements", memPoolNumberOfElements);
   cfg.getOptionalValue<int>(cfgEntryPoint + ".memPoolElementSize", memPoolElementSize);
 
-  mp=new MemPool(memPoolNumberOfElements,memPoolElementSize);
+  mp=std::make_shared<MemPool>(memPoolNumberOfElements,memPoolElementSize);
   currentId=0;
   
   cfg.getOptionalValue<int>(cfgEntryPoint + ".eventMaxSize", eventMaxSize, (int)1024);
   cfg.getOptionalValue<int>(cfgEntryPoint + ".eventMinSize", eventMinSize, (int)1024);
 }
 
-CReadoutDummy::~CReadoutDummy() {
-  delete mp;
+ReadoutEquipmentDummy::~ReadoutEquipmentDummy() {
+  // check if mempool still referenced
+  if (!mp.unique()) {
+    printf("Warning: mempool still %d references\n",(int)mp.use_count());
+  }
 } 
 
-Thread::CallbackResult  CReadoutDummy::populateFifoOut() {
+Thread::CallbackResult  ReadoutEquipmentDummy::populateFifoOut() {
   if (dataOut->isFull()) {
     return Thread::CallbackResult::Idle;
   }
@@ -356,11 +358,11 @@ class DataBlockContainerFromRORC : public DataBlockContainer {
 
 
 
-class CReadoutRORC : public CReadout {
+class ReadoutEquipmentRORC : public ReadoutEquipment {
 
   public:
-    CReadoutRORC(ConfigFile &cfg, std::string name="rorcReadout");
-    ~CReadoutRORC();
+    ReadoutEquipmentRORC(ConfigFile &cfg, std::string name="rorcReadout");
+    ~ReadoutEquipmentRORC();
   
   private:
     Thread::CallbackResult  populateFifoOut();
@@ -372,7 +374,7 @@ class CReadoutRORC : public CReadout {
 
 
 
-CReadoutRORC::CReadoutRORC(ConfigFile &cfg, std::string name) : CReadout(cfg, name) {
+ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : ReadoutEquipment(cfg, name) {
   
   try {
 
@@ -405,7 +407,7 @@ CReadoutRORC::CReadoutRORC(ConfigFile &cfg, std::string name) : CReadout(cfg, na
 
 
 
-CReadoutRORC::~CReadoutRORC() {
+ReadoutEquipmentRORC::~ReadoutEquipmentRORC() {
   if (isInitialized) {
     channel->stopDma();
   }
@@ -424,7 +426,7 @@ void processChannel(AliceO2::Rorc::ChannelFactory::MasterSharedPtr channel) {
 }
 */
 
-Thread::CallbackResult  CReadoutRORC::populateFifoOut() {
+Thread::CallbackResult  ReadoutEquipmentRORC::populateFifoOut() {
   if (!isInitialized) return  Thread::CallbackResult::Error;
   
   channel->fillFifo();
@@ -474,12 +476,12 @@ Thread::CallbackResult  CReadoutRORC::populateFifoOut() {
 
 
 
-class CAggregator {
+class DataBlockAggregator {
   public:
-  CAggregator(AliceO2::Common::Fifo<std::vector<std::shared_ptr<DataBlockContainer>>*> *output, std::string name="Aggregator");
-  ~CAggregator();
+  DataBlockAggregator(AliceO2::Common::Fifo<std::vector<std::shared_ptr<DataBlockContainer>>*> *output, std::string name="Aggregator");
+  ~DataBlockAggregator();
   
-  int addInput(AliceO2::Common::Fifo<std::shared_ptr<DataBlockContainer>> *input); // add a FIFO to be used as input
+  int addInput(std::shared_ptr<AliceO2::Common::Fifo<std::shared_ptr<DataBlockContainer>>> input); // add a FIFO to be used as input
   
   void start(); // starts processing thread
   void stop(int waitStopped=1);  // stop processing thread (and possibly wait it terminates)
@@ -488,33 +490,32 @@ class CAggregator {
   static Thread::CallbackResult  threadCallback(void *arg);  
  
   private:
-  std::vector<AliceO2::Common::Fifo<std::shared_ptr<DataBlockContainer>> *> inputs;
+  std::vector<std::shared_ptr<AliceO2::Common::Fifo<std::shared_ptr<DataBlockContainer>>>> inputs;
   AliceO2::Common::Fifo<std::vector<std::shared_ptr<DataBlockContainer>> *> *output;
   
-  Thread *aggregateThread;
+  std::unique_ptr<Thread> aggregateThread;
   AliceO2::Common::Timer incompletePendingTimer;
   int isIncompletePending;
 };
 
-CAggregator::CAggregator(AliceO2::Common::Fifo<std::vector<std::shared_ptr<DataBlockContainer>> *> *v_output, std::string name){
+DataBlockAggregator::DataBlockAggregator(AliceO2::Common::Fifo<std::vector<std::shared_ptr<DataBlockContainer>> *> *v_output, std::string name){
   output=v_output;
-  aggregateThread=new Thread(CAggregator::threadCallback,this,name,100);
+  aggregateThread=std::make_unique<Thread>(DataBlockAggregator::threadCallback,this,name,100);
   isIncompletePending=0;
 }
 
-CAggregator::~CAggregator() {
+DataBlockAggregator::~DataBlockAggregator() {
   // todo: flush out FIFOs ?
-  delete aggregateThread;
 }
   
-int CAggregator::addInput(AliceO2::Common::Fifo<std::shared_ptr<DataBlockContainer>> *input) {
+int DataBlockAggregator::addInput(std::shared_ptr<AliceO2::Common::Fifo<std::shared_ptr<DataBlockContainer>>>input) {
   //inputs.push_back(input);
   inputs.push_back(input);
   return 0;
 }
 
-Thread::CallbackResult CAggregator::threadCallback(void *arg) {
-  CAggregator *dPtr=(CAggregator*)arg;
+Thread::CallbackResult DataBlockAggregator::threadCallback(void *arg) {
+  DataBlockAggregator *dPtr=(DataBlockAggregator*)arg;
   if (dPtr==NULL) {
     return Thread::CallbackResult::Error;
   }
@@ -603,11 +604,11 @@ Thread::CallbackResult CAggregator::threadCallback(void *arg) {
   return Thread::CallbackResult::Ok;
 }
  
-void CAggregator::start() {
+void DataBlockAggregator::start() {
   aggregateThread->start();
 }
 
-void CAggregator::stop(int waitStop) {
+void DataBlockAggregator::stop(int waitStop) {
   aggregateThread->stop();
   if (waitStop) {
     aggregateThread->join();
@@ -789,9 +790,11 @@ class ConsumerStats: public Consumer {
     if (monitoringEnabled) {
       // todo: support for long long types
       // https://alice.its.cern.ch/jira/browse/FLPPROT-69
-      monitoringCollector->send((int)counterBlocks, "readout.Blocks");
-      monitoringCollector->send((int)counterBytesTotal, "readout.BytesTotal");
-      monitoringCollector->send((int)counterBytesDiff, "readout.BytesInterval");
+      monitoringCollector->send(counterBlocks, "readout.Blocks");
+      monitoringCollector->send(counterBytesTotal, "readout.BytesTotal");
+      monitoringCollector->send(counterBytesDiff, "readout.BytesInterval");
+//      monitoringCollector->send((counterBytesTotal/(1024*1024)), "readout.MegaBytesTotal");
+
       counterBytesDiff=0;
     }
   }
@@ -806,6 +809,7 @@ class ConsumerStats: public Consumer {
       const std::string configFile=cfg.getValue<std::string>(cfgEntryPoint + ".monitoringConfig");
       theLog.log("Monitoring enabled - period %ds - using configuration %s",monitoringUpdatePeriod,configFile.c_str());
       monitoringCollector=MonitoringFactory::Create(configFile);
+      monitoringCollector->addDerivedMetric("readout.BytesTotal", DerivedMetricMode::RATE);
       t.reset(monitoringUpdatePeriod*1000000);
     }
     
@@ -1117,7 +1121,7 @@ int main(int argc, char* argv[])
 
 
   // configure readout equipments
-  std::vector<CReadout*> readoutDevices;
+  std::vector<std::unique_ptr<ReadoutEquipment>> readoutDevices;
   for (auto kName : ConfigFileBrowser (&cfg,"equipment-")) {     
 
     // example iteration on each sub-key
@@ -1134,12 +1138,12 @@ int main(int argc, char* argv[])
     cfgEquipmentType=cfg.getValue<std::string>(kName + ".equipmentType");
     theLog.log("Configuring equipment %s: %s",kName.c_str(),cfgEquipmentType.c_str());
     
-    CReadout *newDevice=nullptr;
+    std::unique_ptr<ReadoutEquipment>newDevice=nullptr;
     try {
       if (!cfgEquipmentType.compare("dummy")) {
-        newDevice=new CReadoutDummy(cfg,kName);
+        newDevice=std::make_unique<ReadoutEquipmentDummy>(cfg,kName);
       } else if (!cfgEquipmentType.compare("rorc")) {
-        newDevice=new CReadoutRORC(cfg,kName);
+        newDevice=std::make_unique<ReadoutEquipmentRORC>(cfg,kName);
       } else {
         theLog.log("Unknown equipment type '%s' for [%s]",cfgEquipmentType.c_str(),kName.c_str());
       }
@@ -1151,7 +1155,7 @@ int main(int argc, char* argv[])
     
     // add to list of equipments
     if (newDevice!=nullptr) {
-      readoutDevices.push_back(newDevice);
+      readoutDevices.push_back(std::move(newDevice));
     }   
   }
 
@@ -1160,8 +1164,8 @@ int main(int argc, char* argv[])
   theLog.log("Creating aggregator");
   AliceO2::Common::Fifo<std::vector<std::shared_ptr<DataBlockContainer>> *> agg_output(1000);
   int nEquipmentsAggregated=0;
-  CAggregator agg(&agg_output,"Aggregator");
-  for (auto readoutDevice : readoutDevices) {
+  DataBlockAggregator agg(&agg_output,"Aggregator");
+  for (auto && readoutDevice : readoutDevices) {
       //theLog.log("Adding equipment: %s",readoutDevice->getName().c_str());
       agg.addInput(readoutDevice->dataOut);
       nEquipmentsAggregated++;
@@ -1234,7 +1238,7 @@ int main(int argc, char* argv[])
   agg.start();
   
   theLog.log("Starting readout equipments");
-  for (auto readoutDevice : readoutDevices) {
+  for (auto && readoutDevice : readoutDevices) {
       readoutDevice->start();
   }
 
@@ -1266,7 +1270,7 @@ int main(int argc, char* argv[])
       if (((cfgExitTimeout>0)&&(t.isTimeout()))||(ShutdownRequest)) {
         isRunning=0;
         theLog.log("Stopping readout");
-        for (auto readoutDevice : readoutDevices) {
+        for (auto && readoutDevice : readoutDevices) {
           readoutDevice->stop();
         }
         theLog.log("Readout stopped");
@@ -1287,10 +1291,11 @@ int main(int argc, char* argv[])
     if (bc!=NULL) {
     
     
-      // push to data sampling, if configured
+/*      // push to data sampling, if configured
       if (dataSampling) {
         injectSamples(*bc);
       }
+  */
     
     
       unsigned int nb=(int)bc->size();
@@ -1332,6 +1337,7 @@ int main(int argc, char* argv[])
   theLog.log("Stopping aggregator");
   agg.stop();
 
+
 //  t1=t0.getTime();
   
   theLog.log("Wait a bit");
@@ -1345,7 +1351,7 @@ int main(int argc, char* argv[])
   
   // todo: check nothing in the input pipeline
   // flush & stop equipments
-  for (auto readoutDevice : readoutDevices) {
+  for (auto && readoutDevice : readoutDevices) {
       // ensure nothing left in output FIFO to allow releasing memory
 //      printf("readout: in=%llu  out=%llu\n",readoutDevice->dataOut->getNumberIn(),readoutDevice->dataOut->getNumberOut());      
       readoutDevice->dataOut->clear();
@@ -1354,11 +1360,12 @@ int main(int argc, char* argv[])
 
 //  printf("agg: in=%llu  out=%llu\n",agg_output.getNumberIn(),agg_output.getNumberOut());
 
-  
-  theLog.log("Closing readout devices");  
-  for (auto readoutDevice : readoutDevices) {
-      delete readoutDevice;
+  theLog.log("Closing readout devices");
+  for (size_t i = 0, size = readoutDevices.size(); i != size; ++i) {
+    readoutDevices[i]=nullptr;  // effectively deletes the device
   }
+  readoutDevices.clear(); // to do it all in one go
+
 
 /*
   theLog.log("%llu blocks in %.3lf seconds => %.1lf block/s",nBlocks,t1,nBlocks/t1);
