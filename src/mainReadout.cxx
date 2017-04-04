@@ -2,6 +2,7 @@
 /// @file    mainReadout.cxx
 /// @author  Sylvain
 ///
+
 #include <InfoLogger/InfoLogger.hxx>
 #include <Common/Configuration.h>
 #include <DataFormat/DataBlock.h>
