@@ -18,7 +18,7 @@ o2_define_bucket(
   pthread
   DataFormat
   Common
-  rorc
+  RORC
   DataSampling
   DataCollector
 
