@@ -2,6 +2,7 @@
 /// @file    mainReadout.cxx
 /// @author  Sylvain
 ///
+
 #include <InfoLogger/InfoLogger.hxx>
 #include <Common/Configuration.h>
 #include <DataFormat/DataBlock.h>
@@ -26,6 +27,9 @@
 
 #include "RORC/Parameters.h"
 #include "RORC/ChannelFactory.h"
+#include "RORC/MemoryMappedFile.h"
+#include "RORC/ChannelMasterInterface.h"
+#include "RORC/Exception.h"
 
 #include <Monitoring/MonitoringFactory.h>
 
@@ -278,79 +282,106 @@ Thread::CallbackResult  ReadoutEquipmentDummy::populateFifoOut() {
 
 
 
+// a big block of memory for I/O
+class ReadoutMemoryHandler {
+  private:
+    std::unique_ptr<AliceO2::Rorc::MemoryMappedFile> mMemoryMappedFile;
+    
+  public:
+  size_t size;
+  void * address;
+  const int pageSize=1024*1024;
+
+  std::unique_ptr<AliceO2::Common::Fifo<long>> pagesAvailable;  // we store offset (with respect to base address) of pages available
+  
+  ReadoutMemoryHandler(){
+    size_t memorySize=200*1024*1024;
+    try {
+      mMemoryMappedFile=std::make_unique<AliceO2::Rorc::MemoryMappedFile>("/var/lib/hugetlbfs/global/pagesize-2MB/test",memorySize,false);
+    }
+    catch (const AliceO2::Rorc::MemoryMapException& e) {
+      printf("Failed to allocate memory buffer : %s\n",e.what());
+      exit(1);
+    }
+    size=mMemoryMappedFile->getSize();
+    address=mMemoryMappedFile->getAddress();
+   
+    
+    int nPages=size/pageSize;
+
+    pagesAvailable=std::make_unique<AliceO2::Common::Fifo<long>>(nPages);
+    
+    if ((long)address % pageSize!=0) {
+      printf("Warning: unaligned pages!\n");
+    }
+    for (int i=0;i<nPages;i++) {
+      long offset=i*pageSize;
+      void *page=&((uint8_t*)address)[offset];
+      printf("%d : 0x%p\n",i,page);
+      pagesAvailable->push(offset);
+    }
+    printf("%d pages (%.2f MB) available\n",nPages,pageSize*1.0/(1024*1024));
+    
+  }
+  ~ReadoutMemoryHandler() {
+  }
+ 
+};
+// todo: locks for thread-safe access at init time
+ReadoutMemoryHandler mReadoutMemoryHandler;
+
+
+
+
+
+
+
+
+
+
 class DataBlockContainerFromRORC : public DataBlockContainer {
   private:
-  AliceO2::Rorc::ChannelMasterInterface::PageSharedPtr pagePtr;
-   
+  AliceO2::Rorc::ChannelFactory::MasterSharedPtr mChannel;
+  AliceO2::Rorc::Superpage mSuperpage;
+  
   public:
-  DataBlockContainerFromRORC(AliceO2::Rorc::ChannelFactory::MasterSharedPtr v_channel) {
+  DataBlockContainerFromRORC(AliceO2::Rorc::ChannelFactory::MasterSharedPtr channel, AliceO2::Rorc::Superpage  const & superpage) {   
     data=nullptr;
-    
-
-    
-    
-    pagePtr=AliceO2::Rorc::ChannelMasterInterface::popPage(v_channel);
-    
-    if (pagePtr!=nullptr) {
-    
-//      printf("got page: %p -> evId=%d\n",(*v_page).getAddress(),*((*v_page).getAddressU32()));
-//      v_channel->freePage(v_page);    
-//      return;
-      DataBlock *v_data=nullptr;
-      try {
-         v_data=new DataBlock;
-      } catch (...) {
-        throw __LINE__;
-      }
-      data=v_data;
-      data->header.blockType=DataBlockType::H_BASE;
-      data->header.headerSize=sizeof(DataBlockHeaderBase);
-      data->header.dataSize=8*1024;
-      data->header.id=*(pagePtr->getAddressU32());
-      data->data=(char *)(pagePtr->getAddress());
-
-//      pagePtr.reset();
-
-//      pageIndexLog[page.index]=1;
-
-      //printf("page new = %p %d\n",page.getAddress(),page.index);
-
-//      printf("got page: %p -> evId=%d\n",(*v_page).getAddress(),*((*v_page).getAddressU32()));
-//      usleep(1000000);
- 
-
-//      printf("page = %p\n",&page);
-//      printf("got page data: %p -> evId=%d\n",data->data,(int)data->header.id);
-//      usleep(1000000);
-    } else {
-      printf("No new page available!");
+    try {
+       data=new DataBlock;
+    } catch (...) {
       throw __LINE__;
     }
-  }
-  ~DataBlockContainerFromRORC() {
-//    delete data;
 
-//    channel->freePage(page);    
+    printf("container created for superpage %ld @ %p\n",(long)superpage.getOffset(),this);
+
+    data->header.blockType=DataBlockType::H_BASE;
+    data->header.headerSize=sizeof(DataBlockHeaderBase);
+    data->header.dataSize=8*1024;
+    
+    uint32_t *ptr=(uint32_t *) & (((uint8_t *)mReadoutMemoryHandler.address)[mSuperpage.getOffset()]);
+    
+    data->header.id=*ptr;
+    data->data=(char *)ptr;
+
+    mSuperpage=superpage;
+    mChannel=channel;
+  }
+  
+  ~DataBlockContainerFromRORC() {
+    mReadoutMemoryHandler.pagesAvailable->push(mSuperpage.getOffset());
+    printf("released superpage %ld\n",mSuperpage.getOffset());
     if (data!=nullptr) {
       delete data;
-      //printf("page delete=%p %d\n",page.getAddress(),page.index);
-      //fflush(stdout);
-/*      if (pageIndexLog[page.index]==0) {
-        printf("error - index not used\n");
-      }
-      */
-      try {
-        pagePtr.reset();
-//        pageIndexLog[page.index]=0;
-        //channel->freePage(page);  
-      }
-      catch (const std::exception& e) {
-        std::cout << "Error: " << e.what() << '\n' << boost::diagnostic_information(e, 1) << "\n";
-      }
-
     }
   }
 };
+
+
+
+
+
+
 
 
 
@@ -369,6 +400,7 @@ class ReadoutEquipmentRORC : public ReadoutEquipment {
     Thread::CallbackResult  populateFifoOut();
     DataBlockId currentId;
     AliceO2::Rorc::ChannelFactory::MasterSharedPtr channel;
+    
     int pageCount=0;
     int isInitialized=0;
 };
@@ -384,20 +416,19 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : 
   
     theLog.log("Opening RORC %d:%d",serialNumber,channelNumber);
 
-    //AliceO2::Rorc::ChannelFactory::DUMMY_SERIAL_NUMBER; //pcaldref23: 33333
+    int mPageSize=1024*1024;
 
-    AliceO2::Rorc::Parameters params = AliceO2::Rorc::Parameters::makeParameters(serialNumber,channelNumber)
-        .setDmaBufferSize(32*1024*1024)
-        .setDmaPageSize(8*1024)
-        .setGeneratorDataSize(8*1024)
-        .setGeneratorEnabled(true);
+    AliceO2::Rorc::Parameters params;
+    params.setCardId(serialNumber);
+    params.setChannelNumber(channelNumber);
+    params.setGeneratorPattern(AliceO2::Rorc::GeneratorPattern::Incremental);
+    params.setBufferParameters(AliceO2::Rorc::BufferParameters::Memory {
+      mReadoutMemoryHandler.address, mReadoutMemoryHandler.size
+    }); // this registers the memory block for DMA
 
-    channel = AliceO2::Rorc::ChannelFactory().getMaster(params);
-
-    //channel->resetCard(AliceO2::Rorc::ResetLevel::Rorc);
+    channel = AliceO2::Rorc::ChannelFactory().getMaster(params);  
+    channel->resetChannel(AliceO2::Rorc::ResetLevel::Rorc);
     channel->startDma();
-
-
   }
   catch (const std::exception& e) {
     std::cout << "Error: " << e.what() << '\n' << boost::diagnostic_information(e, 1) << "\n";
@@ -414,61 +445,58 @@ ReadoutEquipmentRORC::~ReadoutEquipmentRORC() {
   }
 
   theLog.log("Equipment %s : %d pages read",name.c_str(),(int)pageCount);
-//  printf("count: %d\n",(int)channel.use_count());
 }
-/*
-void processChannel(AliceO2::Rorc::ChannelFactory::MasterSharedPtr channel) {
-  if (boost::optional<AliceO2::Rorc::ChannelMasterInterface::Page> page = channel->getPage()) {    
-   int eventId=0;
-   eventId=*((*page).getAddressU32());
-    printf("ev=%d\n",eventId);
-      channel->freePage(page);
-  }
-}
-*/
+
 
 Thread::CallbackResult  ReadoutEquipmentRORC::populateFifoOut() {
   if (!isInitialized) return  Thread::CallbackResult::Error;
-  
-  channel->fillFifo();
- 
-  if (dataOut->isFull()) {
-    return Thread::CallbackResult::Idle;
-  }
-
-//  processChannel(channel);
-//  return Thread::CallbackResult::Idle;
-  
-/*  if (boost::optional<AliceO2::Rorc::ChannelMasterInterface::Page> page = channel->getPage()) {    
-   int eventId=0;
-   eventId=*((*page).getAddressU32());
-    printf("%s : ev=%d\n",name.c_str(),eventId);
-      channel->freePage(page);
-  }
-  return Thread::CallbackResult::Idle;
-*/  
-      
-    int nPagesAvailable=channel->getAvailableCount();
-    if (!nPagesAvailable) {
-      return Thread::CallbackResult::Idle;
-    }
+  int isActive=0;
     
-    for (int i=0;i<nPagesAvailable;i++) {
+  // this is to be called periodically for driver internal business
+  channel->fillSuperpages();
+  
+  // give free pages to the driver
+  while (channel->getSuperpageQueueAvailable() != 0) {   
+    long offset=0;
+    if (mReadoutMemoryHandler.pagesAvailable->pop(offset)==0) {
+      AliceO2::Rorc::Superpage superpage;
+      superpage.offset=offset;
+      superpage.size=mReadoutMemoryHandler.pageSize;
+      superpage.userData=&mReadoutMemoryHandler;
+      channel->pushSuperpage(superpage);
+      isActive=1;
+    } else {
+      break;
+    }
+  }
+    
+  // check for completed pages
+  while (!dataOut->isFull() && (channel->getSuperpageQueueCount()>0)) {
+    auto superpage = channel->getSuperpage(); // this is the first superpage in FIFO ... let's check its state
+    if (superpage.isFilled()) {
       std::shared_ptr<DataBlockContainerFromRORC>d=nullptr;
       try {
-        d=std::make_shared<DataBlockContainerFromRORC>(channel);
+        d=std::make_shared<DataBlockContainerFromRORC>(channel, superpage);
       }
       catch (...) {
-        return Thread::CallbackResult::Idle;
+        break;
       }
+      channel->popSuperpage();
       dataOut->push(d); 
-      pageCount++;
+      //d=nullptr;
       
+      pageCount++;
+      printf("read page %ld - %d\n",superpage.getOffset(),d.use_count());
+      isActive=1;
+    } else {
       break;
-      // todo: if looping, check status of throttle, or receive as parameter max number of fifo slots to populate
     }
-    
-    return Thread::CallbackResult::Ok;
+  }
+  //return Thread::CallbackResult::Ok;
+  if (!isActive) {
+    return Thread::CallbackResult::Idle;
+  }
+  return Thread::CallbackResult::Ok;
 }
 
 
@@ -589,7 +617,7 @@ Thread::CallbackResult DataBlockAggregator::threadCallback(void *arg) {
       if (newId==minId) {
         bcv->push_back(b);
         dPtr->inputs[i]->pop(b);
-        //printf("1 block for event %llu from input %d @ %p\n",(unsigned long long)newId,i,(void *)b);
+        printf("1 block for event %llu from input %d @ %p\n",(unsigned long long)newId,b);
       }
     }
   }
@@ -791,17 +819,18 @@ class ConsumerStats: public Consumer {
   AliceO2::Common::Timer t;
   int monitoringEnabled;
   int monitoringUpdatePeriod;
-  std::unique_ptr<Collector> monitoringCollector;
+//  std::unique_ptr<Collector> monitoringCollector;
 
   void publishStats() {
     if (monitoringEnabled) {
       // todo: support for long long types
       // https://alice.its.cern.ch/jira/browse/FLPPROT-69
+ /*
       monitoringCollector->send(counterBlocks, "readout.Blocks");
       monitoringCollector->send(counterBytesTotal, "readout.BytesTotal");
       monitoringCollector->send(counterBytesDiff, "readout.BytesInterval");
 //      monitoringCollector->send((counterBytesTotal/(1024*1024)), "readout.MegaBytesTotal");
-
+*/
       counterBytesDiff=0;
     }
   }
@@ -815,8 +844,10 @@ class ConsumerStats: public Consumer {
       cfg.getOptionalValue(cfgEntryPoint + ".monitoringUpdatePeriod", monitoringUpdatePeriod, 10);
       const std::string configFile=cfg.getValue<std::string>(cfgEntryPoint + ".monitoringConfig");
       theLog.log("Monitoring enabled - period %ds - using configuration %s",monitoringUpdatePeriod,configFile.c_str());
+/*
       monitoringCollector=MonitoringFactory::Create(configFile);
       monitoringCollector->addDerivedMetric("readout.BytesTotal", DerivedMetricMode::RATE);
+*/
       t.reset(monitoringUpdatePeriod*1000000);
     }
     
@@ -844,6 +875,7 @@ class ConsumerStats: public Consumer {
     counterBytesDiff+=newBytes;
     counterBytesHeader+=b->getData()->header.headerSize;
 
+    printf("Stats: got %p (%d)\n",b,b.use_count());
     if (monitoringEnabled) {
       // todo: do not check time every push() if it goes fast...      
       if (t.isTimeout()) {
@@ -1183,11 +1215,11 @@ int main(int argc, char* argv[])
   // configuration of data sampling
   int dataSampling=0; 
   dataSampling=cfg.getValue<int>("sampling.enabled");
-  AliceO2::DataSampling::InjectorInterface *dataSamplingInjector = nullptr;
+//  AliceO2::DataSampling::InjectorInterface *dataSamplingInjector = nullptr;
   if (dataSampling) {
     theLog.log("Data sampling enabled");
     // todo: create(...) should not need an argument and should get its configuration by itself.
-    dataSamplingInjector = AliceO2::DataSampling::InjectorFactory::create("FairInjector");
+//    dataSamplingInjector = AliceO2::DataSampling::InjectorFactory::create("FairInjector");
   } else {
     theLog.log("Data sampling disabled");
   }
@@ -1300,9 +1332,10 @@ int main(int argc, char* argv[])
 
     if (bc!=NULL) {
       // push to data sampling, if configured
-      if (dataSampling && dataSamplingInjector) {
+/*      if (dataSampling && dataSamplingInjector) {
         dataSamplingInjector->injectSamples(*bc);
       }
+  */
     
       unsigned int nb=(int)bc->size();
       //printf("received 1 vector made of %u blocks\n",nb);
@@ -1372,10 +1405,11 @@ int main(int argc, char* argv[])
     readoutDevices[i]=nullptr;  // effectively deletes the device
   }
   readoutDevices.clear(); // to do it all in one go
-
+/*
   if(dataSamplingInjector) {
     delete dataSamplingInjector;
   }
+*/
 
 /*
   theLog.log("%llu blocks in %.3lf seconds => %.1lf block/s",nBlocks,t1,nBlocks/t1);
