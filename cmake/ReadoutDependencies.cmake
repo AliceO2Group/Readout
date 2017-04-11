@@ -20,7 +20,7 @@ o2_define_bucket(
   Common
   RORC
   DataSampling
-  DataCollector
+  Monitoring
 
   SYSTEMINCLUDE_DIRECTORIES
   ${Boost_INCLUDE_DIRS}
