@@ -89,7 +89,7 @@ include_directories(
 set(LIBRARY_NAME ${MODULE_NAME})
 set(BUCKET_NAME o2_readout_bucket)
 
-if (FAIRROOT_FOUND) 
+if (FAIRROOT_FOUND AND ROOT_FOUND)
   ADD_DEFINITIONS(-DWITH_FAIRMQ)
   set(BUCKET_NAME o2_readout_with_fair)
 endif()
