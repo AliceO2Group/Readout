@@ -18,8 +18,6 @@
 #include <math.h>
 
 #include <memory>
-
-#include <DataSampling/InjectorFactory.h>
   
 #include <Common/Timer.h>
 #include <Common/Fifo.h>
@@ -40,6 +38,11 @@
 #include <FairMQTransportFactoryZMQ.h>
 #include <FairMQProgOptions.h>
 #endif
+
+#ifdef WITH_DATASAMPLING
+#include <DataSampling/InjectorFactory.h>
+#endif
+
 
 using namespace AliceO2::InfoLogger;
 using namespace AliceO2::Common;
@@ -284,43 +287,61 @@ Thread::CallbackResult  ReadoutEquipmentDummy::populateFifoOut() {
 
 // a big block of memory for I/O
 class ReadoutMemoryHandler {
-  private:
-    std::unique_ptr<AliceO2::Rorc::MemoryMappedFile> mMemoryMappedFile;
-    
   public:
-  size_t size;
-  void * address;
-  const int pageSize=1024*1024;
+  size_t memorySize;  // total size of buffer
+  int pageSize;       // size of each superpage in buffer (not the one of getpagesize())
+  void * baseAddress; // base address of buffer
 
-  std::unique_ptr<AliceO2::Common::Fifo<long>> pagesAvailable;  // we store offset (with respect to base address) of pages available
+  std::unique_ptr<AliceO2::Common::Fifo<long>> pagesAvailable;  // a buffer to keep track of individual pages. storing offset (with respect to base address) of pages available
   
-  ReadoutMemoryHandler(){
-    size_t memorySize=200*1024*1024;
+  private:
+  std::unique_ptr<AliceO2::Rorc::MemoryMappedFile> mMemoryMappedFile;
+  
+  public:
+  
+  ReadoutMemoryHandler(size_t vMemorySize, int vPageSize, std::string const &uid){
+  
+    pagesAvailable=nullptr;
+    mMemoryMappedFile=nullptr;
+    
+    std::string memoryMapFilePath="/var/lib/hugetlbfs/global/pagesize-2MB/" + uid;
+    //std::string memoryMapFilePath="/var/lib/hugetlbfs/global/pagesize-2MB/test";
+      
+    // must be multiple of hugepage size
+    const int hugePageSize=2*1024*1024;
+    int r=vMemorySize % hugePageSize;
+    if (r) {
+      vMemorySize+=hugePageSize-r;
+    }
+
+    theLog.log("Creating shared memory block %ld bytes = %.1f MB @ %s",vMemorySize,(float)(vMemorySize/(1024.0*1024)),memoryMapFilePath.c_str());
+    
     try {
-      mMemoryMappedFile=std::make_unique<AliceO2::Rorc::MemoryMappedFile>("/var/lib/hugetlbfs/global/pagesize-2MB/test",memorySize,false);
+      //mMemoryMappedFile=std::make_unique<AliceO2::Rorc::MemoryMappedFile>(memoryMapFilePath,100*(long)1024*1024,false);
+      mMemoryMappedFile=std::make_unique<AliceO2::Rorc::MemoryMappedFile>(memoryMapFilePath,vMemorySize,false);
     }
     catch (const AliceO2::Rorc::MemoryMapException& e) {
-      printf("Failed to allocate memory buffer : %s\n",e.what());
+      theLog.log("Failed to allocate memory buffer : %s\n",e.what());
       exit(1);
     }
-    size=mMemoryMappedFile->getSize();
-    address=mMemoryMappedFile->getAddress();
-   
-    
-    int nPages=size/pageSize;
-
+    // todo: check consistent with what requested, alignment, etc
+    memorySize=mMemoryMappedFile->getSize();
+    baseAddress=mMemoryMappedFile->getAddress();   
+    pageSize=vPageSize;
+    int nPages=memorySize/pageSize;
+    theLog.log("Got %d pages, each %d bytes",nPages,pageSize);
+        
     pagesAvailable=std::make_unique<AliceO2::Common::Fifo<long>>(nPages);
     
-    if ((long)address % pageSize!=0) {
+    if ((long)baseAddress % pageSize!=0) {
       printf("Warning: unaligned pages!\n");
     }
     for (int i=0;i<nPages;i++) {
       long offset=i*pageSize;
-      void *page=&((uint8_t*)address)[offset];
-      printf("%d : 0x%p\n",i,page);
+      //void *page=&((uint8_t*)baseAddress)[offset];
+      //printf("%d : 0x%p\n",i,page);
       pagesAvailable->push(offset);
     }
-    printf("%d pages (%.2f MB) available\n",nPages,pageSize*1.0/(1024*1024));
     
   }
   ~ReadoutMemoryHandler() {
@@ -328,13 +349,7 @@ class ReadoutMemoryHandler {
  
 };
 // todo: locks for thread-safe access at init time
-ReadoutMemoryHandler mReadoutMemoryHandler;
-
-
-
-
-
-
+//ReadoutMemoryHandler mReadoutMemoryHandler;
 
 
 
@@ -343,9 +358,10 @@ class DataBlockContainerFromRORC : public DataBlockContainer {
   private:
   AliceO2::Rorc::ChannelFactory::MasterSharedPtr mChannel;
   AliceO2::Rorc::Superpage mSuperpage;
+  std::shared_ptr<ReadoutMemoryHandler> mReadoutMemoryHandler;  // todo: store this in superpage user data
   
   public:
-  DataBlockContainerFromRORC(AliceO2::Rorc::ChannelFactory::MasterSharedPtr channel, AliceO2::Rorc::Superpage  const & superpage) {   
+  DataBlockContainerFromRORC(AliceO2::Rorc::ChannelFactory::MasterSharedPtr channel, AliceO2::Rorc::Superpage  const & superpage, std::shared_ptr<ReadoutMemoryHandler> const & h) {
     data=nullptr;
     try {
        data=new DataBlock;
@@ -353,24 +369,27 @@ class DataBlockContainerFromRORC : public DataBlockContainer {
       throw __LINE__;
     }
 
-    printf("container created for superpage %ld @ %p\n",(long)superpage.getOffset(),this);
+    //printf("container created for superpage %ld @ %p\n",(long)superpage.getOffset(),this);
 
     data->header.blockType=DataBlockType::H_BASE;
     data->header.headerSize=sizeof(DataBlockHeaderBase);
     data->header.dataSize=8*1024;
     
-    uint32_t *ptr=(uint32_t *) & (((uint8_t *)mReadoutMemoryHandler.address)[mSuperpage.getOffset()]);
+    uint32_t *ptr=(uint32_t *) & (((uint8_t *)h->baseAddress)[mSuperpage.getOffset()]);
     
     data->header.id=*ptr;
     data->data=(char *)ptr;
 
     mSuperpage=superpage;
     mChannel=channel;
+    mReadoutMemoryHandler=h;
   }
   
   ~DataBlockContainerFromRORC() {
-    mReadoutMemoryHandler.pagesAvailable->push(mSuperpage.getOffset());
-    printf("released superpage %ld\n",mSuperpage.getOffset());
+    // todo: add lock
+    mReadoutMemoryHandler->pagesAvailable->push(mSuperpage.getOffset());
+    
+    //printf("released superpage %ld\n",mSuperpage.getOffset());
     if (data!=nullptr) {
       delete data;
     }
@@ -400,15 +419,21 @@ class ReadoutEquipmentRORC : public ReadoutEquipment {
     Thread::CallbackResult  populateFifoOut();
     DataBlockId currentId;
     AliceO2::Rorc::ChannelFactory::MasterSharedPtr channel;
+    std::shared_ptr<ReadoutMemoryHandler> mReadoutMemoryHandler;
+    
     
     int pageCount=0;
     int isInitialized=0;
+
+    unsigned long long loopCount;
 };
 
 
 
 ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : ReadoutEquipment(cfg, name) {
-  
+
+  loopCount=0;
+    
   try {
 
     int serialNumber=cfg.getValue<int>(name + ".serial");
@@ -416,14 +441,21 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : 
   
     theLog.log("Opening RORC %d:%d",serialNumber,channelNumber);
 
-    int mPageSize=1024*1024;
+    long mMemorySize=cfg.getValue<long>(name + ".memoryBufferSize"); // todo: convert MB to bytes
+    int mPageSize=cfg.getValue<int>(name + ".memoryPageSize"); 
 
+    std::string uid="readout." + std::to_string(serialNumber) + "." + std::to_string(channelNumber);
+    theLog.log("uid=%s",uid.c_str());
+    
+    mReadoutMemoryHandler=std::make_shared<ReadoutMemoryHandler>(mMemorySize,mPageSize,uid);
+
+    
     AliceO2::Rorc::Parameters params;
     params.setCardId(serialNumber);
     params.setChannelNumber(channelNumber);
     params.setGeneratorPattern(AliceO2::Rorc::GeneratorPattern::Incremental);
     params.setBufferParameters(AliceO2::Rorc::BufferParameters::Memory {
-      mReadoutMemoryHandler.address, mReadoutMemoryHandler.size
+      mReadoutMemoryHandler->baseAddress, mReadoutMemoryHandler->memorySize
     }); // this registers the memory block for DMA
 
     channel = AliceO2::Rorc::ChannelFactory().getMaster(params);  
@@ -445,12 +477,15 @@ ReadoutEquipmentRORC::~ReadoutEquipmentRORC() {
   }
 
   theLog.log("Equipment %s : %d pages read",name.c_str(),(int)pageCount);
+  theLog.log("Equipment %s : %llu loop count",name.c_str(),loopCount);
 }
 
 
 Thread::CallbackResult  ReadoutEquipmentRORC::populateFifoOut() {
   if (!isInitialized) return  Thread::CallbackResult::Error;
   int isActive=0;
+
+  loopCount++;
     
   // this is to be called periodically for driver internal business
   channel->fillSuperpages();
@@ -458,25 +493,26 @@ Thread::CallbackResult  ReadoutEquipmentRORC::populateFifoOut() {
   // give free pages to the driver
   while (channel->getSuperpageQueueAvailable() != 0) {   
     long offset=0;
-    if (mReadoutMemoryHandler.pagesAvailable->pop(offset)==0) {
+    if (mReadoutMemoryHandler->pagesAvailable->pop(offset)==0) {
       AliceO2::Rorc::Superpage superpage;
       superpage.offset=offset;
-      superpage.size=mReadoutMemoryHandler.pageSize;
-      superpage.userData=&mReadoutMemoryHandler;
+      superpage.size=mReadoutMemoryHandler->pageSize;
+      superpage.userData=NULL; // &mReadoutMemoryHandler; // bad - looses shared_ptr
       channel->pushSuperpage(superpage);
       isActive=1;
     } else {
+//      printf("starving pages\n");
       break;
     }
   }
     
   // check for completed pages
-  while (!dataOut->isFull() && (channel->getSuperpageQueueCount()>0)) {
+  while ((!dataOut->isFull()) && (channel->getSuperpageQueueCount()>0)) {
     auto superpage = channel->getSuperpage(); // this is the first superpage in FIFO ... let's check its state
     if (superpage.isFilled()) {
       std::shared_ptr<DataBlockContainerFromRORC>d=nullptr;
       try {
-        d=std::make_shared<DataBlockContainerFromRORC>(channel, superpage);
+        d=std::make_shared<DataBlockContainerFromRORC>(channel, superpage, mReadoutMemoryHandler);
       }
       catch (...) {
         break;
@@ -486,13 +522,14 @@ Thread::CallbackResult  ReadoutEquipmentRORC::populateFifoOut() {
       //d=nullptr;
       
       pageCount++;
-      printf("read page %ld - %d\n",superpage.getOffset(),d.use_count());
+      //printf("read page %ld - %d\n",superpage.getOffset(),d.use_count());
       isActive=1;
     } else {
       break;
     }
   }
   //return Thread::CallbackResult::Ok;
+  
   if (!isActive) {
     return Thread::CallbackResult::Idle;
   }
@@ -617,7 +654,7 @@ Thread::CallbackResult DataBlockAggregator::threadCallback(void *arg) {
       if (newId==minId) {
         bcv->push_back(b);
         dPtr->inputs[i]->pop(b);
-        printf("1 block for event %llu from input %d @ %p\n",(unsigned long long)newId,b);
+        //printf("1 block for event %llu from input %d @ %p\n",(unsigned long long)newId,b);
       }
     }
   }
@@ -875,7 +912,7 @@ class ConsumerStats: public Consumer {
     counterBytesDiff+=newBytes;
     counterBytesHeader+=b->getData()->header.headerSize;
 
-    printf("Stats: got %p (%d)\n",b,b.use_count());
+//    printf("Stats: got %p (%d)\n",b,b.use_count());
     if (monitoringEnabled) {
       // todo: do not check time every push() if it goes fast...      
       if (t.isTimeout()) {
