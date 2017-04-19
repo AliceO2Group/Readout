@@ -490,11 +490,13 @@ Thread::CallbackResult  ReadoutEquipmentRORC::populateFifoOut() {
   if (!isInitialized) return  Thread::CallbackResult::Error;
   int isActive=0;
 
+/*
   if (loopCount==0) {
     int s=rand()*10.0/RAND_MAX;
     printf("sleeping %d s\n",s);
     sleep(s);
   }
+*/
   loopCount++;
     
   // this is to be called periodically for driver internal business
