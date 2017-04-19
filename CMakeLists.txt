@@ -65,7 +65,6 @@ link_o2_subproject(DataFormat)
 link_o2_subproject(Common)
 link_o2_subproject(RORC)
 link_o2_subproject(DataSampling)
-link_o2_subproject(Monitoring)
 
 set(MODULE_NAME "Readout")
 

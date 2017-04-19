@@ -1,6 +1,8 @@
 find_package(Boost COMPONENTS unit_test_framework program_options REQUIRED)
 find_package(Git QUIET)
 find_package(FairRoot)
+find_package(Monitoring REQUIRED)
+
 if(FAIRROOT_FOUND)
     link_directories(${FAIRROOT_LIBRARY_DIR})
     find_package(ROOT 6.06.02)
@@ -20,10 +22,11 @@ o2_define_bucket(
   Common
   RORC
   DataSampling
-  Monitoring
+  ${MONITORING_LIBRARIES}
 
   SYSTEMINCLUDE_DIRECTORIES
   ${Boost_INCLUDE_DIRS}
+  ${MONITORING_INCLUDE_DIRS}
 )
 
 
