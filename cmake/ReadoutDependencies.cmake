@@ -21,9 +21,8 @@ o2_define_bucket(
   DataFormat
   Common
   RORC
-  DataSampling
+#  DataSampling
   ${MONITORING_LIBRARIES}
-
   SYSTEMINCLUDE_DIRECTORIES
   ${Boost_INCLUDE_DIRS}
   ${MONITORING_INCLUDE_DIRS}

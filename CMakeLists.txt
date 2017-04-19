@@ -64,7 +64,7 @@ link_o2_subproject(InfoLogger)
 link_o2_subproject(DataFormat)
 link_o2_subproject(Common)
 link_o2_subproject(RORC)
-link_o2_subproject(DataSampling)
+#link_o2_subproject(DataSampling)
 
 set(MODULE_NAME "Readout")
 
@@ -100,9 +100,12 @@ add_subdirectory(doc)
 O2_GENERATE_EXECUTABLE(
         EXE_NAME readout.exe
         SOURCES src/mainReadout.cxx
-        MODULE_LIBRARY_NAME ${LIBRARY_NAME}
+#        MODULE_LIBRARY_NAME ${LIBRARY_NAME}
         BUCKET_NAME ${BUCKET_NAME}
 )
+
+#add_executable(readout2 src/mainReadout.cxx)
+
 
 # TODO RECONSIDER THE THINGS BELOW AFTER EXTRACTION TO ITS OWN REPO
 # Make sure we tell the topdir CMakeLists that we exist (if build from topdir)
