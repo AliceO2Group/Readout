@@ -327,15 +327,22 @@ class ReadoutMemoryHandler {
     // todo: check consistent with what requested, alignment, etc
     memorySize=mMemoryMappedFile->getSize();
     baseAddress=mMemoryMappedFile->getAddress();   
+
+    int baseAlignment=1024*1024;    
+    r=(long)baseAddress % baseAlignment;
+    if (r!=0) {
+      theLog.log("Unaligned base address %p, target alignment=%d, skipping first %d bytes",baseAddress,baseAlignment,baseAlignment-r);
+      int skipBytes=baseAlignment-r;
+      baseAddress+=skipBytes;
+      memorySize-=skipBytes;
+      // now baseAddress is aligned to baseAlignment bytes, but what guarantee do we have that PHYSICAL page addresses are aligned ???
+    }
+    
     pageSize=vPageSize;
     int nPages=memorySize/pageSize;
-    theLog.log("Got %d pages, each %d bytes",nPages,pageSize);
-        
+    theLog.log("Got %d pages, each %d bytes",nPages,pageSize);       
     pagesAvailable=std::make_unique<AliceO2::Common::Fifo<long>>(nPages);
     
-    if ((long)baseAddress % pageSize!=0) {
-      printf("Warning: unaligned pages!\n");
-    }
     for (int i=0;i<nPages;i++) {
       long offset=i*pageSize;
       //void *page=&((uint8_t*)baseAddress)[offset];
@@ -373,7 +380,7 @@ class DataBlockContainerFromRORC : public DataBlockContainer {
 
     data->header.blockType=DataBlockType::H_BASE;
     data->header.headerSize=sizeof(DataBlockHeaderBase);
-    data->header.dataSize=8*1024;
+    data->header.dataSize=superpage.getReceived();
     
     uint32_t *ptr=(uint32_t *) & (((uint8_t *)h->baseAddress)[mSuperpage.getOffset()]);
     
@@ -439,17 +446,15 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : 
     int serialNumber=cfg.getValue<int>(name + ".serial");
     int channelNumber=cfg.getValue<int>(name + ".channel");
   
-    theLog.log("Opening RORC %d:%d",serialNumber,channelNumber);
-
     long mMemorySize=cfg.getValue<long>(name + ".memoryBufferSize"); // todo: convert MB to bytes
     int mPageSize=cfg.getValue<int>(name + ".memoryPageSize"); 
 
     std::string uid="readout." + std::to_string(serialNumber) + "." + std::to_string(channelNumber);
-    theLog.log("uid=%s",uid.c_str());
+    //sleep((channelNumber+1)*2);  // trick to avoid all channels open at once - fail to acquire lock
     
     mReadoutMemoryHandler=std::make_shared<ReadoutMemoryHandler>(mMemorySize,mPageSize,uid);
 
-    
+    theLog.log("Opening RORC %d:%d",serialNumber,channelNumber);    
     AliceO2::Rorc::Parameters params;
     params.setCardId(serialNumber);
     params.setChannelNumber(channelNumber);
@@ -485,6 +490,11 @@ Thread::CallbackResult  ReadoutEquipmentRORC::populateFifoOut() {
   if (!isInitialized) return  Thread::CallbackResult::Error;
   int isActive=0;
 
+  if (loopCount==0) {
+    int s=rand()*10.0/RAND_MAX;
+    printf("sleeping %d s\n",s);
+    sleep(s);
+  }
   loopCount++;
     
   // this is to be called periodically for driver internal business
