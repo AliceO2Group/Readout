@@ -290,7 +290,7 @@ class ReadoutMemoryHandler {
   public:
   size_t memorySize;  // total size of buffer
   int pageSize;       // size of each superpage in buffer (not the one of getpagesize())
-  void * baseAddress; // base address of buffer
+  uint8_t * baseAddress; // base address of buffer
 
   std::unique_ptr<AliceO2::Common::Fifo<long>> pagesAvailable;  // a buffer to keep track of individual pages. storing offset (with respect to base address) of pages available
   
@@ -326,7 +326,7 @@ class ReadoutMemoryHandler {
     }
     // todo: check consistent with what requested, alignment, etc
     memorySize=mMemoryMappedFile->getSize();
-    baseAddress=mMemoryMappedFile->getAddress();   
+    baseAddress=(uint8_t *)mMemoryMappedFile->getAddress();   
 
     int baseAlignment=1024*1024;    
     r=(long)baseAddress % baseAlignment;
@@ -460,7 +460,7 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : 
     params.setChannelNumber(channelNumber);
     params.setGeneratorPattern(AliceO2::Rorc::GeneratorPattern::Incremental);
     params.setBufferParameters(AliceO2::Rorc::BufferParameters::Memory {
-      mReadoutMemoryHandler->baseAddress, mReadoutMemoryHandler->memorySize
+      (void *)mReadoutMemoryHandler->baseAddress, mReadoutMemoryHandler->memorySize
     }); // this registers the memory block for DMA
 
     channel = AliceO2::Rorc::ChannelFactory().getMaster(params);  
