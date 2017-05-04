@@ -24,10 +24,10 @@ o2_define_bucket(
   Common
   RORC
   ${Configuration_LIBRARIES}
-  ${MONITORING_LIBRARIES}
+  ${Monitoring_LIBRARIES}
   SYSTEMINCLUDE_DIRECTORIES
   ${Boost_INCLUDE_DIRS}
-  ${MONITORING_INCLUDE_DIRS}
+  ${Monitoring_INCLUDE_DIRS}
 )
 
 
