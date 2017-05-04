@@ -9,9 +9,12 @@ if(FAIRROOT_FOUND)
     # See : http://www.cmake.org/cmake/help/v3.0/command/link_directories.html
     link_directories(${FAIRROOT_LIBRARY_DIR})
     set(FAIRROOT_LIBRARIES Base FairMQ BaseMQ)
+    ADD_DEFINITIONS(-DWITH_FAIRMQ)
 else(FAIRROOT_FOUND)
     message(WARNING "FairRoot not found, corresponding classes will not be compiled.")
 endif(FAIRROOT_FOUND)
+
+ADD_DEFINITIONS(-DWITH_DATASAMPLING)
 
 o2_define_bucket(
   NAME
@@ -23,6 +26,7 @@ o2_define_bucket(
   DataFormat
   Common
   RORC
+  DataSampling
   ${Configuration_LIBRARIES}
   ${Monitoring_LIBRARIES}
   SYSTEMINCLUDE_DIRECTORIES

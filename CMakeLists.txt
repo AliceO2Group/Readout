@@ -64,7 +64,7 @@ link_o2_subproject(InfoLogger)
 link_o2_subproject(DataFormat)
 link_o2_subproject(Common)
 link_o2_subproject(RORC)
-#link_o2_subproject(DataSampling)
+link_o2_subproject(DataSampling)
 
 set(MODULE_NAME "Readout")
 
@@ -74,21 +74,10 @@ set(SRCS
   src/mainReadout.cxx
 )
 
-# Produce the final Version.h using template Version.h.in and substituting variables.
-# We don't want to polute our source tree with it, thus putting it in binary tree.
-#configure_file("include/${MODULE_NAME}/Version.h.in"
-#        "${CMAKE_CURRENT_BINARY_DIR}/include/${MODULE_NAME}/Version.h"
-#        @ONLY
-#        )
-#include_directories(
-#        ${CMAKE_CURRENT_BINARY_DIR}/include
-#)
-
 set(LIBRARY_NAME ${MODULE_NAME})
 set(BUCKET_NAME o2_readout_bucket)
 
 if (FAIRROOT_FOUND AND ROOT_FOUND)
-  ADD_DEFINITIONS(-DWITH_FAIRMQ)
   set(BUCKET_NAME o2_readout_with_fair)
 endif()
 
