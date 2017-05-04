@@ -326,7 +326,7 @@ class ReadoutMemoryHandler {
     }
     // todo: check consistent with what requested, alignment, etc
     memorySize=mMemoryMappedFile->getSize();
-    baseAddress=mMemoryMappedFile->getAddress();   
+    baseAddress=mMemoryMappedFile->getAddress();
 
     int baseAlignment=1024*1024;    
     r=(long)baseAddress % baseAlignment;

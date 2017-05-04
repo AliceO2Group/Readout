@@ -5,9 +5,10 @@ find_package(Monitoring REQUIRED)
 find_package(Configuration REQUIRED)
 
 if(FAIRROOT_FOUND)
+    # this should go away when fairrot provides a proper Find script or proper config scripts
+    # See : http://www.cmake.org/cmake/help/v3.0/command/link_directories.html
     link_directories(${FAIRROOT_LIBRARY_DIR})
-    find_package(ROOT 6.06.02)
-    find_package(Boost COMPONENTS unit_test_framework program_options log thread system REQUIRED)
+    set(FAIRROOT_LIBRARIES Base FairMQ BaseMQ)
 else(FAIRROOT_FOUND)
     message(WARNING "FairRoot not found, corresponding classes will not be compiled.")
 endif(FAIRROOT_FOUND)
@@ -22,7 +23,6 @@ o2_define_bucket(
   DataFormat
   Common
   RORC
-#  DataSampling
   ${Configuration_LIBRARIES}
   ${MONITORING_LIBRARIES}
   SYSTEMINCLUDE_DIRECTORIES
@@ -41,13 +41,12 @@ o2_define_bucket(
   ${Boost_LOG_LIBRARY}
   ${Boost_THREAD_LIBRARY}
   ${Boost_SYSTEM_LIBRARY}
-  Base
-  FairMQ
-  BaseMQ
-  fairmq_logger
+  ${FAIRROOT_LIBRARIES}
   ${ROOT_LIBRARIES}
 
   SYSTEMINCLUDE_DIRECTORIES
   ${Boost_INCLUDE_DIRS}
+  ${FAIRROOT_INCLUDE_DIR}
+  ${FAIRROOT_INCLUDE_DIR}/fairmq
 )
 

@@ -80,10 +80,9 @@ set(SRCS
 #        "${CMAKE_CURRENT_BINARY_DIR}/include/${MODULE_NAME}/Version.h"
 #        @ONLY
 #        )
-
-include_directories(
-        ${CMAKE_CURRENT_BINARY_DIR}/include
-)
+#include_directories(
+#        ${CMAKE_CURRENT_BINARY_DIR}/include
+#)
 
 set(LIBRARY_NAME ${MODULE_NAME})
 set(BUCKET_NAME o2_readout_bucket)
