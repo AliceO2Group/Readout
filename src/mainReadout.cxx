@@ -1266,7 +1266,10 @@ int main(int argc, char* argv[])
   if (dataSampling) {
     theLog.log("Data sampling enabled");
     // todo: create(...) should not need an argument and should get its configuration by itself.
-    dataSamplingInjector = AliceO2::DataSampling::InjectorFactory::create("FairInjector");
+    std::string injector = cfg.getValue<std::string>("sampling.class");
+    if(injector=="")
+      injector = "MockInjector";
+    dataSamplingInjector = AliceO2::DataSampling::InjectorFactory::create(injector);
   } else {
     theLog.log("Data sampling disabled");
   }
