@@ -503,7 +503,7 @@ Thread::CallbackResult  ReadoutEquipmentRORC::populateFifoOut() {
   channel->fillSuperpages();
   
   // give free pages to the driver
-  while (channel->getSuperpageQueueAvailable() != 0) {   
+  while (channel->getTransferQueueAvailable() != 0) {   
     long offset=0;
     if (mReadoutMemoryHandler->pagesAvailable->pop(offset)==0) {
       AliceO2::Rorc::Superpage superpage;
@@ -519,7 +519,7 @@ Thread::CallbackResult  ReadoutEquipmentRORC::populateFifoOut() {
   }
     
   // check for completed pages
-  while ((!dataOut->isFull()) && (channel->getSuperpageQueueCount()>0)) {
+  while ((!dataOut->isFull()) && (channel->getReadyQueueSize()>0)) {
     auto superpage = channel->getSuperpage(); // this is the first superpage in FIFO ... let's check its state
     if (superpage.isFilled()) {
       std::shared_ptr<DataBlockContainerFromRORC>d=nullptr;
