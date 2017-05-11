@@ -464,7 +464,7 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : 
     }); // this registers the memory block for DMA
 
     channel = AliceO2::roc::ChannelFactory().getMaster(params);  
-    channel->resetChannel(AliceO2::roc::ResetLevel::Rorc);
+    channel->resetChannel(AliceO2::roc::ResetLevel::Internal);
     channel->startDma();
   }
   catch (const std::exception& e) {
