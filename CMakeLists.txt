@@ -63,7 +63,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -pedantic -Wextra -fPIC")
 link_o2_subproject(InfoLogger)
 link_o2_subproject(DataFormat)
 link_o2_subproject(Common)
-link_o2_subproject(RORC)
+link_o2_subproject(ReadoutCard)
 #link_o2_subproject(DataSampling)
 
 set(MODULE_NAME "Readout")
