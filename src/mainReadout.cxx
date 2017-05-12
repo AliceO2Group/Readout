@@ -11,7 +11,9 @@
 #include <DataFormat/DataSet.h>
 
 #include <atomic>
+#ifndef __APPLE__
 #include <malloc.h>
+#endif
 #include <boost/format.hpp>
 #include <chrono>
 #include <signal.h>
