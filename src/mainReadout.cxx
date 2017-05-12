@@ -26,7 +26,7 @@
 #include "ReadoutCard/Parameters.h"
 #include "ReadoutCard/ChannelFactory.h"
 #include "ReadoutCard/MemoryMappedFile.h"
-#include "ReadoutCard/ChannelMasterInterface.h"
+#include "ReadoutCard/DmaChannelInterface.h"
 #include "ReadoutCard/Exception.h"
 
 #include <Monitoring/MonitoringFactory.h>
@@ -363,12 +363,12 @@ class ReadoutMemoryHandler {
 
 class DataBlockContainerFromRORC : public DataBlockContainer {
   private:
-  AliceO2::roc::ChannelFactory::MasterSharedPtr mChannel;
+  AliceO2::roc::ChannelFactory::DmaChannelSharedPtr mChannel;
   AliceO2::roc::Superpage mSuperpage;
   std::shared_ptr<ReadoutMemoryHandler> mReadoutMemoryHandler;  // todo: store this in superpage user data
   
   public:
-  DataBlockContainerFromRORC(AliceO2::roc::ChannelFactory::MasterSharedPtr channel, AliceO2::roc::Superpage  const & superpage, std::shared_ptr<ReadoutMemoryHandler> const & h) {
+  DataBlockContainerFromRORC(AliceO2::roc::ChannelFactory::DmaChannelSharedPtr channel, AliceO2::roc::Superpage  const & superpage, std::shared_ptr<ReadoutMemoryHandler> const & h) {
     data=nullptr;
     try {
        data=new DataBlock;
@@ -425,7 +425,7 @@ class ReadoutEquipmentRORC : public ReadoutEquipment {
   private:
     Thread::CallbackResult  populateFifoOut();
     DataBlockId currentId;
-    AliceO2::roc::ChannelFactory::MasterSharedPtr channel;
+    AliceO2::roc::ChannelFactory::DmaChannelSharedPtr channel;
     std::shared_ptr<ReadoutMemoryHandler> mReadoutMemoryHandler;
     
     
@@ -463,7 +463,7 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : 
       (void *)mReadoutMemoryHandler->baseAddress, mReadoutMemoryHandler->memorySize
     }); // this registers the memory block for DMA
 
-    channel = AliceO2::roc::ChannelFactory().getMaster(params);  
+    channel = AliceO2::roc::ChannelFactory().getDmaChannel(params);  
     channel->resetChannel(AliceO2::roc::ResetLevel::Internal);
     channel->startDma();
   }
