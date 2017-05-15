@@ -25,7 +25,7 @@ o2_define_bucket(
   pthread
   DataFormat
   Common
-  RORC
+  ReadoutCard
   DataSampling
   ${Configuration_LIBRARIES}
   ${Monitoring_LIBRARIES}

@@ -25,11 +25,11 @@
 #include <Common/Fifo.h>
 #include <Common/Thread.h>
 
-#include "RORC/Parameters.h"
-#include "RORC/ChannelFactory.h"
-#include "RORC/MemoryMappedFile.h"
-#include "RORC/ChannelMasterInterface.h"
-#include "RORC/Exception.h"
+#include "ReadoutCard/Parameters.h"
+#include "ReadoutCard/ChannelFactory.h"
+#include "ReadoutCard/MemoryMappedFile.h"
+#include "ReadoutCard/DmaChannelInterface.h"
+#include "ReadoutCard/Exception.h"
 
 #include <Monitoring/MonitoringFactory.h>
 
@@ -295,7 +295,7 @@ class ReadoutMemoryHandler {
   std::unique_ptr<AliceO2::Common::Fifo<long>> pagesAvailable;  // a buffer to keep track of individual pages. storing offset (with respect to base address) of pages available
   
   private:
-  std::unique_ptr<AliceO2::Rorc::MemoryMappedFile> mMemoryMappedFile;
+  std::unique_ptr<AliceO2::roc::MemoryMappedFile> mMemoryMappedFile;
   
   public:
   
@@ -317,10 +317,10 @@ class ReadoutMemoryHandler {
     theLog.log("Creating shared memory block %ld bytes = %.1f MB @ %s",vMemorySize,(float)(vMemorySize/(1024.0*1024)),memoryMapFilePath.c_str());
     
     try {
-      //mMemoryMappedFile=std::make_unique<AliceO2::Rorc::MemoryMappedFile>(memoryMapFilePath,100*(long)1024*1024,false);
-      mMemoryMappedFile=std::make_unique<AliceO2::Rorc::MemoryMappedFile>(memoryMapFilePath,vMemorySize,false);
+      //mMemoryMappedFile=std::make_unique<AliceO2::roc::MemoryMappedFile>(memoryMapFilePath,100*(long)1024*1024,false);
+      mMemoryMappedFile=std::make_unique<AliceO2::roc::MemoryMappedFile>(memoryMapFilePath,vMemorySize,false);
     }
-    catch (const AliceO2::Rorc::MemoryMapException& e) {
+    catch (const AliceO2::roc::MemoryMapException& e) {
       theLog.log("Failed to allocate memory buffer : %s\n",e.what());
       exit(1);
     }
@@ -363,12 +363,12 @@ class ReadoutMemoryHandler {
 
 class DataBlockContainerFromRORC : public DataBlockContainer {
   private:
-  AliceO2::Rorc::ChannelFactory::MasterSharedPtr mChannel;
-  AliceO2::Rorc::Superpage mSuperpage;
+  AliceO2::roc::ChannelFactory::DmaChannelSharedPtr mChannel;
+  AliceO2::roc::Superpage mSuperpage;
   std::shared_ptr<ReadoutMemoryHandler> mReadoutMemoryHandler;  // todo: store this in superpage user data
   
   public:
-  DataBlockContainerFromRORC(AliceO2::Rorc::ChannelFactory::MasterSharedPtr channel, AliceO2::Rorc::Superpage  const & superpage, std::shared_ptr<ReadoutMemoryHandler> const & h) {
+  DataBlockContainerFromRORC(AliceO2::roc::ChannelFactory::DmaChannelSharedPtr channel, AliceO2::roc::Superpage  const & superpage, std::shared_ptr<ReadoutMemoryHandler> const & h) {
     data=nullptr;
     try {
        data=new DataBlock;
@@ -425,7 +425,7 @@ class ReadoutEquipmentRORC : public ReadoutEquipment {
   private:
     Thread::CallbackResult  populateFifoOut();
     DataBlockId currentId;
-    AliceO2::Rorc::ChannelFactory::MasterSharedPtr channel;
+    AliceO2::roc::ChannelFactory::DmaChannelSharedPtr channel;
     std::shared_ptr<ReadoutMemoryHandler> mReadoutMemoryHandler;
     
     
@@ -455,16 +455,16 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : 
     mReadoutMemoryHandler=std::make_shared<ReadoutMemoryHandler>(mMemorySize,mPageSize,uid);
 
     theLog.log("Opening RORC %d:%d",serialNumber,channelNumber);    
-    AliceO2::Rorc::Parameters params;
+    AliceO2::roc::Parameters params;
     params.setCardId(serialNumber);
     params.setChannelNumber(channelNumber);
-    params.setGeneratorPattern(AliceO2::Rorc::GeneratorPattern::Incremental);
-    params.setBufferParameters(AliceO2::Rorc::BufferParameters::Memory {
+    params.setGeneratorPattern(AliceO2::roc::GeneratorPattern::Incremental);
+    params.setBufferParameters(AliceO2::roc::buffer_parameters::Memory {
       (void *)mReadoutMemoryHandler->baseAddress, mReadoutMemoryHandler->memorySize
     }); // this registers the memory block for DMA
 
-    channel = AliceO2::Rorc::ChannelFactory().getMaster(params);  
-    channel->resetChannel(AliceO2::Rorc::ResetLevel::Rorc);
+    channel = AliceO2::roc::ChannelFactory().getDmaChannel(params);  
+    channel->resetChannel(AliceO2::roc::ResetLevel::Internal);
     channel->startDma();
   }
   catch (const std::exception& e) {
@@ -503,10 +503,10 @@ Thread::CallbackResult  ReadoutEquipmentRORC::populateFifoOut() {
   channel->fillSuperpages();
   
   // give free pages to the driver
-  while (channel->getSuperpageQueueAvailable() != 0) {   
+  while (channel->getTransferQueueAvailable() != 0) {   
     long offset=0;
     if (mReadoutMemoryHandler->pagesAvailable->pop(offset)==0) {
-      AliceO2::Rorc::Superpage superpage;
+      AliceO2::roc::Superpage superpage;
       superpage.offset=offset;
       superpage.size=mReadoutMemoryHandler->pageSize;
       superpage.userData=NULL; // &mReadoutMemoryHandler; // bad - looses shared_ptr
@@ -519,7 +519,7 @@ Thread::CallbackResult  ReadoutEquipmentRORC::populateFifoOut() {
   }
     
   // check for completed pages
-  while ((!dataOut->isFull()) && (channel->getSuperpageQueueCount()>0)) {
+  while ((!dataOut->isFull()) && (channel->getReadyQueueSize()>0)) {
     auto superpage = channel->getSuperpage(); // this is the first superpage in FIFO ... let's check its state
     if (superpage.isFilled()) {
       std::shared_ptr<DataBlockContainerFromRORC>d=nullptr;
