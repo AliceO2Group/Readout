@@ -20,6 +20,7 @@
 #include <math.h>
 
 #include <memory>
+#include <stdint.h>
   
 #include <Common/Timer.h>
 #include <Common/Fifo.h>
@@ -369,14 +370,18 @@ class DataBlockContainerFromRORC : public DataBlockContainer {
   
   public:
   DataBlockContainerFromRORC(AliceO2::roc::ChannelFactory::DmaChannelSharedPtr channel, AliceO2::roc::Superpage  const & superpage, std::shared_ptr<ReadoutMemoryHandler> const & h) {
+
+    mSuperpage=superpage;
+    mChannel=channel;
+    mReadoutMemoryHandler=h;
+
     data=nullptr;
     try {
        data=new DataBlock;
     } catch (...) {
       throw __LINE__;
-    }
+    }   
 
-    //printf("container created for superpage %ld @ %p\n",(long)superpage.getOffset(),this);
 
     data->header.blockType=DataBlockType::H_BASE;
     data->header.headerSize=sizeof(DataBlockHeaderBase);
@@ -386,14 +391,20 @@ class DataBlockContainerFromRORC : public DataBlockContainer {
     
     data->header.id=*ptr;
     data->data=(char *)ptr;
-
-    mSuperpage=superpage;
-    mChannel=channel;
-    mReadoutMemoryHandler=h;
+    
+/*    for (int i=0;i<64;i++) {
+      printf("%08X  ",(((unsigned int *)ptr)[i]));
+    }
+    printf("\n");
+    sleep(1);
+*/
+    
+    //printf("container %p created for superpage @ offset %ld = %p\n",this,(long)superpage.getOffset(),ptr);    
   }
   
   ~DataBlockContainerFromRORC() {
     // todo: add lock
+    // if constructor fails, do we make page available again or leave it to caller?
     mReadoutMemoryHandler->pagesAvailable->push(mSuperpage.getOffset());
     
     //printf("released superpage %ld\n",mSuperpage.getOffset());
@@ -466,6 +477,19 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : 
     channel = AliceO2::roc::ChannelFactory().getDmaChannel(params);  
     channel->resetChannel(AliceO2::roc::ResetLevel::Internal);
     channel->startDma();
+        
+    AliceO2::roc::ChannelFactory::BarSharedPtr bar=AliceO2::roc::ChannelFactory().getBar(params);
+    // set random size: address byte 0x420, bit 16
+    int wordIndex=0x420/4;
+    uint32_t regValue=bar->readRegister(wordIndex);
+    printf("bar read %X\n",regValue);
+    regValue|=0x10000;
+    printf("set random size bit: bar write %X\n",regValue);
+    bar->writeRegister(wordIndex,regValue);
+       
+    regValue=bar->readRegister(wordIndex);
+    printf("bar read %X\n",regValue);
+    
   }
   catch (const std::exception& e) {
     std::cout << "Error: " << e.what() << '\n' << boost::diagnostic_information(e, 1) << "\n";
@@ -540,6 +564,7 @@ Thread::CallbackResult  ReadoutEquipmentRORC::populateFifoOut() {
       break;
     }
   }
+  //return Thread::CallbackResult::Idle;
   //return Thread::CallbackResult::Ok;
   
   if (!isActive) {
@@ -667,6 +692,7 @@ Thread::CallbackResult DataBlockAggregator::threadCallback(void *arg) {
         bcv->push_back(b);
         dPtr->inputs[i]->pop(b);
         //printf("1 block for event %llu from input %d @ %p\n",(unsigned long long)newId,b);
+	//printf("aggregating %p into dataSet %p\n",b->getData()->data,bcv.get());
       }
     }
   }
@@ -851,7 +877,7 @@ std::string NumberOfBytesToString(double value,const char*suffix) {
 
 class Consumer {
   public:
-  Consumer(ConfigFile &cfg, std::string cfgEntryPoint) {
+  Consumer(ConfigFile &, std::string) {
   };
   virtual ~Consumer() {
   };
@@ -868,18 +894,18 @@ class ConsumerStats: public Consumer {
   AliceO2::Common::Timer t;
   int monitoringEnabled;
   int monitoringUpdatePeriod;
-//  std::unique_ptr<Collector> monitoringCollector;
+  std::unique_ptr<Collector> monitoringCollector;
 
   void publishStats() {
     if (monitoringEnabled) {
       // todo: support for long long types
       // https://alice.its.cern.ch/jira/browse/FLPPROT-69
- /*
+ 
       monitoringCollector->send(counterBlocks, "readout.Blocks");
       monitoringCollector->send(counterBytesTotal, "readout.BytesTotal");
       monitoringCollector->send(counterBytesDiff, "readout.BytesInterval");
 //      monitoringCollector->send((counterBytesTotal/(1024*1024)), "readout.MegaBytesTotal");
-*/
+
       counterBytesDiff=0;
     }
   }
@@ -893,10 +919,10 @@ class ConsumerStats: public Consumer {
       cfg.getOptionalValue(cfgEntryPoint + ".monitoringUpdatePeriod", monitoringUpdatePeriod, 10);
       const std::string configFile=cfg.getValue<std::string>(cfgEntryPoint + ".monitoringConfig");
       theLog.log("Monitoring enabled - period %ds - using configuration %s",monitoringUpdatePeriod,configFile.c_str());
-/*
+
       monitoringCollector=MonitoringFactory::Create(configFile);
       monitoringCollector->addDerivedMetric("readout.BytesTotal", DerivedMetricMode::RATE);
-*/
+
       t.reset(monitoringUpdatePeriod*1000000);
     }
     
@@ -905,8 +931,10 @@ class ConsumerStats: public Consumer {
     counterBlocks=0;
     counterBytesDiff=0;
     runningTime.reset();
+    theLog.log("Starting stats clock");
   }
   ~ConsumerStats() {
+    theLog.log("Stopping stats clock");
     double elapsedTime=runningTime.getTime();
     if (counterBytesTotal>0) {
     theLog.log("Stats: %llu blocks, %.2f MB, %.2f%% header overhead",counterBlocks,counterBytesTotal/(1024*1024.0),counterBytesHeader*100.0/counterBytesTotal);
@@ -965,8 +993,6 @@ class ConsumerFileRecorder: public Consumer {
   }
   int pushData(DataBlockContainerReference b) {
 
-    int success=0;
-    
     for(;;) {
       if (fp!=NULL) {
         void *ptr;
@@ -986,10 +1012,9 @@ class ConsumerFileRecorder: public Consumer {
           }
         }
         counterBytesTotal+=size;
-        success=1;
       }
       return 0;
-    }    
+    }
     closeRecordingFile();
     return -1;
   }
@@ -1010,6 +1035,139 @@ class ConsumerFileRecorder: public Consumer {
 
 
 
+typedef struct {
+  uint32_t w0;
+  uint32_t w1;
+  uint32_t w2;
+  uint32_t payloadSize;
+  uint32_t w4;
+  uint32_t w5;
+  uint32_t w6;
+  uint32_t w7;
+  uint32_t w8;
+  uint32_t w9;
+  uint32_t w10;
+  uint32_t w11;
+  uint32_t w12;
+  uint32_t w13;
+  uint32_t w14;
+  uint32_t w15;
+} RocPageHeader;
+
+
+class ConsumerDataChecker: public Consumer {
+  public:
+  
+  uint32_t checkValue;
+  unsigned long long errorCount;
+  unsigned long long checkedPages;
+  
+  ConsumerDataChecker(ConfigFile &cfg, std::string cfgEntryPoint):Consumer(cfg,cfgEntryPoint) {
+    checkValue=0;  // internal data generator starts 0 and increases every 256bits word
+    errorCount=0;
+    checkedPages=0;    
+  }  
+  ~ConsumerDataChecker() {
+    theLog.log("Checker detected %llu data errors on %llu DMA pages",errorCount,checkedPages);
+  }
+  int pushData(DataBlockContainerReference b) {
+  
+    void *ptr;    
+    size_t size;
+    ptr=b->getData()->data;
+    if (ptr==NULL) {return -1;}
+    
+    size=b->getData()->header.dataSize;   
+//    theLog.log("checking container %p data @ %p : %d bytes",(void *)b.get(),ptr,(int)size);
+
+    unsigned int pageId=0;    
+    for(unsigned int i=0;i<size;pageId++) {
+      checkedPages++;
+      RocPageHeader *h=(RocPageHeader *)&(((char *)ptr)[i]);
+
+/*      printf("page %u @ %p\n",pageId,(void *)h);
+      for (unsigned int w=0;w<sizeof(RocPageHeader)/sizeof(unsigned int);w++) {
+	printf("%08X  ",(((unsigned int *)h)[w]));
+	if (w%8==7) printf("\n");
+      }   
+      printf("\n");
+*/
+      void *pagePayloadPtr=&((char*)h)[sizeof(RocPageHeader)];
+      unsigned int pagePayloadSize=(h->payloadSize) * 256 / 8 - sizeof(RocPageHeader);  // convert to bytes the size given in number of 256-bits words
+
+/*
+      printf("payload size = %u\n",pagePayloadSize);
+      for (unsigned int w=0;w<pagePayloadSize/sizeof(unsigned int);w++) {
+	printf("%08X  ",(((unsigned int *)pagePayloadPtr)[w]));
+	if (w%8==7) printf("\n");
+      }
+      printf("\n");
+
+      for (unsigned int w=0;w<16;w++) {
+	printf("%08X  ",(((unsigned int *)pagePayloadPtr)[w]));
+	if (w%8==7) printf("\n");
+      }
+*/
+
+      // check counter increasing
+      /*
+      for (unsigned int w=0;w<pagePayloadSize/sizeof(unsigned int);w++) {
+        if (((unsigned int *)pagePayloadPtr)[w]!=checkValue) {
+	  errorCount++;
+	  if ((errorCount<100)||(errorCount%1000==0)) {
+  	    theLog.log("Error #%llu : Superpage %p Page %d : 32-bit word %d mismatch : %X != %X\n",errorCount,ptr,i,w,((unsigned int *)pagePayloadPtr)[w],checkValue);
+	  }
+
+	}
+        if ((w%8)==7) {checkValue++;}
+      }
+      */
+
+      for (unsigned int w=0;w<pagePayloadSize/sizeof(unsigned int);w+=8) {
+        if (
+	  (((unsigned int *)pagePayloadPtr)[w]!=checkValue) ||
+	  (((unsigned int *)pagePayloadPtr)[w+1]!=checkValue) ||
+	  (((unsigned int *)pagePayloadPtr)[w+2]!=checkValue) ||
+	  (((unsigned int *)pagePayloadPtr)[w+3]!=checkValue) ||
+	  (((unsigned int *)pagePayloadPtr)[w+4]!=checkValue) ||
+	  (((unsigned int *)pagePayloadPtr)[w+5]!=checkValue) ||
+	  (((unsigned int *)pagePayloadPtr)[w+6]!=checkValue) ||
+	  (((unsigned int *)pagePayloadPtr)[w+7]!=checkValue) )
+	 {
+	  errorCount++;
+	  if ((errorCount<100)||(errorCount%1000==0)) {
+  	    theLog.log("Error #%llu : Superpage %p Page %d (size %d) : 32-bit word %d mismatch : %X != %X\n",errorCount,ptr,pageId,pagePayloadSize,w,((unsigned int *)pagePayloadPtr)[w],checkValue);
+	  }
+
+	}
+        checkValue++;
+      }
+
+      
+      printf("page %d (size %d) checked\n",pageId,pagePayloadSize);
+      
+ 
+      i+=8*1024;
+    }
+    printf("superpage %p checked\n",ptr);
+    
+/*    if (size>sizeof(RocPageHeader)) {
+      RocPageHeader *h=(RocPageHeader *)&ptr;
+      printWord(&h->words[0]);
+      printWord(&h->words[1]);
+      printWord(&h->words[2]);	// trick! this is to print beginning of payload...
+//      uint8_t *payload=((uint8_t *)ptr)+sizeof(RocPageHeader);
+    }
+  */  
+    
+
+    return 0;
+  }
+  private:
+};
+
+
+
 
 
 class ConsumerDataSampling: public Consumer {
@@ -1020,7 +1178,7 @@ class ConsumerDataSampling: public Consumer {
   ~ConsumerDataSampling() {
  
   }
-  int pushData(DataBlockContainerReference b) {
+  int pushData(DataBlockContainerReference) {
     return 0;
   }
   private:
@@ -1235,6 +1393,10 @@ int main(int argc, char* argv[])
         theLog.log("Unknown equipment type '%s' for [%s]",cfgEquipmentType.c_str(),kName.c_str());
       }
     }
+    catch (std::string errMsg) {
+        theLog.log("Failed to configure equipment %s : %s",kName.c_str(),errMsg.c_str());
+        continue;
+    }
     catch (...) {
         theLog.log("Failed to configure equipment %s",kName.c_str());
         continue;
@@ -1308,6 +1470,8 @@ int main(int argc, char* argv[])
         #endif
       } else if (!cfgType.compare("fileRecorder")) {
         newConsumer=std::make_shared<ConsumerFileRecorder>(cfg, kName);
+      } else if (!cfgType.compare("checker")) {
+        newConsumer=std::make_shared<ConsumerDataChecker>(cfg, kName);
       } else {
         theLog.log("Unknown consumer type '%s' for [%s]",cfgType.c_str(),kName.c_str());
       }
@@ -1392,7 +1556,7 @@ int main(int argc, char* argv[])
 
     
       unsigned int nb=(int)bc->size();
-      //printf("received 1 vector made of %u blocks\n",nb);
+      //printf("received 1 vector %p made of %u blocks\n",bc,nb);
       
       
       for (unsigned int i=0;i<nb;i++) {
@@ -1400,7 +1564,7 @@ int main(int argc, char* argv[])
         printf("pop %d\n",i);
         printf("%p : %d use count\n",(void *)bc->at(i).get(), (int)bc->at(i).use_count());
 */
-        std::shared_ptr<DataBlockContainer>b=bc->at(i);
+        DataBlockContainerReference b=bc->at(i);
 
 /*
         nBlocks++;
@@ -1409,6 +1573,8 @@ int main(int argc, char* argv[])
 //        printf("%p : %d use count\n",(void *)b.get(), (int)b.use_count());        
         
 //        printf("pushed\n");
+
+	//printf("consuming %p\n",b.get());
         for (auto c : dataConsumers) {
           c->pushData(b);
         }
@@ -1434,8 +1600,8 @@ int main(int argc, char* argv[])
 
 //  t1=t0.getTime();
   
-  theLog.log("Wait a bit");
-  sleep(1);
+//  theLog.log("Wait a bit");
+//  sleep(1);
   theLog.log("Stop consumers");
   
   // close consumers before closing readout equipments (owner of data blocks)
