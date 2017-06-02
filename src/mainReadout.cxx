@@ -886,10 +886,10 @@ class Consumer {
 
 class ConsumerStats: public Consumer {
   private:
-  unsigned long long counterBlocks;
-  unsigned long long counterBytesTotal;
-  unsigned long long counterBytesHeader;
-  unsigned long long counterBytesDiff;
+  int64_t counterBlocks;
+  int64_t counterBytesTotal;
+  int64_t counterBytesHeader;
+  int64_t counterBytesDiff;
   AliceO2::Common::Timer runningTime;
   AliceO2::Common::Timer t;
   int monitoringEnabled;
@@ -1144,12 +1144,12 @@ class ConsumerDataChecker: public Consumer {
       }
 
       
-      printf("page %d (size %d) checked\n",pageId,pagePayloadSize);
+      //printf("page %d (size %d) checked\n",pageId,pagePayloadSize);
       
  
       i+=8*1024;
     }
-    printf("superpage %p checked\n",ptr);
+    //printf("superpage %p checked\n",ptr);
     
 /*    if (size>sizeof(RocPageHeader)) {
       RocPageHeader *h=(RocPageHeader *)&ptr;
