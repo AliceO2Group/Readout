@@ -1,4 +1,4 @@
-Readout is the executable reading out the data from devices.
+Readout is the executable reading out the data from readout cards on the FLPs.
 
 
 # Architecture
