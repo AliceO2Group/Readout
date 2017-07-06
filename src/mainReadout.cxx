@@ -886,10 +886,10 @@ class Consumer {
 
 class ConsumerStats: public Consumer {
   private:
-  int64_t counterBlocks;
-  int64_t counterBytesTotal;
-  int64_t counterBytesHeader;
-  int64_t counterBytesDiff;
+  uint64_t counterBlocks;
+  uint64_t counterBytesTotal;
+  uint64_t counterBytesHeader;
+  uint64_t counterBytesDiff;
   AliceO2::Common::Timer runningTime;
   AliceO2::Common::Timer t;
   int monitoringEnabled;
@@ -937,8 +937,8 @@ class ConsumerStats: public Consumer {
     theLog.log("Stopping stats clock");
     double elapsedTime=runningTime.getTime();
     if (counterBytesTotal>0) {
-    theLog.log("Stats: %llu blocks, %.2f MB, %.2f%% header overhead",counterBlocks,counterBytesTotal/(1024*1024.0),counterBytesHeader*100.0/counterBytesTotal);
-    theLog.log("Stats: average block size=%llu bytes",counterBytesTotal/counterBlocks);
+    theLog.log("Stats: %llu blocks, %.2f MB, %.2f%% header overhead",(unsigned long long)counterBlocks,counterBytesTotal/(1024*1024.0),counterBytesHeader*100.0/counterBytesTotal);
+    theLog.log("Stats: average block size=%llu bytes",(unsigned long long)counterBytesTotal/counterBlocks);
     theLog.log("Stats: average throughput = %s",NumberOfBytesToString(counterBytesTotal/elapsedTime,"B/s").c_str());
     publishStats();
     } else {
