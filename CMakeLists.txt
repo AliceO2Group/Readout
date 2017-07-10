@@ -74,6 +74,30 @@ set(SRCS
   src/mainReadout.cxx
 )
 
+include_directories(
+        ${CMAKE_CURRENT_SOURCE_DIR}/../RORC/include ${Boost_INCLUDE_DIRS} ${Monitoring_INCLUDE_DIRS}
+)
+
+add_library(
+  objReadoutEquipment OBJECT
+  src/ReadoutEquipment.cxx
+  src/ReadoutEquipmentDummy.cxx
+  src/ReadoutEquipmentRORC.cxx  
+)
+add_library(
+  objReadoutAggregator OBJECT
+  src/DataBlockAggregator.cxx  
+)
+add_library(
+  objReadoutConsumers OBJECT
+  src/ConsumerStats.cxx  
+  src/ConsumerFileRecorder.cxx  
+  src/ConsumerDataChecker.cxx  
+  src/ConsumerDataSampling.cxx  
+  src/ConsumerFMQ.cxx
+)
+
+
 set(LIBRARY_NAME ${MODULE_NAME})
 set(BUCKET_NAME o2_readout_bucket)
 
@@ -87,7 +111,7 @@ add_subdirectory(doc)
 
 O2_GENERATE_EXECUTABLE(
         EXE_NAME readout.exe
-        SOURCES src/mainReadout.cxx
+        SOURCES src/mainReadout.cxx $<TARGET_OBJECTS:objReadoutEquipment> $<TARGET_OBJECTS:objReadoutAggregator> $<TARGET_OBJECTS:objReadoutConsumers>
 #        MODULE_LIBRARY_NAME ${LIBRARY_NAME}
         BUCKET_NAME ${BUCKET_NAME}
 )
