@@ -126,6 +126,6 @@ class ConsumerStats: public Consumer {
 
 
 
-std::shared_ptr<Consumer> getSharedConsumerStats(ConfigFile &cfg, std::string cfgEntryPoint) {
-  return std::make_shared<ConsumerStats>(cfg, cfgEntryPoint);
+std::unique_ptr<Consumer> getUniqueConsumerStats(ConfigFile &cfg, std::string cfgEntryPoint) {
+  return std::make_unique<ConsumerStats>(cfg, cfgEntryPoint);
 }

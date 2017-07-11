@@ -128,8 +128,8 @@ class ConsumerFMQ: public Consumer {
 
 
 
-std::shared_ptr<Consumer> getSharedConsumerFMQ(ConfigFile &cfg, std::string cfgEntryPoint) {
-  return std::make_shared<ConsumerFMQ>(cfg, cfgEntryPoint);
+std::unique_ptr<Consumer> getUniqueConsumerFMQ(ConfigFile &cfg, std::string cfgEntryPoint) {
+  return std::make_unique<ConsumerFMQ>(cfg, cfgEntryPoint);
 }
 
 

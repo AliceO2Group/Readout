@@ -25,10 +25,10 @@ class Consumer {
 };
 
 
-std::shared_ptr<Consumer> getSharedConsumerStats(ConfigFile &cfg, std::string cfgEntryPoint);
-std::shared_ptr<Consumer> getSharedConsumerFMQ(ConfigFile &cfg, std::string cfgEntryPoint);
-std::shared_ptr<Consumer> getSharedConsumerFileRecorder(ConfigFile &cfg, std::string cfgEntryPoint);
-std::shared_ptr<Consumer> getSharedConsumerDataChecker(ConfigFile &cfg, std::string cfgEntryPoint);
-std::shared_ptr<Consumer> getSharedConsumerDataSampling(ConfigFile &cfg, std::string cfgEntryPoint);
+std::unique_ptr<Consumer> getUniqueConsumerStats(ConfigFile &cfg, std::string cfgEntryPoint);
+std::unique_ptr<Consumer> getUniqueConsumerFMQ(ConfigFile &cfg, std::string cfgEntryPoint);
+std::unique_ptr<Consumer> getUniqueConsumerFileRecorder(ConfigFile &cfg, std::string cfgEntryPoint);
+std::unique_ptr<Consumer> getUniqueConsumerDataChecker(ConfigFile &cfg, std::string cfgEntryPoint);
+std::unique_ptr<Consumer> getUniqueConsumerDataSampling(ConfigFile &cfg, std::string cfgEntryPoint);
 
 

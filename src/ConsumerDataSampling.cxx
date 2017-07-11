@@ -18,6 +18,6 @@ class ConsumerDataSampling: public Consumer {
 
 
 
-std::shared_ptr<Consumer> getSharedConsumerDataSampling(ConfigFile &cfg, std::string cfgEntryPoint) {
-  return std::make_shared<ConsumerDataSampling>(cfg, cfgEntryPoint);
+std::unique_ptr<Consumer> getUniqueConsumerDataSampling(ConfigFile &cfg, std::string cfgEntryPoint) {
+  return std::make_unique<ConsumerDataSampling>(cfg, cfgEntryPoint);
 }

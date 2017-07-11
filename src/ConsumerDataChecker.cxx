@@ -132,6 +132,6 @@ class ConsumerDataChecker: public Consumer {
 };
 
 
-std::shared_ptr<Consumer> getSharedConsumerDataChecker(ConfigFile &cfg, std::string cfgEntryPoint) {
-  return std::make_shared<ConsumerDataChecker>(cfg, cfgEntryPoint);
+std::unique_ptr<Consumer> getUniqueConsumerDataChecker(ConfigFile &cfg, std::string cfgEntryPoint) {
+  return std::make_unique<ConsumerDataChecker>(cfg, cfgEntryPoint);
 }

@@ -67,6 +67,6 @@ class ConsumerFileRecorder: public Consumer {
 };
 
 
-std::shared_ptr<Consumer> getSharedConsumerFileRecorder(ConfigFile &cfg, std::string cfgEntryPoint) {
-  return std::make_shared<ConsumerFileRecorder>(cfg, cfgEntryPoint);
+std::unique_ptr<Consumer> getUniqueConsumerFileRecorder(ConfigFile &cfg, std::string cfgEntryPoint) {
+  return std::make_unique<ConsumerFileRecorder>(cfg, cfgEntryPoint);
 }
