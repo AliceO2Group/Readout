@@ -25,12 +25,6 @@
 #include <Common/Fifo.h>
 #include <Common/Thread.h>
 
-#ifdef WITH_FAIRMQ
-#include <FairMQDevice.h>
-#include <FairMQMessage.h>
-#include <FairMQTransportFactory.h>
-#endif
-
 #ifdef WITH_DATASAMPLING
 #include "DataSampling/InjectorFactory.h"
 #endif

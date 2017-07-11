@@ -3,6 +3,9 @@
 
 #ifdef WITH_FAIRMQ
 
+#include <fairmq/FairMQDevice.h>
+#include <fairmq/FairMQMessage.h>
+#include <fairmq/FairMQTransportFactory.h>
 
 
 class FMQSender : public FairMQDevice
