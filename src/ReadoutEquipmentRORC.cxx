@@ -1,12 +1,13 @@
 #include "ReadoutEquipment.h"
 
-
-
 #include <ReadoutCard/Parameters.h>
 #include <ReadoutCard/ChannelFactory.h>
 #include <ReadoutCard/MemoryMappedFile.h>
 #include <ReadoutCard/DmaChannelInterface.h>
 #include <ReadoutCard/Exception.h>
+
+#include <string>
+
 
 #include <InfoLogger/InfoLogger.hxx>
 using namespace AliceO2::InfoLogger;
@@ -181,20 +182,28 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : 
     
   try {
 
-    int serialNumber=cfg.getValue<int>(name + ".serial");
+    std::string serialNumber=cfg.getValue<std::string>(name + ".serial");
     int channelNumber=cfg.getValue<int>(name + ".channel");
+  
+    AliceO2::roc::Parameters::CardIdType cardId;
+    if (serialNumber.find(':')!=std::string::npos) {
+    	// this looks like a PCI address...
+	cardId=AliceO2::roc::PciAddress(serialNumber);
+    } else {
+    	cardId=std::stoi(serialNumber);
+    }
   
     long mMemorySize=cfg.getValue<long>(name + ".memoryBufferSize"); // todo: convert MB to bytes
     int mPageSize=cfg.getValue<int>(name + ".memoryPageSize"); 
 
-    std::string uid="readout." + std::to_string(serialNumber) + "." + std::to_string(channelNumber);
+    std::string uid="readout." + std::to_string(std::stoi(serialNumber)) + "." + std::to_string(channelNumber);
     //sleep((channelNumber+1)*2);  // trick to avoid all channels open at once - fail to acquire lock
     
     mReadoutMemoryHandler=std::make_shared<ReadoutMemoryHandler>(mMemorySize,mPageSize,uid);
 
-    theLog.log("Opening RORC %d:%d",serialNumber,channelNumber);    
+    theLog.log("Opening RORC %s:%d",serialNumber.c_str(),channelNumber);    
     AliceO2::roc::Parameters params;
-    params.setCardId(serialNumber);
+    params.setCardId(cardId);
     params.setChannelNumber(channelNumber);
     params.setGeneratorPattern(AliceO2::roc::GeneratorPattern::Incremental);
     params.setBufferParameters(AliceO2::roc::buffer_parameters::Memory {
@@ -209,13 +218,13 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : 
     // set random size: address byte 0x420, bit 16
     int wordIndex=0x420/4;
     uint32_t regValue=bar->readRegister(wordIndex);
-    printf("bar read %X\n",regValue);
+    //printf("bar read %X\n",regValue);
     regValue|=0x10000;
-    printf("set random size bit: bar write %X\n",regValue);
+    //printf("set random size bit: bar write %X\n",regValue);
     bar->writeRegister(wordIndex,regValue);
        
     regValue=bar->readRegister(wordIndex);
-    printf("bar read %X\n",regValue);
+    //printf("bar read %X\n",regValue);
     
   }
   catch (const std::exception& e) {
