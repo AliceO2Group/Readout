@@ -196,7 +196,7 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : 
     long mMemorySize=cfg.getValue<long>(name + ".memoryBufferSize"); // todo: convert MB to bytes
     int mPageSize=cfg.getValue<int>(name + ".memoryPageSize"); 
 
-    std::string uid="readout." + std::to_string(std::stoi(serialNumber)) + "." + std::to_string(channelNumber);
+    std::string uid="readout." + serialNumber + "." + std::to_string(channelNumber);
     //sleep((channelNumber+1)*2);  // trick to avoid all channels open at once - fail to acquire lock
     
     mReadoutMemoryHandler=std::make_shared<ReadoutMemoryHandler>(mMemorySize,mPageSize,uid);
