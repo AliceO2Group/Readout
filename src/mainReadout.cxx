@@ -189,8 +189,9 @@ int main(int argc, char* argv[])
   // todo: add time counter to measure how much time is spent waiting for data sampling injection (And other consumers)
 #endif
 
+
   // configuration of data consumers
-  std::vector<std::shared_ptr<Consumer>> dataConsumers;
+  std::vector<std::unique_ptr<Consumer>> dataConsumers;
   for (auto kName : ConfigFileBrowser (&cfg,"consumer-")) {
 
     // skip disabled
@@ -203,24 +204,24 @@ int main(int argc, char* argv[])
     if (!enabled) {continue;}
 
     // instanciate consumer of appropriate type         
-    std::shared_ptr<Consumer> newConsumer=nullptr;
+    std::unique_ptr<Consumer> newConsumer=nullptr;
     try {
       std::string cfgType="";
       cfgType=cfg.getValue<std::string>(kName + ".consumerType");
       theLog.log("Configuring consumer %s: %s",kName.c_str(),cfgType.c_str());
     
       if (!cfgType.compare("stats")) {
-        newConsumer=getSharedConsumerStats(cfg, kName);
+        newConsumer=getUniqueConsumerStats(cfg, kName);
       } else if (!cfgType.compare("FairMQDevice")) {
         #ifdef WITH_FAIRMQ
-          newConsumer=getSharedConsumerFMQ(cfg, kName);
+          newConsumer=getUniqueConsumerFMQ(cfg, kName);
         #else
           theLog.log("Skipping %s: %s - not supported by this build",kName.c_str(),cfgType.c_str());
         #endif
       } else if (!cfgType.compare("fileRecorder")) {
-        newConsumer=getSharedConsumerFileRecorder(cfg, kName);
+        newConsumer=getUniqueConsumerFileRecorder(cfg, kName);
       } else if (!cfgType.compare("checker")) {
-        newConsumer=getSharedConsumerDataChecker(cfg, kName);
+        newConsumer=getUniqueConsumerDataChecker(cfg, kName);
       } else {
         theLog.log("Unknown consumer type '%s' for [%s]",cfgType.c_str(),kName.c_str());
       }
@@ -235,7 +236,7 @@ int main(int argc, char* argv[])
     }
         
     if (newConsumer!=nullptr) {
-      dataConsumers.push_back(newConsumer);
+      dataConsumers.push_back(std::move(newConsumer));
     }
     
   }
@@ -288,14 +289,12 @@ int main(int argc, char* argv[])
         break;
       }
     }
-    //DataBlockContainer *newBlock=NULL;
-    //newBlock=r->getBlock();
 
     DataSetReference bc=nullptr;
     agg_output.pop(bc);    
     
 
-    if (bc!=NULL) {
+    if (bc!=nullptr) {
       // push to data sampling, if configured
 #ifdef WITH_DATASAMPLING
       if (dataSampling && dataSamplingInjector) {
@@ -324,7 +323,7 @@ int main(int argc, char* argv[])
 //        printf("pushed\n");
 
 	//printf("consuming %p\n",b.get());
-        for (auto c : dataConsumers) {
+        for (auto& c : dataConsumers) {
           c->pushData(b);
         }
 
