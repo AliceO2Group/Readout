@@ -71,7 +71,16 @@ set(MODULE_NAME "Readout")
 O2_SETUP(NAME ${MODULE_NAME})
 
 set(SRCS
-  src/mainReadout.cxx
+    src/ConsumerStats.cxx
+    src/ConsumerFileRecorder.cxx
+    src/ConsumerDataChecker.cxx
+    src/ConsumerDataSampling.cxx
+    src/ConsumerFMQ.cxx
+    src/ReadoutEquipment.cxx
+    src/ReadoutEquipmentDummy.cxx
+    src/ReadoutEquipmentRORC.cxx
+    src/DataBlockAggregator.cxx
+    src/mainReadout.cxx
 )
 
 include_directories(
