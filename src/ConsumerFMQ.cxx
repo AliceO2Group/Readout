@@ -6,6 +6,7 @@
 #include <fairmq/FairMQDevice.h>
 #include <fairmq/FairMQMessage.h>
 #include <fairmq/FairMQTransportFactory.h>
+#include <fairmq/zeromq/FairMQTransportFactoryZMQ.h>
 
 
 class FMQSender : public FairMQDevice
@@ -73,6 +74,8 @@ class ConsumerFMQ: public Consumer {
         std::cout << ch.GetAddress() <<std::endl;
       }
     }
+
+    transportFactory = new FairMQTransportFactoryZMQ();
       
     sender.fChannels = m;
     sender.SetTransport("zeromq");
@@ -92,6 +95,8 @@ class ConsumerFMQ: public Consumer {
     sender.ChangeState(FairMQStateMachine::Event::RESET_DEVICE);
     sender.WaitForEndOfState(FairMQStateMachine::Event::RESET_DEVICE);
     sender.ChangeState(FairMQStateMachine::Event::END);
+    
+    delete transportFactory;       
   }
   
   int pushData(std::shared_ptr<DataBlockContainer>b) {
