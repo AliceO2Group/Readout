@@ -116,5 +116,11 @@ int main() {
   return 0;
 }
 
+#else
+#include<stdio.h>
+int main() {
 
+  printf("Not compiled with FMQ, exiting\n");
+  return 0;
+}
 #endif
