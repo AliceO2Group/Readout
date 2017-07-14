@@ -125,6 +125,12 @@ O2_GENERATE_EXECUTABLE(
         BUCKET_NAME ${BUCKET_NAME}
 )
 
+O2_GENERATE_EXECUTABLE(
+        EXE_NAME receiverFMQ.exe
+        SOURCES src/receiverFMQ.cxx
+        BUCKET_NAME ${BUCKET_NAME}
+)
+
 #add_executable(readout2 src/mainReadout.cxx)
 
 
