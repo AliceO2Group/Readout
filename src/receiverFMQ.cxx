@@ -1,10 +1,27 @@
 #ifdef WITH_FAIRMQ
 
+#include <signal.h>
+
 #include <fairmq/FairMQDevice.h>
 #include <fairmq/FairMQMessage.h>
 #include <fairmq/FairMQTransportFactory.h>
 #include <fairmq/zeromq/FairMQTransportFactoryZMQ.h>
 #include <memory>
+
+
+static int ShutdownRequest=0;      // set to 1 to request termination, e.g. on SIGTERM/SIGQUIT signals
+static void signalHandler(int){
+  printf(" *** break ***\n");
+  if (ShutdownRequest) {
+    // immediate exit if pending exit request
+    exit(1);
+  }
+  ShutdownRequest=1;
+}
+
+
+
+
 
 class FMQReceiver : public FairMQDevice
 {
@@ -49,6 +66,19 @@ class FMQReceiver : public FairMQDevice
 };
 
 int main() {
+   
+  // configure signal handlers for clean exit
+  struct sigaction signalSettings;
+  bzero(&signalSettings,sizeof(signalSettings));
+  signalSettings.sa_handler=signalHandler;
+  sigaction(SIGTERM,&signalSettings,NULL);
+  sigaction(SIGQUIT,&signalSettings,NULL);
+  sigaction(SIGINT,&signalSettings,NULL);
+
+  printf("Starting\n");
+   
+   
+   
    std::vector<FairMQChannel> channels(1);
    FMQReceiver fd;
 
@@ -92,9 +122,11 @@ int main() {
 //    fd.InteractiveStateLoop();
   
   
-  
-    sleep(5);
-  
+    for (;;) {
+      if (ShutdownRequest) break;
+      sleep(1);
+    }
+    printf("Exit requested\n");  
   
 
     fd.ChangeState(FairMQStateMachine::Event::STOP);
@@ -105,14 +137,7 @@ int main() {
     fd.ChangeState(FairMQStateMachine::Event::END);
 
 
-
-
-
-
-
-
-
-
+    printf("Done!\n");
   return 0;
 }
 
