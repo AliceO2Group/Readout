@@ -84,7 +84,12 @@ set(SRCS
 )
 
 include_directories(
-        ${CMAKE_CURRENT_SOURCE_DIR}/../RORC/include ${Boost_INCLUDE_DIRS} ${Monitoring_INCLUDE_DIRS}  ${FAIRROOT_INCLUDE_DIR} ${FAIRROOT_INCLUDE_DIR}/fairmq
+        ${CMAKE_CURRENT_SOURCE_DIR}/../RORC/include
+        ${Boost_INCLUDE_DIRS}
+        ${Monitoring_INCLUDE_DIRS}
+        ${FAIRROOT_INCLUDE_DIR}
+        ${FAIRROOT_INCLUDE_DIR}/fairmq
+        ${ZeroMQ_INCLUDE_DIR}
 )
 
 add_library(
