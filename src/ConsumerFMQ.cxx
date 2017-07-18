@@ -26,10 +26,18 @@ class FMQSender : public FairMQDevice
     }
 };
 
-class DataRef {
-  public:
-  std::shared_ptr<DataBlockContainer> ptr;
-};
+
+// cleanup function, defined with the callback footprint expected in the 3rd argument of FairMQTransportFactory.CreateMessage()
+// when object not null, it should be a (DataBlockContainerReference *), which will be destroyed
+void cleanupCallback(void *data, void *object) {
+    if ((object!=nullptr)&&(data!=nullptr)) {
+      DataBlockContainerReference *ptr=(DataBlockContainerReference *)object;
+//      printf("ptr %p: use_count=%d\n",ptr,ptr->use_count());
+      delete ptr;
+    }
+  }
+
+
 
 class ConsumerFMQ: public Consumer {
   private:
@@ -45,13 +53,6 @@ class ConsumerFMQ: public Consumer {
         
   public: 
 
-  static void CustomCleanup(void *data, void *object) {
-    if ((object!=nullptr)&&(data!=nullptr)) {
-      //printf("delete %p\n",object);
-      delete ((DataRef *)object);
-      //free(object);
-    }
-  }
 
   ConsumerFMQ(ConfigFile &cfg, std::string cfgEntryPoint) : Consumer(cfg,cfgEntryPoint), channels(1) {
        
@@ -99,35 +100,26 @@ class ConsumerFMQ: public Consumer {
     delete transportFactory;       
   }
   
-  int pushData(std::shared_ptr<DataBlockContainer> &b) {
+  int pushData(DataBlockContainerReference &b) {
 
-    DataRef *bCopy;
-    bCopy=new DataRef;
-    bCopy->ptr=b;
-
-    /*void *p;
-    p=malloc(b->getData()->header.dataSize);
-    memcpy(p,b->getData()->data,b->getData()->header.dataSize);
-    printf("sending %d @ %p\n",b->getData()->header.dataSize,p);    
-    std::unique_ptr<FairMQMessage> msgBody(transportFactory->CreateMessage(p, (size_t)(b->getData()->header.dataSize), ConsumerFMQ::CustomCleanup, (void *)(p)));
-     sender.fChannels.at("data-out").at(0).Send(msgBody);
- */
- 
-    std::unique_ptr<FairMQMessage> msgHeader(transportFactory->CreateMessage((void *)&(b->getData()->header), (size_t)(b->getData()->header.headerSize), ConsumerFMQ::CustomCleanup, (void *)nullptr));
-    std::unique_ptr<FairMQMessage> msgBody(transportFactory->CreateMessage((void *)(b->getData()->data), (size_t)(b->getData()->header.dataSize), ConsumerFMQ::CustomCleanup, (void *)(bCopy)));
-
-    //printf("FMQ pushed data\n");
+    // we create a copy of the reference, in a newly allocated object, so that reference is kept alive until this new object is destroyed in the cleanupCallback
+    DataBlockContainerReference *ptr=new DataBlockContainerReference(b);
+    std::unique_ptr<FairMQMessage> msgHeader(transportFactory->CreateMessage((void *)&(b->getData()->header), (size_t)(b->getData()->header.headerSize), cleanupCallback, (void *)nullptr));
+    std::unique_ptr<FairMQMessage> msgBody(transportFactory->CreateMessage((void *)(b->getData()->data), (size_t)(b->getData()->header.dataSize), cleanupCallback, (void *)(ptr)));
 
     sender.fChannels.at("data-out").at(0).Send(msgHeader);
     sender.fChannels.at("data-out").at(0).Send(msgBody);
     
+
+
     // how to know if it was a success?
 
     // every time we do a push there is a string compare ???
     //channels[0].SendPart(msgHeader);
     //channels[0].Send(msgBody);
 
-//    channels.at("data-out").at(0).SendPart(msgBody);
+    // use multipart?
+    // channels.at("data-out").at(0).SendPart(msgBody);
     
     return 0;
   }
