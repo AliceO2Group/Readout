@@ -46,21 +46,18 @@ class FMQReceiver : public FairMQDevice
     void Run() override {
        while (CheckCurrentState(RUNNING)) {
 
+          std::unique_ptr<FairMQMessage> msg(transportFactory->CreateMessage());
 
-    std::unique_ptr<FairMQMessage> msg(transportFactory->CreateMessage());
-
-    if (fChannels.at("data-in").at(0).Receive(msg) > 0) {
-      msgBytes+=msg->GetSize();
-      msgCount++;
-      printf("%d messages, %d bytes\n",msgCount,msgBytes);
-//      cout << "Received message: \""
-//      << string(static_cast<char *>(msg->GetData()), msg->GetSize())
-//      << "\"" << endl;
-    }
-
-
-
-         usleep(200000);
+          if (fChannels.at("data-in").at(0).Receive(msg) > 0) {
+            msgBytes+=msg->GetSize();
+            msgCount++;
+            printf("%d messages, %d bytes\n",msgCount,msgBytes);
+      //      cout << "Received message: \""
+      //      << string(static_cast<char *>(msg->GetData()), msg->GetSize())
+      //      << "\"" << endl;
+          } else {
+            usleep(200000);
+          }
        }
     }
 };
