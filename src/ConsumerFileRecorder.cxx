@@ -25,7 +25,7 @@ class ConsumerFileRecorder: public Consumer {
   ~ConsumerFileRecorder() {
     closeRecordingFile();
   }
-  int pushData(DataBlockContainerReference b) {
+  int pushData(DataBlockContainerReference &b) {
 
     for(;;) {
       if (fp!=NULL) {

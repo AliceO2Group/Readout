@@ -8,7 +8,7 @@ class ConsumerDataSampling: public Consumer {
   ~ConsumerDataSampling() {
  
   }
-  int pushData(DataBlockContainerReference) {
+  int pushData(DataBlockContainerReference &) {
     return 0;
   }
   private:

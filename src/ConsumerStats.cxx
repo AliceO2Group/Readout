@@ -103,7 +103,7 @@ class ConsumerStats: public Consumer {
       theLog.log("Stats: no data received");
     }
   }
-  int pushData(DataBlockContainerReference b) {
+  int pushData(DataBlockContainerReference &b) {
     counterBlocks++;
     int newBytes=b->getData()->header.dataSize;
     counterBytesTotal+=newBytes;

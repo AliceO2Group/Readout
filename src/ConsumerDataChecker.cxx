@@ -35,7 +35,7 @@ class ConsumerDataChecker: public Consumer {
   ~ConsumerDataChecker() {
     theLog.log("Checker detected %llu data errors on %llu DMA pages",errorCount,checkedPages);
   }
-  int pushData(DataBlockContainerReference b) {
+  int pushData(DataBlockContainerReference &b) {
   
     void *ptr;    
     size_t size;

@@ -99,7 +99,7 @@ class ConsumerFMQ: public Consumer {
     delete transportFactory;       
   }
   
-  int pushData(std::shared_ptr<DataBlockContainer>b) {
+  int pushData(std::shared_ptr<DataBlockContainer> &b) {
 
     DataRef *bCopy;
     bCopy=new DataRef;
