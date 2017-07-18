@@ -18,7 +18,7 @@ class Consumer {
   };
   virtual ~Consumer() {
   };
-  virtual int pushData(DataBlockContainerReference b)=0;
+  virtual int pushData(DataBlockContainerReference &b)=0;
   
   protected:
     InfoLogger theLog;
