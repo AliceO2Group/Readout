@@ -13,6 +13,67 @@
 using namespace AliceO2::InfoLogger;
 extern InfoLogger theLog;
 
+
+namespace ReadoutUtils {
+
+// function to convert a string to a 64-bit integer value
+// allowing usual "base units" in suffix (k,M,G,T)
+// input can be decimal (1.5M is valid, will give 1.5*1024*1024)
+long long getNumberOfBytesFromString(const char * inputString) {
+  double v=0;
+  char c='?';
+  int n=sscanf(inputString,"%lf%c",&v,&c);
+  
+  if (n==1) {
+    return (long long)v;
+  }
+  if (n==2) {
+    if (c=='k') {
+      return (long long)(v*1024LL);
+    }
+    if (c=='M') {
+      return (long long)(v*1024LL*1024LL);
+    }
+    if (c=='G') {
+      return (long long)(v*1024LL*1024LL*1024LL);
+    }
+    if (c=='T') {
+      return (long long)(v*1024LL*1024LL*1024LL*1024LL);
+    }    
+    if (c=='P') {
+      return (long long)(v*1024LL*1024LL*1024LL*1024LL*1024LL);
+    }    
+  }
+  return 0;
+}
+
+
+// macro to get number of element in static array
+#define STATIC_ARRAY_ELEMENT_COUNT(x) sizeof(x)/sizeof(x[0]) 
+
+// function to convert a value in bytes to a prefixed number 3+3 digits
+// suffix is the "base unit" to add after calculated prefix, e.g. Byte-> kBytes
+std::string NumberOfBytesToString(double value,const char*suffix) {
+  const char *prefixes[]={"","k","M","G","T","P"};
+  int maxPrefixIndex=STATIC_ARRAY_ELEMENT_COUNT(prefixes)-1;
+  int prefixIndex=log(value)/log(1024);
+  if (prefixIndex>maxPrefixIndex) {
+    prefixIndex=maxPrefixIndex;
+  }
+  if (prefixIndex<0) {
+    prefixIndex=0;
+  }
+  double scaledValue=value/pow(1024,prefixIndex);
+  char bufStr[64];
+  if (suffix==nullptr) {
+    suffix="";
+  }
+  snprintf(bufStr,sizeof(bufStr)-1,"%.03lf %s%s",scaledValue,prefixes[prefixIndex],suffix);
+  return std::string(bufStr);  
+}
+
+
+}
   
 // a big block of memory for I/O
 class ReadoutMemoryHandler {
@@ -43,7 +104,7 @@ class ReadoutMemoryHandler {
       vMemorySize+=hugePageSize-r;
     }
 
-    theLog.log("Creating shared memory block %ld bytes = %.1f MB @ %s",vMemorySize,(float)(vMemorySize/(1024.0*1024)),memoryMapFilePath.c_str());
+    theLog.log("Creating shared memory block %s @ %s",ReadoutUtils::NumberOfBytesToString(vMemorySize,"Bytes").c_str(),memoryMapFilePath.c_str());
     
     try {
       //mMemoryMappedFile=std::make_unique<AliceO2::roc::MemoryMappedFile>(memoryMapFilePath,100*(long)1024*1024,false);
@@ -68,8 +129,8 @@ class ReadoutMemoryHandler {
     }
     
     pageSize=vPageSize;
-    int nPages=memorySize/pageSize;
-    theLog.log("Got %d pages, each %d bytes",nPages,pageSize);       
+    long long nPages=memorySize/pageSize;
+    theLog.log("Got %lld pages, each %s",nPages,ReadoutUtils::NumberOfBytesToString(pageSize,"Bytes").c_str());
     pagesAvailable=std::make_unique<AliceO2::Common::Fifo<long>>(nPages);
     
     for (int i=0;i<nPages;i++) {
@@ -147,14 +208,6 @@ class DataBlockContainerFromRORC : public DataBlockContainer {
 
 
 
-
-
-
-
-
-
-
-
 class ReadoutEquipmentRORC : public ReadoutEquipment {
 
   public:
@@ -193,13 +246,16 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : 
     	cardId=std::stoi(serialNumber);
     }
   
-    long mMemorySize=cfg.getValue<long>(name + ".memoryBufferSize"); // todo: convert MB to bytes
-    int mPageSize=cfg.getValue<int>(name + ".memoryPageSize"); 
+    std::string sMemorySize=cfg.getValue<std::string>(name + ".memoryBufferSize");
+    std::string sPageSize=cfg.getValue<std::string>(name + ".memoryPageSize"); 
+     
+    long long mMemorySize=ReadoutUtils::getNumberOfBytesFromString(sMemorySize.c_str());
+    long long mPageSize=ReadoutUtils::getNumberOfBytesFromString(sPageSize.c_str());
 
     std::string uid="readout." + serialNumber + "." + std::to_string(channelNumber);
     //sleep((channelNumber+1)*2);  // trick to avoid all channels open at once - fail to acquire lock
     
-    mReadoutMemoryHandler=std::make_shared<ReadoutMemoryHandler>(mMemorySize,mPageSize,uid);
+    mReadoutMemoryHandler=std::make_shared<ReadoutMemoryHandler>((long)mMemorySize,(int)mPageSize,uid);
 
     theLog.log("Opening RORC %s:%d",serialNumber.c_str(),channelNumber);    
     AliceO2::roc::Parameters params;
