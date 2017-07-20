@@ -109,6 +109,7 @@ int main(int argc, char* argv[])
 
 
   // configure readout equipments
+  int nEquipmentFailures=0; // number of failed equipment instanciation
   std::vector<std::unique_ptr<ReadoutEquipment>> readoutDevices;
   for (auto kName : ConfigFileBrowser (&cfg,"equipment-")) {     
 
@@ -138,10 +139,12 @@ int main(int argc, char* argv[])
     }
     catch (std::string errMsg) {
         theLog.log("Failed to configure equipment %s : %s",kName.c_str(),errMsg.c_str());
+        nEquipmentFailures++;
         continue;
     }
     catch (...) {
         theLog.log("Failed to configure equipment %s",kName.c_str());
+        nEquipmentFailures++;
         continue;
     }
     
@@ -149,6 +152,11 @@ int main(int argc, char* argv[])
     if (newDevice!=nullptr) {
       readoutDevices.push_back(std::move(newDevice));
     }   
+  }
+
+  if (nEquipmentFailures) {
+    theLog.log("Some equipments failed to initialize, exiting");
+    return -1;
   }
 
 
