@@ -153,3 +153,11 @@ if(hasParent)
     set(PROJECT_${PROJECT_NAME} true PARENT_SCOPE)
 endif()
 include(PackageConfigurator)
+
+
+# Install some extra files
+install(
+  FILES readout.cfg
+  DESTINATION ${CMAKE_INSTALL_PREFIX}/etc
+  PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
+
