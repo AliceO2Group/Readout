@@ -20,7 +20,7 @@
 
 #include <memory>
 #include <stdint.h>
-  
+
 #include <Common/Timer.h>
 #include <Common/Fifo.h>
 #include <Common/Thread.h>
@@ -38,13 +38,13 @@
 using namespace AliceO2::InfoLogger;
 using namespace AliceO2::Common;
 
-  
+
 #define LOG_TRACE printf("%d\n",__LINE__);fflush(stdout);
 
 
 // global entry point to log system
 InfoLogger theLog;
-  
+
 
 static int ShutdownRequest=0;      // set to 1 to request termination, e.g. on SIGTERM/SIGQUIT signals
 static void signalHandler(int){
@@ -85,7 +85,7 @@ int main(int argc, char* argv[])
   sigaction(SIGINT,&signalSettings,NULL);
 
   // log startup and options
-  theLog.log("Readout process starting");   
+  theLog.log("Readout process starting");
   theLog.log("Optional built features enabled:");
   #ifdef WITH_FAIRMQ
    theLog.log("FAIRMQ : yes");
@@ -94,7 +94,7 @@ int main(int argc, char* argv[])
   #endif
 
   // load configuration file
-  theLog.log("Reading configuration from %s",cfgFileURI);  
+  theLog.log("Reading configuration from %s",cfgFileURI);
   try {
     cfg.load(cfgFileURI);
   }
@@ -102,7 +102,7 @@ int main(int argc, char* argv[])
     theLog.log("Error : %s",err.c_str());
     return -1;
   }
-  
+
   // extract optional configuration parameters
   double cfgExitTimeout=-1;
   cfg.getOptionalValue<double>("readout.exitTimeout",cfgExitTimeout);
@@ -111,7 +111,7 @@ int main(int argc, char* argv[])
   // configure readout equipments
   int nEquipmentFailures=0; // number of failed equipment instanciation
   std::vector<std::unique_ptr<ReadoutEquipment>> readoutDevices;
-  for (auto kName : ConfigFileBrowser (&cfg,"equipment-")) {     
+  for (auto kName : ConfigFileBrowser (&cfg,"equipment-")) {
 
     // example iteration on each sub-key
     //for (auto kk : ConfigFileBrowser (&cfg,"",kName)) {
@@ -126,7 +126,7 @@ int main(int argc, char* argv[])
     std::string cfgEquipmentType="";
     cfgEquipmentType=cfg.getValue<std::string>(kName + ".equipmentType");
     theLog.log("Configuring equipment %s: %s",kName.c_str(),cfgEquipmentType.c_str());
-    
+
     std::unique_ptr<ReadoutEquipment>newDevice=nullptr;
     try {
       if (!cfgEquipmentType.compare("dummy")) {
@@ -147,11 +147,11 @@ int main(int argc, char* argv[])
         nEquipmentFailures++;
         continue;
     }
-    
+
     // add to list of equipments
     if (newDevice!=nullptr) {
       readoutDevices.push_back(std::move(newDevice));
-    }   
+    }
   }
 
   if (nEquipmentFailures) {
@@ -175,7 +175,7 @@ int main(int argc, char* argv[])
 
   // configuration of data sampling
 #ifdef WITH_DATASAMPLING
-  int dataSampling=0; 
+  int dataSampling=0;
   dataSampling=cfg.getValue<int>("sampling.enabled");
   AliceO2::DataSampling::InjectorInterface *dataSamplingInjector = nullptr;
   if (dataSampling) {
@@ -205,13 +205,13 @@ int main(int argc, char* argv[])
     }
     if (!enabled) {continue;}
 
-    // instanciate consumer of appropriate type         
+    // instanciate consumer of appropriate type
     std::unique_ptr<Consumer> newConsumer=nullptr;
     try {
       std::string cfgType="";
       cfgType=cfg.getValue<std::string>(kName + ".consumerType");
       theLog.log("Configuring consumer %s: %s",kName.c_str(),cfgType.c_str());
-    
+
       if (!cfgType.compare("stats")) {
         newConsumer=getUniqueConsumerStats(cfg, kName);
       } else if (!cfgType.compare("FairMQDevice")) {
@@ -227,26 +227,26 @@ int main(int argc, char* argv[])
       } else {
         theLog.log("Unknown consumer type '%s' for [%s]",cfgType.c_str(),kName.c_str());
       }
-    } 
+    }
     catch (const std::exception& ex) {
         theLog.log("Failed to configure consumer %s : %s",kName.c_str(), ex.what());
         continue;
-    } 
+    }
     catch (...) {
         theLog.log("Failed to configure consumer %s",kName.c_str());
         continue;
     }
-        
+
     if (newConsumer!=nullptr) {
       dataConsumers.push_back(std::move(newConsumer));
     }
-    
+
   }
 
 
   theLog.log("Starting aggregator");
   agg.start();
-  
+
   theLog.log("Starting readout equipments");
   for (auto && readoutDevice : readoutDevices) {
       readoutDevice->start();
@@ -262,7 +262,7 @@ int main(int argc, char* argv[])
   }
   int isRunning=1;
   AliceO2::Common::Timer t0;
-  t0.reset(); 
+  t0.reset();
 
 
 /*
@@ -293,22 +293,22 @@ int main(int argc, char* argv[])
     }
 
     DataSetReference bc=nullptr;
-    agg_output.pop(bc);    
-    
+    agg_output.pop(bc);
+
 
     if (bc!=nullptr) {
       // push to data sampling, if configured
 #ifdef WITH_DATASAMPLING
       if (dataSampling && dataSamplingInjector) {
-        dataSamplingInjector->injectSamples(*bc);
+        dataSamplingInjector->injectSamples(bc);
       }
 #endif
 
-    
+
       unsigned int nb=(int)bc->size();
       //printf("received 1 vector %p made of %u blocks\n",bc,nb);
-      
-      
+
+
       for (unsigned int i=0;i<nb;i++) {
 /*
         printf("pop %d\n",i);
@@ -320,8 +320,8 @@ int main(int argc, char* argv[])
         nBlocks++;
         nBytes+=b->getData()->header.dataSize;
 */
-//        printf("%p : %d use count\n",(void *)b.get(), (int)b.use_count());        
-        
+//        printf("%p : %d use count\n",(void *)b.get(), (int)b.use_count());
+
 //        printf("pushed\n");
 
 	//printf("consuming %p\n",b.get());
@@ -330,7 +330,7 @@ int main(int argc, char* argv[])
         }
 
        // todo: temporary - for the time being, delete done in FMQ. Replace by shared_ptr
-//       delete b;    
+//       delete b;
 //       b.reset();
        //printf("%p : %d use count\n",(void *)b.get(), b.use_count());
         //printf("pop %p\n",(void *)b);
@@ -349,21 +349,21 @@ int main(int argc, char* argv[])
 
 
 //  t1=t0.getTime();
-  
+
 //  theLog.log("Wait a bit");
 //  sleep(1);
   theLog.log("Stop consumers");
-  
+
   // close consumers before closing readout equipments (owner of data blocks)
   dataConsumers.clear();
 
   agg_output.clear();
-  
+
   // todo: check nothing in the input pipeline
   // flush & stop equipments
   for (auto && readoutDevice : readoutDevices) {
       // ensure nothing left in output FIFO to allow releasing memory
-//      printf("readout: in=%llu  out=%llu\n",readoutDevice->dataOut->getNumberIn(),readoutDevice->dataOut->getNumberOut());      
+//      printf("readout: in=%llu  out=%llu\n",readoutDevice->dataOut->getNumberIn(),readoutDevice->dataOut->getNumberOut());
       readoutDevice->dataOut->clear();
   }
 
