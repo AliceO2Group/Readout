@@ -177,7 +177,7 @@ int main(int argc, char* argv[])
 #ifdef WITH_DATASAMPLING
   int dataSampling=0;
   dataSampling=cfg.getValue<int>("sampling.enabled");
-  AliceO2::DataSampling::InjectorInterface *dataSamplingInjector = nullptr;
+  std::unique_ptr<AliceO2::DataSampling::InjectorInterface> dataSamplingInjector;
   if (dataSampling) {
     theLog.log("Data sampling enabled");
     // todo: create(...) should not need an argument and should get its configuration by itself.
@@ -299,7 +299,7 @@ int main(int argc, char* argv[])
     if (bc!=nullptr) {
       // push to data sampling, if configured
 #ifdef WITH_DATASAMPLING
-      if (dataSampling && dataSamplingInjector) {
+      if (dataSampling) {
         dataSamplingInjector->injectSamples(bc);
       }
 #endif
@@ -375,12 +375,6 @@ int main(int argc, char* argv[])
     readoutDevices[i]=nullptr;  // effectively deletes the device
   }
   readoutDevices.clear(); // to do it all in one go
-
-#ifdef WITH_DATASAMPLING
-  if(dataSamplingInjector) {
-    delete dataSamplingInjector;
-  }
-#endif
 
 /*
   theLog.log("%llu blocks in %.3lf seconds => %.1lf block/s",nBlocks,t1,nBlocks/t1);
