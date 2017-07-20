@@ -97,6 +97,7 @@ class ConsumerStats: public Consumer {
     if (counterBytesTotal>0) {
     theLog.log("Stats: %llu blocks, %.2f MB, %.2f%% header overhead",(unsigned long long)counterBlocks,counterBytesTotal/(1024*1024.0),counterBytesHeader*100.0/counterBytesTotal);
     theLog.log("Stats: average block size=%llu bytes",(unsigned long long)counterBytesTotal/counterBlocks);
+    theLog.log("Stats: average block rate = %s",NumberOfBytesToString(counterBlocks/elapsedTime,"Hz").c_str());
     theLog.log("Stats: average throughput = %s",NumberOfBytesToString(counterBytesTotal/elapsedTime,"B/s").c_str());
     publishStats();
     } else {
