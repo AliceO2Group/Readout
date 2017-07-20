@@ -16,7 +16,7 @@ using namespace AliceO2::Monitoring;
 
 
 // macro to get number of element in static array
-#define STATIC_ARRAY_ELEMENT_COUNT(x) sizeof(x)/sizeof(x[0]) 
+#define STATIC_ARRAY_ELEMENT_COUNT(x) sizeof(x)/sizeof(x[0])
 
 // function to convert a value in bytes to a prefixed number 3+3 digits
 // suffix is the "base unit" to add after calculated prefix, e.g. Byte-> kBytes
@@ -36,7 +36,7 @@ std::string NumberOfBytesToString(double value,const char*suffix) {
     suffix="";
   }
   snprintf(bufStr,sizeof(bufStr)-1,"%.03lf %s%s",scaledValue,prefixes[prefixIndex],suffix);
-  return std::string(bufStr);  
+  return std::string(bufStr);
 }
 
 
@@ -58,7 +58,7 @@ class ConsumerStats: public Consumer {
     if (monitoringEnabled) {
       // todo: support for long long types
       // https://alice.its.cern.ch/jira/browse/FLPPROT-69
- 
+
       monitoringCollector->send(counterBlocks, "readout.Blocks");
       monitoringCollector->send(counterBytesTotal, "readout.BytesTotal");
       monitoringCollector->send(counterBytesDiff, "readout.BytesInterval");
@@ -67,11 +67,11 @@ class ConsumerStats: public Consumer {
       counterBytesDiff=0;
     }
   }
-  
-  
-  public: 
+
+
+  public:
   ConsumerStats(ConfigFile &cfg, std::string cfgEntryPoint):Consumer(cfg,cfgEntryPoint) {
-    
+
     cfg.getOptionalValue(cfgEntryPoint + ".monitoringEnabled", monitoringEnabled, 0);
     if (monitoringEnabled) {
       cfg.getOptionalValue(cfgEntryPoint + ".monitoringUpdatePeriod", monitoringUpdatePeriod, 10);
@@ -83,7 +83,7 @@ class ConsumerStats: public Consumer {
 
       t.reset(monitoringUpdatePeriod*1000000);
     }
-    
+
     counterBytesTotal=0;
     counterBytesHeader=0;
     counterBlocks=0;
@@ -113,13 +113,13 @@ class ConsumerStats: public Consumer {
 
 //    printf("Stats: got %p (%d)\n",b,b.use_count());
     if (monitoringEnabled) {
-      // todo: do not check time every push() if it goes fast...      
+      // todo: do not check time every push() if it goes fast...
       if (t.isTimeout()) {
         publishStats();
         t.increment();
       }
     }
-    
+
     return 0;
   }
 };
