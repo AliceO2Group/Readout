@@ -264,8 +264,10 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : 
     params.setGeneratorPattern(AliceO2::roc::GeneratorPattern::Incremental);
     params.setBufferParameters(AliceO2::roc::buffer_parameters::Memory {
       (void *)mReadoutMemoryHandler->baseAddress, mReadoutMemoryHandler->memorySize
-    }); // this registers the memory block for DMA
-
+    }); // this registers the memory block for DMA    
+    
+    params.setForcedUnlockEnabled(true);  // this clears lock if any remained
+    
     channel = AliceO2::roc::ChannelFactory().getDmaChannel(params);  
     channel->resetChannel(AliceO2::roc::ResetLevel::Internal);
     channel->startDma();
