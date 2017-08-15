@@ -3,6 +3,7 @@ find_package(Git QUIET)
 find_package(FairRoot)
 find_package(Monitoring REQUIRED)
 find_package(Configuration REQUIRED)
+find_package(Common REQUIRED)
 
 if(FAIRROOT_FOUND)
     # this should go away when fairrot provides a proper Find script or proper config scripts
@@ -24,11 +25,12 @@ o2_define_bucket(
   InfoLogger
   pthread
   DataFormat
-  Common
   ReadoutCard
   DataSampling
   ${Configuration_LIBRARIES}
   ${Monitoring_LIBRARIES}
+  ${Common_LIBRARIES}
+
   SYSTEMINCLUDE_DIRECTORIES
   ${Boost_INCLUDE_DIRS}
   ${Monitoring_INCLUDE_DIRS}
@@ -49,7 +51,6 @@ o2_define_bucket(
   ${ROOT_LIBRARIES}
 
   SYSTEMINCLUDE_DIRECTORIES
-  ${Boost_INCLUDE_DIRS}
   ${FAIRROOT_INCLUDE_DIR}
   ${FAIRROOT_INCLUDE_DIR}/fairmq
 )

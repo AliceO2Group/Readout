@@ -69,7 +69,6 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -pedantic -Wextra -fPIC")
 
 link_o2_subproject(InfoLogger)
 link_o2_subproject(DataFormat)
-link_o2_subproject(Common)
 link_o2_subproject(ReadoutCard)
 link_o2_subproject(DataSampling)
 
@@ -97,24 +96,25 @@ include_directories(
         ${FAIRROOT_INCLUDE_DIR}
         ${FAIRROOT_INCLUDE_DIR}/fairmq
         ${ZeroMQ_INCLUDE_DIR}
+        ${Common_INCLUDE_DIRS}
 )
 
 add_library(
   objReadoutEquipment OBJECT
   src/ReadoutEquipment.cxx
   src/ReadoutEquipmentDummy.cxx
-  src/ReadoutEquipmentRORC.cxx  
+  src/ReadoutEquipmentRORC.cxx
 )
 add_library(
   objReadoutAggregator OBJECT
-  src/DataBlockAggregator.cxx  
+  src/DataBlockAggregator.cxx
 )
 add_library(
   objReadoutConsumers OBJECT
-  src/ConsumerStats.cxx  
-  src/ConsumerFileRecorder.cxx  
-  src/ConsumerDataChecker.cxx  
-  src/ConsumerDataSampling.cxx  
+  src/ConsumerStats.cxx
+  src/ConsumerFileRecorder.cxx
+  src/ConsumerDataChecker.cxx
+  src/ConsumerDataSampling.cxx
   src/ConsumerFMQ.cxx
 )
 
@@ -133,7 +133,6 @@ add_subdirectory(doc)
 O2_GENERATE_EXECUTABLE(
         EXE_NAME readout.exe
         SOURCES src/mainReadout.cxx $<TARGET_OBJECTS:objReadoutEquipment> $<TARGET_OBJECTS:objReadoutAggregator> $<TARGET_OBJECTS:objReadoutConsumers>
-#        MODULE_LIBRARY_NAME ${LIBRARY_NAME}
         BUCKET_NAME ${BUCKET_NAME}
 )
 
@@ -142,8 +141,6 @@ O2_GENERATE_EXECUTABLE(
         SOURCES src/receiverFMQ.cxx
         BUCKET_NAME ${BUCKET_NAME}
 )
-
-#add_executable(readout2 src/mainReadout.cxx)
 
 
 # TODO RECONSIDER THE THINGS BELOW AFTER EXTRACTION TO ITS OWN REPO
