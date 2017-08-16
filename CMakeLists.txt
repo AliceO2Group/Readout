@@ -67,9 +67,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -pedantic -Wextra -fPIC")
 # Module, library and executable definition
 ####################################
 
-link_o2_subproject(InfoLogger)
 link_o2_subproject(DataFormat)
-link_o2_subproject(ReadoutCard)
 link_o2_subproject(DataSampling)
 
 set(MODULE_NAME "Readout")
@@ -97,6 +95,8 @@ include_directories(
         ${FAIRROOT_INCLUDE_DIR}/fairmq
         ${ZeroMQ_INCLUDE_DIR}
         ${Common_INCLUDE_DIRS}
+        ${InfoLogger_INCLUDE_DIRS}
+        ${ReadoutCard_INCLUDE_DIRS}
 )
 
 add_library(
