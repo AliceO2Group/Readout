@@ -25,7 +25,6 @@ o2_define_bucket(
 
         DEPENDENCIES
         pthread
-        DataFormat
         DataSampling
         ${Configuration_LIBRARIES}
         ${Monitoring_LIBRARIES}

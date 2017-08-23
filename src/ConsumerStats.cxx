@@ -1,8 +1,8 @@
 #include "Consumer.h"
 
-#include <DataFormat/DataBlock.h>
-#include <DataFormat/DataBlockContainer.h>
-#include <DataFormat/DataSet.h>
+#include <Common/DataBlock.h>
+#include <Common/DataBlockContainer.h>
+#include <Common/DataSet.h>
 
 #include <memory>
 

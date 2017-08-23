@@ -5,10 +5,10 @@
 
 #include <InfoLogger/InfoLogger.hxx>
 #include <Common/Configuration.h>
-#include <DataFormat/DataBlock.h>
-#include <DataFormat/DataBlockContainer.h>
-#include <DataFormat/MemPool.h>
-#include <DataFormat/DataSet.h>
+#include <Common/DataBlock.h>
+#include <Common/DataBlockContainer.h>
+#include <Common/MemPool.h>
+#include <Common/DataSet.h>
 
 #include <atomic>
 #ifndef __APPLE__

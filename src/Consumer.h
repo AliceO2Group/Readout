@@ -1,9 +1,9 @@
 #include <Common/Configuration.h>
 
 
-#include <DataFormat/DataBlock.h>
-#include <DataFormat/DataBlockContainer.h>
-#include <DataFormat/DataSet.h>
+#include <Common/DataBlock.h>
+#include <Common/DataBlockContainer.h>
+#include <Common/DataSet.h>
 
 #include <memory>
 
@@ -19,7 +19,7 @@ class Consumer {
   virtual ~Consumer() {
   };
   virtual int pushData(DataBlockContainerReference &b)=0;
-  
+
   protected:
     InfoLogger theLog;
 };

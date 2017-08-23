@@ -3,9 +3,9 @@
 #include <Common/Thread.h>
 #include <Common/Timer.h>
 
-#include <DataFormat/DataBlock.h>
-#include <DataFormat/DataBlockContainer.h>
-#include <DataFormat/DataSet.h>
+#include <Common/DataBlock.h>
+#include <Common/DataBlockContainer.h>
+#include <Common/DataSet.h>
 
 #include <memory>
 
@@ -16,24 +16,24 @@ class ReadoutEquipment {
   public:
   ReadoutEquipment(ConfigFile &cfg, std::string cfgEntryPoint);
   virtual ~ReadoutEquipment();
-  
+
   DataBlockContainerReference getBlock();
 
   void start();
   void stop();
   const std::string & getName();
 
-//  protected: 
+//  protected:
 // todo: give direct access to output FIFO?
   std::shared_ptr<AliceO2::Common::Fifo<DataBlockContainerReference>> dataOut;
 
   private:
-  std::unique_ptr<Thread> readoutThread;  
+  std::unique_ptr<Thread> readoutThread;
   static Thread::CallbackResult  threadCallback(void *arg);
   virtual Thread::CallbackResult  populateFifoOut()=0;  // function called iteratively in dedicated thread to populate FIFO
   AliceO2::Common::Timer clk;
   AliceO2::Common::Timer clk0;
-  
+
   unsigned long long nBlocksOut;
   double readoutRate;
   protected:
