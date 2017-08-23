@@ -1,4 +1,4 @@
-find_package(Boost COMPONENTS unit_test_framework program_options REQUIRED)
+find_package(Boost COMPONENTS unit_test_framework program_options system REQUIRED)
 find_package(Git QUIET)
 find_package(FairRoot)
 find_package(Monitoring REQUIRED)
@@ -6,6 +6,7 @@ find_package(Configuration REQUIRED)
 find_package(Common REQUIRED)
 find_package(InfoLogger REQUIRED)
 find_package(ReadoutCard REQUIRED)
+find_package(DataSampling REQUIRED)
 
 if (FAIRROOT_FOUND)
     # this should go away when fairrot provides a proper Find script or proper config scripts
@@ -25,18 +26,23 @@ o2_define_bucket(
 
         DEPENDENCIES
         pthread
-        DataSampling
+        ${Boost_LOG_LIBRARY}
+        ${Boost_THREAD_LIBRARY}
+        ${Boost_SYSTEM_LIBRARY}
+        ${Boost_PROGRAM_OPTIONS_LIBRARY}
         ${Configuration_LIBRARIES}
         ${Monitoring_LIBRARIES}
         ${Common_LIBRARIES}
         ${InfoLogger_LIBRARIES}
         ${ReadoutCard_LIBRARIES}
+        ${DataSampling_LIBRARIES}
 
         SYSTEMINCLUDE_DIRECTORIES
         ${Boost_INCLUDE_DIRS}
         ${Monitoring_INCLUDE_DIRS}
         ${InfoLogger_INCLUDE_DIRS}
         ${ReadoutCard_INCLUDE_DIRS}
+        ${DataSampling_INCLUDE_DIRS}
 )
 
 
@@ -46,10 +52,6 @@ o2_define_bucket(
 
         DEPENDENCIES
         o2_readout_bucket
-        ${Boost_PROGRAM_OPTIONS_LIBRARY}
-        ${Boost_LOG_LIBRARY}
-        ${Boost_THREAD_LIBRARY}
-        ${Boost_SYSTEM_LIBRARY}
         ${FAIRROOT_LIBRARIES}
         ${ROOT_LIBRARIES}
 

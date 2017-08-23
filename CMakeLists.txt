@@ -5,10 +5,10 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 3.5.2 FATAL_ERROR)
 
 find_package(ZeroMQ REQUIRED)
-if(NOT ZeroMQ_INCLUDE_DIR)
+if (NOT ZeroMQ_INCLUDE_DIR)
     set(ZeroMQ_INCLUDE_DIR ${ZEROMQ_INCLUDE_DIR})
     set(ZeroMQ_LIBRARIES ${ZEROMQ_LIBRARIES})
-endif()
+endif ()
 
 
 ### CMP0025   Compiler id for Apple Clang is now AppleClang.
@@ -34,12 +34,12 @@ include(ReadoutDependencies)
 include(O2)
 
 # Set the default build type to "RelWithDebInfo"
-if(NOT CMAKE_BUILD_TYPE)
+if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "RelWithDebInfo"
             CACHE
             STRING "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel Coverage."
             FORCE)
-endif(NOT CMAKE_BUILD_TYPE)
+endif (NOT CMAKE_BUILD_TYPE)
 
 # Set the version number of your project here (format is MAJOR.MINOR.PATCHLEVEL - e.g. 1.0.0)
 set(VERSION_MAJOR "0")
@@ -67,24 +67,22 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -pedantic -Wextra -fPIC")
 # Module, library and executable definition
 ####################################
 
-link_o2_subproject(DataSampling)
-
 set(MODULE_NAME "Readout")
 
 O2_SETUP(NAME ${MODULE_NAME})
 
 set(SRCS
-    src/ConsumerStats.cxx
-    src/ConsumerFileRecorder.cxx
-    src/ConsumerDataChecker.cxx
-    src/ConsumerDataSampling.cxx
-    src/ConsumerFMQ.cxx
-    src/ReadoutEquipment.cxx
-    src/ReadoutEquipmentDummy.cxx
-    src/ReadoutEquipmentRORC.cxx
-    src/DataBlockAggregator.cxx
-    src/mainReadout.cxx
-)
+        src/ConsumerStats.cxx
+        src/ConsumerFileRecorder.cxx
+        src/ConsumerDataChecker.cxx
+        src/ConsumerDataSampling.cxx
+        #    src/ConsumerFMQ.cxx
+        src/ReadoutEquipment.cxx
+        src/ReadoutEquipmentDummy.cxx
+        src/ReadoutEquipmentRORC.cxx
+        src/DataBlockAggregator.cxx
+        src/mainReadout.cxx
+        )
 
 include_directories(
         ${CMAKE_CURRENT_SOURCE_DIR}/../RORC/include
@@ -99,31 +97,37 @@ include_directories(
 )
 
 add_library(
-  objReadoutEquipment OBJECT
-  src/ReadoutEquipment.cxx
-  src/ReadoutEquipmentDummy.cxx
-  src/ReadoutEquipmentRORC.cxx
+        objReadoutEquipment OBJECT
+        src/ReadoutEquipment.cxx
+        src/ReadoutEquipmentDummy.cxx
+        src/ReadoutEquipmentRORC.cxx
 )
 add_library(
-  objReadoutAggregator OBJECT
-  src/DataBlockAggregator.cxx
+        objReadoutAggregator OBJECT
+        src/DataBlockAggregator.cxx
 )
+set(CONSUMERS_SRCS
+        src/ConsumerStats.cxx
+        src/ConsumerFileRecorder.cxx
+        src/ConsumerDataChecker.cxx
+        src/ConsumerDataSampling.cxx
+        )
+if (FAIRROOT_FOUND)
+    list(APPEND CONSUMERS_SRCS src/ConsumerFMQ.cxx)
+endif ()
 add_library(
-  objReadoutConsumers OBJECT
-  src/ConsumerStats.cxx
-  src/ConsumerFileRecorder.cxx
-  src/ConsumerDataChecker.cxx
-  src/ConsumerDataSampling.cxx
-  src/ConsumerFMQ.cxx
+        objReadoutConsumers OBJECT
+        ${CONSUMERS_SRCS}
 )
 
 
 set(LIBRARY_NAME ${MODULE_NAME})
 set(BUCKET_NAME o2_readout_bucket)
 
-if (FAIRROOT_FOUND AND ROOT_FOUND)
-  set(BUCKET_NAME o2_readout_with_fair)
-endif()
+if (FAIRROOT_FOUND)
+    list(APPEND SRCS src/ConsumerFMQ.cxx)
+    set(BUCKET_NAME o2_readout_with_fair)
+endif ()
 
 O2_GENERATE_LIBRARY()
 
@@ -145,15 +149,15 @@ O2_GENERATE_EXECUTABLE(
 # TODO RECONSIDER THE THINGS BELOW AFTER EXTRACTION TO ITS OWN REPO
 # Make sure we tell the topdir CMakeLists that we exist (if build from topdir)
 get_directory_property(hasParent PARENT_DIRECTORY)
-if(hasParent)
+if (hasParent)
     set(PROJECT_${PROJECT_NAME} true PARENT_SCOPE)
-endif()
+endif ()
 include(PackageConfigurator)
 
 
 # Install some extra files
 install(
-  FILES readout.cfg
-  DESTINATION ${CMAKE_INSTALL_PREFIX}/etc
-  PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
+        FILES readout.cfg
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/etc
+        PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
 
