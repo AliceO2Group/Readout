@@ -4,13 +4,6 @@
 
 CMAKE_MINIMUM_REQUIRED(VERSION 3.5.2 FATAL_ERROR)
 
-find_package(ZeroMQ REQUIRED)
-if (NOT ZeroMQ_INCLUDE_DIR)
-    set(ZeroMQ_INCLUDE_DIR ${ZEROMQ_INCLUDE_DIR})
-    set(ZeroMQ_LIBRARIES ${ZEROMQ_LIBRARIES})
-endif ()
-
-
 ### CMP0025   Compiler id for Apple Clang is now AppleClang.
 ### CMP0042   MACOSX_RPATH is enabled by default.
 
@@ -31,7 +24,6 @@ project(Readout)
 # Load some basic macros which are needed later on
 include(O2Utils)
 include(ReadoutDependencies)
-include(O2)
 
 # Set the default build type to "RelWithDebInfo"
 if (NOT CMAKE_BUILD_TYPE)
@@ -144,15 +136,6 @@ O2_GENERATE_EXECUTABLE(
         SOURCES src/receiverFMQ.cxx
         BUCKET_NAME ${BUCKET_NAME}
 )
-
-
-# TODO RECONSIDER THE THINGS BELOW AFTER EXTRACTION TO ITS OWN REPO
-# Make sure we tell the topdir CMakeLists that we exist (if build from topdir)
-get_directory_property(hasParent PARENT_DIRECTORY)
-if (hasParent)
-    set(PROJECT_${PROJECT_NAME} true PARENT_SCOPE)
-endif ()
-include(PackageConfigurator)
 
 
 # Install some extra files
