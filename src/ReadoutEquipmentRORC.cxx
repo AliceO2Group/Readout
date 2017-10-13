@@ -79,7 +79,7 @@ std::string NumberOfBytesToString(double value,const char*suffix) {
 class ReadoutMemoryHandler {
   public:
   size_t memorySize;  // total size of buffer
-  int pageSize;       // size of each superpage in buffer (not the one of getpagesize())
+  size_t pageSize;       // size of each superpage in buffer (not the one of getpagesize())
   uint8_t * baseAddress; // base address of buffer
 
   std::unique_ptr<AliceO2::Common::Fifo<long>> pagesAvailable;  // a buffer to keep track of individual pages. storing offset (with respect to base address) of pages available
@@ -94,20 +94,20 @@ class ReadoutMemoryHandler {
     pagesAvailable=nullptr;
     mMemoryMappedFile=nullptr;
     
-    std::string memoryMapFilePath="/var/lib/hugetlbfs/global/pagesize-2MB/" + uid;
-    //std::string memoryMapFilePath="/var/lib/hugetlbfs/global/pagesize-2MB/test";
+    // path to our memory segment
+    std::string memoryMapBasePath="/var/lib/hugetlbfs/global/pagesize-1GB/";
+    std::string memoryMapFilePath=memoryMapBasePath + uid;
       
     // must be multiple of hugepage size
-    const int hugePageSize=2*1024*1024;
+    const int hugePageSize=1024*1024*1024;
     int r=vMemorySize % hugePageSize;
     if (r) {
       vMemorySize+=hugePageSize-r;
     }
 
-    theLog.log("Creating shared memory block %s @ %s",ReadoutUtils::NumberOfBytesToString(vMemorySize,"Bytes").c_str(),memoryMapFilePath.c_str());
+    theLog.log("Creating shared memory block - %s @ %s",ReadoutUtils::NumberOfBytesToString(vMemorySize,"Bytes").c_str(),memoryMapFilePath.c_str());
     
     try {
-      //mMemoryMappedFile=std::make_unique<AliceO2::roc::MemoryMappedFile>(memoryMapFilePath,100*(long)1024*1024,false);
       mMemoryMappedFile=std::make_unique<AliceO2::roc::MemoryMappedFile>(memoryMapFilePath,vMemorySize,false);
     }
     catch (const AliceO2::roc::MemoryMapException& e) {
@@ -215,16 +215,19 @@ class ReadoutEquipmentRORC : public ReadoutEquipment {
     ~ReadoutEquipmentRORC();
   
   private:
-    Thread::CallbackResult  populateFifoOut();
-    DataBlockId currentId;
-    AliceO2::roc::ChannelFactory::DmaChannelSharedPtr channel;
-    std::shared_ptr<ReadoutMemoryHandler> mReadoutMemoryHandler;
+    Thread::CallbackResult  populateFifoOut(); // the data readout loop function
     
-    
-    int pageCount=0;
-    int isInitialized=0;
+    AliceO2::roc::ChannelFactory::DmaChannelSharedPtr channel;    // channel to ROC device
+    std::shared_ptr<ReadoutMemoryHandler> mReadoutMemoryHandler;  // object to get memory from
 
-    unsigned long long loopCount;
+    DataBlockId currentId=0;    // current data id, kept for auto-increment
+       
+    int isInitialized=0;        // flag set to 1 when class has been successfully initialized
+
+    int pageCount=0;                // number of pages read
+    unsigned long long loopCount=0; // number of populateFifo loop counts 
+
+    int RocFifoSize=0;  // detected size of ROC fifo (when filling it for the first time)
 };
 
 
@@ -235,55 +238,91 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : 
     
   try {
 
-    std::string serialNumber=cfg.getValue<std::string>(name + ".serial");
-    int channelNumber=cfg.getValue<int>(name + ".channel");
-  
-    AliceO2::roc::Parameters::CardIdType cardId;
-    if (serialNumber.find(':')!=std::string::npos) {
-    	// this looks like a PCI address...
-	cardId=AliceO2::roc::PciAddress(serialNumber);
-    } else {
-    	cardId=std::stoi(serialNumber);
-    }
-  
+    // get parameters from configuration
+    // config keys are the same as the corresponding set functions in AliceO2::roc::Parameters
+    
+    std::string cardId=cfg.getValue<std::string>(name + ".cardId");
+    
+    int cfgChannelNumber=0;
+    cfg.getOptionalValue<int>(name + ".channelNumber", cfgChannelNumber);
+
+    int cfgGeneratorEnabled=0;
+    cfg.getOptionalValue<int>(name + ".generatorEnabled", cfgGeneratorEnabled);
+    
+    int cfgGeneratorDataSize=8192;
+    cfg.getOptionalValue<int>(name + ".generatorDataSize", cfgGeneratorDataSize);
+    
+    std::string cfgGeneratorLoopback="NONE";
+    cfg.getOptionalValue<std::string>(name + ".generatorLoopback", cfgGeneratorLoopback);
+
+    std::string cfgGeneratorPattern="INCREMENTAL";
+    cfg.getOptionalValue<std::string>(name + ".generatorPattern", cfgGeneratorPattern);
+    
+    int cfgGeneratorRandomSizeEnabled=0;
+    cfg.getOptionalValue<int>(name + ".generatorRandomSizeEnabled", cfgGeneratorRandomSizeEnabled);
+    
+    std::string cfgLinkMask="0-31";
+    cfg.getOptionalValue<std::string>(name + ".linkMask", cfgLinkMask);
+    
+    std::string cfgReadoutMode="CONTINUOUS";
+    cfg.getOptionalValue<std::string>(name + ".readoutMode", cfgReadoutMode);
+    
+    std::string cfgResetLevel="INTERNAL";
+    cfg.getOptionalValue<std::string>(name + ".resetLevel", cfgResetLevel);
+        
+    // get readout memory buffer parameters
     std::string sMemorySize=cfg.getValue<std::string>(name + ".memoryBufferSize");
-    std::string sPageSize=cfg.getValue<std::string>(name + ".memoryPageSize"); 
-     
+    std::string sPageSize=cfg.getValue<std::string>(name + ".memoryPageSize");
     long long mMemorySize=ReadoutUtils::getNumberOfBytesFromString(sMemorySize.c_str());
     long long mPageSize=ReadoutUtils::getNumberOfBytesFromString(sPageSize.c_str());
 
-    std::string uid="readout." + serialNumber + "." + std::to_string(channelNumber);
-    //sleep((channelNumber+1)*2);  // trick to avoid all channels open at once - fail to acquire lock
+    // unique identifier based on card ID
+    std::string uid="readout." + cardId + "." + std::to_string(cfgChannelNumber);
+    //sleep((cfgChannelNumber+1)*2);  // trick to avoid all channels open at once - fail to acquire lock
     
+    // create memory pool
     mReadoutMemoryHandler=std::make_shared<ReadoutMemoryHandler>((long)mMemorySize,(int)mPageSize,uid);
 
-    theLog.log("Opening RORC %s:%d",serialNumber.c_str(),channelNumber);    
+    // open and configure ROC
+    theLog.log("Opening ROC %s:%d",cardId.c_str(),cfgChannelNumber);
     AliceO2::roc::Parameters params;
-    params.setCardId(cardId);
-    params.setChannelNumber(channelNumber);
-    params.setGeneratorPattern(AliceO2::roc::GeneratorPattern::Incremental);
+    params.setCardId(AliceO2::roc::Parameters::cardIdFromString(cardId));   
+    params.setChannelNumber(cfgChannelNumber);
+
+    // setDmaPageSize() : seems deprecated, let's not configure it
+
+    // generator related parameters
+    params.setGeneratorEnabled(cfgGeneratorEnabled);
+    if (cfgGeneratorEnabled) {
+      params.setGeneratorDataSize(cfgGeneratorDataSize);
+      params.setGeneratorLoopback(AliceO2::roc::LoopbackMode::fromString(cfgGeneratorLoopback));
+      params.setGeneratorPattern(AliceO2::roc::GeneratorPattern::fromString(cfgGeneratorPattern));
+      params.setGeneratorRandomSizeEnabled(cfgGeneratorRandomSizeEnabled);
+    }
+    
+    // card readout mode
+    params.setReadoutMode(AliceO2::roc::ReadoutMode::fromString(cfgReadoutMode));
+
+    // register the memory block for DMA    
     params.setBufferParameters(AliceO2::roc::buffer_parameters::Memory {
       (void *)mReadoutMemoryHandler->baseAddress, mReadoutMemoryHandler->memorySize
-    }); // this registers the memory block for DMA    
+    });
     
-    params.setForcedUnlockEnabled(true);  // this clears lock if any remained
-    
+    // clear locks if necessary
+    params.setForcedUnlockEnabled(true);
+
+    // define link mask
+    params.setLinkMask(AliceO2::roc::Parameters::linkMaskFromString(cfgLinkMask));
+
+    // open channel with above parameters
     channel = AliceO2::roc::ChannelFactory().getDmaChannel(params);  
-    channel->resetChannel(AliceO2::roc::ResetLevel::Internal);
-    channel->startDma();
-        
-    AliceO2::roc::ChannelFactory::BarSharedPtr bar=AliceO2::roc::ChannelFactory().getBar(params);
-    // set random size: address byte 0x420, bit 16
-    int wordIndex=0x420/4;
-    uint32_t regValue=bar->readRegister(wordIndex);
-    //printf("bar read %X\n",regValue);
-    regValue|=0x10000;
-    //printf("set random size bit: bar write %X\n",regValue);
-    bar->writeRegister(wordIndex,regValue);
-       
-    regValue=bar->readRegister(wordIndex);
-    //printf("bar read %X\n",regValue);
-    
+    channel->resetChannel(AliceO2::roc::ResetLevel::fromString(cfgResetLevel));
+
+    // todo: log parameters ?
+
+    // start DMA    
+    theLog.log("Starting DMA for ROC %s:%d",cardId.c_str(),cfgChannelNumber);
+    channel->startDma();    
   }
   catch (const std::exception& e) {
     std::cout << "Error: " << e.what() << '\n' << boost::diagnostic_information(e) << "\n";
@@ -315,13 +354,18 @@ Thread::CallbackResult  ReadoutEquipmentRORC::populateFifoOut() {
     sleep(s);
   }
 */
+  
+  // get FIFO depth on first iteration (it should be empty)
+  if (loopCount==0) {
+    RocFifoSize=channel->getTransferQueueAvailable();
+    theLog.log("ROC input queue size = %d pages",RocFifoSize);
+    if (RocFifoSize==0) {RocFifoSize=1;}
+  }
   loopCount++;
     
-  // this is to be called periodically for driver internal business
-  channel->fillSuperpages();
-  
   // give free pages to the driver
-  while (channel->getTransferQueueAvailable() != 0) {   
+  int nPushed=0;  // number of free pages pushed this iteration 
+  while (channel->getTransferQueueAvailable() != 0) {
     long offset=0;
     if (mReadoutMemoryHandler->pagesAvailable->pop(offset)==0) {
       AliceO2::roc::Superpage superpage;
@@ -330,14 +374,26 @@ Thread::CallbackResult  ReadoutEquipmentRORC::populateFifoOut() {
       superpage.userData=NULL; // &mReadoutMemoryHandler; // bad - looses shared_ptr
       channel->pushSuperpage(superpage);
       isActive=1;
+      nPushed++;
     } else {
-//      printf("starving pages\n");
+      //printf("starving pages\n");
+      // todo: log backpressure
+      isActive=0;
       break;
     }
   }
-    
+
+  // this is to be called periodically for driver internal business
+  channel->fillSuperpages();
+  
   // check for completed pages
-  while ((!dataOut->isFull()) && (channel->getReadyQueueSize()>0)) {
+  int nRead=0; // number of pages read in this iteration
+  while ((channel->getReadyQueueSize()>0)) {
+    if (dataOut->isFull()) {
+      //theLog.log("FIFOout full");
+      isActive=0;
+      break;
+    }
     auto superpage = channel->getSuperpage(); // this is the first superpage in FIFO ... let's check its state
     if (superpage.isFilled()) {
       std::shared_ptr<DataBlockContainerFromRORC>d=nullptr;
@@ -345,12 +401,12 @@ Thread::CallbackResult  ReadoutEquipmentRORC::populateFifoOut() {
         d=std::make_shared<DataBlockContainerFromRORC>(channel, superpage, mReadoutMemoryHandler);
       }
       catch (...) {
+        theLog.log("make_shared<DataBlock> failed");
         break;
       }
       channel->popSuperpage();
       dataOut->push(d); 
-      //d=nullptr;
-      
+      nRead++;
       pageCount++;
       //printf("read page %ld - %d\n",superpage.getOffset(),d.use_count());
       isActive=1;
@@ -358,9 +414,12 @@ Thread::CallbackResult  ReadoutEquipmentRORC::populateFifoOut() {
       break;
     }
   }
-  //return Thread::CallbackResult::Idle;
-  //return Thread::CallbackResult::Ok;
-  
+
+  // if both FIFOs are mostly empty we can wait a bit before next iteration 
+  if ((nPushed<RocFifoSize/4)&&(nRead<RocFifoSize/4)) { 
+    isActive=0;
+  }
+ 
   if (!isActive) {
     return Thread::CallbackResult::Idle;
   }
