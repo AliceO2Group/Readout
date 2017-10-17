@@ -74,6 +74,7 @@ set(SRCS
         src/ReadoutEquipmentRORC.cxx
         src/DataBlockAggregator.cxx
         src/mainReadout.cxx
+        src/ReadoutUtils.cxx
         )
 
 include_directories(
@@ -97,6 +98,10 @@ add_library(
 add_library(
         objReadoutAggregator OBJECT
         src/DataBlockAggregator.cxx
+)
+add_library(
+        objReadoutUtils OBJECT
+        src/ReadoutUtils.cxx
 )
 set(CONSUMERS_SRCS
         src/ConsumerStats.cxx
@@ -127,7 +132,7 @@ add_subdirectory(doc)
 
 O2_GENERATE_EXECUTABLE(
         EXE_NAME readout.exe
-        SOURCES src/mainReadout.cxx $<TARGET_OBJECTS:objReadoutEquipment> $<TARGET_OBJECTS:objReadoutAggregator> $<TARGET_OBJECTS:objReadoutConsumers>
+        SOURCES src/mainReadout.cxx $<TARGET_OBJECTS:objReadoutEquipment> $<TARGET_OBJECTS:objReadoutAggregator> $<TARGET_OBJECTS:objReadoutConsumers> $<TARGET_OBJECTS:objReadoutUtils>
         BUCKET_NAME ${BUCKET_NAME}
 )
 
