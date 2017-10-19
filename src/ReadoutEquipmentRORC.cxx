@@ -9,7 +9,7 @@
 #include <string>
 
 #include "ReadoutUtils.h"
-
+#include "RdhUtils.h"
 
 #include <InfoLogger/InfoLogger.hxx>
 using namespace AliceO2::InfoLogger;
@@ -171,6 +171,12 @@ class ReadoutEquipmentRORC : public ReadoutEquipment {
     unsigned long long loopCount=0; // number of populateFifo loop counts 
 
     int RocFifoSize=0;  // detected size of ROC fifo (when filling it for the first time)
+
+    int cfgRdhCheckEnabled=0; // flag to enable RDH check at runtime
+    int cfgRdhDumpEnabled=0;  // flag to enable RDH dump at runtime
+
+    unsigned long long statsRdhCheckOk=0;   // number of RDH structs which have passed check ok
+    unsigned long long statsRdhCheckErr=0;  // number of RDH structs which have not passed check
 };
 
 
@@ -212,6 +218,10 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : 
     
     std::string cfgResetLevel="INTERNAL";
     cfg.getOptionalValue<std::string>(name + ".resetLevel", cfgResetLevel);
+
+    // extra configuration parameters    
+    cfg.getOptionalValue<int>(name + ".rdhCheckEnabled", cfgRdhCheckEnabled);
+    cfg.getOptionalValue<int>(name + ".rdhDumpEnabled", cfgRdhDumpEnabled);
         
     // get readout memory buffer parameters
     std::string sMemorySize=cfg.getValue<std::string>(name + ".memoryBufferSize");
@@ -282,6 +292,9 @@ ReadoutEquipmentRORC::~ReadoutEquipmentRORC() {
   }
 
   theLog.log("Equipment %s : %d pages read",name.c_str(),(int)pageCount);
+  if (cfgRdhCheckEnabled) {
+    theLog.log("Equipment %s : RDH checks %llu ok, %llu errors",name.c_str(),statsRdhCheckOk,statsRdhCheckErr);  
+  }
   theLog.log("Equipment %s : %llu loop count",name.c_str(),loopCount);
 }
 
@@ -348,6 +361,27 @@ Thread::CallbackResult  ReadoutEquipmentRORC::populateFifoOut() {
         break;
       }
       channel->popSuperpage();
+
+      // validate RDH structure, if configured to do so
+      if (cfgRdhCheckEnabled) {
+        std::string errorDescription;
+        size_t blockSize=d->getData()->header.dataSize;
+        uint8_t *baseAddress=(uint8_t *)(d->getData()->data);
+        for (size_t pageOffset=0;pageOffset<blockSize;) {
+          RdhHandle h(baseAddress+pageOffset);
+          if (h.validateRdh(errorDescription)) {
+            if (cfgRdhDumpEnabled) {             
+              printf("Page 0x%p + %ld\n%s",(void *)baseAddress,pageOffset,errorDescription.c_str());
+              h.dumpRdh();
+              errorDescription.clear();
+            }
+            statsRdhCheckErr++;
+          } else {
+            statsRdhCheckOk++;
+          }
+          pageOffset+=h.getBlockLengthBytes();
+        }
+      }
       
       dataOut->push(d); 
       nRead++;
