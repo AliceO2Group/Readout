@@ -102,6 +102,7 @@ add_library(
 add_library(
         objReadoutUtils OBJECT
         src/ReadoutUtils.cxx
+        src/RdhUtils.cxx
 )
 set(CONSUMERS_SRCS
         src/ConsumerStats.cxx
@@ -142,6 +143,11 @@ O2_GENERATE_EXECUTABLE(
         BUCKET_NAME ${BUCKET_NAME}
 )
 
+O2_GENERATE_EXECUTABLE(
+        EXE_NAME readRaw.exe
+        SOURCES src/readRaw.cxx $<TARGET_OBJECTS:objReadoutUtils>
+        BUCKET_NAME ${BUCKET_NAME}
+)
 
 # Install some extra files
 install(
