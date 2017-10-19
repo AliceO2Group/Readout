@@ -40,7 +40,7 @@ class ConsumerFileRecorder: public Consumer {
     for (int i=0;i<1024;i++) {
       //theLog.log("write %ld @ %lp",numberOfBytes,buffer);
       size_t bytesWritten=fwrite(buffer,1,numberOfBytes,fp);
-      if (bytesWritten<0) {break;}
+      //if (bytesWritten<0) {break;}
       if (bytesWritten>numberOfBytes) {break;}
       if (bytesWritten==0) {usleep(1000);}
       if (bytesWritten==numberOfBytes) {return 0;}
