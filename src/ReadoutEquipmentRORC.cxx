@@ -7,6 +7,7 @@
 #include <ReadoutCard/Exception.h>
 
 #include <string>
+#include <mutex>
 
 #include "ReadoutUtils.h"
 #include "RdhUtils.h"
@@ -180,6 +181,10 @@ class ReadoutEquipmentRORC : public ReadoutEquipment {
 };
 
 
+// This global mutex was a fix to allow reading out 2 CRORC at same time
+// otherwise machine reboots when ACPI is not OFF
+//std::mutex readoutEquipmentRORCLock;
+
 
 ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : ReadoutEquipment(cfg, name) {
 
@@ -201,7 +206,7 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : 
     int cfgGeneratorDataSize=8192;
     cfg.getOptionalValue<int>(name + ".generatorDataSize", cfgGeneratorDataSize);
     
-    std::string cfgGeneratorLoopback="NONE";
+    std::string cfgGeneratorLoopback="INTERNAL";
     cfg.getOptionalValue<std::string>(name + ".generatorLoopback", cfgGeneratorLoopback);
 
     std::string cfgGeneratorPattern="INCREMENTAL";
@@ -213,8 +218,8 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : 
     std::string cfgLinkMask="0-31";
     cfg.getOptionalValue<std::string>(name + ".linkMask", cfgLinkMask);
     
-    std::string cfgReadoutMode="CONTINUOUS";
-    cfg.getOptionalValue<std::string>(name + ".readoutMode", cfgReadoutMode);
+    //std::string cfgReadoutMode="CONTINUOUS";
+    //cfg.getOptionalValue<std::string>(name + ".readoutMode", cfgReadoutMode);
     
     std::string cfgResetLevel="INTERNAL";
     cfg.getOptionalValue<std::string>(name + ".resetLevel", cfgResetLevel);
@@ -251,10 +256,10 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : 
       params.setGeneratorLoopback(AliceO2::roc::LoopbackMode::fromString(cfgGeneratorLoopback));
       params.setGeneratorPattern(AliceO2::roc::GeneratorPattern::fromString(cfgGeneratorPattern));
       params.setGeneratorRandomSizeEnabled(cfgGeneratorRandomSizeEnabled);
-    }
-    
-    // card readout mode
-    params.setReadoutMode(AliceO2::roc::ReadoutMode::fromString(cfgReadoutMode));
+    }    
+
+    // card readout mode : experimental, not needed
+    // params.setReadoutMode(AliceO2::roc::ReadoutMode::fromString(cfgReadoutMode));    
 
     // register the memory block for DMA    
     params.setBufferParameters(AliceO2::roc::buffer_parameters::Memory {
@@ -265,6 +270,7 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : 
     params.setForcedUnlockEnabled(true);
 
     // define link mask
+    // this is harmless for C-RORC
     params.setLinkMask(AliceO2::roc::Parameters::linkMaskFromString(cfgLinkMask));
 
     // open channel with above parameters
@@ -339,8 +345,16 @@ Thread::CallbackResult  ReadoutEquipmentRORC::populateFifoOut() {
     }
   }
 
+  // See note at definition of readoutEquipmentRORCLock
+  //readoutEquipmentRORCLock.lock();
+
   // this is to be called periodically for driver internal business
   channel->fillSuperpages();
+
+  //readoutEquipmentRORCLock.unlock();
+
+
+
   
   // check for completed pages
   int nRead=0; // number of pages read in this iteration
