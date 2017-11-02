@@ -13,15 +13,20 @@ ReadoutEquipment::ReadoutEquipment(ConfigFile &cfg, std::string cfgEntryPoint) {
   // by default, name the equipment as the config node entry point
   cfg.getOptionalValue<std::string>(cfgEntryPoint + ".name", name, cfgEntryPoint);
 
-  // target readout rate in Hz, -1 for unlimited (default)
+  // target readout rate in Hz, -1 for unlimited (default). Global parameter, same for all equipments.
   cfg.getOptionalValue<double>("readout.rate",readoutRate,-1.0);
 
+  // idle sleep time, in milliseconds.
+  int cfgIdleSleepTime=200;
+  cfg.getOptionalValue<int>(cfgEntryPoint + ".idleSleepTime", cfgIdleSleepTime);
 
-  readoutThread=std::make_unique<Thread>(ReadoutEquipment::threadCallback,this,name,1000);
+  readoutThread=std::make_unique<Thread>(ReadoutEquipment::threadCallback,this,name,cfgIdleSleepTime);
 
-  int outFifoSize=1000;
+  // size of equipment output FIFO
+  int cfgOutputFifoSize=1000;
+  cfg.getOptionalValue<int>(cfgEntryPoint + ".outputFifoSize", cfgOutputFifoSize);
   
-  dataOut=std::make_shared<AliceO2::Common::Fifo<DataBlockContainerReference>>(outFifoSize);
+  dataOut=std::make_shared<AliceO2::Common::Fifo<DataBlockContainerReference>>(cfgOutputFifoSize);
   nBlocksOut=0;
 }
 
