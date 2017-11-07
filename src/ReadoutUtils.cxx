@@ -53,3 +53,21 @@ std::string ReadoutUtils::NumberOfBytesToString(double value,const char*suffix) 
   snprintf(bufStr,sizeof(bufStr)-1,"%.03lf %s%s",scaledValue,prefixes[prefixIndex],suffix);
   return std::string(bufStr);  
 }
+
+void convertConfigurationNodeToPTree(const Node& node, boost::property_tree::ptree &pt, std::string basePath="", const char separator='.')
+{
+  Visitor::apply(node,
+      [&](const Branch& branch) {
+        if (basePath.length()!=0) {basePath+=separator;}
+        for (const auto& keyValuePair : branch) {
+          convertConfigurationNodeToPTree(keyValuePair.second, pt, basePath+keyValuePair.first);
+        }
+      },
+      [&](const Leaf& leaf) {
+        std::string value=convert<std::string>(leaf);
+	pt.put(basePath,value);
+      }
+  );
+}
+
+}
