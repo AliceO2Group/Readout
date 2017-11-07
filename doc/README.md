@@ -44,7 +44,7 @@ continuous numbering).
 
 The consumers are threads making use of the data. The following have been implemented:
 - ConsumerStats : keeps count of number and size of blocks produced
-by readout.
+by readout. Counters can be published to O2 Monitoring system.
 - ConsumerFileRecorder : writes the readout data to a file
 - ConsumerDataChecker : checks data content (header, payload). Implemented for
 CRU internal data generator.
