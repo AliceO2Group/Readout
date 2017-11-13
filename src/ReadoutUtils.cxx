@@ -1,6 +1,10 @@
 #include "ReadoutUtils.h"
 #include <math.h>
 
+
+#include <Configuration/Visitor.h>
+#include <Configuration/Tree.h>
+
 // function to convert a string to a 64-bit integer value
 // allowing usual "base units" in suffix (k,M,G,T)
 // input can be decimal (1.5M is valid, will give 1.5*1024*1024)
@@ -54,20 +58,18 @@ std::string ReadoutUtils::NumberOfBytesToString(double value,const char*suffix) 
   return std::string(bufStr);  
 }
 
-void convertConfigurationNodeToPTree(const Node& node, boost::property_tree::ptree &pt, std::string basePath="", const char separator='.')
+void convertConfigurationNodeToPTree(const AliceO2::Configuration::Tree::Node& node, boost::property_tree::ptree &pt, std::string basePath="", const char separator='.')
 {
-  Visitor::apply(node,
-      [&](const Branch& branch) {
+  AliceO2::Configuration::Visitor::apply(node,
+      [&](const AliceO2::Configuration::Tree::Branch& branch) {
         if (basePath.length()!=0) {basePath+=separator;}
         for (const auto& keyValuePair : branch) {
           convertConfigurationNodeToPTree(keyValuePair.second, pt, basePath+keyValuePair.first);
         }
       },
-      [&](const Leaf& leaf) {
-        std::string value=convert<std::string>(leaf);
+      [&](const AliceO2::Configuration::Tree::Leaf& leaf) {
+        std::string value= AliceO2::Configuration::Tree::convert<std::string>(leaf);
 	pt.put(basePath,value);
       }
   );
-}
-
 }

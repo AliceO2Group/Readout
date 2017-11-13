@@ -22,6 +22,6 @@ std::string NumberOfBytesToString(double value,const char*suffix);
 // pt: destination property_tree object where to copy input configuration structure
 // basePath: where to store top node of input configuration structure in destination property tree
 // separator: separator character for destination property tree elements
-void convertConfigurationNodeToPTree(const Node& node, boost::property_tree::ptree &pt, std::string basePath="", const char separator='.');
+void convertConfigurationNodeToPTree(const AliceO2::Configuration::Tree::Node& node, boost::property_tree::ptree &pt, std::string basePath="", const char separator='.');
 
 }

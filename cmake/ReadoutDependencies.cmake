@@ -49,6 +49,7 @@ o2_define_bucket(
         ${InfoLogger_INCLUDE_DIRS}
         ${ReadoutCard_INCLUDE_DIRS}
         ${DataSampling_INCLUDE_DIRS}
+        ${Configuration_INCLUDE_DIRS}
 )
 
 
