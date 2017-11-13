@@ -85,6 +85,7 @@ include_directories(
         ${FAIRROOT_INCLUDE_DIR}/fairmq
         ${ZeroMQ_INCLUDE_DIR}
         ${Common_INCLUDE_DIRS}
+        ${Configuration_INCLUDE_DIRS}
         ${InfoLogger_INCLUDE_DIRS}
         ${ReadoutCard_INCLUDE_DIRS}
 )
