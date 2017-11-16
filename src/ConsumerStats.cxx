@@ -20,17 +20,17 @@ using namespace AliceO2::Monitoring;
 
 // function to convert a value in bytes to a prefixed number 3+3 digits
 // suffix is the "base unit" to add after calculated prefix, e.g. Byte-> kBytes
-std::string NumberOfBytesToString(double value,const char*suffix) {
+std::string NumberOfBytesToString(double value, const char*suffix, int base=1024) {
   const char *prefixes[]={"","k","M","G","T","P"};
   int maxPrefixIndex=STATIC_ARRAY_ELEMENT_COUNT(prefixes)-1;
-  int prefixIndex=log(value)/log(1024);
+  int prefixIndex=log(value)/log(base);
   if (prefixIndex>maxPrefixIndex) {
     prefixIndex=maxPrefixIndex;
   }
   if (prefixIndex<0) {
     prefixIndex=0;
   }
-  double scaledValue=value/pow(1024,prefixIndex);
+  double scaledValue=value/pow(base,prefixIndex);
   char bufStr[64];
   if (suffix==nullptr) {
     suffix="";
@@ -49,7 +49,9 @@ class ConsumerStats: public Consumer {
   uint64_t counterBytesHeader;
   uint64_t counterBytesDiff;
   AliceO2::Common::Timer runningTime;
-  AliceO2::Common::Timer t;
+  AliceO2::Common::Timer monitoringUpdateTimer;
+  double elapsedTime; // value used for rates computation
+  
   int monitoringEnabled;
   int monitoringUpdatePeriod;
   std::unique_ptr<Collector> monitoringCollector;
@@ -81,7 +83,7 @@ class ConsumerStats: public Consumer {
       monitoringCollector=MonitoringFactory::Create(configFile);
       monitoringCollector->addDerivedMetric("readout.BytesTotal", DerivedMetricMode::RATE);
 
-      t.reset(monitoringUpdatePeriod*1000000);
+      monitoringUpdateTimer.reset(monitoringUpdatePeriod*1000000);
     }
 
     counterBytesTotal=0;
@@ -89,40 +91,56 @@ class ConsumerStats: public Consumer {
     counterBlocks=0;
     counterBytesDiff=0;
     runningTime.reset();
-    theLog.log("Starting stats clock");
+    elapsedTime=0.0;
+
   }
   ~ConsumerStats() {
-    theLog.log("Stopping stats clock");
-    double elapsedTime=runningTime.getTime();
+    if (elapsedTime==0) {
+      theLog.log("Stopping stats clock");
+      elapsedTime=runningTime.getTime();
+    }
     if (counterBytesTotal>0) {
-    theLog.log("Stats: %llu blocks, %.2f MB, %.2f%% header overhead",(unsigned long long)counterBlocks,counterBytesTotal/(1024*1024.0),counterBytesHeader*100.0/counterBytesTotal);
-    theLog.log("Stats: average block size=%llu bytes",(unsigned long long)counterBytesTotal/counterBlocks);
-    theLog.log("Stats: average block rate = %s",NumberOfBytesToString(counterBlocks/elapsedTime,"Hz").c_str());
-    theLog.log("Stats: average throughput = %s",NumberOfBytesToString(counterBytesTotal/elapsedTime,"B/s").c_str());
-    theLog.log("Stats: elapsed time = %.5lfs",elapsedTime);
-    publishStats();
+      theLog.log("Stats: %llu blocks, %.2f MB, %.2f%% header overhead",(unsigned long long)counterBlocks,counterBytesTotal/(1024*1024.0),counterBytesHeader*100.0/counterBytesTotal);
+      theLog.log("Stats: average block size = %llu bytes",(unsigned long long)counterBytesTotal/counterBlocks);
+      theLog.log("Stats: average block rate = %s",NumberOfBytesToString((counterBlocks-1)/elapsedTime,"Hz",1000).c_str());
+      theLog.log("Stats: average throughput = %s",NumberOfBytesToString(counterBytesTotal/elapsedTime,"B/s").c_str());
+      theLog.log("Stats: elapsed time = %.5lfs",elapsedTime);
+      publishStats();
     } else {
       theLog.log("Stats: no data received");
     }
   }
   int pushData(DataBlockContainerReference &b) {
+    
     counterBlocks++;
     int newBytes=b->getData()->header.dataSize;
     counterBytesTotal+=newBytes;
     counterBytesDiff+=newBytes;
     counterBytesHeader+=b->getData()->header.headerSize;
 
-//    printf("Stats: got %p (%d)\n",b,b.use_count());
     if (monitoringEnabled) {
       // todo: do not check time every push() if it goes fast...
-      if (t.isTimeout()) {
+      if (monitoringUpdateTimer.isTimeout()) {
         publishStats();
-        t.increment();
+        monitoringUpdateTimer.increment();
       }
     }
 
     return 0;
   }
+  
+  int starting() {
+    theLog.log("Starting stats clock");
+    runningTime.reset();
+    return 0;
+  };
+
+  int stopping() {
+    theLog.log("Stopping stats clock");
+    elapsedTime=runningTime.getTime();
+    return 0;
+  };
+
 };
 
 
