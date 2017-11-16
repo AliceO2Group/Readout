@@ -247,6 +247,11 @@ int main(int argc, char* argv[])
   theLog.log("Starting aggregator");
   agg.start();
 
+  // notify consumers of imminent data flow start
+  for (auto& c : dataConsumers) {
+    c->starting();
+  }
+
   theLog.log("Starting readout equipments");
   for (auto && readoutDevice : readoutDevices) {
       readoutDevice->start();
@@ -285,6 +290,12 @@ int main(int argc, char* argv[])
         }
         theLog.log("Readout stopped");
         t.reset(1000000);  // add a delay before stopping aggregator - continune to empty FIFOs
+
+        // notify consumers of imminent data flow stop
+        for (auto& c : dataConsumers) {
+          c->stopping();
+        }
+
       }
     } else {
       if (t.isTimeout()) {
@@ -328,6 +339,9 @@ int main(int argc, char* argv[])
         for (auto& c : dataConsumers) {
           c->pushData(b);
         }
+        
+        // todo: call stopping when last block received?
+        
 
        // todo: temporary - for the time being, delete done in FMQ. Replace by shared_ptr
 //       delete b;
