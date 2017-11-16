@@ -33,20 +33,30 @@ class ReadoutMemoryHandler {
   
   public:
   
-  ReadoutMemoryHandler(size_t vMemorySize, int vPageSize, std::string const &uid){
+  ReadoutMemoryHandler(size_t vMemorySize, int vPageSize, std::string const &uid, std::string const &hugePageSize="1GB"){
   
     pagesAvailable=nullptr;
     mMemoryMappedFile=nullptr;
     
+    // select Huge Page type and define corresponding settings
+    int hugePageSizeBytes; // size of page in bytes    
+    if (hugePageSize=="1GB") {
+      hugePageSizeBytes=1024*1024*1024;
+    } else if (hugePageSize=="2MB") {
+      hugePageSizeBytes=2*1024*1024;
+    } else {
+      theLog.log("Wrong hugePageSize %s",hugePageSize.c_str());
+      exit(1);
+    }    
+    
     // path to our memory segment
-    std::string memoryMapBasePath="/var/lib/hugetlbfs/global/pagesize-1GB/";
+    std::string memoryMapBasePath="/var/lib/hugetlbfs/global/pagesize-"+hugePageSize+"/";
     std::string memoryMapFilePath=memoryMapBasePath + uid;
       
     // must be multiple of hugepage size
-    const int hugePageSize=1024*1024*1024;
-    int r=vMemorySize % hugePageSize;
+    int r=vMemorySize % hugePageSizeBytes;
     if (r) {
-      vMemorySize+=hugePageSize-r;
+      vMemorySize+=hugePageSizeBytes-r;
     }
 
     theLog.log("Creating shared memory block - %s @ %s",ReadoutUtils::NumberOfBytesToString(vMemorySize,"Bytes").c_str(),memoryMapFilePath.c_str());
@@ -234,12 +244,15 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : 
     long long mMemorySize=ReadoutUtils::getNumberOfBytesFromString(sMemorySize.c_str());
     long long mPageSize=ReadoutUtils::getNumberOfBytesFromString(sPageSize.c_str());
 
+    std::string cfgHugePageSize="1GB";
+    cfg.getOptionalValue<std::string>(name + ".memoryHugePageSize",cfgHugePageSize);
+
     // unique identifier based on card ID
     std::string uid="readout." + cardId + "." + std::to_string(cfgChannelNumber);
     //sleep((cfgChannelNumber+1)*2);  // trick to avoid all channels open at once - fail to acquire lock
     
     // create memory pool
-    mReadoutMemoryHandler=std::make_shared<ReadoutMemoryHandler>((long)mMemorySize,(int)mPageSize,uid);
+    mReadoutMemoryHandler=std::make_shared<ReadoutMemoryHandler>((long)mMemorySize,(int)mPageSize,uid,cfgHugePageSize);
 
     // open and configure ROC
     theLog.log("Opening ROC %s:%d",cardId.c_str(),cfgChannelNumber);
