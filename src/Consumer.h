@@ -19,7 +19,10 @@ class Consumer {
   virtual ~Consumer() {
   };
   virtual int pushData(DataBlockContainerReference &b)=0;
-
+  
+  virtual int starting() {return 0;}; // function called when starting data taking. Data will soon start to flow in.
+  virtual int stopping() {return 0;}; // function called when stopping data taking. Data will soon stop to flow in (but pushData will still be called while fifo not empty).
+  
   protected:
     InfoLogger theLog;
 };
