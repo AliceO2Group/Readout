@@ -35,6 +35,16 @@
 #include "Consumer.h"
 
 
+// option to add callgrind instrumentation
+// to use: valgrind --tool=callgrind --instr-atstart=no --dump-instr=yes ./a.out
+// to display stats: kcachegrind
+//#define CALLGRIND
+#ifdef CALLGRIND
+#include <valgrind/callgrind.h>
+#endif
+
+
+
 using namespace AliceO2::InfoLogger;
 using namespace AliceO2::Common;
 
@@ -278,7 +288,11 @@ int main(int argc, char* argv[])
 */
 
 
- theLog.log("Entering loop");
+  theLog.log("Entering loop");
+  #ifdef CALLGRIND
+  theLog.log("Starting callgrind instrumentation");
+  CALLGRIND_START_INSTRUMENTATION;
+  #endif
 
   while (1) {
     if (isRunning) {
@@ -357,6 +371,14 @@ int main(int argc, char* argv[])
     }
 
   }
+
+  #ifdef CALLGRIND
+    CALLGRIND_STOP_INSTRUMENTATION;
+    CALLGRIND_DUMP_STATS;
+    theLog.log("Stopping callgrind instrumentation");
+  #endif
+
+
 
   theLog.log("Stopping aggregator");
   agg.stop();
