@@ -5,6 +5,7 @@
 #include <ReadoutCard/MemoryMappedFile.h>
 #include <ReadoutCard/DmaChannelInterface.h>
 #include <ReadoutCard/Exception.h>
+#include <ReadoutCard/Driver.h>
 
 #include <string>
 #include <mutex>
@@ -167,6 +168,9 @@ class ReadoutEquipmentRORC : public ReadoutEquipment {
   public:
     ReadoutEquipmentRORC(ConfigFile &cfg, std::string name="rorcReadout");
     ~ReadoutEquipmentRORC();
+
+    Thread::CallbackResult prepareBlocks();
+    DataBlockContainerReference getNextBlock(); 
   
   private:
     Thread::CallbackResult  populateFifoOut(); // the data readout loop function
@@ -176,10 +180,8 @@ class ReadoutEquipmentRORC : public ReadoutEquipment {
 
     DataBlockId currentId=0;    // current data id, kept for auto-increment
        
-    int isInitialized=0;        // flag set to 1 when class has been successfully initialized
-
-    int pageCount=0;                // number of pages read
-    unsigned long long loopCount=0; // number of populateFifo loop counts 
+    bool isInitialized=false;     // flag set to 1 when class has been successfully initialized
+    bool isWaitingFirstLoop=true;  // flag set until first readout loop called
 
     int RocFifoSize=0;  // detected size of ROC fifo (when filling it for the first time)
 
@@ -187,19 +189,16 @@ class ReadoutEquipmentRORC : public ReadoutEquipment {
     int cfgRdhDumpEnabled=0;  // flag to enable RDH dump at runtime
 
     unsigned long long statsRdhCheckOk=0;   // number of RDH structs which have passed check ok
-    unsigned long long statsRdhCheckErr=0;  // number of RDH structs which have not passed check
+    unsigned long long statsRdhCheckErr=0;  // number of RDH structs which have not passed check    
 };
 
 
-// This global mutex was a fix to allow reading out 2 CRORC at same time
-// otherwise machine reboots when ACPI is not OFF
-//std::mutex readoutEquipmentRORCLock;
+std::mutex readoutEquipmentRORCLock;
+bool isDriverInitialized=false;
 
 
 ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : ReadoutEquipment(cfg, name) {
-
-  loopCount=0;
-    
+   
   try {
 
     // get parameters from configuration
@@ -251,6 +250,14 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : 
     std::string uid="readout." + cardId + "." + std::to_string(cfgChannelNumber);
     //sleep((cfgChannelNumber+1)*2);  // trick to avoid all channels open at once - fail to acquire lock
     
+    // make sure ROC driver is initialized once
+    readoutEquipmentRORCLock.lock();       
+    if (!isDriverInitialized) {
+      AliceO2::roc::driver::initialize();
+      isDriverInitialized=true;
+    }
+    readoutEquipmentRORCLock.unlock();
+    
     // create memory pool
     mReadoutMemoryHandler=std::make_shared<ReadoutMemoryHandler>((long)mMemorySize,(int)mPageSize,uid,cfgHugePageSize);
 
@@ -290,17 +297,37 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : 
     channel = AliceO2::roc::ChannelFactory().getDmaChannel(params);  
     channel->resetChannel(AliceO2::roc::ResetLevel::fromString(cfgResetLevel));
 
+    // retrieve card information
+    std::string infoPciAddress=channel->getPciAddress().toString();
+    int infoNumaNode=channel->getNumaNode();
+    std::string infoSerialNumber="unknown";
+    auto v_infoSerialNumber=channel->getSerial();
+    if (v_infoSerialNumber) {
+      infoSerialNumber=std::to_string(v_infoSerialNumber.get());
+    }
+    std::string infoFirmwareVersion=channel->getFirmwareInfo().value_or("unknown");
+    std::string infoCardId=channel->getCardId().value_or("unknown");
+    theLog.log("Equipment %s : PCI %s @ NUMA node %d, serial number %s, firmware version %s, card id %s", name.c_str(), infoPciAddress.c_str(), infoNumaNode, infoSerialNumber.c_str(),
+    infoFirmwareVersion.c_str(), infoCardId.c_str());
+    
+
     // todo: log parameters ?
 
     // start DMA    
     theLog.log("Starting DMA for ROC %s:%d",cardId.c_str(),cfgChannelNumber);
     channel->startDma();    
+    
+    // get FIFO depth (it should be fully empty when starting)
+    RocFifoSize=channel->getTransferQueueAvailable();
+    theLog.log("ROC input queue size = %d pages",RocFifoSize);
+    if (RocFifoSize==0) {RocFifoSize=1;}
+
   }
   catch (const std::exception& e) {
     std::cout << "Error: " << e.what() << '\n' << boost::diagnostic_information(e) << "\n";
     return;
   }
-  isInitialized=1;
+  isInitialized=true;
 }
 
 
@@ -310,34 +337,28 @@ ReadoutEquipmentRORC::~ReadoutEquipmentRORC() {
     channel->stopDma();
   }
 
-  theLog.log("Equipment %s : %d pages read",name.c_str(),(int)pageCount);
   if (cfgRdhCheckEnabled) {
     theLog.log("Equipment %s : RDH checks %llu ok, %llu errors",name.c_str(),statsRdhCheckOk,statsRdhCheckErr);  
   }
-  theLog.log("Equipment %s : %llu loop count",name.c_str(),loopCount);
 }
 
 
-Thread::CallbackResult  ReadoutEquipmentRORC::populateFifoOut() {
+Thread::CallbackResult ReadoutEquipmentRORC::prepareBlocks(){
   if (!isInitialized) return  Thread::CallbackResult::Error;
   int isActive=0;
-
-/*
-  if (loopCount==0) {
-    int s=rand()*10.0/RAND_MAX;
-    printf("sleeping %d s\n",s);
-    sleep(s);
-  }
-*/
   
-  // get FIFO depth on first iteration (it should be empty)
-  if (loopCount==0) {
-    RocFifoSize=channel->getTransferQueueAvailable();
-    theLog.log("ROC input queue size = %d pages",RocFifoSize);
-    if (RocFifoSize==0) {RocFifoSize=1;}
+  // keep track of situations where the queue is completely empty
+  // this means we have not filled it fast enough (except in first loop, where it's normal it is empty)
+  if (isWaitingFirstLoop) {
+    isWaitingFirstLoop=false;
+  } else {
+    int nFreeSlots=channel->getTransferQueueAvailable();
+    if (nFreeSlots == RocFifoSize) {  
+      equipmentStats[EquipmentStatsIndexes::nFifoUpEmpty].increment();
+    }
+    equipmentStats[EquipmentStatsIndexes::fifoOccupancyFreeBlocks].set(nFreeSlots);
   }
-  loopCount++;
-    
+  
   // give free pages to the driver
   int nPushed=0;  // number of free pages pushed this iteration 
   while (channel->getTransferQueueAvailable() != 0) {
@@ -351,32 +372,54 @@ Thread::CallbackResult  ReadoutEquipmentRORC::populateFifoOut() {
       isActive=1;
       nPushed++;
     } else {
-      //printf("starving pages\n");
-      // todo: log backpressure
+      equipmentStats[EquipmentStatsIndexes::nMemoryLow].increment();
       isActive=0;
       break;
     }
   }
+  equipmentStats[EquipmentStatsIndexes::nPushedUp].increment(nPushed);
 
-  // See note at definition of readoutEquipmentRORCLock
+  // check fifo occupancy ready queue size for stats
+  equipmentStats[EquipmentStatsIndexes::fifoOccupancyReadyBlocks].set(channel->getReadyQueueSize());
+  if (channel->getReadyQueueSize()==RocFifoSize) {
+    equipmentStats[EquipmentStatsIndexes::nFifoReadyFull].increment();  
+  }
+
+  // if we have not put many pages (<25%) in ROC fifo, we can wait a bit
+  if (nPushed<RocFifoSize/4) { 
+    isActive=0;
+  }
+
+
+  // This global mutex was also used as a fix to allow reading out 2 CRORC at same time
+  // otherwise machine reboots when ACPI is not OFF
   //readoutEquipmentRORCLock.lock();
-
+  
   // this is to be called periodically for driver internal business
   channel->fillSuperpages();
-
+  
   //readoutEquipmentRORCLock.unlock();
 
 
+  // from time to time, we may monitor temperature
+//      virtual boost::optional<float> getTemperature() = 0;
 
+
+  if (!isActive) {
+    return Thread::CallbackResult::Idle;
+  }
+  return Thread::CallbackResult::Ok;
+}
+
+
+DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
+
+  DataBlockContainerReference nextBlock=nullptr;
   
-  // check for completed pages
-  int nRead=0; // number of pages read in this iteration
-  while ((channel->getReadyQueueSize()>0)) {
-    if (dataOut->isFull()) {
-      //theLog.log("FIFOout full");
-      isActive=0;
-      break;
-    }
+  //channel->fillSuperpages();
+    
+  // check for completed page
+  if ((channel->getReadyQueueSize()>0)) {
     auto superpage = channel->getSuperpage(); // this is the first superpage in FIFO ... let's check its state
     if (superpage.isFilled()) {
       std::shared_ptr<DataBlockContainerFromRORC>d=nullptr;
@@ -384,53 +427,38 @@ Thread::CallbackResult  ReadoutEquipmentRORC::populateFifoOut() {
         d=std::make_shared<DataBlockContainerFromRORC>(channel, superpage, mReadoutMemoryHandler);
       }
       catch (...) {
+        // todo: increment a stats counter?
         theLog.log("make_shared<DataBlock> failed");
-        break;
       }
-      channel->popSuperpage();
-
-      // validate RDH structure, if configured to do so
-      if (cfgRdhCheckEnabled) {
-        std::string errorDescription;
-        size_t blockSize=d->getData()->header.dataSize;
-        uint8_t *baseAddress=(uint8_t *)(d->getData()->data);
-        for (size_t pageOffset=0;pageOffset<blockSize;) {
-          RdhHandle h(baseAddress+pageOffset);
-          if (h.validateRdh(errorDescription)) {
-            if (cfgRdhDumpEnabled) {             
-              printf("Page 0x%p + %ld\n%s",(void *)baseAddress,pageOffset,errorDescription.c_str());
-              h.dumpRdh();
-              errorDescription.clear();
+      if (d!=nullptr) {
+        channel->popSuperpage();
+        nextBlock=d;
+        
+        // validate RDH structure, if configured to do so
+        if (cfgRdhCheckEnabled) {
+          std::string errorDescription;
+          size_t blockSize=d->getData()->header.dataSize;
+          uint8_t *baseAddress=(uint8_t *)(d->getData()->data);
+          for (size_t pageOffset=0;pageOffset<blockSize;) {
+            RdhHandle h(baseAddress+pageOffset);
+            if (h.validateRdh(errorDescription)) {
+              if (cfgRdhDumpEnabled) {             
+                printf("Page 0x%p + %ld\n%s",(void *)baseAddress,pageOffset,errorDescription.c_str());
+                h.dumpRdh();
+                errorDescription.clear();
+              }
+              statsRdhCheckErr++;
+            } else {
+              statsRdhCheckOk++;
             }
-            statsRdhCheckErr++;
-          } else {
-            statsRdhCheckOk++;
+            pageOffset+=h.getBlockLengthBytes();
           }
-          pageOffset+=h.getBlockLengthBytes();
         }
       }
-      
-      dataOut->push(d); 
-      nRead++;
-      pageCount++;
-      //printf("read page %ld - %d\n",superpage.getOffset(),d.use_count());
-      isActive=1;
-    } else {
-      break;
     }
   }
-
-  // if both FIFOs are mostly empty we can wait a bit before next iteration 
-  if ((nPushed<RocFifoSize/4)&&(nRead<RocFifoSize/4)) { 
-    isActive=0;
-  }
- 
-  if (!isActive) {
-    return Thread::CallbackResult::Idle;
-  }
-  return Thread::CallbackResult::Ok;
+  return nextBlock;
 }
-
 
 
 std::unique_ptr<ReadoutEquipment> getReadoutEquipmentRORC(ConfigFile &cfg, std::string cfgEntryPoint) {

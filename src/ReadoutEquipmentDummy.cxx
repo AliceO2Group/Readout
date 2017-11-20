@@ -1,34 +1,48 @@
 #include "ReadoutEquipment.h"
 
+#include <InfoLogger/InfoLogger.hxx>
+using namespace AliceO2::InfoLogger;
+extern InfoLogger theLog;
 
 class ReadoutEquipmentDummy : public ReadoutEquipment {
 
   public:
     ReadoutEquipmentDummy(ConfigFile &cfg, std::string name="dummyReadout");
     ~ReadoutEquipmentDummy();
-  
+    DataBlockContainerReference getNextBlock();
+    
   private:
-    std::shared_ptr<MemPool> mp;
-    Thread::CallbackResult  populateFifoOut();
-    DataBlockId currentId;
-    int eventMaxSize;
-    int eventMinSize;    
-};
+    std::shared_ptr<MemPool> mp;  // a memory pool from which to allocate data pages
+    Thread::CallbackResult  populateFifoOut(); // iterative callback
 
+    DataBlockId currentId;  // current block id
+    int eventMaxSize; // maximum data block size
+    int eventMinSize; // minimum data block size
+};
 
 ReadoutEquipmentDummy::ReadoutEquipmentDummy(ConfigFile &cfg, std::string cfgEntryPoint) : ReadoutEquipment(cfg, cfgEntryPoint) {
 
   int memPoolNumberOfElements=10000;
   int memPoolElementSize=0.01*1024*1024;
 
+  // get configuration values
   cfg.getOptionalValue<int>(cfgEntryPoint + ".memPoolNumberOfElements", memPoolNumberOfElements);
   cfg.getOptionalValue<int>(cfgEntryPoint + ".memPoolElementSize", memPoolElementSize);
-
-  mp=std::make_shared<MemPool>(memPoolNumberOfElements,memPoolElementSize);
-  currentId=0;
-  
   cfg.getOptionalValue<int>(cfgEntryPoint + ".eventMaxSize", eventMaxSize, (int)1024);
   cfg.getOptionalValue<int>(cfgEntryPoint + ".eventMinSize", eventMinSize, (int)1024);
+
+  // ensure generated events will fit in blocks allocated from memory pool
+  int maxElementSize=eventMaxSize+sizeof(DataBlockHeaderBase);
+  if (maxElementSize>memPoolElementSize) {
+    theLog.log("memPoolElementSize too small, need at least %d bytes",maxElementSize);
+    throw __LINE__;
+  }
+
+  // create memory pool
+  mp=std::make_shared<MemPool>(memPoolNumberOfElements,memPoolElementSize);
+
+  // init variables
+  currentId=0;  
 }
 
 ReadoutEquipmentDummy::~ReadoutEquipmentDummy() {
@@ -38,66 +52,39 @@ ReadoutEquipmentDummy::~ReadoutEquipmentDummy() {
   }
 } 
 
-Thread::CallbackResult  ReadoutEquipmentDummy::populateFifoOut() {
-  if (dataOut->isFull()) {
-    return Thread::CallbackResult::Idle;
-  }
+DataBlockContainerReference ReadoutEquipmentDummy::getNextBlock() {
 
-  DataBlockContainerReference d=NULL;
+  // query memory pool for a free block
+  DataBlockContainerReference nextBlock=nullptr;
   try {
-    d=std::make_shared<DataBlockContainerFromMemPool>(mp);
+    nextBlock=std::make_shared<DataBlockContainerFromMemPool>(mp);
   }
   catch (...) {
-  //printf("full\n");
-    return Thread::CallbackResult::Idle;
   }
-  //printf("push %p\n",(void *)d);
-  
-  if (d==NULL) {
-    return Thread::CallbackResult::Idle;
-  }
-  
-  DataBlock *b=d->getData();
-  
-  int dSize=(int)(eventMinSize+(int)((eventMaxSize-eventMinSize)*(rand()*1.0/RAND_MAX)));
-  
-  
-  //dSize=100;
-  //printf("%d\n",dSize);
+  if (nextBlock!=nullptr) {
+    DataBlock *b=nextBlock->getData(); 
 
-  // todo: check size fits in page!
-  // todo: align begin of data
-  
-  
-  currentId++;  // don't start from 0
-  b->header.blockType=DataBlockType::H_BASE;
-  b->header.headerSize=sizeof(DataBlockHeaderBase);
-  b->header.dataSize=dSize;
-  b->header.id=currentId;
-  // say it's contiguous header+data 
-  b->data=&(((char *)b)[sizeof(DataBlock)]);
+    // set size
+    int dSize=(int)(eventMinSize+(int)((eventMaxSize-eventMinSize)*(rand()*1.0/RAND_MAX)));
 
-  //printf("(1) header=%p\nbase=%p\nsize=%d,%d\n",(void *)&(b->header),b->data,(int)b->header.headerSize,(int)b->header.dataSize);
-//  b->data=NULL;
-  
-  
- 
-  for (int k=0;k<100;k++) {
-    //printf("[%d]=%p\n",k,&(b->data[k]));
-    b->data[k]=(char)k;
-  }
-  
-//  printf("(2)header=%p\nbase=%p\nsize=%d,%d\n",(void *)&(b->header),b->data,(int)b->header.headerSize,(int)b->header.dataSize);
-    
-  //usleep(10000);
-  
-  // push new page to mem
-  dataOut->push(d); 
+    // no need to check size fits in page, this was done once for all at configure time
 
-//  printf("readout dummy loop FIFO out= %d items\n",dataOut->getNumberOfUsedSlots());
+    // fill header
+    currentId++;  // don't start from 0
+    b->header.blockType=DataBlockType::H_BASE;
+    b->header.headerSize=sizeof(DataBlockHeaderBase);
+    b->header.dataSize=dSize;
+    b->header.id=currentId;
+    // say it's contiguous header+data 
+    // todo: align begin of data 
+    b->data=&(((char *)b)[sizeof(DataBlock)]);
 
-  //printf("populateFifoOut()\n");
-  return Thread::CallbackResult::Ok;
+    // fill (a bit of) data
+    for (int k=0;k<100;k++) {
+      b->data[k]=(char)k;
+    }
+  }  
+  return nextBlock;
 }
 
 
