@@ -104,6 +104,7 @@ add_library(
         objReadoutUtils OBJECT
         src/ReadoutUtils.cxx
         src/RdhUtils.cxx
+        src/CounterStats.cxx
 )
 set(CONSUMERS_SRCS
         src/ConsumerStats.cxx
