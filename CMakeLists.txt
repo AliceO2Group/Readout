@@ -114,6 +114,7 @@ set(CONSUMERS_SRCS
         )
 if (FAIRROOT_FOUND)
     list(APPEND CONSUMERS_SRCS src/ConsumerFMQ.cxx)
+    list(APPEND CONSUMERS_SRCS src/ConsumerFMQchannel.cxx)
 endif ()
 add_library(
         objReadoutConsumers OBJECT

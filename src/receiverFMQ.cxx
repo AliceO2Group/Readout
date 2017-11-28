@@ -62,8 +62,31 @@ class FMQReceiver : public FairMQDevice
     }
 };
 
+
+// receive FMQ messages in a channel (without FMQ device)
+void channelOnlyReceiver() {
+  auto factory = FairMQTransportFactory::CreateTransportFactory("zeromq");
+  auto pull = FairMQChannel{"data-in", "sub", factory};
+  pull.Connect("tcp://localhost:5555");
+  printf("connect done\n");
+  for (;;){
+  auto msg = pull.NewMessage();
+  pull.Receive(msg);
+
+  std::cout << " received message of size " << msg->GetSize() << std::endl; // access data via inputMsg->GetData()
+}
+  return;
+}
+
+
+
+
 int main() {
-   
+  
+  channelOnlyReceiver();
+
+  return 0;
+
   // configure signal handlers for clean exit
   struct sigaction signalSettings;
   bzero(&signalSettings,sizeof(signalSettings));
