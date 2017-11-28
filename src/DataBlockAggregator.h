@@ -8,9 +8,44 @@
 #include <Common/DataSet.h>
 
 #include <memory>
-
+#include <queue>
 
 using namespace AliceO2::Common;
+
+/*
+  DataBlockAggregator
+  
+  One "slicer" per equipment: data blocks are grouped in a "slice" of blocks having the same TF id.
+  
+  TODO: should be done per data source.
+*/
+
+
+
+// a class to group blocks with same ID in slices
+class DataBlockSlicer {
+
+  public:
+  DataBlockSlicer();
+  ~DataBlockSlicer();
+  
+  // append a new block to curent slice
+  // returns the number of blocks in current slice
+  int appendBlock(DataBlockContainerReference const &block);
+ 
+  // get a slice, if available
+  // if includeIncomplete is true, also retrieves current slice, even if incomplete
+  // otherwise, only a complete slice is returned, if any
+  // when iterated, returned in order of creation, older first
+  DataSetReference getSlice(bool includeIncomplete=false);
+  
+  private:
+    uint64_t currentId; // common id of the blocks in current data set being built
+    DataSetReference currentDataSet; // current data set being built
+    std::queue<DataSetReference> slices; // data sets which has been built and are complete
+    
+    // todo: add a timeout
+};
 
 class DataBlockAggregator {
   public:
@@ -23,7 +58,9 @@ class DataBlockAggregator {
   void stop(int waitStopped=1);  // stop processing thread (and possibly wait it terminates)
 
 
-  static Thread::CallbackResult  threadCallback(void *arg);
+  static Thread::CallbackResult threadCallback(void *arg);
+
+  Thread::CallbackResult executeCallback();
 
   private:
   std::vector<std::shared_ptr<AliceO2::Common::Fifo<DataBlockContainerReference>>> inputs;
@@ -32,4 +69,7 @@ class DataBlockAggregator {
   std::unique_ptr<Thread> aggregateThread;
   AliceO2::Common::Timer incompletePendingTimer;
   int isIncompletePending;
+  
+  std::vector<DataBlockSlicer> slicers;
+  int nextIndex=0; // index of input channel to start with at next iteration to fill output fifo. not starting always from zero to avoid favorizing low-index channels.
 };

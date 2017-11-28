@@ -14,6 +14,7 @@ DataBlockAggregator::~DataBlockAggregator() {
 int DataBlockAggregator::addInput(std::shared_ptr<AliceO2::Common::Fifo<DataBlockContainerReference>>input) {
   //inputs.push_back(input);
   inputs.push_back(input);
+  slicers.push_back(DataBlockSlicer());
   return 0;
 }
 
@@ -27,6 +28,10 @@ Thread::CallbackResult DataBlockAggregator::threadCallback(void *arg) {
     return Thread::CallbackResult::Idle;
   }
    
+  return dPtr->executeCallback();
+  
+  /*
+  // old implementation
    
   int someEmpty=0;
   int allEmpty=1;
@@ -106,6 +111,9 @@ Thread::CallbackResult DataBlockAggregator::threadCallback(void *arg) {
   // add flag in output data to say it is incomplete
   //printf("agg: new block\n");
   return Thread::CallbackResult::Ok;
+  
+  // end of old implementation
+  */
 }
  
 void DataBlockAggregator::start() {
@@ -133,3 +141,106 @@ void DataBlockAggregator::stop(int waitStop) {
   }
   output->clear();
 }
+
+
+
+
+Thread::CallbackResult DataBlockAggregator::executeCallback() {
+
+  if (output->isFull()) {
+    return Thread::CallbackResult::Idle;
+  }
+
+  unsigned int nInputs=inputs.size();
+  unsigned int nBlocksIn=0;
+  unsigned int nSlicesOut=0;
+  
+  for (unsigned int ix=0; ix<nInputs; ix++) {
+    int i=(ix + nextIndex) % nInputs;
+
+    for (int j=0;j<1024;j++) {
+      if (inputs[i]->isEmpty()) {
+        break;
+      }
+      DataBlockContainerReference b=nullptr;
+      inputs[i]->pop(b);
+      nBlocksIn++;
+      //printf("Got block %d from dev %d\n",(int)(b->getData()->header.id),i);
+      slicers[i].appendBlock(b);
+    }
+
+    for (int j=0;j<1024;j++) {
+      if (output->isFull()) {
+        return Thread::CallbackResult::Idle;
+      }
+
+      DataSetReference bcv=slicers[i].getSlice();
+      if (bcv==nullptr) {
+        break;
+      }
+      output->push(bcv);
+      nSlicesOut++;
+      nextIndex=i+1;
+      //printf("Got STF : %d chunks\n",(int)bcv->size());
+    }
+    
+  }
+
+  if ((nSlicesIn==0)&&(nSlicesOut==0)) {
+    return Thread::CallbackResult::Idle;
+  }
+   
+  return Thread::CallbackResult::Ok;
+}
+
+
+
+
+DataBlockSlicer::DataBlockSlicer() {
+  currentId=0;
+  currentDataSet=nullptr;
+}
+DataBlockSlicer::~DataBlockSlicer() {
+}
+  
+int DataBlockSlicer::appendBlock(DataBlockContainerReference const &block) {
+  uint64_t stfid=1+(block->getData()->header.id-1) / 256;  
+  //printf("slicing block into stf %d\n",(int)stfid);
+  if (currentDataSet!=nullptr) {   
+    if (stfid!=currentId) {
+      // the current slice is complete
+      slices.push(currentDataSet);
+      currentDataSet=nullptr;
+    }
+  }
+  if (currentDataSet==nullptr) {
+    //printf("creating STF %d\n",(int)stfid);
+    try {
+        currentDataSet=std::make_shared<DataSet>();
+    }
+    catch (...) {
+      return -1;
+    }
+  }
+  currentDataSet->push_back(block);
+  currentId=stfid;
+  return currentDataSet->size();
+}
+
+DataSetReference DataBlockSlicer::getSlice(bool includeIncomplete) {
+  // get a slice. get oldest from queue, or possibly currentDataSet when queue empty and includeIncomplete is true
+  DataSetReference bcv=nullptr;
+  if (slices.empty()) {
+    if (includeIncomplete) {
+      bcv=currentDataSet;
+      currentDataSet=nullptr;
+    } else {
+      return nullptr;
+    }
+  } else {
+    bcv=slices.front();
+    slices.pop();
+  }
+  return bcv;
+}
+
