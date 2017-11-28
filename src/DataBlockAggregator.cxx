@@ -186,7 +186,7 @@ Thread::CallbackResult DataBlockAggregator::executeCallback() {
     
   }
 
-  if ((nSlicesIn==0)&&(nSlicesOut==0)) {
+  if ((nBlocksIn==0)&&(nSlicesOut==0)) {
     return Thread::CallbackResult::Idle;
   }
    
