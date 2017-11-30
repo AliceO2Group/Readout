@@ -30,15 +30,29 @@ class ConsumerFMQchannel: public Consumer {
   private:
     std::unique_ptr<FairMQChannel> sendingChannel;
     std::shared_ptr<FairMQTransportFactory> transportFactory;   
-        
+       
   public: 
 
 
   ConsumerFMQchannel(ConfigFile &cfg, std::string cfgEntryPoint) : Consumer(cfg,cfgEntryPoint) {
-  
-    transportFactory=FairMQTransportFactory::CreateTransportFactory("zeromq");
-    sendingChannel=std::make_unique<FairMQChannel>("readout-out", "pub", transportFactory);
-    sendingChannel->Bind("tcp://*:5555");
+
+    std::string cfgTransportType="zeromq";
+    cfg.getOptionalValue<std::string>(cfgEntryPoint + ".transportType", cfgTransportType);
+    
+    std::string cfgChannelName="readout";
+    cfg.getOptionalValue<std::string>(cfgEntryPoint + ".channelName", cfgChannelName);
+    
+    std::string cfgChannelType="pair";
+    cfg.getOptionalValue<std::string>(cfgEntryPoint + ".channelType", cfgChannelType);
+
+    std::string cfgChannelAddress="ipc:///tmp/pipe-readout";
+    cfg.getOptionalValue<std::string>(cfgEntryPoint + ".channelAddress", cfgChannelAddress);
+
+    theLog.log("Creating FMQ TX channel %s type %s:%s @ %s",cfgChannelName.c_str(),cfgTransportType.c_str(),cfgChannelType.c_str(),cfgChannelAddress.c_str());
+            
+    transportFactory=FairMQTransportFactory::CreateTransportFactory(cfgTransportType);
+    sendingChannel=std::make_unique<FairMQChannel>(cfgChannelName, cfgChannelType, transportFactory);
+    sendingChannel->Bind(cfgChannelAddress);
     
     if (!sendingChannel->ValidateChannel()) {
       throw "ConsumerFMQ: channel validation failed";
