@@ -142,7 +142,7 @@ O2_GENERATE_EXECUTABLE(
 
 O2_GENERATE_EXECUTABLE(
         EXE_NAME receiverFMQ.exe
-        SOURCES src/receiverFMQ.cxx
+        SOURCES src/receiverFMQ.cxx $<TARGET_OBJECTS:objReadoutUtils>
         BUCKET_NAME ${BUCKET_NAME}
 )
 
