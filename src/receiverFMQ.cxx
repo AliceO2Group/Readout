@@ -8,6 +8,15 @@
 #include <fairmq/zeromq/FairMQTransportFactoryZMQ.h>
 #include <memory>
 
+#include <InfoLogger/InfoLogger.hxx>
+#include <Common/Configuration.h>
+
+#include "CounterStats.h"
+#include <Common/Timer.h>
+
+using namespace AliceO2::InfoLogger;
+
+
 
 static int ShutdownRequest=0;      // set to 1 to request termination, e.g. on SIGTERM/SIGQUIT signals
 static void signalHandler(int){
@@ -80,13 +89,51 @@ void channelOnlyReceiver() {
 
 
 
+InfoLogger theLog;
 
-int main() {
+
+int main(int argc, const char **argv) {
+
+  ConfigFile cfg;
+  const char* cfgFileURI="";
+  std::string cfgEntryPoint="";
+  if (argc<3) {
+    printf("Please provide path to configuration file and entry point (section name)\n");
+    return -1;
+  }
+  cfgFileURI=argv[1];
+  cfgEntryPoint=argv[2];
+
+  // load configuration file
+  theLog.log("Reading configuration from %s",cfgFileURI);
+  try {
+    cfg.load(cfgFileURI);
+  }
+  catch (std::string err) {
+    theLog.log("Error : %s",err.c_str());
+    return -1;
+  }
+
+  std::string cfgTransportType="shmem";
+  cfg.getOptionalValue<std::string>(cfgEntryPoint + ".transportType", cfgTransportType);
+
+  std::string cfgChannelName="readout";
+  cfg.getOptionalValue<std::string>(cfgEntryPoint + ".channelName", cfgChannelName);
+
+  std::string cfgChannelType="pair";
+  cfg.getOptionalValue<std::string>(cfgEntryPoint + ".channelType", cfgChannelType);
+
+  std::string cfgChannelAddress="ipc:///tmp/pipe-readout";
+  cfg.getOptionalValue<std::string>(cfgEntryPoint + ".channelAddress", cfgChannelAddress);
+
+  theLog.log("Creating FMQ RX channel %s type %s @ %s",cfgChannelName.c_str(),cfgChannelType.c_str(),cfgChannelAddress.c_str());
+
+  auto factory = FairMQTransportFactory::CreateTransportFactory(cfgTransportType);
+  auto pull = FairMQChannel{cfgChannelName, cfgChannelType, factory};
+  pull.Connect(cfgChannelAddress);
+  printf("connect done\n");
   
-  channelOnlyReceiver();
-
-  return 0;
-
+  
   // configure signal handlers for clean exit
   struct sigaction signalSettings;
   bzero(&signalSettings,sizeof(signalSettings));
@@ -95,7 +142,36 @@ int main() {
   sigaction(SIGQUIT,&signalSettings,NULL);
   sigaction(SIGINT,&signalSettings,NULL);
 
-  printf("Starting\n");
+  theLog.log("Entering receiving loop");
+  CounterStats msgStats;
+  AliceO2::Common::Timer runningTime;
+  int statsTimeout=1000000;
+  runningTime.reset(statsTimeout);
+  
+  unsigned long long nMsg=0;
+  unsigned long long nBytes=0;
+  for (;!ShutdownRequest;){
+    auto msg = pull.NewMessage();
+    pull.Receive(msg);
+    if (msg->GetSize()==0) {continue;}
+    msgStats.increment(msg->GetSize());
+    nBytes+=msg->GetSize();
+    nMsg++;
+    //std::cout << " received message of size " << msg->GetSize() << std::endl; // access data via inputMsg->GetData()
+    if (runningTime.isTimeout()) {
+      double t=runningTime.getTime();
+      theLog.log("%.3lf msg/s %.3lfMB/s",nMsg/t,nBytes/(1024.0*1024.0*t));
+      runningTime.reset(statsTimeout);
+      nMsg=0;
+      nBytes=0;
+    }
+  }
+
+  theLog.log("Receiving loop completed");
+  theLog.log("bytes received: %lu  (avg=%.2lf  min=%lu  max=%lu  count=%lu)",msgStats.get(),msgStats.getAverage(),msgStats.getMinimum(),msgStats.getMaximum(),msgStats.getCount());
+
+  return 0;
+
    
    
    
