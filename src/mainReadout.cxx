@@ -118,6 +118,64 @@ int main(int argc, char* argv[])
   cfg.getOptionalValue<double>("readout.exitTimeout",cfgExitTimeout);
 
 
+  // configuration of data consumers
+  std::vector<std::unique_ptr<Consumer>> dataConsumers;
+  for (auto kName : ConfigFileBrowser (&cfg,"consumer-")) {
+
+    // skip disabled
+    int enabled=1;
+    try {
+      enabled=cfg.getValue<int>(kName + ".enabled");
+    }
+    catch (...) {
+    }
+    if (!enabled) {continue;}
+
+    // instanciate consumer of appropriate type
+    std::unique_ptr<Consumer> newConsumer=nullptr;
+    try {
+      std::string cfgType="";
+      cfgType=cfg.getValue<std::string>(kName + ".consumerType");
+      theLog.log("Configuring consumer %s: %s",kName.c_str(),cfgType.c_str());
+
+      if (!cfgType.compare("stats")) {
+        newConsumer=getUniqueConsumerStats(cfg, kName);
+      } else if (!cfgType.compare("FairMQDevice")) {
+        #ifdef WITH_FAIRMQ
+          newConsumer=getUniqueConsumerFMQ(cfg, kName);
+        #else
+          theLog.log("Skipping %s: %s - not supported by this build",kName.c_str(),cfgType.c_str());
+        #endif
+      } else if (!cfgType.compare("FairMQChannel")) {
+        #ifdef WITH_FAIRMQ
+          newConsumer=getUniqueConsumerFMQchannel(cfg, kName);
+        #else
+          theLog.log("Skipping %s: %s - not supported by this build",kName.c_str(),cfgType.c_str());
+        #endif
+      } else if (!cfgType.compare("fileRecorder")) {
+        newConsumer=getUniqueConsumerFileRecorder(cfg, kName);
+      } else if (!cfgType.compare("checker")) {
+        newConsumer=getUniqueConsumerDataChecker(cfg, kName);
+      } else {
+        theLog.log("Unknown consumer type '%s' for [%s]",cfgType.c_str(),kName.c_str());
+      }
+    }
+    catch (const std::exception& ex) {
+        theLog.log("Failed to configure consumer %s : %s",kName.c_str(), ex.what());
+        continue;
+    }
+    catch (...) {
+        theLog.log("Failed to configure consumer %s",kName.c_str());
+        continue;
+    }
+
+    if (newConsumer!=nullptr) {
+      dataConsumers.push_back(std::move(newConsumer));
+    }
+
+  }
+
+
   // configure readout equipments
   int nEquipmentFailures=0; // number of failed equipment instanciation
   std::vector<std::unique_ptr<ReadoutEquipment>> readoutDevices;
@@ -143,6 +201,8 @@ int main(int argc, char* argv[])
         newDevice=getReadoutEquipmentDummy(cfg,kName);
       } else if (!cfgEquipmentType.compare("rorc")) {
         newDevice=getReadoutEquipmentRORC(cfg,kName);
+      } else if (!cfgEquipmentType.compare("cruEmulator")) {
+        newDevice=getReadoutEquipmentCruEmulator(cfg,kName);
       } else {
         theLog.log("Unknown equipment type '%s' for [%s]",cfgEquipmentType.c_str(),kName.c_str());
       }
@@ -200,64 +260,6 @@ int main(int argc, char* argv[])
   }
   // todo: add time counter to measure how much time is spent waiting for data sampling injection (And other consumers)
 #endif
-
-
-  // configuration of data consumers
-  std::vector<std::unique_ptr<Consumer>> dataConsumers;
-  for (auto kName : ConfigFileBrowser (&cfg,"consumer-")) {
-
-    // skip disabled
-    int enabled=1;
-    try {
-      enabled=cfg.getValue<int>(kName + ".enabled");
-    }
-    catch (...) {
-    }
-    if (!enabled) {continue;}
-
-    // instanciate consumer of appropriate type
-    std::unique_ptr<Consumer> newConsumer=nullptr;
-    try {
-      std::string cfgType="";
-      cfgType=cfg.getValue<std::string>(kName + ".consumerType");
-      theLog.log("Configuring consumer %s: %s",kName.c_str(),cfgType.c_str());
-
-      if (!cfgType.compare("stats")) {
-        newConsumer=getUniqueConsumerStats(cfg, kName);
-      } else if (!cfgType.compare("FairMQDevice")) {
-        #ifdef WITH_FAIRMQ
-          newConsumer=getUniqueConsumerFMQ(cfg, kName);
-        #else
-          theLog.log("Skipping %s: %s - not supported by this build",kName.c_str(),cfgType.c_str());
-        #endif
-      } else if (!cfgType.compare("FairMQChannel")) {
-        #ifdef WITH_FAIRMQ
-          newConsumer=getUniqueConsumerFMQchannel(cfg, kName);
-        #else
-          theLog.log("Skipping %s: %s - not supported by this build",kName.c_str(),cfgType.c_str());
-        #endif
-      } else if (!cfgType.compare("fileRecorder")) {
-        newConsumer=getUniqueConsumerFileRecorder(cfg, kName);
-      } else if (!cfgType.compare("checker")) {
-        newConsumer=getUniqueConsumerDataChecker(cfg, kName);
-      } else {
-        theLog.log("Unknown consumer type '%s' for [%s]",cfgType.c_str(),kName.c_str());
-      }
-    }
-    catch (const std::exception& ex) {
-        theLog.log("Failed to configure consumer %s : %s",kName.c_str(), ex.what());
-        continue;
-    }
-    catch (...) {
-        theLog.log("Failed to configure consumer %s",kName.c_str());
-        continue;
-    }
-
-    if (newConsumer!=nullptr) {
-      dataConsumers.push_back(std::move(newConsumer));
-    }
-
-  }
 
 
   theLog.log("Starting aggregator");
