@@ -181,7 +181,7 @@ Thread::CallbackResult DataBlockAggregator::executeCallback() {
       output->push(bcv);
       nSlicesOut++;
       nextIndex=i+1;
-      //printf("Got STF : %d chunks\n",(int)bcv->size());
+      //printf("Pushed STF : %d chunks\n",(int)bcv->size());
     }
     
   }
@@ -204,7 +204,7 @@ DataBlockSlicer::~DataBlockSlicer() {
 }
   
 int DataBlockSlicer::appendBlock(DataBlockContainerReference const &block) {
-  uint64_t stfid=1+(block->getData()->header.id-1) / 256;  
+  uint64_t stfid=1+(block->getData()->header.id-1) / 8;  
   //printf("slicing block into stf %d\n",(int)stfid);
   if (currentDataSet!=nullptr) {   
     if (stfid!=currentId) {
