@@ -10,7 +10,7 @@
 #include <memory>
 
 #include "CounterStats.h"
-
+#include "MemoryHandler.h"
 
 using namespace AliceO2::Common;
 
@@ -90,3 +90,4 @@ class ReadoutEquipment {
 
 std::unique_ptr<ReadoutEquipment> getReadoutEquipmentDummy(ConfigFile &cfg, std::string cfgEntryPoint);
 std::unique_ptr<ReadoutEquipment> getReadoutEquipmentRORC(ConfigFile &cfg, std::string cfgEntryPoint);
+std::unique_ptr<ReadoutEquipment> getReadoutEquipmentCruEmulator(ConfigFile &cfg, std::string cfgEntryPoint);
