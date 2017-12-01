@@ -95,6 +95,7 @@ add_library(
         src/ReadoutEquipment.cxx
         src/ReadoutEquipmentDummy.cxx
         src/ReadoutEquipmentRORC.cxx
+        src/ReadoutEquipmentCruEmulator.cxx
 )
 add_library(
         objReadoutAggregator OBJECT
@@ -105,6 +106,7 @@ add_library(
         src/ReadoutUtils.cxx
         src/RdhUtils.cxx
         src/CounterStats.cxx
+        src/MemoryHandler.cxx
 )
 set(CONSUMERS_SRCS
         src/ConsumerStats.cxx
