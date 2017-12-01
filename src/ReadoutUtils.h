@@ -1,3 +1,6 @@
+#ifndef _READOUTUTILS_H
+#define _READOUTUTILS_H
+
 #include <string>
 
 #include <Configuration/Visitor.h>
@@ -25,3 +28,6 @@ std::string NumberOfBytesToString(double value,const char*suffix);
 void convertConfigurationNodeToPTree(const AliceO2::Configuration::Tree::Node& node, boost::property_tree::ptree &pt, std::string basePath="", const char separator='.');
 
 }
+
+// end of _READOUTUTILS_H
+#endif
