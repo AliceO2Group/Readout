@@ -56,9 +56,9 @@ class ConsumerFMQ: public Consumer {
 
   ConsumerFMQ(ConfigFile &cfg, std::string cfgEntryPoint) : Consumer(cfg,cfgEntryPoint), channels(1) {
        
-    channels[0].UpdateType("pub");  // pub or push?
+    channels[0].UpdateType("pair");  // pub or push?
     channels[0].UpdateMethod("bind");
-    channels[0].UpdateAddress("tcp://*:5555");
+    channels[0].UpdateAddress("ipc:///tmp/readout-pipe-0");
     channels[0].UpdateRateLogging(0);    
     channels[0].UpdateSndBufSize(10);    
     if (!channels[0].ValidateChannel()) {
