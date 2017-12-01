@@ -157,6 +157,12 @@ int main(int argc, const char **argv) {
     msgStats.increment(msg->GetSize());
     nBytes+=msg->GetSize();
     nMsg++;
+    /*
+    for (int k=0;k<10;k++) {
+      printf("%d ",(int)(((char*)(msg->GetData()))[k]));
+    }
+    printf("\n");
+    */
     //std::cout << " received message of size " << msg->GetSize() << std::endl; // access data via inputMsg->GetData()
     if (runningTime.isTimeout()) {
       double t=runningTime.getTime();
