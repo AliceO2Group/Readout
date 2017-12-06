@@ -25,7 +25,7 @@ MemoryHandler::MemoryHandler(int vPageSize, int vNumberOfPages) {
   }
 */
 
-  theLog.log("Creating pool of %ld pages of size %ld, base address= %p",numberOfPages,pageSize,baseAddress);
+  theLog.log("Creating pool of %d pages of size %d, base address= %p",vNumberOfPages,vPageSize,baseAddress);
 
   pageSize=vPageSize;
   numberOfPages=vNumberOfPages;
