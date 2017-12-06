@@ -41,3 +41,9 @@ int RdhHandle::validateRdh(std::string &err) {
   // check FEE Id ?  
   return retCode;
 }
+
+void RdhHandle::reset() {
+  for (int i=0;i<RDH_WORDS/2;i++) {
+    rdhPtr->lwords[i]=0;
+  }
+}

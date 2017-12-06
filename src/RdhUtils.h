@@ -53,6 +53,9 @@ class RdhHandle {
     return (rdhPtr->words[2] >> 12 ) & 0xFF;
   }
   
+  // initialize a RDH with default fields
+  void reset();
+  
   private:
   RDH *rdhPtr;  // pointer to RDH in memory
 };
