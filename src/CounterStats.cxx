@@ -53,11 +53,17 @@ double CounterStats::getAverage() {
 }
 
 CounterValue CounterStats::getMinimum() {
- return min;
+  if (nValues) {
+    return min;
+  }
+  return 0;
 }
 
 CounterValue CounterStats::getMaximum() {
-  return max;
+  if (nValues) {
+    return max;
+  }
+  return 0;
 }
   
 CounterValue CounterStats::getCount() {
