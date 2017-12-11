@@ -64,6 +64,7 @@ set(MODULE_NAME "Readout")
 O2_SETUP(NAME ${MODULE_NAME})
 
 set(SRCS
+        src/Consumer.cxx
         src/ConsumerStats.cxx
         src/ConsumerFileRecorder.cxx
         src/ConsumerDataChecker.cxx
@@ -109,6 +110,7 @@ add_library(
         src/MemoryHandler.cxx
 )
 set(CONSUMERS_SRCS
+        src/Consumer.cxx
         src/ConsumerStats.cxx
         src/ConsumerFileRecorder.cxx
         src/ConsumerDataChecker.cxx
