@@ -1,5 +1,9 @@
 #include "DataBlockAggregator.h"
 
+#include <InfoLogger/InfoLogger.hxx>
+using namespace AliceO2::InfoLogger;
+extern InfoLogger theLog;
+
 
 DataBlockAggregator::DataBlockAggregator(AliceO2::Common::Fifo<DataSetReference> *v_output, std::string name){
   output=v_output;
@@ -197,34 +201,46 @@ Thread::CallbackResult DataBlockAggregator::executeCallback() {
 
 
 DataBlockSlicer::DataBlockSlicer() {
-  currentId=0;
-  currentDataSet=nullptr;
+  partialSlices.resize(maxLinks);
+  for (unsigned int i=0;i<maxLinks;i++) {
+    partialSlices[i].linkId=i;
+    partialSlices[i].tfId=0;
+    partialSlices[i].currentDataSet=nullptr;
+  }
 }
 DataBlockSlicer::~DataBlockSlicer() {
 }
   
 int DataBlockSlicer::appendBlock(DataBlockContainerReference const &block) {
-  uint64_t stfid=1+(block->getData()->header.id-1) / 8;  
-  //printf("slicing block into stf %d\n",(int)stfid);
-  if (currentDataSet!=nullptr) {   
-    if (stfid!=currentId) {
+  uint64_t tfId=block->getData()->header.id;   //1+(block->getData()->header.id-1) / 8;  
+  uint8_t linkId=block->getData()->header.linkId;
+  
+  if (linkId>maxLinks) {
+    theLog.log("wrong link id %d > %d",linkId,maxLinks);
+    return -1;
+  }
+  
+  //theLog.log("append block link %d for tf %d",(int)linkId,(int)tfId);
+  if (partialSlices[linkId].currentDataSet!=nullptr) {   
+    if (partialSlices[linkId].tfId!=tfId) {
       // the current slice is complete
-      slices.push(currentDataSet);
-      currentDataSet=nullptr;
+      slices.push(partialSlices[linkId].currentDataSet);
+      partialSlices[linkId].currentDataSet=nullptr;
+      //theLog.log("TF is complete");
     }
   }
-  if (currentDataSet==nullptr) {
+  if (partialSlices[linkId].currentDataSet==nullptr) {
     //printf("creating STF %d\n",(int)stfid);
     try {
-        currentDataSet=std::make_shared<DataSet>();
+        partialSlices[linkId].currentDataSet=std::make_shared<DataSet>();
     }
     catch (...) {
       return -1;
     }
   }
-  currentDataSet->push_back(block);
-  currentId=stfid;
-  return currentDataSet->size();
+  partialSlices[linkId].currentDataSet->push_back(block);
+  partialSlices[linkId].tfId=tfId;
+  return partialSlices[linkId].currentDataSet->size();
 }
 
 DataSetReference DataBlockSlicer::getSlice(bool includeIncomplete) {
@@ -232,8 +248,13 @@ DataSetReference DataBlockSlicer::getSlice(bool includeIncomplete) {
   DataSetReference bcv=nullptr;
   if (slices.empty()) {
     if (includeIncomplete) {
-      bcv=currentDataSet;
-      currentDataSet=nullptr;
+      for (auto &c: partialSlices) {
+        bcv=c.currentDataSet;
+        if (bcv!=nullptr) {
+          c.currentDataSet=nullptr;
+          break;
+        }
+      }
     } else {
       return nullptr;
     }

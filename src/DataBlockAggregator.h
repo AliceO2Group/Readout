@@ -21,6 +21,11 @@ using namespace AliceO2::Common;
 */
 
 
+struct PartialSlice {
+  uint8_t linkId;
+  uint64_t tfId;
+  DataSetReference currentDataSet; 
+};
 
 // a class to group blocks with same ID in slices
 class DataBlockSlicer {
@@ -29,8 +34,8 @@ class DataBlockSlicer {
   DataBlockSlicer();
   ~DataBlockSlicer();
   
-  // append a new block to curent slice
-  // returns the number of blocks in current slice
+  // append a new block to curent slice of corresponding link
+  // returns the number of blocks in slice used
   int appendBlock(DataBlockContainerReference const &block);
  
   // get a slice, if available
@@ -40,9 +45,14 @@ class DataBlockSlicer {
   DataSetReference getSlice(bool includeIncomplete=false);
   
   private:
+ /*
     uint64_t currentId; // common id of the blocks in current data set being built
     DataSetReference currentDataSet; // current data set being built
-    std::queue<DataSetReference> slices; // data sets which has been built and are complete
+ */
+    const unsigned int maxLinks=24; // maximum number of links
+    std::vector<PartialSlice> partialSlices; // slices being built (one per link)
+    
+    std::queue<DataSetReference> slices; // data sets which have been built and are complete
     
     // todo: add a timeout
 };
