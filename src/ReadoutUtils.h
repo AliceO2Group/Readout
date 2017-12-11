@@ -7,6 +7,7 @@
 #include <Configuration/Tree.h>
 #include <Common/Configuration.h>
 
+#include "RAWDataHeader.h"
 
 namespace ReadoutUtils {
 
@@ -28,6 +29,11 @@ std::string NumberOfBytesToString(double value,const char*suffix);
 void convertConfigurationNodeToPTree(const AliceO2::Configuration::Tree::Node& node, boost::property_tree::ptree &pt, std::string basePath="", const char separator='.');
 
 }
+
+
+// print RDH struct content to stdout
+void dumpRDH(o2::Header::RAWDataHeader *rdh);
+
 
 // end of _READOUTUTILS_H
 #endif
