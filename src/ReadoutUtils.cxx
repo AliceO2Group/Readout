@@ -2,6 +2,9 @@
 #include <math.h>
 
 
+#include "RAWDataHeader.h"
+
+
 #include <Configuration/Visitor.h>
 #include <Configuration/Tree.h>
 
@@ -72,4 +75,12 @@ void convertConfigurationNodeToPTree(const AliceO2::Configuration::Tree::Node& n
 	pt.put(basePath,value);
       }
   );
+}
+
+
+void dumpRDH(o2::Header::RAWDataHeader *rdh) {
+  printf("RDH:\tversion=%d\theader size=%d\tblock length=%d\n",(int)rdh->version,(int)rdh->headerSize,(int)rdh->blockLength);
+  printf("\tTRG orbit=%d bc=%d\n",(int)rdh->triggerOrbit,(int)rdh->triggerBC);
+  printf("\tHB  orbit=%d bc=%d\n",(int)rdh->heartbeatOrbit,(int)rdh->heartbeatBC);
+  printf("\tfeeId=%d\tlinkId=%d\n",(int)rdh->feeId,(int)rdh->linkId);
 }
