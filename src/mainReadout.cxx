@@ -336,44 +336,12 @@ int main(int argc, char* argv[])
         dataSamplingInjector->injectSamples(bc);
       }
 #endif
-
-
-      unsigned int nb=(int)bc->size();
-      //printf("received 1 vector %p made of %u blocks\n",bc,nb);
-
-
-      for (unsigned int i=0;i<nb;i++) {
-/*
-        printf("pop %d\n",i);
-        printf("%p : %d use count\n",(void *)bc->at(i).get(), (int)bc->at(i).use_count());
-*/
-        DataBlockContainerReference b=bc->at(i);
-
-/*
-        nBlocks++;
-        nBytes+=b->getData()->header.dataSize;
-*/
-//        printf("%p : %d use count\n",(void *)b.get(), (int)b.use_count());
-
-//        printf("pushed\n");
-
-	//printf("consuming %p\n",b.get());
-        for (auto& c : dataConsumers) {
-          c->pushData(b);
-        }
-        
-        // todo: call stopping when last block received?
-        
-
-       // todo: temporary - for the time being, delete done in FMQ. Replace by shared_ptr
-//       delete b;
-//       b.reset();
-       //printf("%p : %d use count\n",(void *)b.get(), b.use_count());
-        //printf("pop %p\n",(void *)b);
-
+      // todo: datasampling can become a consumer, now that consumer interface accepts datasets instead of blocks
+      
+      for (auto& c : dataConsumers) {
+        c->pushData(bc);
       }
-      // todo: check if following needed or not... in principle not as it is a shared_ptr
-      // delete bc;
+
     } else {
       usleep(1000);
     }
