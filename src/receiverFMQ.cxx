@@ -14,6 +14,10 @@
 #include "CounterStats.h"
 #include <Common/Timer.h>
 
+#include "RAWDataHeader.h"
+#include "SubTimeframe.h"
+
+
 using namespace AliceO2::InfoLogger;
 
 
@@ -148,6 +152,12 @@ int main(int argc, const char **argv) {
   int statsTimeout=1000000;
   runningTime.reset(statsTimeout);
   
+  bool isModeSTF=true;  // set to true when expecting reception of STF (header + HB + HB ...)
+  int STFpendingMsgs=0;
+  
+  
+  int n1,n2;
+  
   unsigned long long nMsg=0;
   unsigned long long nBytes=0;
   for (;!ShutdownRequest;){
@@ -157,12 +167,58 @@ int main(int argc, const char **argv) {
     msgStats.increment(msg->GetSize());
     nBytes+=msg->GetSize();
     nMsg++;
-    /*
-    for (int k=0;k<10;k++) {
-      printf("%d ",(int)(((char*)(msg->GetData()))[k]));
+    
+    
+    //printf("Received message size %d\n",(int)msg->GetSize());
+    
+    
+    if (isModeSTF) {     
+      if (STFpendingMsgs==0) {
+        // this should be a header
+        if (msg->GetSize()!=sizeof(SubTimeframe)) {
+          printf("protocol error! expecting STF header size %d but got %d bytes\n",(int)sizeof(SubTimeframe),(int)msg->GetSize());
+          return -1;
+        }
+        SubTimeframe *stf=(SubTimeframe *)msg->GetData();
+        printf("Receiving TF %d link %d : %d HBf\n",(int)stf->timeframeId,(int)stf->linkId,(int)stf->numberOfHBF);
+        STFpendingMsgs=stf->numberOfHBF;
+        n1=0;
+        n2=stf->numberOfHBF;
+      } else {
+        // this is a HBF
+        STFpendingMsgs--;
+       
+        if (msg->GetSize()%8192) {
+          printf("size not matching expected HBF size (multiple of 8k)\n");
+          return -1;
+        }
+        n1++;
+        //printf("received HBF %d/%d\n",n1,n2);
+        
+        // iterate from RDH to RDH in received message
+        int nBlocks=0;
+        char *payload=(char *)msg->GetData();
+        for (unsigned int offset=0;offset<msg->GetSize();){
+          o2::Header::RAWDataHeader *rdh=(o2::Header::RAWDataHeader *)&(payload[offset]);
+          //dumpRDH(rdh);
+          
+          /*
+                uint8_t *payload=(unsigned char*)(msg->GetData());
+                for (int k=0;k<16;k++) {
+                  printf("%02X ",(unsigned int)(payload[k]));
+                }
+                printf("\n");
+          */
+
+                offset+=rdh->blockLength;
+                nBlocks++;
+          //      break;
+        }
+        //printf("%d CRU blocks in HBF\n",nBlocks);
+      }      
     }
-    printf("\n");
-    */
+      
+    
     //std::cout << " received message of size " << msg->GetSize() << std::endl; // access data via inputMsg->GetData()
     if (runningTime.isTimeout()) {
       double t=runningTime.getTime();
