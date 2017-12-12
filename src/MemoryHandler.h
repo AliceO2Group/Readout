@@ -5,13 +5,16 @@
 #include <Common/Fifo.h>
 
 #include <stdint.h>
-
+#include <mutex>
 
 struct MemoryRegion {
-  unsigned long long size;
-  void *ptr;
-  std::string name;
+  unsigned long long size;  // size of memory block
+  void *ptr; // pointer to memory block
+  std::string name; // name of the region
+  
   // todo: add callback to release region afterwards
+  
+  unsigned long long usedSize; // amount of memory in use
 };
 
 
@@ -20,6 +23,7 @@ extern std::unique_ptr<MemoryRegion> bigBlock;
 
 // todo: named list of big blocks, with get/set functions
 
+// todo: big blocks: one different per equipment to avoid lock
 
 
 // a big block of memory for I/O

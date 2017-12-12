@@ -1,6 +1,7 @@
 #include "MemoryHandler.h"
 
 std::unique_ptr<MemoryRegion> bigBlock=nullptr;
+std::mutex bigBlockMutex;
 
 #include <InfoLogger/InfoLogger.hxx>
 using namespace AliceO2::InfoLogger;
@@ -10,8 +11,10 @@ extern InfoLogger theLog;
 MemoryHandler::MemoryHandler(int vPageSize, int vNumberOfPages) { 
   pagesAvailable=nullptr;
 
-  memorySize=bigBlock->size;
-  baseAddress=(uint8_t *)bigBlock->ptr;
+  theLog.log("Creating pool of %d pages of size %d, base address= %p",vNumberOfPages,vPageSize,baseAddress);
+  
+  bigBlockMutex.lock();
+  memorySize=bigBlock->size-bigBlock->usedSize;
 
 /*
   int baseAlignment=1024*1024;    
@@ -25,14 +28,17 @@ MemoryHandler::MemoryHandler(int vPageSize, int vNumberOfPages) {
   }
 */
 
-  theLog.log("Creating pool of %d pages of size %d, base address= %p",vNumberOfPages,vPageSize,baseAddress);
-
   pageSize=vPageSize;
   numberOfPages=vNumberOfPages;
   if (pageSize*numberOfPages>memorySize) {
-    theLog.log("Memory bank too small: %ld < %ld * %ld",memorySize,pageSize,numberOfPages);  
+    bigBlockMutex.unlock();
+    theLog.log("No space left in memory bank: available %ld < %ld * %ld needed",memorySize,pageSize,numberOfPages);
     throw __LINE__;
   }
+  bigBlock->usedSize+=pageSize*numberOfPages;
+  baseAddress=&(((uint8_t *)bigBlock->ptr)[bigBlock->usedSize]);
+  bigBlockMutex.unlock();
+  
 //    theLog.log("Got %lld pages, each %s",nPages,ReadoutUtils::NumberOfBytesToString(pageSize,"Bytes").c_str());
   pagesAvailable=std::make_unique<AliceO2::Common::Fifo<long>>(numberOfPages);
 
@@ -51,9 +57,10 @@ MemoryHandler::~MemoryHandler() {
 
 void *MemoryHandler::getPage() {
   long offset=0;
-  if (pagesAvailable->pop(offset)==0) {
+  int res=pagesAvailable->pop(offset);
+  if (res==0) {
     uint8_t *pagePtr=&baseAddress[offset];
-    //theLog.log("Using page @ offset %d = %p",(int)offset,pagePtr);
+    //theLog.log("%p Using page @ offset %d = %p",this,(int)offset,pagePtr);
     return pagePtr;
   }
   return nullptr;
