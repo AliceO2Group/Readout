@@ -86,6 +86,7 @@ class ConsumerFMQchannel: public Consumer {
       m->name="FMQ unmanaged memory buffer";
       m->size=memoryBuffer->GetSize();
       m->ptr=memoryBuffer->GetData();
+      m->usedSize=0;
       bigBlock=std::move(m);
     }
     
@@ -126,7 +127,9 @@ class ConsumerFMQchannel: public Consumer {
 
     unsigned int lastHBid=-1;
     int isFirst=true;
+    int ix=0;
     for (auto &br : *bc) {
+      ix++;
       DataBlock *b=br->getData();
       if (isFirst) {
         stfHeader->timeframeId=b->header.id;
@@ -137,6 +140,7 @@ class ConsumerFMQchannel: public Consumer {
         if (stfHeader->timeframeId!=b->header.id) {printf("mismatch tfId\n");}
         if (stfHeader->linkId!=b->header.linkId) {printf("mismatch linkId\n");}       
       }
+      //printf("block %d tf %d link %d\n",ix,b->header.id,b->header.linkId);
       for (int offset=0;offset+cruBlockSize<=b->header.dataSize;offset+=cruBlockSize) {
         //printf("checking %p : %d\n",b,offset);
         o2::Header::RAWDataHeader *rdh=(o2::Header::RAWDataHeader *)&b->data[offset];       
@@ -145,10 +149,15 @@ class ConsumerFMQchannel: public Consumer {
           lastHBid=rdh->heartbeatOrbit;
           //printf("offset %d now %d HBF - HBid=%d\n",offset,stfHeader->numberOfHBF,lastHBid);
         }
+        if (stfHeader->linkId!=rdh->linkId) {
+          printf("Warning: TF%d link Id mismatch %d != %d\n",stfHeader->timeframeId,stfHeader->linkId,rdh->linkId);
+          //dumpRDH(rdh);
+          //printf("block %p : offset %d = %p\n",b,offset,rdh);
+        }
       }
     }  
     
-    printf("TF %d link %d = %d blocks, %d HBf\n",(int)stfHeader->timeframeId,(int)stfHeader->linkId,(int)bc->size(),(int)stfHeader->numberOfHBF);
+    //printf("TF %d link %d = %d blocks, %d HBf\n",(int)stfHeader->timeframeId,(int)stfHeader->linkId,(int)bc->size(),(int)stfHeader->numberOfHBF);
     
 
     // create a header message
