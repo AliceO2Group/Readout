@@ -220,13 +220,15 @@ int DataBlockSlicer::appendBlock(DataBlockContainerReference const &block) {
     return -1;
   }
   
-  //theLog.log("append block link %d for tf %d",(int)linkId,(int)tfId);
+  //theLog.log("slicer %p append block link %d for tf %d",this,(int)linkId,(int)tfId);
+
   if (partialSlices[linkId].currentDataSet!=nullptr) {   
     if (partialSlices[linkId].tfId!=tfId) {
       // the current slice is complete
+      //theLog.log("TF %d link %d is complete",tfId,linkId);
       slices.push(partialSlices[linkId].currentDataSet);
       partialSlices[linkId].currentDataSet=nullptr;
-      //theLog.log("TF is complete");
+
     }
   }
   if (partialSlices[linkId].currentDataSet==nullptr) {
