@@ -29,7 +29,8 @@ class ReadoutEquipmentCruEmulator : public ReadoutEquipment {
 
     int cfgNumberOfLinks; // number of links to simulate. Will create data blocks round-robin.
     int cfgFeeId; // FEE id to be used
-    
+    int cfgLinkId; // Link id to be used (base number - will be incremented if multiple links selected)
+        
     const unsigned int LHCBunches=3564; // number of bunches in LHC
     const unsigned int LHCOrbitRate=11246; // LHC orbit rate, in Hz. 299792458 / 26659
     const unsigned int LHCBCRate=LHCOrbitRate*LHCBunches; // LHC bunch crossing rate, in Hz
@@ -83,6 +84,11 @@ ReadoutEquipmentCruEmulator::ReadoutEquipmentCruEmulator(ConfigFile &cfg, std::s
   cfg.getOptionalValue<int>(cfgEntryPoint + ".cruBlockSize", cruBlockSize, (int)8192);
   cfg.getOptionalValue<int>(cfgEntryPoint + ".numberOfLinks", cfgNumberOfLinks, (int)1);
   cfg.getOptionalValue<int>(cfgEntryPoint + ".feeId", cfgFeeId, (int)0);
+  cfg.getOptionalValue<int>(cfgEntryPoint + ".linkId", cfgLinkId, (int)0);
+  
+  // log config summary
+  theLog.log("Config summary: memPoolNumberOfElements=%d memPoolElementSize=%d maxBlocksPerPage=%d cruBlockSize=%d numberOfLinks=%d feeId=%d linkId=%d",
+    memPoolNumberOfElements, memPoolElementSize, cfgMaxBlocksPerPage, cruBlockSize, cfgNumberOfLinks, cfgFeeId, cfgLinkId);
   
   // create memory pool
   if (bigBlock==nullptr) {
@@ -152,6 +158,7 @@ Thread::CallbackResult ReadoutEquipmentCruEmulator::prepareBlocks() {
         return Thread::CallbackResult::Idle;
       }
       pendingBlocks[i]=nextBlock;
+      //printf("equipment %s : got block ref = %p rawptr = %p data=%p \n",getName().c_str(),nextBlock,nextBlock->getData(),nextBlock->getData()->data);
   }
 
   // at this point, we have 1 free page per link... fill it!  
@@ -173,6 +180,8 @@ Thread::CallbackResult ReadoutEquipmentCruEmulator::prepareBlocks() {
     nowOrbit=LHCorbit;
     nowBc=LHCbc;
     unsigned int nowId=currentId;
+    
+    int linkId=cfgLinkId+currentLink;
     
     for (offset=0;offset+cruBlockSize<=memPoolElementSize;offset+=cruBlockSize) {
 
@@ -209,9 +218,9 @@ Thread::CallbackResult ReadoutEquipmentCruEmulator::prepareBlocks() {
       rdh->triggerBC=nowBc;         
       rdh->heartbeatOrbit=nowHb;
       rdh->feeId=cfgFeeId;
-      rdh->linkId=currentLink;
+      rdh->linkId=linkId;
 
-      //printf("RDH @ %d / %d\n",offset,memPoolElementSize);
+      //printf("block %p offset %d / %d, link %d @ %p data=%p\n",b,offset,memPoolElementSize,linkId,rdh,b->data);
       //dumpRDH(rdh);
       nBlocksInPage++;
     }
@@ -223,7 +232,7 @@ Thread::CallbackResult ReadoutEquipmentCruEmulator::prepareBlocks() {
     b->header.headerSize=sizeof(DataBlockHeaderBase);
     b->header.dataSize=dSize;
     b->header.id=nowId;
-    b->header.linkId=currentLink;
+    b->header.linkId=linkId;
 
     readyBlocks->push(pendingBlocks[currentLink]);
     pendingBlocks[currentLink]=nullptr;
