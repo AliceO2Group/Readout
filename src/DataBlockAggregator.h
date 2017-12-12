@@ -49,7 +49,7 @@ class DataBlockSlicer {
     uint64_t currentId; // common id of the blocks in current data set being built
     DataSetReference currentDataSet; // current data set being built
  */
-    const unsigned int maxLinks=24; // maximum number of links
+    const unsigned int maxLinks=8192; // maximum number of links
     std::vector<PartialSlice> partialSlices; // slices being built (one per link)
     
     std::queue<DataSetReference> slices; // data sets which have been built and are complete
