@@ -13,6 +13,7 @@
 #include "RAWDataHeader.h"
 #include "SubTimeframe.h"
 
+/*
 namespace {
 
 // cleanup function, defined with the callback footprint expected in the 3rd argument of FairMQTransportFactory.CreateMessage()
@@ -32,7 +33,7 @@ void cleanupCallbackForMalloc(void *data, void *object) {
       free(object);
     }
 }
-
+*/
 
 
 /*
@@ -45,6 +46,10 @@ class ConsumerFMQchannel: public Consumer {
     std::shared_ptr<FairMQTransportFactory> transportFactory;   
     FairMQUnmanagedRegionPtr memoryBuffer=nullptr;
     bool disableSending=0;
+    
+    int memPoolNumberOfElements;  // number of pages in memory pool
+    int memPoolElementSize;       // size of each page
+    std::shared_ptr<MemoryHandler> mh;  // a memory pool from which to allocate data pages
     
   public: 
 
@@ -79,7 +84,15 @@ class ConsumerFMQchannel: public Consumer {
     cfg.getOptionalValue<std::string>(cfgEntryPoint + ".unmanagedMemorySize",cfgUnmanagedMemorySize);
     long long mMemorySize=ReadoutUtils::getNumberOfBytesFromString(cfgUnmanagedMemorySize.c_str());
     if (mMemorySize>0) {
-      memoryBuffer=sendingChannel->Transport()->CreateUnmanagedRegion(mMemorySize);
+      memoryBuffer=sendingChannel->Transport()->CreateUnmanagedRegion(mMemorySize,[this](void* data, size_t size, void *hint) { // cleanup callback
+        //printf("ack %p (size %d) hint=%p\n",data,(int)size,hint);
+        
+        if (hint!=nullptr) {
+          DataBlockContainerReference *blockRef=(DataBlockContainerReference *)hint;
+          delete blockRef;
+        }
+      });
+      
       theLog.log("Got FMQ unmanaged memory buffer size %lu @ %p",memoryBuffer->GetSize(),memoryBuffer->GetData());
       std::unique_ptr<MemoryRegion> m;
       m=std::make_unique<MemoryRegion>();
@@ -90,7 +103,17 @@ class ConsumerFMQchannel: public Consumer {
       bigBlock=std::move(m);
     }
     
-    
+    // allocate a pool of pages for headers/data copies
+    cfg.getOptionalValue<int>(cfgEntryPoint + ".memPoolNumberOfElements", memPoolNumberOfElements,100);
+    std::string cfgMemPoolElementSize;
+    cfg.getOptionalValue<std::string>(cfgEntryPoint + ".memPoolElementSize", cfgMemPoolElementSize);
+    memPoolElementSize=ReadoutUtils::getNumberOfBytesFromString(cfgMemPoolElementSize.c_str());
+    if (memPoolElementSize<=0) {
+      memPoolElementSize=128*1024;
+    }
+    mh=std::make_shared<MemoryHandler>(memPoolElementSize,memPoolNumberOfElements);
+
+        
     sendingChannel->Bind(cfgChannelAddress);
     
     if (!sendingChannel->ValidateChannel()) {
@@ -119,7 +142,16 @@ class ConsumerFMQchannel: public Consumer {
     // todo: replace by RDHv3 length
    
     // we iterate a first time to count number of HB
-    SubTimeframe *stfHeader=(SubTimeframe *)malloc(sizeof(SubTimeframe));
+    if (memPoolElementSize<(int)sizeof(SubTimeframe)) {return -1;}
+    DataBlockContainerReference headerBlock=nullptr;
+    try {
+      headerBlock=std::make_shared<DataBlockContainerFromMemoryHandler>(mh);
+    }
+    catch (...) {
+    }
+    if (headerBlock==nullptr) {return -1;}
+    auto blockRef=new DataBlockContainerReference(headerBlock);
+    SubTimeframe *stfHeader=(SubTimeframe *)headerBlock->getData()->data;
     if (stfHeader==nullptr) {return -1;}
     stfHeader->timeframeId=0;
     stfHeader->numberOfHBF=0;
@@ -150,7 +182,7 @@ class ConsumerFMQchannel: public Consumer {
           //printf("offset %d now %d HBF - HBid=%d\n",offset,stfHeader->numberOfHBF,lastHBid);
         }
         if (stfHeader->linkId!=rdh->linkId) {
-          printf("Warning: TF%d link Id mismatch %d != %d\n",stfHeader->timeframeId,stfHeader->linkId,rdh->linkId);
+          printf("Warning: TF%d link Id mismatch %d != %d\n",(int)stfHeader->timeframeId,(int)stfHeader->linkId,(int)rdh->linkId);
           //dumpRDH(rdh);
           //printf("block %p : offset %d = %p\n",b,offset,rdh);
         }
@@ -159,11 +191,12 @@ class ConsumerFMQchannel: public Consumer {
     
     //printf("TF %d link %d = %d blocks, %d HBf\n",(int)stfHeader->timeframeId,(int)stfHeader->linkId,(int)bc->size(),(int)stfHeader->numberOfHBF);
     
-
     // create a header message
-    std::unique_ptr<FairMQMessage> msgHeader(transportFactory->CreateMessage((void *)stfHeader, sizeof(SubTimeframe), cleanupCallbackForMalloc, (void *)(stfHeader)));
+    //std::unique_ptr<FairMQMessage> msgHeader(transportFactory->CreateMessage((void *)stfHeader, sizeof(SubTimeframe), cleanupCallback, (void *)(blockRef)));
+    std::unique_ptr<FairMQMessage> msgHeader(transportFactory->CreateMessage(memoryBuffer,(void *)stfHeader, sizeof(SubTimeframe), (void *)(blockRef)));
     sendingChannel->Send(msgHeader);
-    //printf("sent header %d bytes\n",(int)sizeof(stfHeader));
+    //printf("sent header %d bytes\n",(int)sizeof(SubTimeframe));
+
     
     // cut: one message per HBf
     lastHBid=-1;
@@ -202,19 +235,42 @@ class ConsumerFMQchannel: public Consumer {
         DataBlock *b=br->getData();
         int ix=pendingFrames[0].HBstart;
         int l=pendingFrames[0].HBlength;
-        std::unique_ptr<FairMQMessage> msgBody(transportFactory->CreateMessage((void *)(&(b->data[ix])),(size_t)(l), cleanupCallback, (void *)(pendingFrames[0].blockRef)));
-        sendingChannel->Send(msgBody);
-        //printf("block %p @ %d : %d\n",b,ix,l);
+//        std::unique_ptr<FairMQMessage> msgBody(transportFactory->CreateMessage((void *)(&(b->data[ix])),(size_t)(l), cleanupCallback, (void *)(pendingFrames[0].blockRef)));
+        void *hint=(void *)pendingFrames[0].blockRef;
+        //printf("block %p ix = %d : %d hint=%p\n",(void *)(&(b->data[ix])),ix,l,hint);
+        //std::cout << typeid(pendingFrames[0].blockRef).name() << std::endl;
+        std::unique_ptr<FairMQMessage> msgBody(transportFactory->CreateMessage(memoryBuffer,(void *)(&(b->data[ix])),(size_t)(l),hint));
+        sendingChannel->Send(msgBody);        
         //printf("sent single HB %d = %d bytes\n",pendingFrames[0].HBid,l);
         //printf("left to FMQ: %p\n",pendingFrames[0].blockRef);
 
       } else {
+        // todo : account number of repack-copies in this situation
+        
         // multiple blocks, need to repack
         int totalSize=0;
         for (auto &f : pendingFrames) {
           totalSize+=f.HBlength;
         }
-        char *newBlock=(char *)malloc(totalSize);
+        // allocate
+        // todo: same code as for header -> create func/lambda
+        // todo: send empty message if no page left in buffer
+        if (memPoolElementSize<totalSize) {
+          printf("error page size too small %d < %d\n",memPoolElementSize,totalSize);
+          return;
+        }
+        DataBlockContainerReference copyBlock=nullptr;
+        try {
+          copyBlock=std::make_shared<DataBlockContainerFromMemoryHandler>(mh);
+        }
+        catch (...) {
+        }
+        if (copyBlock==nullptr) {
+          printf("error: no page left\n");
+          return;
+        }
+        auto blockRef=new DataBlockContainerReference(copyBlock);
+        char *newBlock=(char *)copyBlock->getData()->data;;
         int newIx=0;
         for (auto &f : pendingFrames) {
           auto br=*(f.blockRef);
@@ -228,10 +284,15 @@ class ConsumerFMQchannel: public Consumer {
           f.blockRef=nullptr;
           newIx+=l;
         }
-        std::unique_ptr<FairMQMessage> msgBody(transportFactory->CreateMessage((void *)newBlock, totalSize, cleanupCallbackForMalloc, (void *)(newBlock)));
-        sendingChannel->Send(msgBody);
-        //printf("sent reallocated HB %d (originally %d blocks) = %d bytes\n",pendingFrames[0].HBid,nFrames,totalSize);
 
+        //std::unique_ptr<FairMQMessage> msgBody(transportFactory->CreateMessage((void *)newBlock, totalSize, cleanupCallbackForMalloc, (void *)(newBlock)));
+        //sendingChannel->Send(msgBody);
+  
+        // create a fmq message
+        std::unique_ptr<FairMQMessage> msgCopy(transportFactory->CreateMessage(memoryBuffer,(void *)newBlock, totalSize, (void *)(blockRef)));
+        sendingChannel->Send(msgCopy);
+  
+        //printf("sent reallocated HB %d (originally %d blocks) = %d bytes\n",pendingFrames[0].HBid,nFrames,totalSize);
       }
       pendingFrames.clear();
     };
