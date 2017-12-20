@@ -11,7 +11,7 @@ extern InfoLogger theLog;
 MemoryHandler::MemoryHandler(int vPageSize, int vNumberOfPages) { 
   pagesAvailable=nullptr;
 
-  theLog.log("Creating pool of %d pages of size %d, base address= %p",vNumberOfPages,vPageSize,baseAddress);
+  theLog.log("Creating pool of %d pages of size %d",vNumberOfPages,vPageSize);
   
   bigBlockMutex.lock();
   memorySize=bigBlock->size-bigBlock->usedSize;
@@ -49,6 +49,8 @@ MemoryHandler::MemoryHandler(int vPageSize, int vNumberOfPages) {
     //theLog.log("Creating page @ offset %d",(int)offset);
     pagesAvailable->push(offset);
   }
+
+  theLog.log("%d pages added, base address= %p",numberOfPages,baseAddress);
 
 }
 
