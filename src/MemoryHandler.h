@@ -67,6 +67,7 @@ class DataBlockContainerFromMemoryHandler : public DataBlockContainer {
       delete data;
       throw __LINE__;
     }
+    //printf("In use: page %p\n",data->data);
   }
   
   ~DataBlockContainerFromMemoryHandler() {
