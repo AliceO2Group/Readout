@@ -151,6 +151,18 @@ O2_GENERATE_EXECUTABLE(
 )
 
 O2_GENERATE_EXECUTABLE(
+        EXE_NAME testTxFMQ.exe
+        SOURCES src/testTxFMQ.cxx $<TARGET_OBJECTS:objReadoutUtils>
+        BUCKET_NAME ${BUCKET_NAME}
+)
+
+O2_GENERATE_EXECUTABLE(
+        EXE_NAME testRxFMQ.exe
+        SOURCES src/testRxFMQ.cxx $<TARGET_OBJECTS:objReadoutUtils>
+        BUCKET_NAME ${BUCKET_NAME}
+)
+
+O2_GENERATE_EXECUTABLE(
         EXE_NAME readRaw.exe
         SOURCES src/readRaw.cxx $<TARGET_OBJECTS:objReadoutUtils>
         BUCKET_NAME ${BUCKET_NAME}
