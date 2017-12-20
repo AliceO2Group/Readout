@@ -210,11 +210,14 @@ int main(int argc, const char **argv) {
           }
           //printf("%d CRU blocks in HBF\n",nBlocks);
         }      
+      } else {
+        usleep(1000000);      
       }      
     } else {
-      sleep(10000);
+      usleep(10000);
     }
-        
+    printf("releasing msg %p\n",msg->GetData());        
+    
     //std::cout << " received message of size " << msg->GetSize() << std::endl; // access data via inputMsg->GetData()
     
     // print regularly the current throughput
