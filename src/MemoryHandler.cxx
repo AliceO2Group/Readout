@@ -35,8 +35,8 @@ MemoryHandler::MemoryHandler(int vPageSize, int vNumberOfPages) {
     theLog.log("No space left in memory bank: available %ld < %ld * %ld needed",memorySize,pageSize,numberOfPages);
     throw __LINE__;
   }
-  bigBlock->usedSize+=pageSize*numberOfPages;
   baseAddress=&(((uint8_t *)bigBlock->ptr)[bigBlock->usedSize]);
+  bigBlock->usedSize+=pageSize*numberOfPages;
   bigBlockMutex.unlock();
   
 //    theLog.log("Got %lld pages, each %s",nPages,ReadoutUtils::NumberOfBytesToString(pageSize,"Bytes").c_str());
