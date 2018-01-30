@@ -11,32 +11,22 @@ extern InfoLogger theLog;
 MemoryHandler::MemoryHandler(int vPageSize, int vNumberOfPages) { 
   pagesAvailable=nullptr;
 
-  theLog.log("Creating pool of %d pages of size %d",vNumberOfPages,vPageSize);
-  
-  bigBlockMutex.lock();
-  memorySize=bigBlock->size-bigBlock->usedSize;
-
-/*
-  int baseAlignment=1024*1024;    
-  int r=(long)baseAddress % baseAlignment;
-  if (r!=0) {
-      theLog.log("Unaligned base address %p, target alignment=%d, skipping first %d bytes",baseAddress,baseAlignment,baseAlignment-r);
-    int skipBytes=baseAlignment-r;
-    baseAddress+=skipBytes;
-    memorySize-=skipBytes;
-    // now baseAddress is aligned to baseAlignment bytes, but what guarantee do we have that PHYSICAL page addresses are aligned ???
-  }
-*/
-
   pageSize=vPageSize;
   numberOfPages=vNumberOfPages;
-  if (pageSize*numberOfPages>memorySize) {
+
+  size_t bytesReserved=pageSize*numberOfPages;
+  
+  theLog.log("Creating pool of %lu pages of size %lu, total %lu bytes",numberOfPages,pageSize,bytesReserved);
+  
+  bigBlockMutex.lock();
+  size_t bytesFree=bigBlock->size-bigBlock->usedSize;   
+  if (bytesReserved>bytesFree) {
     bigBlockMutex.unlock();
-    theLog.log("No space left in memory bank: available %ld < %ld * %ld needed",memorySize,pageSize,numberOfPages);
+    theLog.log("No space left in memory bank: available %lu < %lu needed",bytesFree,bytesReserved);
     throw __LINE__;
   }
   baseAddress=&(((uint8_t *)bigBlock->ptr)[bigBlock->usedSize]);
-  bigBlock->usedSize+=pageSize*numberOfPages;
+  bigBlock->usedSize+=bytesReserved;
   bigBlockMutex.unlock();
   
 //    theLog.log("Got %lld pages, each %s",nPages,ReadoutUtils::NumberOfBytesToString(pageSize,"Bytes").c_str());
@@ -49,9 +39,8 @@ MemoryHandler::MemoryHandler(int vPageSize, int vNumberOfPages) {
     //theLog.log("Creating page @ offset %d",(int)offset);
     pagesAvailable->push(offset);
   }
-
-  theLog.log("%d pages added, base address= %p",numberOfPages,baseAddress);
-
+  memorySize=bytesReserved;
+  theLog.log("%lu pages added, base address=%p size=%lu",numberOfPages,baseAddress,memorySize);
 }
 
 MemoryHandler::~MemoryHandler() {
@@ -76,4 +65,15 @@ void MemoryHandler::freePage(void *p) {
   }
   //theLog.log("Releasing page @ offset %d",(int)offset);
   pagesAvailable->push(offset);
+}
+
+
+void *MemoryHandler::getBaseAddress() {
+  return baseAddress;
+}
+size_t MemoryHandler::getSize() {
+  return memorySize;
+}
+size_t MemoryHandler::getPageSize() {
+  return pageSize;
 }
