@@ -37,6 +37,10 @@ class MemoryHandler {
     void *getPage();
     void freePage(void *);
    
+    void *getBaseAddress();
+    size_t getSize();
+    size_t getPageSize();
+    
   private:
     size_t memorySize;     // total size of buffer
     size_t pageSize;       // size of each superpage in buffer (not the one of getpagesize())
