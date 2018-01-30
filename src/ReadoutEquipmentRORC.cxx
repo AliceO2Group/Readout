@@ -10,6 +10,8 @@
 #include <string>
 #include <mutex>
 
+#include <Common/Timer.h>
+
 #include "ReadoutUtils.h"
 #include "RdhUtils.h"
 
@@ -28,6 +30,32 @@ class ReadoutMemoryHandler {
   uint8_t * baseAddress; // base address of buffer
 
   std::unique_ptr<AliceO2::Common::Fifo<long>> pagesAvailable;  // a buffer to keep track of individual pages. storing offset (with respect to base address) of pages available
+  
+  void *getBaseAddress() {
+    return baseAddress;
+  }
+  size_t getSize() {
+    return memorySize;
+  }
+  size_t getPageSize() {
+    return pageSize;
+  }
+  void freePage(void *p) {
+    int64_t offset=((uint8_t *)p)-baseAddress;
+    if ((offset<0) || (offset>(int64_t)memorySize)) {
+      throw __LINE__;
+    }
+    pagesAvailable->push(offset);
+  }
+  void *getPage() {
+    long offset=0;
+    int res=pagesAvailable->pop(offset);
+    if (res==0) {
+      uint8_t *pagePtr=&baseAddress[offset];
+      return pagePtr;
+    }
+    return nullptr;
+  }
   
   private:
   std::unique_ptr<AliceO2::roc::MemoryMappedFile> mMemoryMappedFile;
@@ -110,11 +138,13 @@ class DataBlockContainerFromRORC : public DataBlockContainer {
   private:
   AliceO2::roc::ChannelFactory::DmaChannelSharedPtr mChannel;
   AliceO2::roc::Superpage mSuperpage;
-  std::shared_ptr<ReadoutMemoryHandler> mReadoutMemoryHandler;  // todo: store this in superpage user data
-  
-  public:
-  DataBlockContainerFromRORC(AliceO2::roc::ChannelFactory::DmaChannelSharedPtr channel, AliceO2::roc::Superpage  const & superpage, std::shared_ptr<ReadoutMemoryHandler> const & h) {
+//  std::shared_ptr<ReadoutMemoryHandler> mReadoutMemoryHandler;  // todo: store this in superpage user data
+  std::shared_ptr<MemoryHandler> mReadoutMemoryHandler;  // a memory pool from which to allocate data pages
 
+  public:
+  DataBlockContainerFromRORC(AliceO2::roc::ChannelFactory::DmaChannelSharedPtr channel, AliceO2::roc::Superpage  const & superpage, //std::shared_ptr<ReadoutMemoryHandler> const & h) {
+  std::shared_ptr<MemoryHandler> const & h) {
+  
     mSuperpage=superpage;
     mChannel=channel;
     mReadoutMemoryHandler=h;
@@ -131,7 +161,7 @@ class DataBlockContainerFromRORC : public DataBlockContainer {
     data->header.headerSize=sizeof(DataBlockHeaderBase);
     data->header.dataSize=superpage.getReceived();
     
-    uint32_t *ptr=(uint32_t *) & (((uint8_t *)h->baseAddress)[mSuperpage.getOffset()]);
+    uint32_t *ptr=(uint32_t *) & (((uint8_t *)h->getBaseAddress())[mSuperpage.getOffset()]);
     
     data->header.id=*ptr;
     data->data=(char *)ptr;
@@ -149,7 +179,10 @@ class DataBlockContainerFromRORC : public DataBlockContainer {
   ~DataBlockContainerFromRORC() {
     // todo: add lock
     // if constructor fails, do we make page available again or leave it to caller?
-    mReadoutMemoryHandler->pagesAvailable->push(mSuperpage.getOffset());
+    //mReadoutMemoryHandler->pagesAvailable->push(mSuperpage.getOffset());
+
+    void *ptr= & (((uint8_t *)mReadoutMemoryHandler->getBaseAddress())[mSuperpage.getOffset()]);
+    mReadoutMemoryHandler->freePage(ptr);
     
     //printf("released superpage %ld\n",mSuperpage.getOffset());
     if (data!=nullptr) {
@@ -176,7 +209,8 @@ class ReadoutEquipmentRORC : public ReadoutEquipment {
     Thread::CallbackResult  populateFifoOut(); // the data readout loop function
     
     AliceO2::roc::ChannelFactory::DmaChannelSharedPtr channel;    // channel to ROC device
-    std::shared_ptr<ReadoutMemoryHandler> mReadoutMemoryHandler;  // object to get memory from
+    //std::shared_ptr<ReadoutMemoryHandler> mReadoutMemoryHandler;  // object to get memory from
+    std::shared_ptr<MemoryHandler> mReadoutMemoryHandler;  // object to get memory from
 
     DataBlockId currentId=0;    // current data id, kept for auto-increment
        
@@ -190,6 +224,9 @@ class ReadoutEquipmentRORC : public ReadoutEquipment {
 
     unsigned long long statsRdhCheckOk=0;   // number of RDH structs which have passed check ok
     unsigned long long statsRdhCheckErr=0;  // number of RDH structs which have not passed check    
+    
+    AliceO2::Common::Timer timeframeClock;	// timeframe id should be increased at each clock cycle
+    int currentTimeframe=0;	// id of current timeframe
 };
 
 
@@ -259,7 +296,8 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : 
     readoutEquipmentRORCLock.unlock();
     
     // create memory pool
-    mReadoutMemoryHandler=std::make_shared<ReadoutMemoryHandler>((long)mMemorySize,(int)mPageSize,uid,cfgHugePageSize);
+    //mReadoutMemoryHandler=std::make_shared<ReadoutMemoryHandler>((long)mMemorySize,(int)mPageSize,uid,cfgHugePageSize);
+    mReadoutMemoryHandler=std::make_shared<MemoryHandler>(mPageSize,mMemorySize/mPageSize);
 
     // open and configure ROC
     theLog.log("Opening ROC %s:%d",cardId.c_str(),cfgChannelNumber);
@@ -281,9 +319,18 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : 
     // card readout mode : experimental, not needed
     // params.setReadoutMode(AliceO2::roc::ReadoutMode::fromString(cfgReadoutMode));    
 
-    // register the memory block for DMA    
+    // register the memory block for DMA
+  
+    
+    theLog.log("Loop DMA block %p:%lu",(void *)mReadoutMemoryHandler->getBaseAddress(),mReadoutMemoryHandler->getSize());
+    char *ptr=(char *)mReadoutMemoryHandler->getBaseAddress();
+    for (size_t i=0;i<mReadoutMemoryHandler->getSize();i++) {
+      ptr[i]=0;
+    }
+    theLog.log("Register DMA block %p:%lu",(void *)mReadoutMemoryHandler->getBaseAddress(),mReadoutMemoryHandler->getSize());
     params.setBufferParameters(AliceO2::roc::buffer_parameters::Memory {
-      (void *)mReadoutMemoryHandler->baseAddress, mReadoutMemoryHandler->memorySize
+//      (void *)mReadoutMemoryHandler->baseAddress, mReadoutMemoryHandler->memorySize
+      (void *)mReadoutMemoryHandler->getBaseAddress(), mReadoutMemoryHandler->getSize()
     });
     
     // clear locks if necessary
@@ -321,6 +368,10 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : 
     RocFifoSize=channel->getTransferQueueAvailable();
     theLog.log("ROC input queue size = %d pages",RocFifoSize);
     if (RocFifoSize==0) {RocFifoSize=1;}
+
+    // reset timeframe clock
+    timeframeClock.reset(1000000/50.0); // 50Hz rate
+    currentTimeframe=0;
 
   }
   catch (const std::exception& e) {
@@ -363,10 +414,13 @@ Thread::CallbackResult ReadoutEquipmentRORC::prepareBlocks(){
   int nPushed=0;  // number of free pages pushed this iteration 
   while (channel->getTransferQueueAvailable() != 0) {
     long offset=0;
-    if (mReadoutMemoryHandler->pagesAvailable->pop(offset)==0) {
+    void *newPage=mReadoutMemoryHandler->getPage();
+    //if (mReadoutMemoryHandler->pagesAvailable->pop(offset)==0) {
+    if (newPage!=nullptr) {
       AliceO2::roc::Superpage superpage;
-      superpage.offset=offset;
-      superpage.size=mReadoutMemoryHandler->pageSize;
+      //superpage.offset=offset;
+      superpage.offset=(char *)newPage-(char *)mReadoutMemoryHandler->getBaseAddress();
+      superpage.size=mReadoutMemoryHandler->getPageSize();
       superpage.userData=NULL; // &mReadoutMemoryHandler; // bad - looses shared_ptr
       channel->pushSuperpage(superpage);
       isActive=1;
@@ -433,6 +487,12 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
       if (d!=nullptr) {
         channel->popSuperpage();
         nextBlock=d;
+
+	if (timeframeClock.isTimeout()) {
+	  currentTimeframe++;
+	  timeframeClock.increment();
+	}
+	d->getData()->header.id=currentTimeframe;
         
         // validate RDH structure, if configured to do so
         if (cfgRdhCheckEnabled) {
