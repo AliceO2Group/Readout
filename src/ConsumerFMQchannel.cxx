@@ -136,7 +136,27 @@ class ConsumerFMQchannel: public Consumer {
     if (disableSending) {
       return 0;
     }
+    
+    
+    // debug mode to send in simple format
+    bool simpleSend=false;
+    if (simpleSend) {
+      // we just ship one FMQmessage per incoming data page
+      for (auto &br : *bc) {
+        DataBlock *b=br->getData();
+	DataBlockContainerReference *blockRef=new DataBlockContainerReference(br);
+        void *hint=(void *)blockRef;
+        void *blobPtr=b->data;
+        size_t blobSize=(size_t)b->header.dataSize;
+        std::unique_ptr<FairMQMessage> msgBody(transportFactory->CreateMessage(memoryBuffer,blobPtr,blobSize,hint));
+	//printf("send %p = %d bytes hint=%p\n",blobPtr,(int)blobSize,hint);
+        sendingChannel->Send(msgBody);
+      }
+      return 0;
+    }
 
+
+    // send msg with WP5 format: 1 FMQ message for header + 1 FMQ message per data page
   
     const unsigned int cruBlockSize=8192;
     // todo: replace by RDHv3 length
