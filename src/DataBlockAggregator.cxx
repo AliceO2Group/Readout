@@ -222,7 +222,9 @@ int DataBlockSlicer::appendBlock(DataBlockContainerReference const &block) {
   
   //theLog.log("slicer %p append block link %d for tf %d",this,(int)linkId,(int)tfId);
 
-  if (partialSlices[linkId].currentDataSet!=nullptr) {   
+  if (partialSlices[linkId].currentDataSet!=nullptr) {
+    //theLog.log("slice size = %d chunks",partialSlices[linkId].currentDataSet->size());
+    //if ((partialSlices[linkId].tfId!=tfId)||(partialSlices[linkId].currentDataSet->size()>2)) {
     if (partialSlices[linkId].tfId!=tfId) {
       // the current slice is complete
       //theLog.log("TF %d link %d is complete",tfId,linkId);
