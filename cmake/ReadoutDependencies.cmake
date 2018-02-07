@@ -18,7 +18,7 @@ if (FAIRROOT_FOUND)
     # this should go away when fairrot provides a proper Find script or proper config scripts
     # See : http://www.cmake.org/cmake/help/v3.0/command/link_directories.html
     link_directories(${FAIRROOT_LIBRARY_DIR})
-    set(FAIRROOT_LIBRARIES Base FairMQ BaseMQ)
+    set(FAIRROOT_LIBRARIES Base FairMQ BaseMQ Logger)
     ADD_DEFINITIONS(-DWITH_FAIRMQ)
 else (FAIRROOT_FOUND)
     message(WARNING "FairRoot not found, corresponding classes will not be compiled.")

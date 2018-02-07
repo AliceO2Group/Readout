@@ -63,6 +63,9 @@ class ConsumerFMQchannel: public Consumer {
       disableSending=true;
     }
     
+    std::string cfgSessionName="default";
+    cfg.getOptionalValue<std::string>(cfgEntryPoint + ".sessionName", cfgSessionName);
+
     std::string cfgTransportType="zeromq";
     cfg.getOptionalValue<std::string>(cfgEntryPoint + ".transportType", cfgTransportType);
     
@@ -75,9 +78,13 @@ class ConsumerFMQchannel: public Consumer {
     std::string cfgChannelAddress="ipc:///tmp/pipe-readout";
     cfg.getOptionalValue<std::string>(cfgEntryPoint + ".channelAddress", cfgChannelAddress);
 
+    theLog.log("Using FairMQ session name: %s", cfgSessionName.c_str());
     theLog.log("Creating FMQ TX channel %s type %s:%s @ %s",cfgChannelName.c_str(),cfgTransportType.c_str(),cfgChannelType.c_str(),cfgChannelAddress.c_str());
             
-    transportFactory=FairMQTransportFactory::CreateTransportFactory(cfgTransportType);
+    FairMQProgOptions fmqOptions;
+    fmqOptions.SetValue<std::string>("session", cfgSessionName);
+
+    transportFactory=FairMQTransportFactory::CreateTransportFactory(cfgTransportType, fair::mq::tools::Uuid(), &fmqOptions);
     sendingChannel=std::make_unique<FairMQChannel>(cfgChannelName, cfgChannelType, transportFactory);
     
     std::string cfgUnmanagedMemorySize="";
