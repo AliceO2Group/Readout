@@ -44,6 +44,10 @@
 #endif
 
 
+#ifdef WITH_FAIRMQ
+#include <fairmq/FairMQLogger.h>
+#endif
+
 
 using namespace AliceO2::InfoLogger;
 using namespace AliceO2::Common;
@@ -99,6 +103,34 @@ int main(int argc, char* argv[])
   theLog.log("Optional built features enabled:");
   #ifdef WITH_FAIRMQ
    theLog.log("FAIRMQ : yes");
+    fair::Logger::SetConsoleColor(true);
+    fair::Logger::SetConsoleSeverity("nolog");
+    fair::Logger::AddCustomSink("infoLogger", "trace", [&](const std::string& content, // log content
+                         const fair::LogMetaData& metadata) // log metadata (see docs for details)
+    {
+      std::string message= "FMQ : "
+//       + std::to_string(metadata.timestamp) + "  "
+       + std::to_string(metadata.us.count()) + "  "
+//       + metadata.process_name + "  "
+//       + metadata.file + "  "
+//       + metadata.line + "  "
+//       + metadata.func + "  "
+       + content;
+/*      struct LogMetaData
+{
+    std::time_t timestamp;
+    std::chrono::microseconds us;
+    std::string process_name;
+    std::string file;
+    std::string line;
+    std::string func;
+    std::string severity_name;
+    fair::Severity severity;
+};
+*/
+    theLog.logInfo(message);
+    });
+
   #else
    theLog.log("FAIRMQ : no");
   #endif
