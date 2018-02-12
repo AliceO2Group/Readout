@@ -78,8 +78,7 @@ class ConsumerFMQchannel: public Consumer {
     std::string cfgChannelAddress="ipc:///tmp/pipe-readout";
     cfg.getOptionalValue<std::string>(cfgEntryPoint + ".channelAddress", cfgChannelAddress);
 
-    theLog.log("Using FairMQ session name: %s", cfgSessionName.c_str());
-    theLog.log("Creating FMQ TX channel %s type %s:%s @ %s",cfgChannelName.c_str(),cfgTransportType.c_str(),cfgChannelType.c_str(),cfgChannelAddress.c_str());
+    theLog.log("Creating FMQ (session %s) TX channel %s type %s:%s @ %s", cfgSessionName.c_str(), cfgChannelName.c_str(),cfgTransportType.c_str(),cfgChannelType.c_str(),cfgChannelAddress.c_str());
             
     FairMQProgOptions fmqOptions;
     fmqOptions.SetValue<std::string>("session", cfgSessionName);
