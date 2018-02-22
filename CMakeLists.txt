@@ -109,6 +109,12 @@ add_library(
         src/CounterStats.cxx
         src/MemoryHandler.cxx
 )
+add_library(
+        objMemUtils OBJECT
+        src/MemoryBank.cxx
+        src/MemoryBankManager.cxx
+        src/MemoryPagesPool.cxx
+)
 set(CONSUMERS_SRCS
         src/Consumer.cxx
         src/ConsumerStats.cxx
@@ -149,6 +155,8 @@ O2_GENERATE_EXECUTABLE(
         SOURCES src/receiverFMQ.cxx $<TARGET_OBJECTS:objReadoutUtils>
         BUCKET_NAME ${BUCKET_NAME}
 )
+
+add_executable (testMemoryBanks.exe src/testMemoryBanks.cxx $<TARGET_OBJECTS:objMemUtils>)
 
 O2_GENERATE_EXECUTABLE(
         EXE_NAME testTxFMQ.exe
