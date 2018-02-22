@@ -77,10 +77,10 @@ class ConsumerStats: public Consumer {
     cfg.getOptionalValue(cfgEntryPoint + ".monitoringEnabled", monitoringEnabled, 0);
     if (monitoringEnabled) {
       cfg.getOptionalValue(cfgEntryPoint + ".monitoringUpdatePeriod", monitoringUpdatePeriod, 10);
-      const std::string configFile=cfg.getValue<std::string>(cfgEntryPoint + ".monitoringConfig");
-      theLog.log("Monitoring enabled - period %ds - using configuration %s",monitoringUpdatePeriod,configFile.c_str());
+      const std::string configURI=cfg.getValue<std::string>(cfgEntryPoint + ".monitoringURI");
+      theLog.log("Monitoring enabled - period %ds - using %s",monitoringUpdatePeriod,configURI.c_str());
 
-      monitoringCollector=MonitoringFactory::Get("influxdb-udp://localhost:1234"); // TODO: Set URL from Configuration
+      monitoringCollector=MonitoringFactory::Get(configURI.c_str());
       monitoringCollector->addDerivedMetric("readout.BytesTotal", DerivedMetricMode::RATE);
 
       monitoringUpdateTimer.reset(monitoringUpdatePeriod*1000000);
