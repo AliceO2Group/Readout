@@ -83,6 +83,13 @@ class ConsumerStats: public Consumer {
       monitoringCollector=MonitoringFactory::Get(configURI.c_str());
       monitoringCollector->addDerivedMetric("readout.BytesTotal", DerivedMetricMode::RATE);
 
+      // enable process monitoring
+      int processMonitoringInterval=0;
+      cfg.getOptionalValue(cfgEntryPoint + ".processMonitoringInterval", processMonitoringInterval, 0);
+      if (processMonitoringInterval>0) {
+        monitoringCollector->enableProcessMonitoring(processMonitoringInterval);
+      }
+
       monitoringUpdateTimer.reset(monitoringUpdatePeriod*1000000);
     }
 
