@@ -33,7 +33,8 @@
 #include "ReadoutEquipment.h"
 #include "DataBlockAggregator.h"
 #include "Consumer.h"
-
+#include "MemoryBankManager.h"
+#include "ReadoutUtils.h"
 
 // option to add callgrind instrumentation
 // to use: valgrind --tool=callgrind --instr-atstart=no --dump-instr=yes ./a.out
@@ -144,12 +145,64 @@ int main(int argc, char* argv[])
     theLog.log("Error : %s",err.c_str());
     return -1;
   }
+  
 
   // extract optional configuration parameters
   double cfgExitTimeout=-1;
   cfg.getOptionalValue<double>("readout.exitTimeout",cfgExitTimeout);
+  
 
+  // configuration of memory banks
+  for (auto kName : ConfigFileBrowser (&cfg,"bank-")) {
+     // skip disabled
+    int enabled=1;
+    try {
+      enabled=cfg.getValue<int>(kName + ".enabled");
+    }
+    catch (...) {
+    }
+    if (!enabled) {continue;}
 
+    // bank size    
+    std::string cfgSize="";
+    cfg.getOptionalValue<std::string>(kName + ".size",cfgSize);
+    long long mSize=ReadoutUtils::getNumberOfBytesFromString(cfgSize.c_str());
+    if (mSize<=0) {
+      theLog.log("Skipping memory bank %s:  wrong size %s",kName.c_str(),cfgSize.c_str());
+      continue;
+    }
+
+    // bank type
+    std::string cfgType="";
+    try {
+      cfgType=cfg.getValue<std::string>(kName + ".type");
+    }
+    catch (...) {
+      theLog.log("Skipping memory bank %s:  no type specified",kName.c_str());
+      continue;
+    }
+    if (cfgType.length()==0) {continue;}
+
+    // instanciate new memory pool
+    theLog.log("Creating memory bank %s: type %s size %lld",kName.c_str(),cfgType.c_str(),mSize);
+    std::shared_ptr<MemoryBank> b=nullptr;
+    try {
+      b=getMemoryBank(mSize, cfgType, kName);
+    }
+    catch (...) {    
+    }
+    if (b==nullptr) {
+      theLog.log("Failed to create memory bank %s",kName.c_str());
+      continue;
+    }
+    // cleanup the memory range
+    b->clear();
+    // add bank to list centrally managed
+    theMemoryBankManager.addBank(b);
+    theLog.log("Bank %s added",kName.c_str());
+  }
+  
+  
   // configuration of data consumers
   std::vector<std::unique_ptr<Consumer>> dataConsumers;
   for (auto kName : ConfigFileBrowser (&cfg,"consumer-")) {
