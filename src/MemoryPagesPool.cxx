@@ -50,3 +50,27 @@ size_t MemoryPagesPool::getNumberOfPagesAvailable() {
   return pagesAvailable->getNumberOfUsedSlots();
 }
 
+
+
+std::shared_ptr<DataBlockContainer> MemoryPagesPool::getNewDataBlockContainer() {
+  // get a new page from the pool
+  void *newPage=getPage();
+  if (newPage==nullptr) {
+    return nullptr;
+  }
+
+  // define a function to put it back in pool after use
+  auto releaseCallback = [this, newPage] (void) -> void {
+    this->releasePage(newPage);
+    return;
+  };
+  
+  // create a container and associate data page and release callback
+  std::shared_ptr<DataBlockContainer> bc=std::make_shared<DataBlockContainer>(releaseCallback, (DataBlock*)newPage);
+  if (bc==nullptr) {
+    releaseCallback();
+    return nullptr;
+  }
+  
+  return bc;
+}

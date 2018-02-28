@@ -4,8 +4,10 @@
 #include <memory>
 #include <functional>
 #include <Common/Fifo.h>
+#include <Common/DataBlockContainer.h>
 
-// optimized for 1-1 consumers
+
+// optimized for 1-1 consumers (1 thread to get the page, 1 thread to release them)
 // no check on address of data pages pushed back
 // base address should be kept while object in use
 
@@ -27,6 +29,8 @@ public:
   size_t getPageSize(); // retrieve the page size
   size_t getTotalNumberOfPages(); // retrieve number of pages in pool
   size_t getNumberOfPagesAvailable(); //retrieve number of pages currently available
+
+  std::shared_ptr<DataBlockContainer>getNewDataBlockContainer(); // returns an empty data block container (with data = a new page) from the pool. Page will be put back in pool after use.
 
 private:
   std::unique_ptr<AliceO2::Common::Fifo<void *>> pagesAvailable;  // a buffer to keep track of individual pages
