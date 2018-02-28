@@ -1,6 +1,7 @@
 #include "MemoryBank.h"
 #include <new>
 #include <memory>
+#include <cstring>
 
 /// generic base class
 
@@ -23,6 +24,11 @@ size_t MemoryBank::getSize() {
 
 std::string MemoryBank::getDescription() {
   return description;
+}
+
+void MemoryBank::clear() {
+  std::memset(baseAddress,0,size);
+  return;
 }
 
 

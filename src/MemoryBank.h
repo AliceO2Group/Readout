@@ -18,6 +18,8 @@ class MemoryBank {
     void *getBaseAddress(); // get the (virtual) base address of this memory bank
     std::size_t getSize(); // get the total size (bytes) of this memory bank
     std::string getDescription(); // get the description of this memory bank;
+    
+    void clear(); // write zeroes into the whole memory range
         
   protected:
     void* baseAddress; // base address (virtual) of buffer
