@@ -83,3 +83,5 @@ std::shared_ptr<MemoryPagesPool>  MemoryBankManager::getPagedPool(size_t pageSiz
   // create pool of pages from it
   return std::make_shared<MemoryPagesPool>(pageSize,pageNumber,&(((char *)baseAddress)[offset]),blockSize);
 }
+
+MemoryBankManager theMemoryBankManager;

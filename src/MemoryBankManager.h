@@ -42,4 +42,6 @@ class MemoryBankManager {
   std::mutex bankMutex; // instance mutex to handle concurrent access to public methods
 };
 
+extern MemoryBankManager theMemoryBankManager;
+
 #endif // #ifndef _MEMORYBANKMANAGER_H
