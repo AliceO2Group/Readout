@@ -146,7 +146,7 @@ add_subdirectory(doc)
 
 O2_GENERATE_EXECUTABLE(
         EXE_NAME readout.exe
-        SOURCES src/mainReadout.cxx $<TARGET_OBJECTS:objReadoutEquipment> $<TARGET_OBJECTS:objReadoutAggregator> $<TARGET_OBJECTS:objReadoutConsumers> $<TARGET_OBJECTS:objReadoutUtils>
+        SOURCES src/mainReadout.cxx $<TARGET_OBJECTS:objReadoutEquipment> $<TARGET_OBJECTS:objReadoutAggregator> $<TARGET_OBJECTS:objReadoutConsumers> $<TARGET_OBJECTS:objReadoutUtils> $<TARGET_OBJECTS:objMemUtils>
         BUCKET_NAME ${BUCKET_NAME}
 )
 
@@ -156,7 +156,11 @@ O2_GENERATE_EXECUTABLE(
         BUCKET_NAME ${BUCKET_NAME}
 )
 
-add_executable (testMemoryBanks.exe src/testMemoryBanks.cxx $<TARGET_OBJECTS:objMemUtils>)
+O2_GENERATE_EXECUTABLE(
+        EXE_NAME testMemoryBanks.exe
+        SOURCES src/testMemoryBanks.cxx $<TARGET_OBJECTS:objMemUtils>
+        BUCKET_NAME ${BUCKET_NAME}
+)
 
 O2_GENERATE_EXECUTABLE(
         EXE_NAME testTxFMQ.exe
