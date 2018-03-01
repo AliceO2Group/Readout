@@ -7,12 +7,6 @@ find_package(Common REQUIRED)
 find_package(InfoLogger REQUIRED)
 find_package(ReadoutCard REQUIRED)
 find_package(DataSampling REQUIRED)
-find_package(ZeroMQ REQUIRED)
-
-if (NOT ZeroMQ_INCLUDE_DIR)
-    set(ZeroMQ_INCLUDE_DIR ${ZEROMQ_INCLUDE_DIR})
-    set(ZeroMQ_LIBRARIES ${ZEROMQ_LIBRARIES})
-endif ()
 
 if (FAIRROOT_FOUND)
     # this should go away when fairrot provides a proper Find script or proper config scripts
