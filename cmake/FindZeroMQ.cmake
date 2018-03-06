@@ -1,107 +1,148 @@
-# **************************************************************************
-# * Copyright(c) 1998-2014, ALICE Experiment at CERN, All rights reserved. *
-# *                                                                        *
-# * Author: The ALICE Off-line Project.                                    *
-# * Contributors are mentioned in the code where appropriate.              *
-# *                                                                        *
-# * Permission to use, copy, modify and distribute this software and its   *
-# * documentation strictly for non-commercial purposes is hereby granted   *
-# * without fee, provided that the above copyright notice appears in all   *
-# * copies and that both the copyright notice and this permission notice   *
-# * appear in the supporting documentation. The authors make no claims     *
-# * about the suitability of this software for any purpose. It is          *
-# * provided "as is" without express or implied warranty.                  *
-# **************************************************************************
-
-# Checks for a ZeroMQ installation. Enables ZeroMQ by default if found on the
-# system and with the right version.
+################################################################################
+# Copyright (C) 2012-2017 GSI Helmholtzzentrum fuer Schwerionenforschung GmbH  #
+#                                                                              #
+#              This software is distributed under the terms of the             #
+#              GNU Lesser General Public Licence (LGPL) version 3,             #
+#                  copied verbatim in the file "LICENSE"                       #
+################################################################################
 #
-# Point to a custom ZeroMQ installation with -DZEROMQ=<path>: in that case, if
-# ZeroMQ is not found or has not the right version, a fatal error is raised.
+# Authors:
 #
-# Variables set:
+#   Mohammad Al-Turany
+#   Dario Berzano
+#   Dennis Klein
+#   Matthias Richter
+#   Alexey Rybalchenko
+#   Florian Uhlig
 #
-#  - ZEROMQ_FOUND          True if ZeroMQ is found
-#  - ZEROMQ_INCLUDE_DIR    Where to find ZeroMQ include directory
-#  - ZEROMQ_LIBRARIES      List of libraries when using ZeroMQ
-#  - ZEROMQ_VERSION        ZeroMQ version, major.minor.patches
-#  - ZEROMQ_VERSION_MAJOR  Major component of version
-#  - ZEROMQ_VERSION_MINOR  Minor component of version
-#  - ZEROMQ_VERSION_MAJOR  Patches component of version
+#
+# #############################
+# # Locate the ZeroMQ library #
+# #############################
+#
+#
+# Usage:
+#
+#   find_package(ZeroMQ [version] [QUIET] [REQUIRED])
+#
+#
+# Defines the following variables:
+#
+#   ZeroMQ_FOUND - Found the ZeroMQ library
+#   ZeroMQ_INCLUDE_DIR (CMake cache) - Include directory
+#   ZeroMQ_LIBRARY_SHARED (CMake cache) - Path to shared libzmq
+#   ZeroMQ_LIBRARY_STATIC (CMake cache) - Path to static libzmq
+#   ZeroMQ_VERSION - full version string
+#   ZeroMQ_VERSION_MAJOR - major version component
+#   ZeroMQ_VERSION_MINOR - minor version component
+#   ZeroMQ_VERSION_PATCH - patch version component
+#
+#
+# Accepts the following variables as hints for installation directories:
+#
+#   ZMQ_DIR (CMake var)
+#   AlFa_DIR (CMake var)
+#   SIMPATH (CMake var)
+#   ZEROMQ_ROOT (CMake var, ENV var)
+#
+#
+# If the above variables are not defined, or if ZeroMQ could not be found there,
+# it will look for it in the system directories. Custom ZeroMQ installations
+# will always have priority over system ones.
+#
 
-set(ZEROMQ_VERSION_MIN "4.0.0")
-
-message(STATUS "Checking for ZeroMQ ${ZEROMQ}")
-
-set(ZEROMQ_FOUND FALSE)
-
-if(ZEROMQ)
-    # ZeroMQ is installed in a custom place
-    find_library(ZEROMQ_LIBRARIES NAMES zmq
-                PATHS ${ZEROMQ}/lib
-                NO_DEFAULT_PATH
-                DOC "Path to libzmq)"
-            )
-    find_path(ZEROMQ_INCLUDE_DIR NAMES zmq.h zmq_utils.h
-                PATHS ${ZEROMQ}/include
-                NO_DEFAULT_PATH
-                DOC "Path to ZeroMQ include header files."
-            )       
-else(ZEROMQ)
-        # Check is the library is installed on the system
-    find_library(ZEROMQ_LIBRARIES NAMES zmq
-                HINTS ENV LD_LIBRARY_PATH
-                DOC "Path to libzmq)"
-            )
-    string(REPLACE "lib/libzmq.so" "" INCLUDE_HINT ${ZEROMQ_LIBRARIES})
-    find_path(ZEROMQ_INCLUDE_DIR NAMES zmq_utils.h
-              HINTS "${INCLUDE_HINT}include"
-                DOC "Path to ZeroMQ include header files."
-            )
-endif(ZEROMQ)
-
-mark_as_advanced(ZEROMQ_LIBRARIES ZEROMQ_INCLUDE_DIR)
-
-# Did we find ZeroMQ? We need to parse its version.
-if(ZEROMQ_INCLUDE_DIR)
-  message(STATUS "ZeroMQ include path: ${ZEROMQ_INCLUDE_DIR}")
+if(NOT ZeroMQ_FIND_QUIETLY)
+    message(STATUS "Looking for ZeroMQ")
 endif()
-if(ZEROMQ_LIBRARIES)
-  message(STATUS "ZeroMQ libraries: ${ZEROMQ_LIBRARIES}")
+
+if(DEFINED ENV{ZEROMQ_ROOT})
+    set(ZEROMQ_ROOT $ENV{ZEROMQ_ROOT})
 endif()
-if(ZEROMQ_INCLUDE_DIR AND ZEROMQ_LIBRARIES)
-  file(READ "${ZEROMQ_INCLUDE_DIR}/zmq.h" zmqh)
 
-  string(REGEX MATCH "#define +ZMQ_VERSION_MAJOR +([0-9]+)" zmqv "${zmqh}")
-  set(ZEROMQ_VERSION_MAJOR "${CMAKE_MATCH_1}")
-  string(REGEX MATCH "#define +ZMQ_VERSION_MINOR +([0-9]+)" zmqv "${zmqh}")
-  set(ZEROMQ_VERSION_MINOR "${CMAKE_MATCH_1}")
-  string(REGEX MATCH "#define +ZMQ_VERSION_PATCH +([0-9]+)" zmqv "${zmqh}")
-  set(ZEROMQ_VERSION_PATCH "${CMAKE_MATCH_1}")
+find_path(ZeroMQ_INCLUDE_DIR NAMES "zmq.h" "zmq_utils.h"
+    HINTS "${ZMQ_DIR}/include"
+          "${AlFa_DIR}/include"
+          "${SIMPATH}/include"
+          "${ZEROMQ_ROOT}/include"
+    DOC "ZeroMQ include directories"
+)
 
-  unset(zmqh)
-  unset(zmqv)
+find_library(ZeroMQ_LIBRARY_SHARED NAMES "libzmq.dylib" "libzmq.so"
+    HINTS "${ZMQ_DIR}/lib"
+          "${AlFa_DIR}/lib"
+          "${SIMPATH}/lib"
+          "${ZEROMQ_ROOT}/lib"
+    DOC "Path to libzmq.dylib or libzmq.so"
+)
 
-  set(ZEROMQ_VERSION "${ZEROMQ_VERSION_MAJOR}.${ZEROMQ_VERSION_MINOR}.${ZEROMQ_VERSION_PATCH}")
-  message(STATUS "ZeroMQ version: ${ZEROMQ_VERSION}")
+find_library(ZeroMQ_LIBRARY_STATIC NAMES "libzmq.a"
+    HINTS "${ZMQ_DIR}/lib"
+          "${AlFa_DIR}/lib"
+          "${SIMPATH}/lib"
+          "${ZEROMQ_ROOT}/lib"
+    DOC "Path to libzmq.a"
+)
 
-  if(ZEROMQ_VERSION VERSION_GREATER "${ZEROMQ_VERSION_MIN}")
-    # Version OK.
-    set(ZEROMQ_FOUND TRUE)
-    add_definitions(-DZMQ_FOUND)
-    message(STATUS "ZeroMQ version ${ZEROMQ_VERSION} (> ${ZEROMQ_VERSION_MIN}) found")
-  elseif(ZEROMQ)
-    # Version not OK and explicitly requested: fatal.
-    message(FATAL_ERROR "ZeroMQ in ${ZEROMQ} has version ${ZEROMQ_VERSION} <= ${ZEROMQ_VERSION_MIN}")
-  else()
-    message(STATUS "ZeroMQ found but version ${ZEROMQ_VERSION} <= ${ZEROMQ_VERSION_MIN}. Disabling ZeroMQ support.")
-  endif()
-elseif(ZEROMQ)
-  # ZeroMQ not found and explicitly requested: fatal.
-  message(FATAL_ERROR "ZeroMQ not found in ${ZEROMQ}.")
-elseif(ZEROMQ_LIBRARIES)
-  # ZeroMQ libraries found in system, but headers were not.
-  message(STATUS "ZeroMQ headers not found. Please install the development package and the cppzmq interface. Disabling ZeroMQ support.")
+if(ZeroMQ_INCLUDE_DIR AND ZeroMQ_LIBRARY_SHARED AND ZeroMQ_LIBRARY_STATIC)
+    set(ZeroMQ_FOUND TRUE)
 else()
-  message(STATUS "ZeroMQ not found. Disabling ZeroMQ support.")
+    set(ZeroMQ_FOUND FALSE)
 endif()
+
+set(ERROR_STRING "Looking for ZeroMQ - NOT FOUND")
+
+if(ZeroMQ_FOUND)
+    find_file(ZeroMQ_HEADER_FILE "zmq.h"
+        ${ZeroMQ_INCLUDE_DIR}
+        NO_DEFAULT_PATH
+    )
+    if (DEFINED ZeroMQ_HEADER_FILE)
+        file(READ "${ZeroMQ_HEADER_FILE}" _ZeroMQ_HEADER_FILE_CONTENT)
+        string(REGEX MATCH "#define ZMQ_VERSION_MAJOR ([0-9])" _MATCH "${_ZeroMQ_HEADER_FILE_CONTENT}")
+        set(ZeroMQ_VERSION_MAJOR ${CMAKE_MATCH_1})
+        string(REGEX MATCH "#define ZMQ_VERSION_MINOR ([0-9])" _MATCH "${_ZeroMQ_HEADER_FILE_CONTENT}")
+        set(ZeroMQ_VERSION_MINOR ${CMAKE_MATCH_1})
+        string(REGEX MATCH "#define ZMQ_VERSION_PATCH ([0-9])" _MATCH "${_ZeroMQ_HEADER_FILE_CONTENT}")
+        set(ZeroMQ_VERSION_PATCH ${CMAKE_MATCH_1})
+        set(ZeroMQ_VERSION "${ZeroMQ_VERSION_MAJOR}.${ZeroMQ_VERSION_MINOR}.${ZeroMQ_VERSION_PATCH}")
+        if(DEFINED ZeroMQ_FIND_VERSION AND ZeroMQ_VERSION VERSION_LESS ZeroMQ_FIND_VERSION)
+            set(ZeroMQ_FOUND FALSE)
+            set(ERROR_STRING "Looking for ZeroMQ - Installed version ${ZeroMQ_VERSION} does not meet the minimum required version ${ZeroMQ_FIND_VERSION}")
+        endif ()
+        unset(ZeroMQ_HEADER_FILE CACHE)
+    endif ()
+
+    add_library(ZeroMQ SHARED IMPORTED)
+    set_target_properties(ZeroMQ PROPERTIES
+        IMPORTED_LOCATION ${ZeroMQ_LIBRARY_SHARED}
+        INTERFACE_INCLUDE_DIRECTORIES ${ZeroMQ_INCLUDE_DIR}
+    )
+endif()
+
+if(ZeroMQ_FOUND)
+    set(ZeroMQ_LIBRARIES "${ZeroMQ_LIBRARY_STATIC};${ZeroMQ_LIBRARY_SHARED}")
+    if(NOT ZeroMQ_FIND_QUIETLY)
+        message(STATUS "Looking for ZeroMQ - Found ${ZeroMQ_INCLUDE_DIR}")
+        message(STATUS "Looking for ZeroMQ - Found version ${ZeroMQ_VERSION}")
+    endif(NOT ZeroMQ_FIND_QUIETLY)
+else()
+    if(ZeroMQ_FIND_REQUIRED)
+        message(FATAL_ERROR "${ERROR_STRING}")
+    else()
+        if(NOT ZeroMQ_FIND_QUIETLY)
+            message(STATUS "${ERROR_STRING}")
+        endif(NOT ZeroMQ_FIND_QUIETLY)
+    endif()
+endif()
+
+unset(ERROR_STRING)
+unset(ZEROMQ_ROOT)
+
+mark_as_advanced(
+    ZeroMQ_LIBRARIES
+    ZeroMQ_LIBRARY_SHARED
+    ZeroMQ_LIBRARY_STATIC
+    ZeroMQ_VERSION_MAJOR
+    ZeroMQ_VERSION_MINOR
+    ZeroMQ_VERSION_PATCH
+)
