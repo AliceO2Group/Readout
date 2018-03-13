@@ -50,14 +50,31 @@ size_t MemoryPagesPool::getNumberOfPagesAvailable() {
   return pagesAvailable->getNumberOfUsedSlots();
 }
 
+void *MemoryPagesPool::getBaseBlockAddress() {
+  return baseBlockAddress;
+}
+size_t MemoryPagesPool::getBaseBlockSize() {
+  return baseBlockSize;
+}
 
 
-std::shared_ptr<DataBlockContainer> MemoryPagesPool::getNewDataBlockContainer() {
-  // get a new page from the pool
-  void *newPage=getPage();
+std::shared_ptr<DataBlockContainer> MemoryPagesPool::getNewDataBlockContainer(void *newPage) {
   if (newPage==nullptr) {
-    return nullptr;
+    // get a new page from the pool
+    newPage=getPage();
+    if (newPage==nullptr) {
+      return nullptr;
+    }
   }
+
+  // fill header
+  DataBlock *b=(DataBlock *)newPage;
+  b->header.blockType=DataBlockType::H_BASE;
+  b->header.headerSize=sizeof(DataBlockHeaderBase);
+  b->header.dataSize=pageSize-sizeof(DataBlock);
+  b->header.id=0;
+  b->header.linkId=0;
+  b->data=&(((char *)b)[sizeof(DataBlock)]);
 
   // define a function to put it back in pool after use
   auto releaseCallback = [this, newPage] (void) -> void {
@@ -71,6 +88,8 @@ std::shared_ptr<DataBlockContainer> MemoryPagesPool::getNewDataBlockContainer() 
     releaseCallback();
     return nullptr;
   }
+  
+  //printf("create dbc %p with data=%p stored=%p\n",bc,newPage,bc->getData());
   
   return bc;
 }
