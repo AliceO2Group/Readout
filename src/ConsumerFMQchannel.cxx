@@ -1,7 +1,9 @@
 #include "Consumer.h"
 #include "ReadoutUtils.h"
-#include "MemoryHandler.h"
-
+//#include "MemoryHandler.h"
+#include "MemoryBank.h"
+#include "MemoryBankManager.h"
+#include "MemoryPagesPool.h"
 
 #ifdef WITH_FAIRMQ
 
@@ -47,10 +49,12 @@ class ConsumerFMQchannel: public Consumer {
     FairMQUnmanagedRegionPtr memoryBuffer=nullptr;
     bool disableSending=0;
     
-    int memPoolNumberOfElements;  // number of pages in memory pool
-    int memPoolElementSize;       // size of each page
-    std::shared_ptr<MemoryHandler> mh;  // a memory pool from which to allocate data pages
+    std::shared_ptr<MemoryBank> memBank;  // a dedicated memory bank allocated by FMQ mechanism
+    std::shared_ptr<MemoryPagesPool> mp; // a memory pool from which to allocate data pages
     
+    int memoryPoolPageSize;
+    int memoryPoolNumberOfPages;
+ 
   public: 
 
 
@@ -86,6 +90,9 @@ class ConsumerFMQchannel: public Consumer {
     transportFactory=FairMQTransportFactory::CreateTransportFactory(cfgTransportType, fair::mq::tools::Uuid(), &fmqOptions);
     sendingChannel=std::make_unique<FairMQChannel>(cfgChannelName, cfgChannelType, transportFactory);
     
+    std::string memoryBankName=""; // name of memory bank to create (if any) and use.
+    cfg.getOptionalValue<std::string>(cfgEntryPoint + ".memoryBankName", memoryBankName);
+
     std::string cfgUnmanagedMemorySize="";
     cfg.getOptionalValue<std::string>(cfgEntryPoint + ".unmanagedMemorySize",cfgUnmanagedMemorySize);
     long long mMemorySize=ReadoutUtils::getNumberOfBytesFromString(cfgUnmanagedMemorySize.c_str());
@@ -100,25 +107,26 @@ class ConsumerFMQchannel: public Consumer {
       });
       
       theLog.log("Got FMQ unmanaged memory buffer size %lu @ %p",memoryBuffer->GetSize(),memoryBuffer->GetData());
-      std::unique_ptr<MemoryRegion> m;
-      m=std::make_unique<MemoryRegion>();
-      m->name="FMQ unmanaged memory buffer";
-      m->size=memoryBuffer->GetSize();
-      m->ptr=memoryBuffer->GetData();
-      m->usedSize=0;
-      bigBlock=std::move(m);
+      memBank=std::make_shared<MemoryBank>(memoryBuffer->GetData(),memoryBuffer->GetSize(),nullptr,"FMQ unmanaged memory buffer from " + cfgEntryPoint);
+      if (memoryBankName.length()==0) {
+        memoryBankName=cfgEntryPoint; // if no bank name defined, create one with the name of the consumer
+      }
+      theMemoryBankManager.addBank(memBank,memoryBankName);
+      theLog.log("Bank %s added",memoryBankName.c_str());
     }
     
-    // allocate a pool of pages for headers/data copies
-    cfg.getOptionalValue<int>(cfgEntryPoint + ".memPoolNumberOfElements", memPoolNumberOfElements,100);
-    std::string cfgMemPoolElementSize;
-    cfg.getOptionalValue<std::string>(cfgEntryPoint + ".memPoolElementSize", cfgMemPoolElementSize);
-    memPoolElementSize=ReadoutUtils::getNumberOfBytesFromString(cfgMemPoolElementSize.c_str());
-    if (memPoolElementSize<=0) {
-      memPoolElementSize=128*1024;
+    // allocate a pool of pages for headers and data frame copies
+    memoryPoolPageSize=0;
+    memoryPoolNumberOfPages=100;
+    std::string cfgMemoryPoolPageSize="128k";
+    cfg.getOptionalValue<std::string>(cfgEntryPoint + ".memoryPoolPageSize",cfgMemoryPoolPageSize);
+    memoryPoolPageSize=(int)ReadoutUtils::getNumberOfBytesFromString(cfgMemoryPoolPageSize.c_str());
+    cfg.getOptionalValue<int>(cfgEntryPoint + ".memoryPoolNumberOfPages", memoryPoolNumberOfPages);
+    mp=theMemoryBankManager.getPagedPool(memoryPoolPageSize, memoryPoolNumberOfPages, memoryBankName);
+    if (mp==nullptr) {
+     throw "ConsumerFMQ: failed to get memory pool from " + memoryBankName + " for " + std::to_string(memoryPoolNumberOfPages) + " pages x " + std::to_string(memoryPoolPageSize) + " bytes";
     }
-    mh=std::make_shared<MemoryHandler>(memPoolElementSize,memPoolNumberOfElements);
-
+    theLog.log("Using memory pool %d pages x %d bytes", memoryPoolNumberOfPages, memoryPoolPageSize);
         
     sendingChannel->Bind(cfgChannelAddress);
     
@@ -129,7 +137,6 @@ class ConsumerFMQchannel: public Consumer {
   }
   
   ~ConsumerFMQchannel() {
-    bigBlock=nullptr;
   }
   
   int pushData(DataBlockContainerReference &) {
@@ -168,10 +175,10 @@ class ConsumerFMQchannel: public Consumer {
     // todo: replace by RDHv3 length
    
     // we iterate a first time to count number of HB
-    if (memPoolElementSize<(int)sizeof(SubTimeframe)) {return -1;}
+    if (memoryPoolPageSize<(int)sizeof(SubTimeframe)) {return -1;}
     DataBlockContainerReference headerBlock=nullptr;
     try {
-      headerBlock=std::make_shared<DataBlockContainerFromMemoryHandler>(mh);
+      headerBlock=mp->getNewDataBlockContainer();
     }
     catch (...) {
     }
@@ -281,13 +288,13 @@ class ConsumerFMQchannel: public Consumer {
         // allocate
         // todo: same code as for header -> create func/lambda
         // todo: send empty message if no page left in buffer
-        if (memPoolElementSize<totalSize) {
-          printf("error page size too small %d < %d\n",memPoolElementSize,totalSize);
+        if (memoryPoolPageSize<totalSize) {
+          printf("error page size too small %d < %d\n",memoryPoolPageSize,totalSize);
           return;
         }
         DataBlockContainerReference copyBlock=nullptr;
         try {
-          copyBlock=std::make_shared<DataBlockContainerFromMemoryHandler>(mh);
+          copyBlock=mp->getNewDataBlockContainer();
         }
         catch (...) {
         }
