@@ -198,7 +198,7 @@ int main(int argc, char* argv[])
     // cleanup the memory range
     b->clear();
     // add bank to list centrally managed
-    theMemoryBankManager.addBank(b);
+    theMemoryBankManager.addBank(b,kName);
     theLog.log("Bank %s added",kName.c_str());
   }
   
@@ -294,6 +294,11 @@ int main(int argc, char* argv[])
     }
     catch (std::string errMsg) {
         theLog.log("Failed to configure equipment %s : %s",kName.c_str(),errMsg.c_str());
+        nEquipmentFailures++;
+        continue;
+    }
+    catch (int errNo) {
+        theLog.log("Failed to configure equipment %s : error #%d",kName.c_str(),errNo);
         nEquipmentFailures++;
         continue;
     }
