@@ -14,26 +14,56 @@ ReadoutEquipment::ReadoutEquipment(ConfigFile &cfg, std::string cfgEntryPoint) {
   //  printf("%s.%s = %s\n",cfgEntryPoint.c_str(),cfgKey.c_str(),cfgValue.c_str());
   //}
 
-  
   // by default, name the equipment as the config node entry point
   cfg.getOptionalValue<std::string>(cfgEntryPoint + ".name", name, cfgEntryPoint);
 
   // target readout rate in Hz, -1 for unlimited (default). Global parameter, same for all equipments.
-  cfg.getOptionalValue<double>("readout.rate",readoutRate,-1.0);
+  cfg.getOptionalValue<double>("readout.rate", readoutRate, -1.0);
 
   // idle sleep time, in microseconds.
   int cfgIdleSleepTime=200;
   cfg.getOptionalValue<int>(cfgEntryPoint + ".idleSleepTime", cfgIdleSleepTime);
 
-  readoutThread=std::make_unique<Thread>(ReadoutEquipment::threadCallback,this,name,cfgIdleSleepTime);
-
   // size of equipment output FIFO
   int cfgOutputFifoSize=1000;
   cfg.getOptionalValue<int>(cfgEntryPoint + ".outputFifoSize", cfgOutputFifoSize);
-  
-  dataOut=std::make_shared<AliceO2::Common::Fifo<DataBlockContainerReference>>(cfgOutputFifoSize);
 
+  // get memory bank parameters  
+  cfg.getOptionalValue<std::string>(cfgEntryPoint + ".memoryBankName", memoryBankName);
+  std::string cfgMemoryPoolPageSize="";
+  cfg.getOptionalValue<std::string>(cfgEntryPoint + ".memoryPoolPageSize",cfgMemoryPoolPageSize);
+  memoryPoolPageSize=(int)ReadoutUtils::getNumberOfBytesFromString(cfgMemoryPoolPageSize.c_str());
+  cfg.getOptionalValue<int>(cfgEntryPoint + ".memoryPoolNumberOfPages", memoryPoolNumberOfPages);
+  
+  // log config summary
+  theLog.log("Equipment %s: from config [%s], max rate=%lf Hz, idleSleepTime=%d us, outputFifoSize=%d", name.c_str(), cfgEntryPoint.c_str(), readoutRate, cfgIdleSleepTime, cfgOutputFifoSize);
+  theLog.log("Equipment %s: memory pool %d pages x %d bytes from bank %s", name.c_str(),(int) memoryPoolNumberOfPages, (int) memoryPoolPageSize, memoryBankName.c_str());
+  
+  // init stats
   equipmentStats.resize(EquipmentStatsIndexes::maxIndex);
+
+  // create output fifo
+  dataOut=std::make_shared<AliceO2::Common::Fifo<DataBlockContainerReference>>(cfgOutputFifoSize);
+  if (dataOut==nullptr) {
+    throw __LINE__;
+  }
+  
+  // creation of memory pool for data pages
+  // todo: also allocate pool of DataBlockContainers? at the same time? reserve space at start of pages?
+  if ((memoryPoolPageSize<=0)||(memoryPoolNumberOfPages<=0)) {
+     theLog.log("Equipment %s: wrong memory pool settings", name.c_str());
+     throw __LINE__;
+  }
+  mp=theMemoryBankManager.getPagedPool(memoryPoolPageSize, memoryPoolNumberOfPages, memoryBankName);
+  if (mp==nullptr) {
+    throw __LINE__;
+  }
+
+  // create thread
+  readoutThread=std::make_unique<Thread>(ReadoutEquipment::threadCallback, this, name, cfgIdleSleepTime);
+  if (readoutThread==nullptr) {
+    throw __LINE__;
+  }
 }
 
 const std::string & ReadoutEquipment::getName() {
@@ -67,7 +97,10 @@ void ReadoutEquipment::stop() {
 }
 
 ReadoutEquipment::~ReadoutEquipment() {
-//  printf("deleted %s\n",name.c_str());
+   // check if mempool still referenced
+  if (!mp.unique()) {
+    theLog.log("Equipment %s :  mempool still has %d references\n",name.c_str(),(int)mp.use_count());
+  }
 }
 
 
@@ -149,12 +182,20 @@ Thread::CallbackResult  ReadoutEquipment::threadCallback(void *arg) {
       isActive=true;
     }
     ptr->equipmentStats[EquipmentStatsIndexes::nBlocksOut].increment(nPushedOut);
+    
+    // consider inactive if we have not pushed much compared to free space in output fifo
+    // todo: instead, have dynamic 'inactive sleep time' as function of actual outgoing page rate to optimize polling interval
+    if (nPushedOut<ptr->dataOut->getNumberOfFreeSlots()/4) {
+      isActive=0;
+    }
       
     // todo: add SLICER to aggregate together time-range data
     // todo: get other FIFO status
 
     break;
   }
+  
+
 
   if (!isActive) {
     ptr->equipmentStats[EquipmentStatsIndexes::nIdle].increment();

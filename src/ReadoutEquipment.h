@@ -12,6 +12,9 @@
 #include "CounterStats.h"
 #include "MemoryHandler.h"
 
+#include "MemoryBankManager.h"
+
+
 using namespace AliceO2::Common;
 
 
@@ -83,8 +86,12 @@ class ReadoutEquipment {
 
   // unsigned long long nBlocksOut;
   double readoutRate;
-  protected:
-  std::string name;
+  std::string name;  // name of the equipment
+  
+  std::shared_ptr<MemoryPagesPool> mp; // a memory pool from which to allocate data pages
+  int memoryPoolPageSize=0; // size if each page in pool
+  int memoryPoolNumberOfPages=0; // number of pages in pool
+  std::string memoryBankName=""; // memory bank to be used. by default, this uses the first memory bank available
 };
 
 
