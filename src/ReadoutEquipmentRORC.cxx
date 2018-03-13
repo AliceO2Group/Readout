@@ -210,7 +210,7 @@ class ReadoutEquipmentRORC : public ReadoutEquipment {
     
     AliceO2::roc::ChannelFactory::DmaChannelSharedPtr channel;    // channel to ROC device
     //std::shared_ptr<ReadoutMemoryHandler> mReadoutMemoryHandler;  // object to get memory from
-    std::shared_ptr<MemoryHandler> mReadoutMemoryHandler;  // object to get memory from
+    //std::shared_ptr<MemoryHandler> mReadoutMemoryHandler;  // object to get memory from
 
     DataBlockId currentId=0;    // current data id, kept for auto-increment
        
@@ -227,12 +227,16 @@ class ReadoutEquipmentRORC : public ReadoutEquipment {
     
     AliceO2::Common::Timer timeframeClock;	// timeframe id should be increased at each clock cycle
     int currentTimeframe=0;	// id of current timeframe
+    
+    size_t superPageSize=0; // usable size of a superpage
 };
 
 
 std::mutex readoutEquipmentRORCLock;
 bool isDriverInitialized=false;
 
+
+struct ReadoutEquipmentRORCException : virtual Exception {};
 
 ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : ReadoutEquipment(cfg, name) {
    
@@ -274,7 +278,7 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : 
     cfg.getOptionalValue<int>(name + ".rdhCheckEnabled", cfgRdhCheckEnabled);
     cfg.getOptionalValue<int>(name + ".rdhDumpEnabled", cfgRdhDumpEnabled);
         
-    // get readout memory buffer parameters
+/*    // get readout memory buffer parameters
     std::string sMemorySize=cfg.getValue<std::string>(name + ".memoryBufferSize");
     std::string sPageSize=cfg.getValue<std::string>(name + ".memoryPageSize");
     long long mMemorySize=ReadoutUtils::getNumberOfBytesFromString(sMemorySize.c_str());
@@ -282,11 +286,19 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : 
 
     std::string cfgHugePageSize="1GB";
     cfg.getOptionalValue<std::string>(name + ".memoryHugePageSize",cfgHugePageSize);
-
+*/
     // unique identifier based on card ID
     std::string uid="readout." + cardId + "." + std::to_string(cfgChannelNumber);
     //sleep((cfgChannelNumber+1)*2);  // trick to avoid all channels open at once - fail to acquire lock
     
+    // define usable superpagesize
+    superPageSize=mp->getPageSize()-sizeof(DataBlock); // Keep space at beginning for DataBlock object
+    superPageSize-=superPageSize % (32*1024); // Must be a multiple of 32Kb for ROC
+    theLog.log("Using superpage size %ld",superPageSize);
+    if (superPageSize==0) {
+      BOOST_THROW_EXCEPTION(ReadoutEquipmentRORCException() << ErrorInfo::Message("Superpage must be at least 32kB"));
+    }
+  
     // make sure ROC driver is initialized once
     readoutEquipmentRORCLock.lock();       
     if (!isDriverInitialized) {
@@ -297,7 +309,7 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : 
     
     // create memory pool
     //mReadoutMemoryHandler=std::make_shared<ReadoutMemoryHandler>((long)mMemorySize,(int)mPageSize,uid,cfgHugePageSize);
-    mReadoutMemoryHandler=std::make_shared<MemoryHandler>(mPageSize,mMemorySize/mPageSize);
+    //mReadoutMemoryHandler=std::make_shared<MemoryHandler>(mPageSize,mMemorySize/mPageSize);
 
     // open and configure ROC
     theLog.log("Opening ROC %s:%d",cardId.c_str(),cfgChannelNumber);
@@ -318,19 +330,19 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : 
 
     // card readout mode : experimental, not needed
     // params.setReadoutMode(AliceO2::roc::ReadoutMode::fromString(cfgReadoutMode));    
-
-    // register the memory block for DMA
   
-    
-    theLog.log("Loop DMA block %p:%lu",(void *)mReadoutMemoryHandler->getBaseAddress(),mReadoutMemoryHandler->getSize());
-    char *ptr=(char *)mReadoutMemoryHandler->getBaseAddress();
-    for (size_t i=0;i<mReadoutMemoryHandler->getSize();i++) {
-      ptr[i]=0;
-    }
-    theLog.log("Register DMA block %p:%lu",(void *)mReadoutMemoryHandler->getBaseAddress(),mReadoutMemoryHandler->getSize());
+    // theLog.log("Loop DMA block %p:%lu", mp->getBaseBlockAddress(), mp->getBaseBlockSize()); //(void *)mReadoutMemoryHandler->getBaseAddress(),mReadoutMemoryHandler->getSize());
+    // char *ptr=(char *)mp->getBaseBlockAddress();
+    // for (size_t i=0;i<mp->getBaseBlockSize();i++) {
+    //  ptr[i]=0;
+    //}
+
+    // register the memory block for DMA    
+    theLog.log("Register DMA block %p:%lu",(void *)mp->getBaseBlockAddress(),mp->getBaseBlockSize());
     params.setBufferParameters(AliceO2::roc::buffer_parameters::Memory {
 //      (void *)mReadoutMemoryHandler->baseAddress, mReadoutMemoryHandler->memorySize
-      (void *)mReadoutMemoryHandler->getBaseAddress(), mReadoutMemoryHandler->getSize()
+//      (void *)mReadoutMemoryHandler->getBaseAddress(), mReadoutMemoryHandler->getSize()
+        mp->getBaseBlockAddress(), mp->getBaseBlockSize()
     });
     
     // clear locks if necessary
@@ -413,15 +425,17 @@ Thread::CallbackResult ReadoutEquipmentRORC::prepareBlocks(){
   // give free pages to the driver
   int nPushed=0;  // number of free pages pushed this iteration 
   while (channel->getTransferQueueAvailable() != 0) {
-    long offset=0;
-    void *newPage=mReadoutMemoryHandler->getPage();
+    //long offset=0;
+    //void *newPage=mReadoutMemoryHandler->getPage();
+    void *newPage=mp->getPage();
     //if (mReadoutMemoryHandler->pagesAvailable->pop(offset)==0) {
     if (newPage!=nullptr) {
       AliceO2::roc::Superpage superpage;
       //superpage.offset=offset;
-      superpage.offset=(char *)newPage-(char *)mReadoutMemoryHandler->getBaseAddress();
-      superpage.size=mReadoutMemoryHandler->getPageSize();
-      superpage.userData=NULL; // &mReadoutMemoryHandler; // bad - looses shared_ptr
+      //superpage.offset=(char *)newPage-(char *)mReadoutMemoryHandler->getBaseAddress();
+      superpage.offset=(char *)newPage-(char *)mp->getBaseBlockAddress()+sizeof(DataBlock);
+      superpage.size=superPageSize;
+      superpage.userData=newPage; // &mReadoutMemoryHandler; // bad - looses shared_ptr // todo: keep track of datablock object instead?
       channel->pushSuperpage(superpage);
       isActive=1;
       nPushed++;
@@ -476,15 +490,19 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
   if ((channel->getReadyQueueSize()>0)) {
     auto superpage = channel->getSuperpage(); // this is the first superpage in FIFO ... let's check its state
     if (superpage.isFilled()) {
-      std::shared_ptr<DataBlockContainerFromRORC>d=nullptr;
+      std::shared_ptr<DataBlockContainer>d=nullptr;
       try {
-        d=std::make_shared<DataBlockContainerFromRORC>(channel, superpage, mReadoutMemoryHandler);
+        //d=std::make_shared<DataBlockContainerFromRORC>(channel, superpage, mReadoutMemoryHandler);
+        d=mp->getNewDataBlockContainer((void *)(superpage.userData));
       }
       catch (...) {
         // todo: increment a stats counter?
         theLog.log("make_shared<DataBlock> failed");
       }
       if (d!=nullptr) {
+        d->getData()->header.dataSize=superpage.getReceived();
+        d->getData()->header.linkId=0; // TODO
+
         channel->popSuperpage();
         nextBlock=d;
 
@@ -495,14 +513,30 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
 	d->getData()->header.id=currentTimeframe;
         
         // validate RDH structure, if configured to do so
+        int linkId=-1;
         if (cfgRdhCheckEnabled) {
           std::string errorDescription;
           size_t blockSize=d->getData()->header.dataSize;
           uint8_t *baseAddress=(uint8_t *)(d->getData()->data);
           for (size_t pageOffset=0;pageOffset<blockSize;) {
             RdhHandle h(baseAddress+pageOffset);
+            
+            if (linkId==-1) {
+              linkId=h.getLinkId();
+            } else {
+              if (linkId!=h.getLinkId()) {
+                printf("incosistent link ids: %d != %d\n",linkId,h.getLinkId());
+              }
+            }
+            
+            //data format:
+            // RDH v3 = https://docs.google.com/document/d/1otkSDYasqpVBDnxplBI7dWNxaZohctA-bvhyrzvtLoQ/edit?usp=sharing
             if (h.validateRdh(errorDescription)) {
-              if (cfgRdhDumpEnabled) {             
+              if (cfgRdhDumpEnabled) {
+                for (int i=0;i<16;i++) {
+                  printf("%08X ",(int)(((uint32_t*)baseAddress)[i]));
+                }
+                printf("\n");
                 printf("Page 0x%p + %ld\n%s",(void *)baseAddress,pageOffset,errorDescription.c_str());
                 h.dumpRdh();
                 errorDescription.clear();
@@ -510,10 +544,23 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
               statsRdhCheckErr++;
             } else {
               statsRdhCheckOk++;
+
+              if (cfgRdhDumpEnabled) {
+                h.dumpRdh();
+                for (int i=0;i<16;i++) {
+                  printf("%08X ",(int)(((uint32_t*)baseAddress+pageOffset)[i]));
+                }
+                printf("\n");
+
+              }
             }
-            pageOffset+=h.getBlockLengthBytes();
+            pageOffset+=h.getBlockLength();
           }
         }
+        if (linkId>=0) {
+          d->getData()->header.linkId=linkId;
+        }
+        
       }
     }
   }
