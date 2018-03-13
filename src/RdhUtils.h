@@ -2,16 +2,7 @@
 
 
 #include <string>
-
-
-// flat RDH definition
-#define RDH_WORDS 16
-typedef struct {
-  union {
-    uint32_t words[RDH_WORDS];
-    uint64_t lwords[RDH_WORDS/2];
-  };
-} RDH;
+#include "RAWDataHeader.h"
 
 
 // Utility class to access RDH fields and check them
@@ -34,28 +25,21 @@ class RdhHandle {
   // access RDH fields
   // functions defined inline here
   inline uint8_t getHeaderVersion() {
-    return rdhPtr->words[3] & 0xF;  
+    return rdhPtr->version;  
   } 
   inline uint16_t getBlockLength() {
-    return (uint16_t) ((rdhPtr->words[3] >> 4 ) & 0xFFFF);
-  }
-  inline uint16_t getBlockLengthBytes() {
-    return getBlockLength()*32;
+    return (uint16_t) rdhPtr->blockLength;
   }
   inline uint16_t getFeeId() {
-    //return ((rdhPtr->words[3] >> 20 ) & 0xFFF) | ((rdhPtr->words[2] & 0xF) << 12); 
-    return ((rdhPtr->lwords[1] >> 20 ) & 0xFFFF);
+    return (uint16_t) rdhPtr->feeId;
   }  
   inline uint8_t getLinkId() {
-    return (rdhPtr->words[2] >> 4 ) & 0xFF;
+    return (uint8_t) rdhPtr->linkId;
   }  
   inline uint8_t getHeaderSize() {
-    return (rdhPtr->words[2] >> 12 ) & 0xFF;
+    return rdhPtr->headerSize;
   }
   
-  // initialize a RDH with default fields
-  void reset();
-  
   private:
-  RDH *rdhPtr;  // pointer to RDH in memory
+  o2::Header::RAWDataHeader *rdhPtr;  // pointer to RDH in memory
 };
