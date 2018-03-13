@@ -9,6 +9,9 @@
 #include <math.h>
 #include <Common/Timer.h>
 
+#include <sys/time.h>
+#include <sys/resource.h>
+
 
 
 #include <Monitoring/MonitoringFactory.h>
@@ -56,7 +59,31 @@ class ConsumerStats: public Consumer {
   int monitoringUpdatePeriod;
   std::unique_ptr<Collector> monitoringCollector;
 
+  struct rusage previousUsage; // variable to keep track of last getrusage() result
+  struct rusage currentUsage; // variable to keep track of last getrusage() result  
+  double timePreviousGetrusage=0; // variable storing 'runningTime' value when getrusage was previously called (0 if not called yet)
+  double cpuUsedOverLastInterval=0; // average CPU usage over latest measurement interval
+  
   void publishStats() {
+  
+    double now=runningTime.getTime();
+    getrusage(RUSAGE_SELF,&currentUsage);
+    if (timePreviousGetrusage!=0) {
+      double tDiff=(now-timePreviousGetrusage)*1000000.0; // delta time in microseconds
+      double fractionCpuUsed=
+      (
+          currentUsage.ru_utime.tv_sec*1000000.0+currentUsage.ru_utime.tv_usec-(previousUsage.ru_utime.tv_sec*1000000.0+previousUsage.ru_utime.tv_usec)
+        + currentUsage.ru_stime.tv_sec*1000000.0+currentUsage.ru_stime.tv_usec-(previousUsage.ru_stime.tv_sec*1000000.0+previousUsage.ru_stime.tv_usec)
+       ) / tDiff;
+      if (monitoringEnabled) {
+        monitoringCollector->send(fractionCpuUsed*100, "readout.percentCpuUsed");
+        //theLog.log("CPU used = %.2f %%",100*fractionCpuUsed);
+      }      
+    }
+    timePreviousGetrusage=now;
+    previousUsage=currentUsage;
+    // todo: per thread? -> add feature in Thread class
+  
     if (monitoringEnabled) {
       // todo: support for long long types
       // https://alice.its.cern.ch/jira/browse/FLPPROT-69
