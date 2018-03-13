@@ -19,13 +19,9 @@ class ReadoutEquipmentCruEmulator : public ReadoutEquipment {
     Thread::CallbackResult prepareBlocks();
     
   private:
-    std::shared_ptr<MemoryHandler> mh;  // a memory pool from which to allocate data pages
     Thread::CallbackResult  populateFifoOut(); // iterative callback
 
     DataBlockId currentId;  // current block id
-
-    int memPoolNumberOfElements;  // number of pages in memory pool
-    int memPoolElementSize; // size of each page
 
     int cfgNumberOfLinks; // number of links to simulate. Will create data blocks round-robin.
     int cfgFeeId; // FEE id to be used
@@ -36,32 +32,17 @@ class ReadoutEquipmentCruEmulator : public ReadoutEquipment {
     const unsigned int LHCBCRate=LHCOrbitRate*LHCBunches; // LHC bunch crossing rate, in Hz
     
     int cruBlockSize;  // size of 1 data block (RDH+payload)
-
-    // interval in BC clocks between two CRU block transfers, based on link input data rate
-    int bcStep;
-
+    int bcStep; // interval in BC clocks between two CRU block transfers, based on link input data rate
     
     int cfgTFperiod=256; // duration of a timeframe, in number of LHC orbits
     int cfgHBperiod=1; // interval between 2 HeartBeat triggers, in number of LHC orbits
     double cfgGbtLinkThroughput=3.2; // input link data rate in Gigabits/s per second, for one link (GBT=3.2 or 4.8 gbps)
 
-
     int cfgMaxBlocksPerPage; // max number of CRU blocks per page (0 => fill the page)
- /*
-    int cfgNumberOfBlocksPerTrigger; // number of CRU blocks for 1 trigger
-    int randomize;
-    int pagesToGoForCurrentLink; // number of data pages left to send for current link
-    int currentLink; // id of current Link sending data  
-*/    
     
     uint32_t LHCorbit=0;  // current LHC orbit
     uint32_t LHCbc=0; // current LHC bunch crossing
-//    uint32_t HBid=0; // id of last HB frame received
-        
-//    int TFperiod=256; // duration of a time frame, in number of LHC orbits
-//    int HBperiod=1; // interval betweenHB triggers, in number of LHC orbits
 
-    
     Timer elapsedTime; // elapsed time since equipment started
     double t0=0; // time of first block generated
     
@@ -71,15 +52,7 @@ class ReadoutEquipmentCruEmulator : public ReadoutEquipment {
 
 ReadoutEquipmentCruEmulator::ReadoutEquipmentCruEmulator(ConfigFile &cfg, std::string cfgEntryPoint) : ReadoutEquipment(cfg, cfgEntryPoint) {
 
-
   // get configuration values
-  cfg.getOptionalValue<int>(cfgEntryPoint + ".memPoolNumberOfElements", memPoolNumberOfElements,10000);
-  std::string cfgMemPoolElementSize;
-  cfg.getOptionalValue<std::string>(cfgEntryPoint + ".memPoolElementSize", cfgMemPoolElementSize);
-  memPoolElementSize=ReadoutUtils::getNumberOfBytesFromString(cfgMemPoolElementSize.c_str());
-  if (memPoolElementSize<=0) {
-    memPoolElementSize=1024*1024;
-  }
   cfg.getOptionalValue<int>(cfgEntryPoint + ".maxBlocksPerPage", cfgMaxBlocksPerPage, (int)0);
   cfg.getOptionalValue<int>(cfgEntryPoint + ".cruBlockSize", cruBlockSize, (int)8192);
   cfg.getOptionalValue<int>(cfgEntryPoint + ".numberOfLinks", cfgNumberOfLinks, (int)1);
@@ -87,17 +60,8 @@ ReadoutEquipmentCruEmulator::ReadoutEquipmentCruEmulator(ConfigFile &cfg, std::s
   cfg.getOptionalValue<int>(cfgEntryPoint + ".linkId", cfgLinkId, (int)0);
   
   // log config summary
-  theLog.log("Config summary: memPoolNumberOfElements=%d memPoolElementSize=%d maxBlocksPerPage=%d cruBlockSize=%d numberOfLinks=%d feeId=%d linkId=%d",
-    memPoolNumberOfElements, memPoolElementSize, cfgMaxBlocksPerPage, cruBlockSize, cfgNumberOfLinks, cfgFeeId, cfgLinkId);
-  
-  // create memory pool
-  if (bigBlock==nullptr) {
-    theLog.log("big block unavailable for output");
-    throw __LINE__;
-  } else {
-    theLog.log("Using big block @ %p",bigBlock->ptr);
-    mh=std::make_shared<MemoryHandler>(memPoolElementSize,memPoolNumberOfElements);
-  }
+  theLog.log("Equipment %s: maxBlocksPerPage=%d cruBlockSize=%d numberOfLinks=%d feeId=%d linkId=%d",
+    name.c_str(), cfgMaxBlocksPerPage, cruBlockSize, cfgNumberOfLinks, cfgFeeId, cfgLinkId);
   
   // init variables
   currentId=1; // TFid starts on 1
@@ -110,10 +74,13 @@ ReadoutEquipmentCruEmulator::ReadoutEquipmentCruEmulator(ConfigFile &cfg, std::s
   
   // output queue: 1 block per link
   readyBlocks=std::make_unique<AliceO2::Common::Fifo<DataBlockContainerReference>>(cfgNumberOfLinks);
+  if (readyBlocks==nullptr) {
+    throw __LINE__;
+  }
   
   // init parameters
   bcStep=(int)(LHCBCRate*((cruBlockSize-sizeof(o2::Header::RAWDataHeader))*1.0/(cfgGbtLinkThroughput*1024*1024*1024/8)));
-  theLog.log("Using block rate = %d BC",bcStep);
+  theLog.log("Equipment %s: using block rate = %d BC", name.c_str(), bcStep);
 }
 
 ReadoutEquipmentCruEmulator::~ReadoutEquipmentCruEmulator() {
@@ -122,9 +89,8 @@ ReadoutEquipmentCruEmulator::~ReadoutEquipmentCruEmulator() {
 
 
 Thread::CallbackResult ReadoutEquipmentCruEmulator::prepareBlocks() {
-  /*
-  cru emulator creates a set of data pages for each link and put them in the fifo to be retrieve by getNextBlock
-  */
+
+  // cru emulator creates a set of data pages for each link and put them in the fifo to be retrieve by getNextBlock
 
   // check that we don't go faster than LHC...
   double t=elapsedTime.getTime();
@@ -148,13 +114,13 @@ Thread::CallbackResult ReadoutEquipmentCruEmulator::prepareBlocks() {
       // query memory pool for a free block
       DataBlockContainerReference nextBlock=nullptr;
       try {
-        //nextBlock=std::make_shared<DataBlockContainerFromMemPool>(mp);
-        nextBlock=std::make_shared<DataBlockContainerFromMemoryHandler>(mh);
+        nextBlock=mp->getNewDataBlockContainer();
       }
       catch (...) {
       }
       if (nextBlock==nullptr) {
         // no pages left, retry later
+        // todo: check how long we starve pages. monitor this counter.
         return Thread::CallbackResult::Idle;
       }
       pendingBlocks[i]=nextBlock;
@@ -172,8 +138,10 @@ Thread::CallbackResult ReadoutEquipmentCruEmulator::prepareBlocks() {
   for (int currentLink=0; currentLink<cfgNumberOfLinks; currentLink++) {
   
     // fill the new data page for this link
-    DataBlock *b=pendingBlocks[currentLink]->getData();
+    DataBlock *b=pendingBlocks[currentLink]->getData();    
 
+    //printf ("data block %p data=%p\n",b,b->data);
+    
     int offset; // number of bytes used in page
     int nBlocksInPage=0;
 
@@ -182,8 +150,10 @@ Thread::CallbackResult ReadoutEquipmentCruEmulator::prepareBlocks() {
     unsigned int nowId=currentId;
     
     int linkId=cfgLinkId+currentLink;
+    int bytesAvailableInPage=b->header.dataSize; // a bit less than memoryPoolPageSize;
+    //printf("bytes available: %d bytes\n",bytesAvailableInPage);   
     
-    for (offset=0;offset+cruBlockSize<=memPoolElementSize;offset+=cruBlockSize) {
+    for (offset=0;offset+cruBlockSize<=bytesAvailableInPage;offset+=cruBlockSize) {
 
       unsigned int nextBc=nowBc+bcStep;
       unsigned int nextOrbit=nowOrbit;
@@ -212,6 +182,8 @@ Thread::CallbackResult ReadoutEquipmentCruEmulator::prepareBlocks() {
       // https://docs.google.com/document/d/1KUoLnEw5PndVcj4FKR5cjV-MBN3Bqfx_B0e6wQOIuVE/edit#heading=h.5q65he8hp62c    
 
       o2::Header::RAWDataHeader *rdh=(o2::Header::RAWDataHeader *)&b->data[offset];
+      //printf("rdh=%p block=%p delta=%d\n",rdh,b->data,(int)((char *)rdh-(char *)b->data));
+      
       *rdh=defaultRDH; // reset fields to defaults
       rdh->blockLength=(uint16_t)cruBlockSize;     
       rdh->triggerOrbit=nowOrbit;
@@ -227,7 +199,9 @@ Thread::CallbackResult ReadoutEquipmentCruEmulator::prepareBlocks() {
 
     // size used (bytes) in page is last offset
     int dSize=offset;
-
+    
+    //printf("wrote %d bytes\n",dSize);
+    
     b->header.blockType=DataBlockType::H_BASE;
     b->header.headerSize=sizeof(DataBlockHeaderBase);
     b->header.dataSize=dSize;
