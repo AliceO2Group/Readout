@@ -11,7 +11,15 @@ MemoryBank::MemoryBank(std::string v_description){
   description=v_description;
 }
 
+MemoryBank::MemoryBank(void* v_baseAddress, std::size_t v_size, ReleaseCallback v_callback, std::string v_description)
+:baseAddress(v_baseAddress), size(v_size), description(v_description), releaseCallback(v_callback)
+{
+}
+
 MemoryBank::~MemoryBank(){
+  if (releaseCallback!=nullptr) {
+    releaseCallback();
+  }
 }
 
 void *MemoryBank::getBaseAddress() {
