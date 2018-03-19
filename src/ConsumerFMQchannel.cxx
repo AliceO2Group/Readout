@@ -55,6 +55,8 @@ class ConsumerFMQchannel: public Consumer {
     int memoryPoolPageSize;
     int memoryPoolNumberOfPages;
  
+    std::vector<FairMQMessagePtr> messagesToSend; // collect HBF messages of each update
+
   public: 
 
 
@@ -226,8 +228,8 @@ class ConsumerFMQchannel: public Consumer {
     
     // create a header message
     //std::unique_ptr<FairMQMessage> msgHeader(transportFactory->CreateMessage((void *)stfHeader, sizeof(SubTimeframe), cleanupCallback, (void *)(blockRef)));
-    std::unique_ptr<FairMQMessage> msgHeader(transportFactory->CreateMessage(memoryBuffer,(void *)stfHeader, sizeof(SubTimeframe), (void *)(blockRef)));
-    sendingChannel->Send(msgHeader);
+    assert(messagesToSend.empty());
+    messagesToSend.emplace_back(std::move(sendingChannel->NewMessage(memoryBuffer,(void *)stfHeader, sizeof(SubTimeframe), (void *)(blockRef))));
     //printf("sent header %d bytes\n",(int)sizeof(SubTimeframe));
 
     
@@ -254,7 +256,7 @@ class ConsumerFMQchannel: public Consumer {
         pendingFrames.push_back(pf);       
     };
     
-    auto pendingFramesSend = [&]() {
+    auto pendingFramesCollect = [&]() {
       int nFrames=pendingFrames.size();
 
       if (nFrames==0) {
@@ -272,8 +274,9 @@ class ConsumerFMQchannel: public Consumer {
         void *hint=(void *)pendingFrames[0].blockRef;
         //printf("block %p ix = %d : %d hint=%p\n",(void *)(&(b->data[ix])),ix,l,hint);
         //std::cout << typeid(pendingFrames[0].blockRef).name() << std::endl;
-        std::unique_ptr<FairMQMessage> msgBody(transportFactory->CreateMessage(memoryBuffer,(void *)(&(b->data[ix])),(size_t)(l),hint));
-        sendingChannel->Send(msgBody);        
+
+        // create and queue a fmq message
+        messagesToSend.emplace_back(std::move(sendingChannel->NewMessage(memoryBuffer,(void *)(&(b->data[ix])),(size_t)(l),hint)));
         //printf("sent single HB %d = %d bytes\n",pendingFrames[0].HBid,l);
         //printf("left to FMQ: %p\n",pendingFrames[0].blockRef);
 
@@ -321,9 +324,8 @@ class ConsumerFMQchannel: public Consumer {
         //std::unique_ptr<FairMQMessage> msgBody(transportFactory->CreateMessage((void *)newBlock, totalSize, cleanupCallbackForMalloc, (void *)(newBlock)));
         //sendingChannel->Send(msgBody);
   
-        // create a fmq message
-        std::unique_ptr<FairMQMessage> msgCopy(transportFactory->CreateMessage(memoryBuffer,(void *)newBlock, totalSize, (void *)(blockRef)));
-        sendingChannel->Send(msgCopy);
+        // create and queue a fmq message
+        messagesToSend.emplace_back(std::move(sendingChannel->NewMessage(memoryBuffer,(void *)newBlock, totalSize, (void *)(blockRef))));
   
         //printf("sent reallocated HB %d (originally %d blocks) = %d bytes\n",pendingFrames[0].HBid,nFrames,totalSize);
       }
@@ -347,7 +349,7 @@ class ConsumerFMQchannel: public Consumer {
             pendingFramesAppend(HBstart,HBlength,lastHBid,br);
           }
           // send pending frames, if any
-          pendingFramesSend();
+          pendingFramesCollect();
 
           // update new HB frame
           HBstart=offset;
@@ -362,7 +364,13 @@ class ConsumerFMQchannel: public Consumer {
     }
     
     // purge pendingFrames
-    pendingFramesSend();
+    pendingFramesCollect();
+
+    // send all the messages
+    if (sendingChannel->Send(messagesToSend) >= 0)
+      messagesToSend.clear();
+    else
+      LOG(ERROR) << "Sending failed!";
     
     /*
 
