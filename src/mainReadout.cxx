@@ -9,32 +9,25 @@
 #include <Common/DataBlockContainer.h>
 #include <Common/MemPool.h>
 #include <Common/DataSet.h>
-
-#include <atomic>
-#ifndef __APPLE__
-#include <malloc.h>
-#endif
-#include <boost/format.hpp>
-#include <chrono>
-#include <signal.h>
-
-#include <memory>
-#include <stdint.h>
-
 #include <Common/Timer.h>
 #include <Common/Fifo.h>
 #include <Common/Thread.h>
 
+#include <atomic>
+#include <chrono>
+#include <memory>
+#include <signal.h>
+
 #ifdef WITH_DATASAMPLING
 #include "DataSampling/InjectorFactory.h"
 #endif
-
 
 #include "ReadoutEquipment.h"
 #include "DataBlockAggregator.h"
 #include "Consumer.h"
 #include "MemoryBankManager.h"
 #include "ReadoutUtils.h"
+
 
 // option to add callgrind instrumentation
 // to use: valgrind --tool=callgrind --instr-atstart=no --dump-instr=yes ./a.out
@@ -45,25 +38,27 @@
 #endif
 
 
+// option to enable compilation with FairMQ support
 #ifdef WITH_FAIRMQ
 #include <fairmq/FairMQLogger.h>
+#include <InfoLogger/InfoLoggerFMQ.hxx>
 #endif
 
 
+// namespace used
 using namespace AliceO2::InfoLogger;
 using namespace AliceO2::Common;
-
-
-#define LOG_TRACE printf("%d\n",__LINE__);fflush(stdout);
 
 
 // global entry point to log system
 InfoLogger theLog;
 
 
+// global signal handler to end program
 static int ShutdownRequest=0;      // set to 1 to request termination, e.g. on SIGTERM/SIGQUIT signals
-static void signalHandler(int){
-  printf(" *** break ***\n");
+static void signalHandler(int signalId) {
+  theLog.log("Received signal %d",signalId);
+  printf("*** break ***\n");
   if (ShutdownRequest) {
     // immediate exit if pending exit request
     exit(1);
@@ -71,16 +66,7 @@ static void signalHandler(int){
   ShutdownRequest=1;
 }
 
-
-
-
-
-
-
-
-
-
-
+// the main program loop
 int main(int argc, char* argv[])
 {
   ConfigFile cfg;
@@ -103,37 +89,11 @@ int main(int argc, char* argv[])
   theLog.log("Readout process starting");
   theLog.log("Optional built features enabled:");
   #ifdef WITH_FAIRMQ
-   theLog.log("FAIRMQ : yes");
-    fair::Logger::SetConsoleColor(true);
-    fair::Logger::SetConsoleSeverity("nolog");
-    fair::Logger::AddCustomSink("infoLogger", "trace", [&](const std::string& content, // log content
-                         const fair::LogMetaData& metadata) // log metadata (see docs for details)
-    {
-      std::string message= "FMQ : "
-//       + std::to_string(metadata.timestamp) + "  "
-       + std::to_string(metadata.us.count()) + "  "
-//       + metadata.process_name + "  "
-//       + metadata.file + "  "
-//       + metadata.line + "  "
-//       + metadata.func + "  "
-       + content;
-/*      struct LogMetaData
-{
-    std::time_t timestamp;
-    std::chrono::microseconds us;
-    std::string process_name;
-    std::string file;
-    std::string line;
-    std::string func;
-    std::string severity_name;
-    fair::Severity severity;
-};
-*/
-    theLog.logInfo(message);
-    });
-
+    theLog.log("FAIRMQ : yes");
+    // redirect FMQ logs to infologger
+    setFMQLogsToInfoLogger(&theLog);
   #else
-   theLog.log("FAIRMQ : no");
+    theLog.log("FAIRMQ : no");
   #endif
 
   // load configuration file
@@ -374,22 +334,11 @@ int main(int argc, char* argv[])
     theLog.log("Automatic exit in %.2f seconds",cfgExitTimeout);
   }
   int isRunning=1;
-  AliceO2::Common::Timer t0;
-  t0.reset();
-
-
-/*
-  // reset stats
-  unsigned long long nBlocks=0;
-  unsigned long long nBytes=0;
-  double t1=0.0;
-*/
-
 
   theLog.log("Entering loop");
   #ifdef CALLGRIND
-  theLog.log("Starting callgrind instrumentation");
-  CALLGRIND_START_INSTRUMENTATION;
+    theLog.log("Starting callgrind instrumentation");
+    CALLGRIND_START_INSTRUMENTATION;
   #endif
 
   while (1) {
@@ -421,11 +370,11 @@ int main(int argc, char* argv[])
 
     if (bc!=nullptr) {
       // push to data sampling, if configured
-#ifdef WITH_DATASAMPLING
-      if (dataSampling) {
-        dataSamplingInjector->injectSamples(bc);
-      }
-#endif
+      #ifdef WITH_DATASAMPLING
+        if (dataSampling) {
+          dataSamplingInjector->injectSamples(bc);
+        }
+      #endif
       // todo: datasampling can become a consumer, now that consumer interface accepts datasets instead of blocks
       
       for (auto& c : dataConsumers) {
@@ -445,17 +394,10 @@ int main(int argc, char* argv[])
   #endif
 
 
-
   theLog.log("Stopping aggregator");
   agg.stop();
 
-
-//  t1=t0.getTime();
-
-//  theLog.log("Wait a bit");
-//  sleep(1);
-  theLog.log("Stop consumers");
-
+  theLog.log("Stopping consumers");
   // close consumers before closing readout equipments (owner of data blocks)
   dataConsumers.clear();
 
@@ -469,7 +411,6 @@ int main(int argc, char* argv[])
       readoutDevice->dataOut->clear();
   }
 
-
 //  printf("agg: in=%llu  out=%llu\n",agg_output.getNumberIn(),agg_output.getNumberOut());
 
   theLog.log("Closing readout devices");
@@ -478,14 +419,7 @@ int main(int argc, char* argv[])
   }
   readoutDevices.clear(); // to do it all in one go
 
-/*
-  theLog.log("%llu blocks in %.3lf seconds => %.1lf block/s",nBlocks,t1,nBlocks/t1);
-  theLog.log("%.1lf MB received",nBytes/(1024.0*1024.0));
-  theLog.log("%.3lf MB/s",nBytes/(1024.0*1024.0)/t1);
-*/
-
   theLog.log("Operations completed");
 
   return 0;
-
 }
