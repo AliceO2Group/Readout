@@ -58,10 +58,12 @@ ReadoutEquipmentCruEmulator::ReadoutEquipmentCruEmulator(ConfigFile &cfg, std::s
   cfg.getOptionalValue<int>(cfgEntryPoint + ".numberOfLinks", cfgNumberOfLinks, (int)1);
   cfg.getOptionalValue<int>(cfgEntryPoint + ".feeId", cfgFeeId, (int)0);
   cfg.getOptionalValue<int>(cfgEntryPoint + ".linkId", cfgLinkId, (int)0);
-  
+  cfg.getOptionalValue<int>(cfgEntryPoint + ".TFperiod", cfgTFperiod);
+  cfg.getOptionalValue<int>(cfgEntryPoint + ".HBperiod", cfgHBperiod);
+      
   // log config summary
-  theLog.log("Equipment %s: maxBlocksPerPage=%d cruBlockSize=%d numberOfLinks=%d feeId=%d linkId=%d",
-    name.c_str(), cfgMaxBlocksPerPage, cruBlockSize, cfgNumberOfLinks, cfgFeeId, cfgLinkId);
+  theLog.log("Equipment %s: maxBlocksPerPage=%d cruBlockSize=%d numberOfLinks=%d feeId=%d linkId=%d TFperiod=%d HBperiod=%d",
+    name.c_str(), cfgMaxBlocksPerPage, cruBlockSize, cfgNumberOfLinks, cfgFeeId, cfgLinkId, cfgTFperiod, cfgHBperiod);
   
   // init variables
   currentId=1; // TFid starts on 1
