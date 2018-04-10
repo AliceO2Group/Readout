@@ -35,7 +35,7 @@ class MemoryBank {
 
 // factory function to create a MemoryBank instance of a given type
 // size: size of the bank, in bytes
-// support: type of support to be used. Available choices: malloc,
+// support: type of support to be used. Available choices: malloc, MemoryMappedFile
 // description: optional description for the memory bank
 
 std::shared_ptr<MemoryBank> getMemoryBank(size_t size, std::string support, std::string description="");
