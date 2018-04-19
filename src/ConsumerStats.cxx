@@ -15,7 +15,7 @@
 
 
 #include <Monitoring/MonitoringFactory.h>
-using namespace AliceO2::Monitoring;
+using namespace o2::monitoring;
 
 
 // macro to get number of element in static array
@@ -57,7 +57,7 @@ class ConsumerStats: public Consumer {
   
   int monitoringEnabled;
   int monitoringUpdatePeriod;
-  std::unique_ptr<Collector> monitoringCollector;
+  std::unique_ptr<Monitoring> monitoringCollector;
 
   struct rusage previousUsage; // variable to keep track of last getrusage() result
   struct rusage currentUsage; // variable to keep track of last getrusage() result  
@@ -76,7 +76,7 @@ class ConsumerStats: public Consumer {
         + currentUsage.ru_stime.tv_sec*1000000.0+currentUsage.ru_stime.tv_usec-(previousUsage.ru_stime.tv_sec*1000000.0+previousUsage.ru_stime.tv_usec)
        ) / tDiff;
       if (monitoringEnabled) {
-        monitoringCollector->send(fractionCpuUsed*100, "readout.percentCpuUsed");
+        monitoringCollector->send({fractionCpuUsed*100, "readout.percentCpuUsed"});
         //theLog.log("CPU used = %.2f %%",100*fractionCpuUsed);
       }      
     }
@@ -88,10 +88,10 @@ class ConsumerStats: public Consumer {
       // todo: support for long long types
       // https://alice.its.cern.ch/jira/browse/FLPPROT-69
 
-      monitoringCollector->send(counterBlocks, "readout.Blocks");
-      monitoringCollector->send(counterBytesTotal, "readout.BytesTotal");
-      monitoringCollector->send(counterBytesDiff, "readout.BytesInterval");
-//      monitoringCollector->send((counterBytesTotal/(1024*1024)), "readout.MegaBytesTotal");
+      monitoringCollector->send({counterBlocks, "readout.Blocks"});
+      monitoringCollector->send({counterBytesTotal, "readout.BytesTotal"}, DerivedMetricMode::RATE);
+      monitoringCollector->send({counterBytesDiff, "readout.BytesInterval"});
+//      monitoringCollector->send({(counterBytesTotal/(1024*1024)), "readout.MegaBytesTotal"});
 
       counterBytesDiff=0;
     }
@@ -108,7 +108,6 @@ class ConsumerStats: public Consumer {
       theLog.log("Monitoring enabled - period %ds - using %s",monitoringUpdatePeriod,configURI.c_str());
 
       monitoringCollector=MonitoringFactory::Get(configURI.c_str());
-      monitoringCollector->addDerivedMetric("readout.BytesTotal", DerivedMetricMode::RATE);
 
       // enable process monitoring
       int processMonitoringInterval=0;
