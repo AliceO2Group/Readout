@@ -61,17 +61,17 @@ std::string ReadoutUtils::NumberOfBytesToString(double value,const char*suffix) 
   return std::string(bufStr);  
 }
 
-void convertConfigurationNodeToPTree(const AliceO2::Configuration::Tree::Node& node, boost::property_tree::ptree &pt, std::string basePath="", const char separator='.')
+void convertConfigurationNodeToPTree(const o2::configuration::tree::Node& node, boost::property_tree::ptree &pt, std::string basePath="", const char separator='.')
 {
-  AliceO2::Configuration::Visitor::apply(node,
-      [&](const AliceO2::Configuration::Tree::Branch& branch) {
+  o2::configuration::visitor::apply(node,
+      [&](const o2::configuration::tree::Branch& branch) {
         if (basePath.length()!=0) {basePath+=separator;}
         for (const auto& keyValuePair : branch) {
           convertConfigurationNodeToPTree(keyValuePair.second, pt, basePath+keyValuePair.first);
         }
       },
-      [&](const AliceO2::Configuration::Tree::Leaf& leaf) {
-        std::string value= AliceO2::Configuration::Tree::convert<std::string>(leaf);
+      [&](const o2::configuration::tree::Leaf& leaf) {
+        std::string value= o2::configuration::tree::convert<std::string>(leaf);
 	pt.put(basePath,value);
       }
   );
