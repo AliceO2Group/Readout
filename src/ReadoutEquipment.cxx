@@ -34,10 +34,17 @@ ReadoutEquipment::ReadoutEquipment(ConfigFile &cfg, std::string cfgEntryPoint) {
   cfg.getOptionalValue<std::string>(cfgEntryPoint + ".memoryPoolPageSize",cfgMemoryPoolPageSize);
   memoryPoolPageSize=(int)ReadoutUtils::getNumberOfBytesFromString(cfgMemoryPoolPageSize.c_str());
   cfg.getOptionalValue<int>(cfgEntryPoint + ".memoryPoolNumberOfPages", memoryPoolNumberOfPages);
+
+  // disable output?
+  cfg.getOptionalValue<int>(cfgEntryPoint + ".disableOutput", disableOutput);
+
   
   // log config summary
   theLog.log("Equipment %s: from config [%s], max rate=%lf Hz, idleSleepTime=%d us, outputFifoSize=%d", name.c_str(), cfgEntryPoint.c_str(), readoutRate, cfgIdleSleepTime, cfgOutputFifoSize);
   theLog.log("Equipment %s: memory pool %d pages x %d bytes from bank %s", name.c_str(),(int) memoryPoolNumberOfPages, (int) memoryPoolPageSize, memoryBankName.c_str());
+  if (disableOutput) {
+    theLog.log("Equipment %s: output DISABLED ! Data will be readout and dropped immediately",name.c_str());
+  }
   
   // init stats
   equipmentStats.resize(EquipmentStatsIndexes::maxIndex);
@@ -79,7 +86,8 @@ void ReadoutEquipment::start() {
 }
 
 void ReadoutEquipment::stop() {
-    
+  
+  double runningTime=clk0.getTime();
   readoutThread->stop();
   //printf("%llu blocks in %.3lf seconds => %.1lf block/s\n",nBlocksOut,clk0.getTimer(),nBlocksOut/clk0.getTime());
   readoutThread->join();
@@ -94,6 +102,7 @@ void ReadoutEquipment::stop() {
   
   theLog.log("Average pages pushed per iteration: %.1f",equipmentStats[EquipmentStatsIndexes::nBlocksOut].get()*1.0/(equipmentStats[EquipmentStatsIndexes::nLoop].get()-equipmentStats[EquipmentStatsIndexes::nIdle].get()));
   theLog.log("Average fifoready occupancy: %.1f",equipmentStats[EquipmentStatsIndexes::fifoOccupancyFreeBlocks].get()*1.0/(equipmentStats[EquipmentStatsIndexes::nLoop].get()-equipmentStats[EquipmentStatsIndexes::nIdle].get()));
+  theLog.log("Average data throughput: %s",ReadoutUtils::NumberOfBytesToString(equipmentStats[EquipmentStatsIndexes::nBytesOut].get()/runningTime,"Bytes/s").c_str());
 }
 
 ReadoutEquipment::~ReadoutEquipment() {
@@ -168,9 +177,11 @@ Thread::CallbackResult  ReadoutEquipment::threadCallback(void *arg) {
         break;
       }
 
-      // push new page to output fifo
-      ptr->dataOut->push(nextBlock);
-
+      if (!ptr->disableOutput) {
+        // push new page to output fifo
+        ptr->dataOut->push(nextBlock);
+      }
+      
       // update rate-limit clock
       if (ptr->readoutRate>0) {
         ptr->clk.increment();
@@ -186,7 +197,8 @@ Thread::CallbackResult  ReadoutEquipment::threadCallback(void *arg) {
     // consider inactive if we have not pushed much compared to free space in output fifo
     // todo: instead, have dynamic 'inactive sleep time' as function of actual outgoing page rate to optimize polling interval
     if (nPushedOut<ptr->dataOut->getNumberOfFreeSlots()/4) {
-      isActive=0;
+// disabled, should not depend on output fifo size
+//      isActive=0;
     }
       
     // todo: add SLICER to aggregate together time-range data
@@ -194,8 +206,6 @@ Thread::CallbackResult  ReadoutEquipment::threadCallback(void *arg) {
 
     break;
   }
-  
-
 
   if (!isActive) {
     ptr->equipmentStats[EquipmentStatsIndexes::nIdle].increment();
