@@ -62,3 +62,11 @@ o2_define_bucket(
         ${FAIRROOT_INCLUDE_DIR}/fairmq
 )
 
+o2_define_bucket(
+	NAME
+	o2_readout_numa_bucket
+	
+	DEPENDENCIES
+	o2_readout_bucket
+	numa
+)
