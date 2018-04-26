@@ -29,6 +29,11 @@
 #include "ReadoutUtils.h"
 
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
+
 // option to add callgrind instrumentation
 // to use: valgrind --tool=callgrind --instr-atstart=no --dump-instr=yes ./a.out
 // to display stats: kcachegrind
@@ -104,6 +109,19 @@ int main(int argc, char* argv[])
   catch (std::string err) {
     theLog.log("Error : %s",err.c_str());
     return -1;
+  }
+
+
+  // try to prevent deep sleeps  
+  theLog.log("Disabling CPU deep sleep for process");
+  int maxLatency=1;
+  int latencyFd = open("/dev/cpu_dma_latency", O_WRONLY);
+  if (latencyFd < 0) {
+    theLog.log("Error opening /dev/cpu_dma_latency");
+  } else {
+    if (write(latencyFd, &maxLatency, sizeof(maxLatency)) != sizeof(maxLatency)) {
+      theLog.log("Error writing to /dev/cpu_dma_latency");
+    }
   }
   
 
@@ -296,7 +314,7 @@ int main(int argc, char* argv[])
   // configuration of data sampling
 #ifdef WITH_DATASAMPLING
   int dataSampling=0;
-  dataSampling=cfg.getValue<int>("sampling.enabled");
+  cfg.getOptionalValue<int>("sampling.enabled",dataSampling);
   std::unique_ptr<AliceO2::DataSampling::InjectorInterface> dataSamplingInjector;
   if (dataSampling) {
     theLog.log("Data sampling enabled");
@@ -418,6 +436,10 @@ int main(int argc, char* argv[])
     readoutDevices[i]=nullptr;  // effectively deletes the device
   }
   readoutDevices.clear(); // to do it all in one go
+
+  if (latencyFd>=0) {
+    close(latencyFd);
+  }
 
   theLog.log("Operations completed");
 
