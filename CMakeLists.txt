@@ -180,6 +180,12 @@ O2_GENERATE_EXECUTABLE(
         BUCKET_NAME ${BUCKET_NAME}
 )
 
+O2_GENERATE_EXECUTABLE(
+        EXE_NAME testROC.exe
+        SOURCES src/testROC.cxx $<TARGET_OBJECTS:objMemUtils>
+        BUCKET_NAME o2_readout_numa_bucket
+)
+
 # Install some extra files
 install(
         FILES readout.cfg
