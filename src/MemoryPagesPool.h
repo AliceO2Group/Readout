@@ -27,10 +27,11 @@ public:
   // - size of each page (in bytes)
   // - number of pages in the pool
   // - base address of memory block where to create the pages
-  // - size of memory block in bytes (if zero, assuming it is big enough for page number * page size)
+  // - size of memory block in bytes (if zero, assuming it is big enough for page number * page size - not taking into account firstPageOffset is set)
   // - a release callback to be called at destruction time
-  // - page align is for alignment of 1st page (all pages are created contiguous)
-  MemoryPagesPool(size_t pageSize, size_t numberOfPages, void *baseAddress, size_t baseSize=0, ReleaseCallback callback=nullptr, size_t pageAlign=0);
+  // - firstPageOffset is the offset of first page from base address. This is to control alignment. All pages are created contiguous from this point.
+  //   If non-zero, this may reduce number of pages created compared to request (as to fit in base size)
+  MemoryPagesPool(size_t pageSize, size_t numberOfPages, void *baseAddress, size_t baseSize=0, ReleaseCallback callback=nullptr, size_t firstPageOffset=0);
 
   // destructor
   ~MemoryPagesPool();

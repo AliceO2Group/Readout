@@ -1,6 +1,6 @@
 #include "MemoryPagesPool.h"
 
-MemoryPagesPool::MemoryPagesPool(size_t vPageSize, size_t vNumberOfPages, void *vBaseAddress, size_t vBaseSize,  ReleaseCallback vCallback, size_t pageAlign) {
+MemoryPagesPool::MemoryPagesPool(size_t vPageSize, size_t vNumberOfPages, void *vBaseAddress, size_t vBaseSize,  ReleaseCallback vCallback, size_t firstPageOffset) {
   // initialize members from parameters
   pageSize=vPageSize;
   numberOfPages=vNumberOfPages;
@@ -13,25 +13,21 @@ MemoryPagesPool::MemoryPagesPool(size_t vPageSize, size_t vNumberOfPages, void *
     baseBlockSize=pageSize * numberOfPages;
   }
  
-  // compute offset of first page to ensure aligned as requested
-  size_t offsetFirstPage=0;
-  if (pageAlign) {
-    size_t bytesExcess=((size_t)vBaseAddress) % pageAlign;
-    if (bytesExcess) {
-      offsetFirstPage=pageAlign-bytesExcess;
-    }
+  // check validity of parameters
+  if ((firstPageOffset>=vBaseSize)||(vBaseSize==0)||(vNumberOfPages==0)||(vPageSize==0)||(baseBlockSize==0)) {
+    throw __LINE__;
   }
-  
+ 
   // if necessary, reduce number of pages to fit in available space
-  size_t sizeNeeded=pageSize * numberOfPages + offsetFirstPage;
-  if (sizeNeeded>baseBlockSize) {
-    numberOfPages=(baseBlockSize-offsetFirstPage)/pageSize;
+  size_t sizeNeeded=pageSize * numberOfPages + firstPageOffset;
+  if (sizeNeeded>baseBlockSize) {    
+    numberOfPages=(baseBlockSize-firstPageOffset)/pageSize;
   }
   
   // create a fifo and store list of pages available
   pagesAvailable=std::make_unique<AliceO2::Common::Fifo<void *>>(numberOfPages);
   for (size_t i=0; i<numberOfPages; i++) {
-    void *ptr=&((char *)baseBlockAddress)[offsetFirstPage+i*pageSize];
+    void *ptr=&((char *)baseBlockAddress)[firstPageOffset+i*pageSize];
     pagesAvailable->push(ptr);
   }
 }

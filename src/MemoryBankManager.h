@@ -27,11 +27,11 @@ class MemoryBankManager {
   // - pageSize: size of one page (in bytes)
   // - pageNumber: number of pages requested
   // - bankName: name of the bank from which to create the pool. If not specified, using the first bank.
-  // - pageAlign: alignment of first page in pool
-  // - blockAlign: alignment of beginning of big memory block from which pool is created
+  // - firstPageOffset: to control alignment of first page in pool. With zero, start from beginning of big block.
+  // - blockAlign: alignment of beginning of big memory block from which pool is created. Pool will start at a multiple of this value.
   // NB: trivial implementation, once a region from a bank has been used, it can not be reused after the corresponding pool of pages has been release
   //    ... don't want to deal with fragmentation etc
-  std::shared_ptr<MemoryPagesPool> getPagedPool(size_t pageSize, size_t pageNumber, std::string bankName="", size_t pageAlign=0, size_t blockAlign=0);
+  std::shared_ptr<MemoryPagesPool> getPagedPool(size_t pageSize, size_t pageNumber, std::string bankName="", size_t firstPageOffset=0, size_t blockAlign=0);
   
   // a struct to define a memory range
   struct memoryRange {
