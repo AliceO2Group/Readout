@@ -1,40 +1,57 @@
 #include "MemoryPagesPool.h"
 
-MemoryPagesPool::MemoryPagesPool(size_t vPageSize, size_t vNumberOfPages, void *vBaseAddress, size_t vBaseSize,  ReleaseCallback vCallback) {
+MemoryPagesPool::MemoryPagesPool(size_t vPageSize, size_t vNumberOfPages, void *vBaseAddress, size_t vBaseSize,  ReleaseCallback vCallback, size_t pageAlign) {
+  // initialize members from parameters
   pageSize=vPageSize;
   numberOfPages=vNumberOfPages;
   baseBlockAddress=vBaseAddress;
   baseBlockSize=vBaseSize;
-  releaseBaseBlockCallback=vCallback;
-  
-  size_t sizeNeeded=pageSize * numberOfPages;
-  
-  if (vBaseSize==0) {
-    baseBlockSize=sizeNeeded;
-  } else if (sizeNeeded>vBaseSize) {
-    numberOfPages=baseBlockSize/pageSize;
+  releaseBaseBlockCallback=vCallback;  
+
+  // if not specified, assuming base block size big enough to fit number of pages * page size
+  if (baseBlockSize==0) {
+    baseBlockSize=pageSize * numberOfPages;
+  }
+ 
+  // compute offset of first page to ensure aligned as requested
+  size_t offsetFirstPage=0;
+  if (pageAlign) {
+    size_t bytesExcess=((size_t)vBaseAddress) % pageAlign;
+    if (bytesExcess) {
+      offsetFirstPage=pageAlign-bytesExcess;
+    }
   }
   
+  // if necessary, reduce number of pages to fit in available space
+  size_t sizeNeeded=pageSize * numberOfPages + offsetFirstPage;
+  if (sizeNeeded>baseBlockSize) {
+    numberOfPages=(baseBlockSize-offsetFirstPage)/pageSize;
+  }
+  
+  // create a fifo and store list of pages available
   pagesAvailable=std::make_unique<AliceO2::Common::Fifo<void *>>(numberOfPages);
   for (size_t i=0; i<numberOfPages; i++) {
-    void *ptr=&((char *)baseBlockAddress)[i*pageSize];
+    void *ptr=&((char *)baseBlockAddress)[offsetFirstPage+i*pageSize];
     pagesAvailable->push(ptr);
   }
 }
 
 MemoryPagesPool::~MemoryPagesPool() {
+  // if defined, use provided callback to release base block
   if ( (releaseBaseBlockCallback != nullptr) && (baseBlockAddress!=nullptr) ) {
     releaseBaseBlockCallback(baseBlockAddress);
   }
 }
 
 void *MemoryPagesPool::getPage() {
+  // get a page from fifo, if available
   void *ptr=nullptr;
   pagesAvailable->pop(ptr);
   return ptr;
 }
 
 void MemoryPagesPool::releasePage(void *address) {
+  // put back page in list of available pages
   pagesAvailable->push(address);
 }
 
@@ -57,8 +74,8 @@ size_t MemoryPagesPool::getBaseBlockSize() {
   return baseBlockSize;
 }
 
-
 std::shared_ptr<DataBlockContainer> MemoryPagesPool::getNewDataBlockContainer(void *newPage) {
+  // get a new page if none provided
   if (newPage==nullptr) {
     // get a new page from the pool
     newPage=getPage();
@@ -67,7 +84,8 @@ std::shared_ptr<DataBlockContainer> MemoryPagesPool::getNewDataBlockContainer(vo
     }
   }
 
-  // fill header
+  // fill header at beginning of page
+  // assuming payload is contiguous after header
   DataBlock *b=(DataBlock *)newPage;
   b->header.blockType=DataBlockType::H_BASE;
   b->header.headerSize=sizeof(DataBlockHeaderBase);
