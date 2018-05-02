@@ -28,7 +28,7 @@ int MemoryBankManager::addBank(std::shared_ptr<MemoryBank> bankPtr, std::string 
 }
 
 
-std::shared_ptr<MemoryPagesPool>  MemoryBankManager::getPagedPool(size_t pageSize, size_t pageNumber, std::string bankName, int pageAlign, int blockAlign){
+std::shared_ptr<MemoryPagesPool>  MemoryBankManager::getPagedPool(size_t pageSize, size_t pageNumber, std::string bankName, size_t pageAlign, size_t blockAlign){
 
    void *baseAddress=nullptr; // base address of bank from which the block is taken
    size_t offset=0; // offset of new block (relative to baseAddress)
