@@ -94,6 +94,8 @@ class ReadoutEquipment {
   std::string memoryBankName=""; // memory bank to be used. by default, this uses the first memory bank available
 
   int disableOutput=0; // when set true, data are dropped before pushing to output queue
+  
+  size_t pageSpaceReserved=0; // amount of space reserved (in bytes) at beginning of each data page, possibly to store header
 };
 
 

@@ -21,181 +21,6 @@ extern InfoLogger theLog;
 
 
 
-
-// a big block of memory for I/O
-class ReadoutMemoryHandler {
-  public:
-  size_t memorySize;  // total size of buffer
-  size_t pageSize;       // size of each superpage in buffer (not the one of getpagesize())
-  uint8_t * baseAddress; // base address of buffer
-
-  std::unique_ptr<AliceO2::Common::Fifo<long>> pagesAvailable;  // a buffer to keep track of individual pages. storing offset (with respect to base address) of pages available
-  
-  void *getBaseAddress() {
-    return baseAddress;
-  }
-  size_t getSize() {
-    return memorySize;
-  }
-  size_t getPageSize() {
-    return pageSize;
-  }
-  void freePage(void *p) {
-    int64_t offset=((uint8_t *)p)-baseAddress;
-    if ((offset<0) || (offset>(int64_t)memorySize)) {
-      throw __LINE__;
-    }
-    pagesAvailable->push(offset);
-  }
-  void *getPage() {
-    long offset=0;
-    int res=pagesAvailable->pop(offset);
-    if (res==0) {
-      uint8_t *pagePtr=&baseAddress[offset];
-      return pagePtr;
-    }
-    return nullptr;
-  }
-  
-  private:
-  std::unique_ptr<AliceO2::roc::MemoryMappedFile> mMemoryMappedFile;
-  
-  public:
-  
-  ReadoutMemoryHandler(size_t vMemorySize, int vPageSize, std::string const &uid, std::string const &hugePageSize="1GB"){
-  
-    pagesAvailable=nullptr;
-    mMemoryMappedFile=nullptr;
-    
-    // select Huge Page type and define corresponding settings
-    int hugePageSizeBytes; // size of page in bytes    
-    if (hugePageSize=="1GB") {
-      hugePageSizeBytes=1024*1024*1024;
-    } else if (hugePageSize=="2MB") {
-      hugePageSizeBytes=2*1024*1024;
-    } else {
-      theLog.log("Wrong hugePageSize %s",hugePageSize.c_str());
-      exit(1);
-    }    
-    
-    // path to our memory segment
-    std::string memoryMapBasePath="/var/lib/hugetlbfs/global/pagesize-"+hugePageSize+"/";
-    std::string memoryMapFilePath=memoryMapBasePath + uid;
-      
-    // must be multiple of hugepage size
-    int r=vMemorySize % hugePageSizeBytes;
-    if (r) {
-      vMemorySize+=hugePageSizeBytes-r;
-    }
-
-    theLog.log("Creating shared memory block - %s @ %s",ReadoutUtils::NumberOfBytesToString(vMemorySize,"Bytes").c_str(),memoryMapFilePath.c_str());
-    
-    try {
-      mMemoryMappedFile=std::make_unique<AliceO2::roc::MemoryMappedFile>(memoryMapFilePath,vMemorySize,false);
-    }
-    catch (const AliceO2::roc::MemoryMapException& e) {
-      theLog.log("Failed to allocate memory buffer : %s\n",e.what());
-      exit(1);
-    }
-    // todo: check consistent with what requested, alignment, etc
-    memorySize=mMemoryMappedFile->getSize();
-    baseAddress=(uint8_t *)mMemoryMappedFile->getAddress();
-
-    int baseAlignment=1024*1024;    
-    r=(long)baseAddress % baseAlignment;
-    if (r!=0) {
-      theLog.log("Unaligned base address %p, target alignment=%d, skipping first %d bytes",baseAddress,baseAlignment,baseAlignment-r);
-      int skipBytes=baseAlignment-r;
-      baseAddress+=skipBytes;
-      memorySize-=skipBytes;
-      // now baseAddress is aligned to baseAlignment bytes, but what guarantee do we have that PHYSICAL page addresses are aligned ???
-    }
-    
-    pageSize=vPageSize;
-    long long nPages=memorySize/pageSize;
-    theLog.log("Got %lld pages, each %s",nPages,ReadoutUtils::NumberOfBytesToString(pageSize,"Bytes").c_str());
-    pagesAvailable=std::make_unique<AliceO2::Common::Fifo<long>>(nPages);
-    
-    for (int i=0;i<nPages;i++) {
-      long offset=i*pageSize;
-      //void *page=&((uint8_t*)baseAddress)[offset];
-      //printf("%d : 0x%p\n",i,page);
-      pagesAvailable->push(offset);
-    }
-    
-  }
-  ~ReadoutMemoryHandler() {
-  }
- 
-};
-// todo: locks for thread-safe access at init time
-//ReadoutMemoryHandler mReadoutMemoryHandler;
-
-
-
-
-class DataBlockContainerFromRORC : public DataBlockContainer {
-  private:
-  AliceO2::roc::ChannelFactory::DmaChannelSharedPtr mChannel;
-  AliceO2::roc::Superpage mSuperpage;
-//  std::shared_ptr<ReadoutMemoryHandler> mReadoutMemoryHandler;  // todo: store this in superpage user data
-  std::shared_ptr<MemoryHandler> mReadoutMemoryHandler;  // a memory pool from which to allocate data pages
-
-  public:
-  DataBlockContainerFromRORC(AliceO2::roc::ChannelFactory::DmaChannelSharedPtr channel, AliceO2::roc::Superpage  const & superpage, //std::shared_ptr<ReadoutMemoryHandler> const & h) {
-  std::shared_ptr<MemoryHandler> const & h) {
-  
-    mSuperpage=superpage;
-    mChannel=channel;
-    mReadoutMemoryHandler=h;
-
-    data=nullptr;
-    try {
-       data=new DataBlock;
-    } catch (...) {
-      throw __LINE__;
-    }   
-
-
-    data->header.blockType=DataBlockType::H_BASE;
-    data->header.headerSize=sizeof(DataBlockHeaderBase);
-    data->header.dataSize=superpage.getReceived();
-    
-    uint32_t *ptr=(uint32_t *) & (((uint8_t *)h->getBaseAddress())[mSuperpage.getOffset()]);
-    
-    data->header.id=*ptr;
-    data->data=(char *)ptr;
-    
-/*    for (int i=0;i<64;i++) {
-      printf("%08X  ",(((unsigned int *)ptr)[i]));
-    }
-    printf("\n");
-    sleep(1);
-*/
-    
-    //printf("container %p created for superpage @ offset %ld = %p\n",this,(long)superpage.getOffset(),ptr);    
-  }
-  
-  ~DataBlockContainerFromRORC() {
-    // todo: add lock
-    // if constructor fails, do we make page available again or leave it to caller?
-    //mReadoutMemoryHandler->pagesAvailable->push(mSuperpage.getOffset());
-
-    void *ptr= & (((uint8_t *)mReadoutMemoryHandler->getBaseAddress())[mSuperpage.getOffset()]);
-    mReadoutMemoryHandler->freePage(ptr);
-    
-    //printf("released superpage %ld\n",mSuperpage.getOffset());
-    if (data!=nullptr) {
-      delete data;
-    }
-  }
-};
-
-
-
-
-
-
 class ReadoutEquipmentRORC : public ReadoutEquipment {
 
   public:
@@ -209,8 +34,6 @@ class ReadoutEquipmentRORC : public ReadoutEquipment {
     Thread::CallbackResult  populateFifoOut(); // the data readout loop function
     
     AliceO2::roc::ChannelFactory::DmaChannelSharedPtr channel;    // channel to ROC device
-    //std::shared_ptr<ReadoutMemoryHandler> mReadoutMemoryHandler;  // object to get memory from
-    //std::shared_ptr<MemoryHandler> mReadoutMemoryHandler;  // object to get memory from
 
     DataBlockId currentId=0;    // current data id, kept for auto-increment
        
@@ -292,7 +115,7 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : 
     //sleep((cfgChannelNumber+1)*2);  // trick to avoid all channels open at once - fail to acquire lock
     
     // define usable superpagesize
-    superPageSize=mp->getPageSize()-sizeof(DataBlock); // Keep space at beginning for DataBlock object
+    superPageSize=mp->getPageSize()-pageSpaceReserved; // Keep space at beginning for DataBlock object
     superPageSize-=superPageSize % (32*1024); // Must be a multiple of 32Kb for ROC
     theLog.log("Using superpage size %ld",superPageSize);
     if (superPageSize==0) {
@@ -307,10 +130,6 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : 
     }
     readoutEquipmentRORCLock.unlock();
     
-    // create memory pool
-    //mReadoutMemoryHandler=std::make_shared<ReadoutMemoryHandler>((long)mMemorySize,(int)mPageSize,uid,cfgHugePageSize);
-    //mReadoutMemoryHandler=std::make_shared<MemoryHandler>(mPageSize,mMemorySize/mPageSize);
-
     // open and configure ROC
     theLog.log("Opening ROC %s:%d",cardId.c_str(),cfgChannelNumber);
     AliceO2::roc::Parameters params;
@@ -331,20 +150,22 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : 
     // card readout mode : experimental, not needed
     // params.setReadoutMode(AliceO2::roc::ReadoutMode::fromString(cfgReadoutMode));    
   
-    // theLog.log("Loop DMA block %p:%lu", mp->getBaseBlockAddress(), mp->getBaseBlockSize()); //(void *)mReadoutMemoryHandler->getBaseAddress(),mReadoutMemoryHandler->getSize());
-    // char *ptr=(char *)mp->getBaseBlockAddress();
-    // for (size_t i=0;i<mp->getBaseBlockSize();i++) {
-    //  ptr[i]=0;
-    //}
+    /*
+    theLog.log("Loop DMA block %p:%lu", mp->getBaseBlockAddress(), mp->getBaseBlockSize());
+    char *ptr=(char *)mp->getBaseBlockAddress();
+    for (size_t i=0;i<mp->getBaseBlockSize();i++) {
+      ptr[i]=0;
+    }
+    */
 
-    // register the memory block for DMA    
-    theLog.log("Register DMA block %p:%lu",(void *)mp->getBaseBlockAddress(),mp->getBaseBlockSize());
+    // register the memory block for DMA
+    void *baseAddress=(void *)mp->getBaseBlockAddress();
+    size_t blockSize=mp->getBaseBlockSize();
+    theLog.log("Register DMA block %p:%lu",baseAddress,blockSize);
     params.setBufferParameters(AliceO2::roc::buffer_parameters::Memory {
-//      (void *)mReadoutMemoryHandler->baseAddress, mReadoutMemoryHandler->memorySize
-//      (void *)mReadoutMemoryHandler->getBaseAddress(), mReadoutMemoryHandler->getSize()
-        mp->getBaseBlockAddress(), mp->getBaseBlockSize()
+       baseAddress, blockSize
     });
-    
+       
     // clear locks if necessary
     params.setForcedUnlockEnabled(true);
 
@@ -423,20 +244,16 @@ Thread::CallbackResult ReadoutEquipmentRORC::prepareBlocks(){
   }
   
   // give free pages to the driver
-  int nPushed=0;  // number of free pages pushed this iteration 
+  int nPushed=0;  // number of free pages pushed this iteration
   while (channel->getTransferQueueAvailable() != 0) {
-    //long offset=0;
-    //void *newPage=mReadoutMemoryHandler->getPage();
     void *newPage=mp->getPage();
-    //if (mReadoutMemoryHandler->pagesAvailable->pop(offset)==0) {
-    if (newPage!=nullptr) {
+    if (newPage!=nullptr) {   
+      // todo: check page is aligned as expected      
       AliceO2::roc::Superpage superpage;
-      //superpage.offset=offset;
-      //superpage.offset=(char *)newPage-(char *)mReadoutMemoryHandler->getBaseAddress();
-      superpage.offset=(char *)newPage-(char *)mp->getBaseBlockAddress()+sizeof(DataBlock);
+      superpage.offset=(char *)newPage-(char *)mp->getBaseBlockAddress()+pageSpaceReserved;
       superpage.size=superPageSize;
-      superpage.userData=newPage; // &mReadoutMemoryHandler; // bad - looses shared_ptr // todo: keep track of datablock object instead?
-      channel->pushSuperpage(superpage);
+      superpage.userData=newPage;
+      channel->pushSuperpage(superpage);      
       isActive=1;
       nPushed++;
     } else {
@@ -492,8 +309,14 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
     if (superpage.isFilled()) {
       std::shared_ptr<DataBlockContainer>d=nullptr;
       try {
-        //d=std::make_shared<DataBlockContainerFromRORC>(channel, superpage, mReadoutMemoryHandler);
-        d=mp->getNewDataBlockContainer((void *)(superpage.userData));
+        if (pageSpaceReserved>=sizeof(DataBlock)) {
+          d=mp->getNewDataBlockContainer((void *)(superpage.userData));
+        } else {
+          // todo: allocate data block container elsewhere than beginning of page
+          //d=mp->getNewDataBlockContainer(nullptr);        
+          //d=mp->getNewDataBlockContainer((void *)(superpage.userData));
+          //d=std::make_shared<DataBlockContainer>(nullptr);
+        }
       }
       catch (...) {
         // todo: increment a stats counter?
@@ -561,6 +384,9 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
           d->getData()->header.linkId=linkId;
         }
         
+      }
+      else {
+        // no data block container... what to do???
       }
     }
   }

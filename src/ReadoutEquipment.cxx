@@ -38,10 +38,17 @@ ReadoutEquipment::ReadoutEquipment(ConfigFile &cfg, std::string cfgEntryPoint) {
   // disable output?
   cfg.getOptionalValue<int>(cfgEntryPoint + ".disableOutput", disableOutput);
 
-  
+  // memory alignment
+  std::string cfgStringFirstPageOffset="0";
+  cfg.getOptionalValue<std::string>(cfgEntryPoint + ".firstPageOffset", cfgStringFirstPageOffset);
+  size_t cfgFirstPageOffset=(size_t)ReadoutUtils::getNumberOfBytesFromString(cfgStringFirstPageOffset.c_str());
+  std::string cfgStringBlockAlign="2M";
+  cfg.getOptionalValue<std::string>(cfgEntryPoint + ".blockAlign", cfgStringBlockAlign);
+  size_t cfgBlockAlign=(size_t)ReadoutUtils::getNumberOfBytesFromString(cfgStringBlockAlign.c_str());
+    
   // log config summary
   theLog.log("Equipment %s: from config [%s], max rate=%lf Hz, idleSleepTime=%d us, outputFifoSize=%d", name.c_str(), cfgEntryPoint.c_str(), readoutRate, cfgIdleSleepTime, cfgOutputFifoSize);
-  theLog.log("Equipment %s: memory pool %d pages x %d bytes from bank %s", name.c_str(),(int) memoryPoolNumberOfPages, (int) memoryPoolPageSize, memoryBankName.c_str());
+  theLog.log("Equipment %s: requesting memory pool %d pages x %d bytes from bank %s, block aligned @ 0x%X, 1st page offset @ 0x%X", name.c_str(),(int) memoryPoolNumberOfPages, (int) memoryPoolPageSize, memoryBankName.c_str(),(int)cfgBlockAlign,(int)cfgFirstPageOffset);
   if (disableOutput) {
     theLog.log("Equipment %s: output DISABLED ! Data will be readout and dropped immediately",name.c_str());
   }
@@ -60,8 +67,14 @@ ReadoutEquipment::ReadoutEquipment(ConfigFile &cfg, std::string cfgEntryPoint) {
   if ((memoryPoolPageSize<=0)||(memoryPoolNumberOfPages<=0)) {
      theLog.log("Equipment %s: wrong memory pool settings", name.c_str());
      throw __LINE__;
+  } 
+  pageSpaceReserved=sizeof(DataBlock); // reserve some data at beginning of each page for header, keep beginning of payload aligned as requested in config
+  size_t firstPageOffset=0; // alignment of 1st page of memory pool
+  if (cfgFirstPageOffset) {
+    firstPageOffset=cfgFirstPageOffset-pageSpaceReserved;
   }
-  mp=theMemoryBankManager.getPagedPool(memoryPoolPageSize, memoryPoolNumberOfPages, memoryBankName);
+  theLog.log("pageSpaceReserved = %d, aligning 1st page @ 0x%X",(int)pageSpaceReserved,(int)firstPageOffset);
+  mp=theMemoryBankManager.getPagedPool(memoryPoolPageSize, memoryPoolNumberOfPages, memoryBankName, firstPageOffset, cfgBlockAlign);
   if (mp==nullptr) {
     throw __LINE__;
   }
@@ -145,19 +158,6 @@ Thread::CallbackResult  ReadoutEquipment::threadCallback(void *arg) {
       }
     }
 
-    // prepare next blocks
-    Thread::CallbackResult statusPrepare=ptr->prepareBlocks();
-    switch (statusPrepare) {
-      case (Thread::CallbackResult::Ok):
-        isActive=true;
-        break;
-      case (Thread::CallbackResult::Idle):
-        break;      
-      default:
-        // this is an abnormal situation, return corresponding status
-        return statusPrepare;
-    }
-
     // check status of output FIFO
     ptr->equipmentStats[EquipmentStatsIndexes::fifoOccupancyOutBlocks].set(ptr->dataOut->getNumberOfUsedSlots());
 
@@ -194,6 +194,21 @@ Thread::CallbackResult  ReadoutEquipment::threadCallback(void *arg) {
     }
     ptr->equipmentStats[EquipmentStatsIndexes::nBlocksOut].increment(nPushedOut);
     
+
+    // prepare next blocks
+    Thread::CallbackResult statusPrepare=ptr->prepareBlocks();
+    switch (statusPrepare) {
+      case (Thread::CallbackResult::Ok):
+        isActive=true;
+        break;
+      case (Thread::CallbackResult::Idle):
+        break;      
+      default:
+        // this is an abnormal situation, return corresponding status
+        return statusPrepare;
+    }
+
+
     // consider inactive if we have not pushed much compared to free space in output fifo
     // todo: instead, have dynamic 'inactive sleep time' as function of actual outgoing page rate to optimize polling interval
     if (nPushedOut<ptr->dataOut->getNumberOfFreeSlots()/4) {
