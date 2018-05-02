@@ -132,6 +132,8 @@ MemoryBankMemoryMappedFile::MemoryBankMemoryMappedFile(size_t v_size, std::strin
       theLog.log("Failed to allocate memory buffer : %s",e.what());
       throw __LINE__;
     }
+    
+    theLog.log("Shared memory block for bank %s is ready",v_description.c_str());
     // todo: check consistent with what requested, alignment, etc
     size=mMemoryMappedFile->getSize();
     baseAddress=(void *)mMemoryMappedFile->getAddress();
