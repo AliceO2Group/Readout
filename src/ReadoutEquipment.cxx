@@ -70,6 +70,10 @@ ReadoutEquipment::ReadoutEquipment(ConfigFile &cfg, std::string cfgEntryPoint) {
   } 
   pageSpaceReserved=sizeof(DataBlock); // reserve some data at beginning of each page for header, keep beginning of payload aligned as requested in config
   size_t firstPageOffset=0; // alignment of 1st page of memory pool
+  if (pageSpaceReserved) {
+    // auto-align
+    firstPageOffset=memoryPoolPageSize-pageSpaceReserved;  
+  }
   if (cfgFirstPageOffset) {
     firstPageOffset=cfgFirstPageOffset-pageSpaceReserved;
   }
