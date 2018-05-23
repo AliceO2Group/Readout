@@ -74,8 +74,12 @@ set(SRCS
         src/ReadoutEquipmentDummy.cxx
         src/ReadoutEquipmentRORC.cxx
         src/DataBlockAggregator.cxx
-        src/mainReadout.cxx
         src/ReadoutUtils.cxx
+        src/MemoryBank.cxx
+        src/CounterStats.cxx
+        src/MemoryPagesPool.cxx
+        src/MemoryBankManager.cxx
+        src/RdhUtils.cxx
         )
 
 include_directories(
@@ -180,11 +184,13 @@ O2_GENERATE_EXECUTABLE(
         BUCKET_NAME ${BUCKET_NAME}
 )
 
-O2_GENERATE_EXECUTABLE(
-        EXE_NAME testROC.exe
-        SOURCES src/testROC.cxx $<TARGET_OBJECTS:objMemUtils>
-        BUCKET_NAME o2_readout_numa_bucket
-)
+if(NOT APPLE)
+    O2_GENERATE_EXECUTABLE(
+            EXE_NAME testROC.exe
+            SOURCES src/testROC.cxx $<TARGET_OBJECTS:objMemUtils>
+            BUCKET_NAME o2_readout_numa_bucket
+    )
+endif()
 
 # Install some extra files
 install(
