@@ -24,6 +24,8 @@ if (Numa_FOUND)
   ADD_DEFINITIONS(-DWITH_NUMA)
 else (Numa_FOUND)
   message(WARNING "Numa not found, corresponding features will be disabled.")
+  set(Numa_LIBRARIES "")
+  set(Numa_INCLUDE_DIRS "")
 endif (Numa_FOUND)
 
 ADD_DEFINITIONS(-DWITH_DATASAMPLING)
