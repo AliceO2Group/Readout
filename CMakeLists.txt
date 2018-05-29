@@ -63,32 +63,18 @@ set(MODULE_NAME "Readout")
 
 O2_SETUP(NAME ${MODULE_NAME})
 
-set(SRCS
-        src/Consumer.cxx
-        src/ConsumerStats.cxx
-        src/ConsumerFileRecorder.cxx
-        src/ConsumerDataChecker.cxx
-        src/ConsumerDataSampling.cxx
-        #    src/ConsumerFMQ.cxx
-        src/ReadoutEquipment.cxx
-        src/ReadoutEquipmentDummy.cxx
-        src/ReadoutEquipmentRORC.cxx
-        src/DataBlockAggregator.cxx
-        src/mainReadout.cxx
-        src/ReadoutUtils.cxx
-        )
-
 include_directories(
-        ${CMAKE_CURRENT_SOURCE_DIR}/../RORC/include
         ${Boost_INCLUDE_DIRS}
         ${Monitoring_INCLUDE_DIRS}
         ${FAIRROOT_INCLUDE_DIR}
         ${FAIRROOT_INCLUDE_DIR}/fairmq
-        ${ZeroMQ_INCLUDE_DIR}
+#        ${ZeroMQ_INCLUDE_DIR}
         ${Common_INCLUDE_DIRS}
         ${Configuration_INCLUDE_DIRS}
         ${InfoLogger_INCLUDE_DIRS}
         ${ReadoutCard_INCLUDE_DIRS}
+        ${DataSampling_INCLUDE_DIRS}
+        ${Numa_INCLUDE_DIRS}       
 )
 
 add_library(
@@ -131,16 +117,10 @@ add_library(
         ${CONSUMERS_SRCS}
 )
 
-
-set(LIBRARY_NAME ${MODULE_NAME})
 set(BUCKET_NAME o2_readout_bucket)
-
 if (FAIRROOT_FOUND)
-    list(APPEND SRCS src/ConsumerFMQ.cxx)
     set(BUCKET_NAME o2_readout_with_fair)
 endif ()
-
-O2_GENERATE_LIBRARY()
 
 add_subdirectory(doc)
 
@@ -183,7 +163,7 @@ O2_GENERATE_EXECUTABLE(
 O2_GENERATE_EXECUTABLE(
         EXE_NAME testROC.exe
         SOURCES src/testROC.cxx $<TARGET_OBJECTS:objMemUtils>
-        BUCKET_NAME o2_readout_numa_bucket
+        BUCKET_NAME ${BUCKET_NAME}
 )
 
 # Install some extra files

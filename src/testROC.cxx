@@ -18,7 +18,11 @@ InfoLogger theLog;
 #include <time.h>
 
 #include <sys/mman.h>
+
+#ifdef WITH_NUMA
 #include <numa.h>
+#endif
+
 #include <sched.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -220,6 +224,7 @@ int main(int argc, char**argv) {
   
   // bind alloc/exec on numa node
   if (numaNodeId>=0) {
+    #ifdef WITH_NUMA
     struct bitmask *nodemask;
     nodemask=numa_allocate_nodemask();
     if (nodemask==NULL) {return -1;}
@@ -227,6 +232,9 @@ int main(int argc, char**argv) {
     numa_bitmask_setbit(nodemask,numaNodeId);
     numa_bind(nodemask);
     printf("Locked to numa node %d\n",numaNodeId);
+    #else
+    printf("Can not set numaNode ... program compiled without NUMA support\n");
+    #endif
   }
 
   
