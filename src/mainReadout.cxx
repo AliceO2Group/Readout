@@ -33,6 +33,9 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
+#ifdef WITH_NUMA
+#include <numa.h>
+#endif
 
 // option to add callgrind instrumentation
 // to use: valgrind --tool=callgrind --instr-atstart=no --dump-instr=yes ./a.out
@@ -100,7 +103,11 @@ int main(int argc, char* argv[])
   #else
     theLog.log("FAIRMQ : no");
   #endif
-
+  #ifdef WITH_NUMA
+    theLog.log("NUMA : yes");
+  #else
+    theLog.log("NUMA : no");
+  #endif
   // load configuration file
   theLog.log("Reading configuration from %s",cfgFileURI);
   try {
@@ -114,7 +121,7 @@ int main(int argc, char* argv[])
 
   // try to prevent deep sleeps  
   theLog.log("Disabling CPU deep sleep for process");
-  int maxLatency=1;
+  int maxLatency=2;
   int latencyFd = open("/dev/cpu_dma_latency", O_WRONLY);
   if (latencyFd < 0) {
     theLog.log("Error opening /dev/cpu_dma_latency");
@@ -131,6 +138,7 @@ int main(int argc, char* argv[])
   
 
   // configuration of memory banks
+  int numaNodeChanged=0;
   for (auto kName : ConfigFileBrowser (&cfg,"bank-")) {
      // skip disabled
     int enabled=1;
@@ -161,7 +169,24 @@ int main(int argc, char* argv[])
     }
     if (cfgType.length()==0) {continue;}
 
+    // numa node
+    int cfgNumaNode=-1;
+    cfg.getOptionalValue<int>(kName + ".numaNode",cfgNumaNode);
+
     // instanciate new memory pool
+    if (cfgNumaNode>=0) {
+      #ifdef WITH_NUMA
+      struct bitmask *nodemask;
+      nodemask=numa_allocate_nodemask();
+      if (nodemask==NULL) {return -1;}
+      numa_bitmask_clearall(nodemask);
+      numa_bitmask_setbit(nodemask,cfgNumaNode);
+      numa_set_membind(nodemask);
+      numa_free_nodemask(nodemask);
+      theLog.log("Enforcing memory allocated on NUMA node %d",cfgNumaNode);
+      numaNodeChanged=1;
+      #endif
+    }
     theLog.log("Creating memory bank %s: type %s size %lld",kName.c_str(),cfgType.c_str(),mSize);
     std::shared_ptr<MemoryBank> b=nullptr;
     try {
@@ -178,6 +203,18 @@ int main(int argc, char* argv[])
     // add bank to list centrally managed
     theMemoryBankManager.addBank(b,kName);
     theLog.log("Bank %s added",kName.c_str());
+  }
+  
+  // releasing memory bind policy
+  if (numaNodeChanged){
+    #ifdef WITH_NUMA
+    struct bitmask *nodemask;
+    nodemask=numa_get_mems_allowed();
+    numa_set_membind(nodemask);
+    // is this needed? not specified in doc...
+    //numa_free_nodemask(nodemask);
+    theLog.log("Releasing memory NUMA node enforcment");
+    #endif
   }
   
   
