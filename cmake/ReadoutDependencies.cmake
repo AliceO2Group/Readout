@@ -7,7 +7,8 @@ find_package(Common REQUIRED)
 find_package(InfoLogger REQUIRED)
 find_package(ReadoutCard REQUIRED)
 find_package(DataSampling REQUIRED)
-find_package(ZeroMQ REQUIRED)
+#find_package(ZeroMQ REQUIRED)
+find_package(Numa)
 
 if (FAIRROOT_FOUND)
     # this should go away when fairrot provides a proper Find script or proper config scripts
@@ -18,6 +19,12 @@ if (FAIRROOT_FOUND)
 else (FAIRROOT_FOUND)
     message(WARNING "FairRoot not found, corresponding classes will not be compiled.")
 endif (FAIRROOT_FOUND)
+
+if (Numa_FOUND)   
+  ADD_DEFINITIONS(-DWITH_NUMA)
+else (Numa_FOUND)
+  message(WARNING "Numa not found, corresponding features will be disabled.")
+endif (Numa_FOUND)
 
 ADD_DEFINITIONS(-DWITH_DATASAMPLING)
 
@@ -37,6 +44,7 @@ o2_define_bucket(
         ${InfoLogger_LIBRARIES}
         ${ReadoutCard_LIBRARIES}
         ${DataSampling_LIBRARIES}
+        ${Numa_LIBRARIES}
 
         SYSTEMINCLUDE_DIRECTORIES
         ${Boost_INCLUDE_DIRS}
@@ -45,6 +53,7 @@ o2_define_bucket(
         ${ReadoutCard_INCLUDE_DIRS}
         ${DataSampling_INCLUDE_DIRS}
         ${Configuration_INCLUDE_DIRS}
+        ${Numa_INCLUDE_DIRS}
 )
 
 
@@ -60,13 +69,4 @@ o2_define_bucket(
         SYSTEMINCLUDE_DIRECTORIES
         ${FAIRROOT_INCLUDE_DIR}
         ${FAIRROOT_INCLUDE_DIR}/fairmq
-)
-
-o2_define_bucket(
-	NAME
-	o2_readout_numa_bucket
-	
-	DEPENDENCIES
-	o2_readout_bucket
-	numa
 )
