@@ -68,7 +68,7 @@ include_directories(
         ${Monitoring_INCLUDE_DIRS}
         ${FAIRROOT_INCLUDE_DIR}
         ${FAIRROOT_INCLUDE_DIR}/fairmq
-#        ${ZeroMQ_INCLUDE_DIR}
+        ${ZeroMQ_INCLUDE_DIR}
         ${Common_INCLUDE_DIRS}
         ${Configuration_INCLUDE_DIRS}
         ${InfoLogger_INCLUDE_DIRS}
