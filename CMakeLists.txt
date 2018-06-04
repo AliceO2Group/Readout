@@ -142,6 +142,7 @@ O2_GENERATE_EXECUTABLE(
         BUCKET_NAME ${BUCKET_NAME}
 )
 
+if (FAIRROOT_FOUND)
 O2_GENERATE_EXECUTABLE(
         EXE_NAME testTxFMQ.exe
         SOURCES src/testTxFMQ.cxx $<TARGET_OBJECTS:objReadoutUtils>
@@ -153,6 +154,7 @@ O2_GENERATE_EXECUTABLE(
         SOURCES src/testRxFMQ.cxx $<TARGET_OBJECTS:objReadoutUtils>
         BUCKET_NAME ${BUCKET_NAME}
 )
+endif ()
 
 O2_GENERATE_EXECUTABLE(
         EXE_NAME readRaw.exe
