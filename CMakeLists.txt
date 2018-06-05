@@ -168,6 +168,12 @@ O2_GENERATE_EXECUTABLE(
         BUCKET_NAME ${BUCKET_NAME}
 )
 
+O2_GENERATE_EXECUTABLE(
+        EXE_NAME testMonitor.exe
+        SOURCES src/testMonitor.cxx
+        BUCKET_NAME ${BUCKET_NAME}
+)
+
 # Install some extra files
 install(
         FILES readout.cfg
