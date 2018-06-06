@@ -89,6 +89,7 @@ class ConsumerStats: public Consumer {
       // https://alice.its.cern.ch/jira/browse/FLPPROT-69
 
       monitoringCollector->send({counterBlocks, "readout.Blocks"});
+      monitoringCollector->send({counterBytesTotal, "readout.BytesTotal"});
       monitoringCollector->send({counterBytesTotal, "readout.BytesTotal"}, DerivedMetricMode::RATE);
       monitoringCollector->send({counterBytesDiff, "readout.BytesInterval"});
 //      monitoringCollector->send({(counterBytesTotal/(1024*1024)), "readout.MegaBytesTotal"});

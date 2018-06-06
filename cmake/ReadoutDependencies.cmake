@@ -7,7 +7,7 @@ find_package(Common REQUIRED)
 find_package(InfoLogger REQUIRED)
 find_package(ReadoutCard REQUIRED)
 find_package(DataSampling REQUIRED)
-#find_package(ZeroMQ REQUIRED)
+find_package(ZeroMQ REQUIRED)
 find_package(Numa)
 
 if (FAIRROOT_FOUND)

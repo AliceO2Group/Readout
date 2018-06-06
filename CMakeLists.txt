@@ -68,7 +68,7 @@ include_directories(
         ${Monitoring_INCLUDE_DIRS}
         ${FAIRROOT_INCLUDE_DIR}
         ${FAIRROOT_INCLUDE_DIR}/fairmq
-#        ${ZeroMQ_INCLUDE_DIR}
+        ${ZeroMQ_INCLUDE_DIR}
         ${Common_INCLUDE_DIRS}
         ${Configuration_INCLUDE_DIRS}
         ${InfoLogger_INCLUDE_DIRS}
@@ -142,6 +142,7 @@ O2_GENERATE_EXECUTABLE(
         BUCKET_NAME ${BUCKET_NAME}
 )
 
+if (FAIRROOT_FOUND)
 O2_GENERATE_EXECUTABLE(
         EXE_NAME testTxFMQ.exe
         SOURCES src/testTxFMQ.cxx $<TARGET_OBJECTS:objReadoutUtils>
@@ -153,6 +154,7 @@ O2_GENERATE_EXECUTABLE(
         SOURCES src/testRxFMQ.cxx $<TARGET_OBJECTS:objReadoutUtils>
         BUCKET_NAME ${BUCKET_NAME}
 )
+endif ()
 
 O2_GENERATE_EXECUTABLE(
         EXE_NAME readRaw.exe
@@ -163,6 +165,12 @@ O2_GENERATE_EXECUTABLE(
 O2_GENERATE_EXECUTABLE(
         EXE_NAME testROC.exe
         SOURCES src/testROC.cxx $<TARGET_OBJECTS:objMemUtils>
+        BUCKET_NAME ${BUCKET_NAME}
+)
+
+O2_GENERATE_EXECUTABLE(
+        EXE_NAME testMonitor.exe
+        SOURCES src/testMonitor.cxx
         BUCKET_NAME ${BUCKET_NAME}
 )
 
