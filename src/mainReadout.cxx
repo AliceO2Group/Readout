@@ -339,10 +339,11 @@ int main(int argc, char* argv[])
   theLog.log("Creating aggregator");
   AliceO2::Common::Fifo<DataSetReference> agg_output(1000);
   int nEquipmentsAggregated=0;
-  DataBlockAggregator agg(&agg_output,"Aggregator");
+  auto agg=std::make_unique<DataBlockAggregator>(&agg_output,"Aggregator");
+  
   for (auto && readoutDevice : readoutDevices) {
       //theLog.log("Adding equipment: %s",readoutDevice->getName().c_str());
-      agg.addInput(readoutDevice->dataOut);
+      agg->addInput(readoutDevice->dataOut);
       nEquipmentsAggregated++;
   }
   theLog.log("Aggregator: %d equipments", nEquipmentsAggregated);
@@ -368,7 +369,7 @@ int main(int argc, char* argv[])
 
 
   theLog.log("Starting aggregator");
-  agg.start();
+  agg->start();
 
   // notify consumers of imminent data flow start
   for (auto& c : dataConsumers) {
@@ -450,14 +451,15 @@ int main(int argc, char* argv[])
 
 
   theLog.log("Stopping aggregator");
-  agg.stop();
+  agg->stop();
 
   theLog.log("Stopping consumers");
   // close consumers before closing readout equipments (owner of data blocks)
   dataConsumers.clear();
 
   agg_output.clear();
-
+  agg=nullptr;  // destroy aggregator, and release blocks it may still own.
+   
   // todo: check nothing in the input pipeline
   // flush & stop equipments
   for (auto && readoutDevice : readoutDevices) {
@@ -472,7 +474,7 @@ int main(int argc, char* argv[])
   for (size_t i = 0, size = readoutDevices.size(); i != size; ++i) {
     readoutDevices[i]=nullptr;  // effectively deletes the device
   }
-  readoutDevices.clear(); // to do it all in one go
+  //readoutDevices.clear(); // to do it all in one go
 
   if (latencyFd>=0) {
     close(latencyFd);
