@@ -39,6 +39,9 @@ class RdhHandle {
   inline uint8_t getHeaderSize() {
     return rdhPtr->headerSize;
   }
+  inline uint32_t getHbOrbit() {
+    return (uint32_t) rdhPtr->heartbeatOrbit;
+  }  
   
   private:
   o2::Header::RAWDataHeader *rdhPtr;  // pointer to RDH in memory
