@@ -67,14 +67,15 @@ include_directories(
         ${Boost_INCLUDE_DIRS}
         ${Monitoring_INCLUDE_DIRS}
         ${FAIRROOT_INCLUDE_DIR}
-        ${FAIRROOT_INCLUDE_DIR}/fairmq
+        ${_fairmq_incdir}
+        ${_fairlogger_incdir}
         ${ZeroMQ_INCLUDE_DIR}
         ${Common_INCLUDE_DIRS}
         ${Configuration_INCLUDE_DIRS}
         ${InfoLogger_INCLUDE_DIRS}
         ${ReadoutCard_INCLUDE_DIRS}
         ${DataSampling_INCLUDE_DIRS}
-        ${Numa_INCLUDE_DIRS}       
+        ${Numa_INCLUDE_DIRS}
 )
 
 add_library(
