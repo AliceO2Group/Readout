@@ -94,7 +94,7 @@ int main(int argc, char* argv[])
   sigaction(SIGINT,&signalSettings,NULL);
 
   // log startup and options
-  theLog.log("Readout process starting");
+  theLog.log("Readout process starting, pid %d",getpid());
   theLog.log("Optional built features enabled:");
   #ifdef WITH_FAIRMQ
     theLog.log("FAIRMQ : yes");
