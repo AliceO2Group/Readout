@@ -11,7 +11,6 @@
 #include <fairmq/FairMQDevice.h>
 #include <fairmq/FairMQMessage.h>
 #include <fairmq/FairMQTransportFactory.h>
-#include <fairmq/zeromq/FairMQTransportFactoryZMQ.h>
 #include <memory>
 
 #include <InfoLogger/InfoLogger.hxx>
@@ -46,29 +45,26 @@ class FMQReceiver : public FairMQDevice
 {
   public:
 
-    FMQReceiver() {   
-      transportFactory = new FairMQTransportFactoryZMQ();    
+    FMQReceiver() {
     }
-    ~FMQReceiver() { 
-      delete transportFactory;
+    ~FMQReceiver() {
     }
 
-  protected:   
-    
+  protected:
+
     int msgCount=0;
     int msgBytes=0;
-    FairMQTransportFactory *transportFactory;
-    
+
     void Run() override {
        while (CheckCurrentState(RUNNING)) {
-
-          std::unique_ptr<FairMQMessage> msg(transportFactory->CreateMessage());
+         SetTransport("zeromq");
+          std::unique_ptr<FairMQMessage> msg(fTransportFactory->CreateMessage());
 
           if (fChannels.at("data-in").at(0).Receive(msg) > 0) {
             msgBytes+=msg->GetSize();
             msgCount++;
             theLog.log("%d messages, %d bytes",msgCount,msgBytes);
-            
+
             /*
             uint8_t *payload=(unsigned char*)(msg->GetData());
             for (int k=0;k<16;k++) {
@@ -134,14 +130,14 @@ int main(int argc, const char **argv) {
   } else {
     theLog.log("Wrong decoding mode set : %s",cfgDecodingMode.c_str());
   }
-  
+
   // create FMQ receiving channel
   theLog.log("Creating FMQ RX channel %s type %s @ %s",cfgChannelName.c_str(),cfgChannelType.c_str(),cfgChannelAddress.c_str());
   auto factory = FairMQTransportFactory::CreateTransportFactory(cfgTransportType);
   auto pull = FairMQChannel{cfgChannelName, cfgChannelType, factory};
-  pull.Connect(cfgChannelAddress);  
+  pull.Connect(cfgChannelAddress);
   //pull.InitCommandInterface();
-  
+
   // configure signal handlers for clean exit
   struct sigaction signalSettings;
   bzero(&signalSettings,sizeof(signalSettings));
@@ -155,13 +151,13 @@ int main(int argc, const char **argv) {
   AliceO2::Common::Timer runningTime;
   int statsTimeout=1000000;
   runningTime.reset(statsTimeout);
-  int STFpendingMsgs=0;  
-  int n1,n2; 
+  int STFpendingMsgs=0;
+  int n1,n2;
   unsigned long long nMsg=0;
   unsigned long long nBytes=0;
-  
+
   theLog.log("Entering receiving loop");
-  
+
   for (;!ShutdownRequest;){
     auto msg = pull.NewMessage();
     int timeout=1000;
@@ -209,17 +205,17 @@ int main(int argc, const char **argv) {
             nBlocks++;
           }
           //printf("%d CRU blocks in HBF\n",nBlocks);
-        }      
+        }
       } else {
         //usleep(1000);
-      }      
+      }
     } else {
       usleep(10000);
     }
-    //printf("releasing msg %p\n",msg->GetData());        
-    
+    //printf("releasing msg %p\n",msg->GetData());
+
     //std::cout << " received message of size " << msg->GetSize() << std::endl; // access data via inputMsg->GetData()
-    
+
     // print regularly the current throughput
     if (runningTime.isTimeout()) {
       double t=runningTime.getTime();
@@ -233,22 +229,22 @@ int main(int argc, const char **argv) {
   theLog.log("Receiving loop completed");
   theLog.log("bytes received: %lu  (avg=%.2lf  min=%lu  max=%lu  count=%lu)",msgStats.get(),msgStats.getAverage(),msgStats.getMinimum(),msgStats.getMaximum(),msgStats.getCount());
 
-  return 0; 
-   
-  // other implementation with a full FMQ device 
-  
+  return 0;
+
+  // other implementation with a full FMQ device
+
   std::vector<FairMQChannel> channels(1);
   FMQReceiver fd;
 
-  // todo: check why this type is not public in FMQ interface?  
-  typedef std::unordered_map<std::string, std::vector<FairMQChannel>> FairMQMap;   
+  // todo: check why this type is not public in FMQ interface?
+  typedef std::unordered_map<std::string, std::vector<FairMQChannel>> FairMQMap;
   FairMQMap m;
-         
+
   channels[0].UpdateType(cfgChannelType.c_str());  // pub or push?
   channels[0].UpdateMethod("connect");
   channels[0].UpdateAddress("tcp://localhost:5555");
-  channels[0].UpdateRateLogging(0);    
-  channels[0].UpdateSndBufSize(10);    
+  channels[0].UpdateRateLogging(0);
+  channels[0].UpdateSndBufSize(10);
   if (!channels[0].ValidateChannel()) {
     throw "ConsumerFMQ: channel validation failed";
   }
@@ -277,7 +273,7 @@ int main(int argc, const char **argv) {
     if (ShutdownRequest) break;
     sleep(1);
   }
-  printf("Exit requested\n");  
+  printf("Exit requested\n");
 
   fd.ChangeState(FairMQStateMachine::Event::STOP);
   fd.ChangeState(FairMQStateMachine::Event::RESET_TASK);

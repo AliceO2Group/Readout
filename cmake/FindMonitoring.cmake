@@ -21,7 +21,7 @@ include(FindPackageHandleStandardArgs)
 
 # find includes
 find_path(MONITORING_INCLUDE_DIR Monitoring.h
-           HINTS ${Monitoring_ROOT}/include ENV LD_LIBRARY_PATH PATH_SUFFIXES "../include/Monitoring" "../../include/Monitoring" )
+        HINTS ${Monitoring_ROOT}/include ENV LD_LIBRARY_PATH PATH_SUFFIXES "../include/Monitoring" "../../include/Monitoring" )
 
 # Remove the final "Monitoring"
 get_filename_component(MONITORING_INCLUDE_DIR ${MONITORING_INCLUDE_DIR} DIRECTORY)
@@ -34,7 +34,7 @@ set(Monitoring_LIBRARIES ${MONITORING_LIBRARY})
 # handle the QUIETLY and REQUIRED arguments and set Monitoring_FOUND to TRUE
 # if all listed variables are TRUE
 find_package_handle_standard_args(Monitoring  "Monitoring could not be found. Set Monitoring_ROOT as root installation directory."
-                                  MONITORING_LIBRARY MONITORING_INCLUDE_DIR)
+        MONITORING_LIBRARY MONITORING_INCLUDE_DIR)
 if(${Monitoring_FOUND})
     set(Monitoring_DEFINITIONS "")
     message(STATUS "Monitoring found : ${Monitoring_LIBRARIES}")

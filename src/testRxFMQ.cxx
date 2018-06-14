@@ -1,8 +1,8 @@
 #include <fairmq/FairMQDevice.h>
 #include <fairmq/FairMQMessage.h>
 #include <fairmq/FairMQTransportFactory.h>
-#include <fairmq/zeromq/FairMQTransportFactoryZMQ.h>
 #include <memory>
+#include <vector>
 
 int main() {
 
@@ -13,19 +13,23 @@ int main() {
 
   auto factory = FairMQTransportFactory::CreateTransportFactory(cfgTransportType);
   auto pull = FairMQChannel{cfgChannelName, cfgChannelType, factory};
-  pull.Connect(cfgChannelAddress);  
+  pull.Connect(cfgChannelAddress);
+  int64_t ret;
 
   for (;;) {
-    auto msg = pull.NewMessage();
-    if (pull.ReceiveAsync(msg)>0) {
-      if (msg->GetSize()==0) {continue;}
-      int sz=(int)msg->GetSize();
-      void *data=msg->GetData();
-      printf("Received message %p size %d\n",data,sz);
-      sleep(1);
-      printf("Releasing message %p size %d\n",data,sz);
+    std::vector<FairMQMessagePtr> msgs;
+
+    ret = pull.Receive(msgs);
+    if (ret > 0) {
+      for (auto &msg : msgs) {
+        int sz=(int)msg->GetSize();
+        void *data=msg->GetData();
+        printf("Received message %p size %d\n",data,sz);
+        printf("Releasing message %p size %d\n",data,sz);
+      }
     } else {
-      usleep(1000);
+      printf("Error while receiving messages %d\n", (int)ret);
+      return -1;
     }
   }
 
