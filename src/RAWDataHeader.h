@@ -114,23 +114,24 @@ typedef struct _RAWDataHeaderV3
     struct {
       uint32_t version:8;        /// bit 0 to 7: header version
       uint32_t headerSize:8;     /// bit 8 to 15: header size
-      uint32_t blockLength:16;   /// bit 16 to 32: block length
+      uint32_t blockLength:16;   /// bit 16 to 31: block length
     };
   };
 
   union {
     uint32_t word2 = 0x00ffffff;
     struct {
-      uint32_t feeId:8;           /// bit 0 to 15: FEE id
+      uint32_t feeId:16;          /// bit 0 to 15: FEE id
       uint32_t priorityBit:8;     /// bit 16 to 23: priority bit
-      uint32_t zero2:16;    /// bit 16 to 32: reserved
+      uint32_t zero2:8;           /// bit 24 to 31: reserved
     };
   };
 
   union {
     uint32_t word1 = 0x0;
     struct {
-      uint32_t zero1:32;     /// bit 0 to 31: reserved
+      uint32_t offsetNextPacket:16;  /// bit 0 to 15: offset of next block
+      uint32_t memorySize:16;        /// bit 16 to 31: size of block (in bytes) in memory
     };
   };
 
@@ -152,7 +153,7 @@ typedef struct _RAWDataHeaderV3
   union {
     uint32_t word6 = 0xffffffff;
     struct {
-      uint32_t heartbeatOrbit;     /// bit 0 to 31: TRG orbit
+      uint32_t heartbeatOrbit;     /// bit 0 to 31: HB orbit
     };
   };
 
@@ -173,9 +174,9 @@ typedef struct _RAWDataHeaderV3
   union {
     uint32_t word11 = 0x0;
     struct {
-      uint32_t triggerBC:12;     /// bit 0 to 11: trigger BC ID
+      uint32_t triggerBC:12;     /// bit 0 to 11: TRG BC ID
       uint32_t zero11_0:4;       /// bit 12 to 15: reserved
-      uint32_t heartbeatBC:12;   /// bit 16 to 27: heartbeat BC ID
+      uint32_t heartbeatBC:12;   /// bit 16 to 27: HB BC ID
       uint32_t zero11_1:4;       /// bit 28 to 31: reserved
     };
   };
@@ -212,9 +213,9 @@ typedef struct _RAWDataHeaderV3
   union {
     uint32_t word14 = 0x0;
     struct {
-      uint32_t stopBit:8;     /// bit 0 to 7: stop bit
+      uint32_t stopBit:8;          /// bit 0 to 7: stop bit
       uint32_t pagesCoutner:16;    /// bit 8 to 23: pages counter
-      uint32_t zero14:8;      /// bit 24 to 31: reserved
+      uint32_t zero14:8;           /// bit 24 to 31: reserved
     };
   };
   
