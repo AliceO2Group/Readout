@@ -16,7 +16,7 @@ int main() {
   channel.Bind(cfgChannelAddress);
   if (!channel.ValidateChannel()) { return -1; }
 
-  int bufferSize=100*1024*1024;
+  const size_t bufferSize=100*1024*1024;
   auto memoryBuffer=channel.Transport()->CreateUnmanagedRegion(
     bufferSize,
     [](void* data, size_t size, void* hint) {
@@ -26,13 +26,23 @@ int main() {
   );
   printf("Created buffer %p size %ld\n",memoryBuffer->GetData(),memoryBuffer->GetSize());
   size_t msgSize=100;
-  for (int ix=0;ix<bufferSize;ix+=msgSize) {
-    void *dataPtr=(void *)(&((char *)memoryBuffer->GetData())[ix]);
-    void *hint=(void *)ix;
-    std::unique_ptr<FairMQMessage> msg(transportFactory->CreateMessage(memoryBuffer,dataPtr,msgSize,hint));
-    printf("send %p : %ld bytes hint=%p\n",dataPtr,msgSize,hint);
-    channel.Send(msg);
-    usleep(3000000);
+
+  size_t ix=0;
+  while (ix<(bufferSize-msgSize)) {
+    // send random number of messages in one multipart [1-50]
+    int nmsgs = (rand()%50)+1;
+    nmsgs = std::min(nmsgs, (int)((bufferSize-ix)/msgSize));
+
+    std::vector<FairMQMessagePtr> msgs;
+    for (int im=0; im < nmsgs; im++, ix+=msgSize) {
+      void *dataPtr=(void *)(&((char *)memoryBuffer->GetData())[ix]);
+      void *hint=(void *)ix;
+      msgs.emplace_back(transportFactory->CreateMessage(memoryBuffer,dataPtr,msgSize,hint));
+      printf("send %p : %ld bytes hint=%p\n",dataPtr,msgSize,hint);
+    }
+    printf("* sending %lu messages\n",msgs.size());
+    channel.Send(msgs);
+    sleep(2);
   }
 
   return 0;
