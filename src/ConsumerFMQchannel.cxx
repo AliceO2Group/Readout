@@ -137,6 +137,11 @@ class ConsumerFMQchannel: public Consumer {
   }
   
   ~ConsumerFMQchannel() {
+    // release in reverse order
+    mp=nullptr;
+    memoryBuffer=nullptr;   // warning: data range may still be referenced in memory bank manager
+    sendingChannel=nullptr;
+    transportFactory=nullptr;
   }
   
   int pushData(DataBlockContainerReference &) {
