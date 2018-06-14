@@ -1,7 +1,6 @@
 #include <fairmq/FairMQDevice.h>
 #include <fairmq/FairMQMessage.h>
 #include <fairmq/FairMQTransportFactory.h>
-#include <fairmq/zeromq/FairMQTransportFactoryZMQ.h>
 #include <memory>
 
 int main() {
@@ -11,18 +10,18 @@ int main() {
   std::string cfgChannelType="pair";
   std::string cfgChannelAddress="ipc:///tmp/test-pipe";
 
-       
+
   auto transportFactory=FairMQTransportFactory::CreateTransportFactory(cfgTransportType);
   auto channel=FairMQChannel{cfgChannelName, cfgChannelType, transportFactory};
   channel.Bind(cfgChannelAddress);
   if (!channel.ValidateChannel()) { return -1; }
-    
+
   int bufferSize=100*1024*1024;
   auto memoryBuffer=channel.Transport()->CreateUnmanagedRegion(
     bufferSize,
     [](void* data, size_t size, void* hint) {
       // cleanup callback
-      printf("ack %p (size %d) hint=%p\n",data,(int)size,hint);                                                           
+      printf("ack %p (size %d) hint=%p\n",data,(int)size,hint);
     }
   );
   printf("Created buffer %p size %ld\n",memoryBuffer->GetData(),memoryBuffer->GetSize());

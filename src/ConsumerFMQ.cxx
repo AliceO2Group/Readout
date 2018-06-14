@@ -6,7 +6,6 @@
 #include <fairmq/FairMQDevice.h>
 #include <fairmq/FairMQMessage.h>
 #include <fairmq/FairMQTransportFactory.h>
-#include <fairmq/zeromq/FairMQTransportFactoryZMQ.h>
 
 
 class FMQSender : public FairMQDevice
@@ -16,8 +15,8 @@ class FMQSender : public FairMQDevice
     FMQSender() { }
     ~FMQSender() { }
 
-  protected:   
-    
+  protected:
+
     void Run() override {
        while (CheckCurrentState(RUNNING)) {
          //printf("loop Run()\n");
@@ -45,22 +44,22 @@ class ConsumerFMQ: public Consumer {
     FMQSender sender;
 
 
- // todo: check why this type is not public in FMQ interface?  
-    typedef std::unordered_map<std::string, std::vector<FairMQChannel>> FairMQMap;   
+ // todo: check why this type is not public in FMQ interface?
+    typedef std::unordered_map<std::string, std::vector<FairMQChannel>> FairMQMap;
     FairMQMap m;
-    
-    FairMQTransportFactory *transportFactory;
-        
-  public: 
+
+    std::shared_ptr<FairMQTransportFactory> transportFactory;
+
+  public:
 
 
   ConsumerFMQ(ConfigFile &cfg, std::string cfgEntryPoint) : Consumer(cfg,cfgEntryPoint), channels(1) {
-       
+
     channels[0].UpdateType("pair");  // pub or push?
     channels[0].UpdateMethod("bind");
     channels[0].UpdateAddress("ipc:///tmp/readout-pipe-0");
-    channels[0].UpdateRateLogging(0);    
-    channels[0].UpdateSndBufSize(10);    
+    channels[0].UpdateRateLogging(0);
+    channels[0].UpdateSndBufSize(10);
     if (!channels[0].ValidateChannel()) {
       throw "ConsumerFMQ: channel validation failed";
     }
@@ -68,7 +67,7 @@ class ConsumerFMQ: public Consumer {
 
     // todo: def "data-out" as const string to name output channel to which we will push
     m.emplace(std::string("data-out"),channels);
-    
+
     for (auto it : m) {
       std::cout << it.first << " = " << it.second.size() << " channels  " << std::endl;
       for (auto ch : it.second) {
@@ -76,8 +75,8 @@ class ConsumerFMQ: public Consumer {
       }
     }
 
-    transportFactory = new FairMQTransportFactoryZMQ();
-      
+    transportFactory = FairMQTransportFactory::CreateTransportFactory("zeromq");
+
     sender.fChannels = m;
     sender.SetTransport("zeromq");
     sender.ChangeState(FairMQStateMachine::Event::INIT_DEVICE);
@@ -88,7 +87,7 @@ class ConsumerFMQ: public Consumer {
 
 //    sender.InteractiveStateLoop();
   }
-  
+
   ~ConsumerFMQ() {
     sender.ChangeState(FairMQStateMachine::Event::STOP);
     sender.ChangeState(FairMQStateMachine::Event::RESET_TASK);
@@ -96,10 +95,8 @@ class ConsumerFMQ: public Consumer {
     sender.ChangeState(FairMQStateMachine::Event::RESET_DEVICE);
     sender.WaitForEndOfState(FairMQStateMachine::Event::RESET_DEVICE);
     sender.ChangeState(FairMQStateMachine::Event::END);
-    
-    delete transportFactory;       
   }
-  
+
   int pushData(DataBlockContainerReference &b) {
 
     // we create a copy of the reference, in a newly allocated object, so that reference is kept alive until this new object is destroyed in the cleanupCallback
@@ -109,7 +106,7 @@ class ConsumerFMQ: public Consumer {
 
     sender.fChannels.at("data-out").at(0).Send(msgHeader);
     sender.fChannels.at("data-out").at(0).Send(msgBody);
-    
+
 
 
     // how to know if it was a success?
@@ -120,7 +117,7 @@ class ConsumerFMQ: public Consumer {
 
     // use multipart?
     // channels.at("data-out").at(0).SendPart(msgBody);
-    
+
     return 0;
   }
   private:
