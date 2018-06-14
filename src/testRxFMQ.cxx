@@ -1,7 +1,6 @@
 #include <fairmq/FairMQDevice.h>
 #include <fairmq/FairMQMessage.h>
 #include <fairmq/FairMQTransportFactory.h>
-#include <fairmq/zeromq/FairMQTransportFactoryZMQ.h>
 #include <memory>
 
 int main() {
@@ -13,7 +12,7 @@ int main() {
 
   auto factory = FairMQTransportFactory::CreateTransportFactory(cfgTransportType);
   auto pull = FairMQChannel{cfgChannelName, cfgChannelType, factory};
-  pull.Connect(cfgChannelAddress);  
+  pull.Connect(cfgChannelAddress);
 
   for (;;) {
     auto msg = pull.NewMessage();
