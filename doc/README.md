@@ -31,6 +31,8 @@ The base class ReadoutEquipment is derived in different types:
 memory without hardware readout card.
 - ReadoutEquipmentRORC : the readout class able to readout CRORC and CRU
 devices, using the ReadoutCard library DmaChannelInterface for readout.
+- ReadoutEquipmentCruEmulator : a class emulating CRU data, with realistic
+LHC clock rates.
 
 
 ## Aggregator
@@ -50,23 +52,44 @@ by readout. Counters can be published to O2 Monitoring system.
 CRU internal data generator.
 - ConsumerDataSampling : pushes data through the DataSampling interface
 - ConsumerFMQ : pushes data outside readout process as a FairMQ device.
+- ConsumerFairMQChannel : pushes data outside readout process as a FairMQ channel - with the WP5 format.
+  This consumer may also create shared memory banks (see Memory management) to be used by equipments.
 
 They all follow the interface defined in the base Consumer Class.
 
 
 # Memory management
 
-Depending on the readout equipment, memory is allocated in different ways.
-The base class to pre-allocate and get/release at runtime memory blocks is
-defined in DataFormat/MemPool.h
+Readout creates on startup some banks (big blocks of memory),
+which are then used to create pools of data pages which are filled at runtime
+by the readout equipments (and put back in the same pool after use).
 
-For the dummy software generator, it is a big block of malloc() data.
-For the ROC, it is based on MemoryMappedFile shared memory.
+The memory layout is explicitely defined in the configuration file.
+
+In practice, you will define one or more memory blocks to be used
+by the equipments. Each block is configured in a section named [bank-...]
+(e.g. [bank-a1]), specifying its type (e.g. type=malloc or type=MemoryMappedFile),
+size (e.g. size=256M or size=4G) and optionally NUMA node to be used
+(e.g. numaNode=1).
+
+The special consumer 'FairMQChannel' may also create a memory bank,
+allocated from the FMQ "unmanaged shared memory" feature, before the other banks
+are created (and hence, being the first one, being used by default by equipments).
+
+Each equipment will then create its private data pages pool from
+a given bank. This is done in the corresponding equipment configuration section
+with number (memoryPoolNumberOfPages=1000) and size of each page (memoryPoolPageSize=512k),
+and which bank to use (memoryBankName=bank-a1). By default of a bank name,
+readout will try to create the pool from the first bank available.
+Several memory pools can be created from the same memory bank, if space allows.
 
 
 # Data format
-Readout uses the data format defined in FlpPrototype.
-The base data type is a vector of header+payload pairs.
+Readout uses the data format defined in FlpPrototype for internal indexing of the pages.
+The content (payload) of the pages is not affected, and follows the RDH specification
+if using a CRU equipment.
+
+The (internal) base data type is a vector of header+payload pairs.
 In practice, it deals with different object types:
 - DataBlock : header+payload pair
 - DataBlockContainer : object storing a DataBlock, specialized depending on
@@ -84,6 +107,12 @@ Equipments should be prefixed as [equipment-...].
 Consumers should be prefixed as [consumer-...]
 Settings for data sampling are in section [sampling] (NB: to be moved to a consumer instead?).
 General settings are defined in section [readout]
+
+To setup a new readout configuration starting from the provided file, the basic steps are:
+- define a memory layout suitable for your readout.
+- define the equipments to be used, and their parameters (in particular, the memory bank they should use.
+If not specified, readout will use the first one available).
+
 
 
 # Usage
