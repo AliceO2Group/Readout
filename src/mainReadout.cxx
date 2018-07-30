@@ -244,6 +244,12 @@ int main(int argc, char* argv[])
         #ifdef WITH_FAIRMQ
           newConsumer=getUniqueConsumerFMQ(cfg, kName);
         #else
+          theLog.log("Skipping %s: %s - not supported by this build", kName.c_str(), cfgType.c_str());
+        #endif
+      } else if (!cfgType.compare("DataSampling")) {
+        #ifdef WITH_FAIRMQ
+          newConsumer=getUniqueConsumerDataSampling(cfg, kName);
+        #else
           theLog.log("Skipping %s: %s - not supported by this build",kName.c_str(),cfgType.c_str());
         #endif
       } else if (!cfgType.compare("FairMQChannel")) {

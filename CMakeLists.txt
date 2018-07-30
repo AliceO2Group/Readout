@@ -107,11 +107,11 @@ set(CONSUMERS_SRCS
         src/ConsumerStats.cxx
         src/ConsumerFileRecorder.cxx
         src/ConsumerDataChecker.cxx
-        src/ConsumerDataSampling.cxx
         )
 if (FAIRROOT_FOUND)
     list(APPEND CONSUMERS_SRCS src/ConsumerFMQ.cxx)
     list(APPEND CONSUMERS_SRCS src/ConsumerFMQchannel.cxx)
+    list(APPEND CONSUMERS_SRCS src/ConsumerDataSampling.cxx)
 endif ()
 add_library(
         objReadoutConsumers OBJECT
