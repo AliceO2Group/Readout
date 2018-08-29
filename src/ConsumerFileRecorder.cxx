@@ -1,20 +1,18 @@
 #include "Consumer.h"
 #include "ReadoutUtils.h"
-
+#include <iomanip>
 
 class ConsumerFileRecorder: public Consumer {
   public: 
+  
   ConsumerFileRecorder(ConfigFile &cfg, std::string cfgEntryPoint):Consumer(cfg,cfgEntryPoint) {
     counterBytesTotal=0;
     fp=NULL;
     
     fileName=cfg.getValue<std::string>(cfgEntryPoint + ".fileName");
     if (fileName.length()>0) {
-      theLog.log("Recording to %s",fileName.c_str());
-      fp=fopen(fileName.c_str(),"wb");
-      if (fp==NULL) {
-        theLog.log("Failed to create file");
-      }
+      theLog.log("Recording path = %s",fileName.c_str());
+      createFile();
     }
     if (fp==NULL) {
       theLog.log("Recording disabled");
@@ -32,6 +30,86 @@ class ConsumerFileRecorder: public Consumer {
   }
   ~ConsumerFileRecorder() {
     closeRecordingFile();
+  }
+  
+  int createFile() {
+    // create the file name according to specified path
+    
+    // parse the string, and subst variables:
+    // ${XXX} -> get variable XXX from environment
+    // %t -> unix timestamp (seconds since epoch)
+    // %T -> formatted date/time
+    
+    std::string newFileName;
+    
+    int parseError=0;
+    for (std::string::iterator it=fileName.begin();it!=fileName.end();++it) {
+      // subst environment variable
+      if (*it=='$') {
+        ++it;
+        int varNameComplete=0;
+        if (it!=fileName.end()) {
+          if (*it=='{') {
+            std::string varName;
+
+            for (++it;it!=fileName.end();++it) {
+              if (*it=='}') {
+                varNameComplete=1;
+                break;
+              } else {
+                varName+=*it;
+              }
+            }
+            if (varNameComplete) {
+              const char *val=getenv(varName.c_str());
+              if (val!=nullptr) {
+                newFileName+=val;
+                //theLog.log((varName + " = " + val).c_str());
+              }
+            }
+          }
+        }
+        if (!varNameComplete) {
+          parseError++;
+        }
+      } else if (*it=='%') {
+        // escape characters
+        ++it;
+        if (it!=fileName.end()) {
+          if (*it=='t') {
+            newFileName+=std::to_string(std::time(nullptr));
+          } else if (*it=='T') {
+            std::time_t t = std::time(nullptr);
+            std::tm tm = *std::localtime(&t);
+            std::stringstream buffer;
+            buffer << std::put_time(&tm, "%Y_%m_%d__%H_%M_%S__");
+            newFileName+=buffer.str();
+          } else {
+            parseError++;
+          }
+        } else {
+          parseError++;
+        }      
+      } else {
+        // normal char - copy it
+        newFileName+=*it;
+      }   
+      if (parseError) {
+        break;
+      }
+    }  
+    if (parseError) {
+      theLog.log("Failed to parse recording file path");
+      return -1;
+    }
+    theLog.log(("Opening file for writing: " + newFileName).c_str());
+    
+    fp=fopen(newFileName.c_str(),"wb");
+    if (fp==NULL) {
+      theLog.log("Failed to create file");
+      return -1;
+    }
+    return 0;
   }
   
   // fwrite function with partial write auto-retry

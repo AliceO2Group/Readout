@@ -156,7 +156,10 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : 
       params.setGeneratorLoopback(AliceO2::roc::LoopbackMode::fromString(cfgGeneratorLoopback));
       params.setGeneratorPattern(AliceO2::roc::GeneratorPattern::fromString(cfgGeneratorPattern));
       params.setGeneratorRandomSizeEnabled(cfgGeneratorRandomSizeEnabled);
-    }    
+    } else {
+      // for some unknown reason, one has to explicitely disable the loopback when not using the generator
+      params.setGeneratorLoopback(AliceO2::roc::LoopbackMode::None);
+    }   
 
     // card readout mode : experimental, not needed
     // params.setReadoutMode(AliceO2::roc::ReadoutMode::fromString(cfgReadoutMode));    
