@@ -18,10 +18,6 @@
 #include <memory>
 #include <signal.h>
 
-#ifdef WITH_DATASAMPLING
-#include "DataSampling/InjectorFactory.h"
-#endif
-
 #include "ReadoutEquipment.h"
 #include "DataBlockAggregator.h"
 #include "Consumer.h"
@@ -354,26 +350,6 @@ int main(int argc, char* argv[])
   }
   theLog.log("Aggregator: %d equipments", nEquipmentsAggregated);
 
-
-  // configuration of data sampling
-#ifdef WITH_DATASAMPLING
-  int dataSampling=0;
-  cfg.getOptionalValue<int>("sampling.enabled",dataSampling);
-  std::unique_ptr<AliceO2::DataSampling::InjectorInterface> dataSamplingInjector;
-  if (dataSampling) {
-    theLog.log("Data sampling enabled");
-    // todo: create(...) should not need an argument and should get its configuration by itself.
-    std::string injector = cfg.getValue<std::string>("sampling.class");
-    if(injector=="")
-      injector = "MockInjector";
-    dataSamplingInjector = AliceO2::DataSampling::InjectorFactory::create(injector);
-  } else {
-    theLog.log("Data sampling disabled");
-  }
-  // todo: add time counter to measure how much time is spent waiting for data sampling injection (And other consumers)
-#endif
-
-
   theLog.log("Starting aggregator");
   agg->start();
 
@@ -431,14 +407,6 @@ int main(int argc, char* argv[])
 
 
     if (bc!=nullptr) {
-      // push to data sampling, if configured
-      #ifdef WITH_DATASAMPLING
-        if (dataSampling) {
-          dataSamplingInjector->injectSamples(bc);
-        }
-      #endif
-      // todo: datasampling can become a consumer, now that consumer interface accepts datasets instead of blocks
-      
       for (auto& c : dataConsumers) {
         c->pushData(bc);
       }
