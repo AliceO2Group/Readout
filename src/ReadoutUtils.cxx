@@ -5,9 +5,6 @@
 #include "RAWDataHeader.h"
 
 
-#include <Configuration/Visitor.h>
-#include <Configuration/Tree.h>
-
 // function to convert a string to a 64-bit integer value
 // allowing usual "base units" in suffix (k,M,G,T)
 // input can be decimal (1.5M is valid, will give 1.5*1024*1024)
@@ -60,23 +57,6 @@ std::string ReadoutUtils::NumberOfBytesToString(double value,const char*suffix) 
   snprintf(bufStr,sizeof(bufStr)-1,"%.03lf %s%s",scaledValue,prefixes[prefixIndex],suffix);
   return std::string(bufStr);  
 }
-
-void convertConfigurationNodeToPTree(const o2::configuration::tree::Node& node, boost::property_tree::ptree &pt, std::string basePath="", const char separator='.')
-{
-  o2::configuration::visitor::apply(node,
-      [&](const o2::configuration::tree::Branch& branch) {
-        if (basePath.length()!=0) {basePath+=separator;}
-        for (const auto& keyValuePair : branch) {
-          convertConfigurationNodeToPTree(keyValuePair.second, pt, basePath+keyValuePair.first);
-        }
-      },
-      [&](const o2::configuration::tree::Leaf& leaf) {
-        std::string value= o2::configuration::tree::convert<std::string>(leaf);
-	pt.put(basePath,value);
-      }
-  );
-}
-
 
 void dumpRDH(o2::Header::RAWDataHeader *rdh) {
   printf("RDH:\tversion=%d\theader size=%d\tblock length=%d\n",(int)rdh->version,(int)rdh->headerSize,(int)rdh->blockLength);
