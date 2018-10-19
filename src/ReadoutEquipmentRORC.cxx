@@ -362,6 +362,15 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
         // checks to do:
         // - HB clock consistent in all RDHs
         // - increasing counters
+	if (cfgRdhDumpEnabled) {
+	  RdhBlockHandle b(d->getData()->data,d->getData()->header.dataSize);
+	  if (b.printSummary()) {
+	    printf("errors detected, suspending RDH dump\n");
+	    cfgRdhDumpEnabled=0;
+	  } else {
+  	    cfgRdhDumpEnabled++; //if value positive, it continues... but negative, it stops on zero, to limit number of dumps
+	  }
+	}
 
         if (cfgRdhCheckEnabled) {
           std::string errorDescription;
