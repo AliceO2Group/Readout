@@ -64,6 +64,16 @@ class ConsumerStats: public Consumer {
   double timePreviousGetrusage=0; // variable storing 'runningTime' value when getrusage was previously called (0 if not called yet)
   double cpuUsedOverLastInterval=0; // average CPU usage over latest measurement interval
   
+  
+  void sendMetricNoException(Metric&& metric, DerivedMetricMode mode = DerivedMetricMode::NONE){
+    try {
+      monitoringCollector->send(std::forward<Metric &&>(metric),mode);
+    }
+    catch (...) {
+      theLog.log("monitoringCollector->send(%s) failed",metric.getName().c_str());
+    }
+  }
+  
   void publishStats() {
   
     double now=runningTime.getTime();
@@ -76,7 +86,7 @@ class ConsumerStats: public Consumer {
         + currentUsage.ru_stime.tv_sec*1000000.0+currentUsage.ru_stime.tv_usec-(previousUsage.ru_stime.tv_sec*1000000.0+previousUsage.ru_stime.tv_usec)
        ) / tDiff;
       if (monitoringEnabled) {
-        monitoringCollector->send({fractionCpuUsed*100, "readout.percentCpuUsed"});
+        sendMetricNoException({fractionCpuUsed*100, "readout.percentCpuUsed"});
         //theLog.log("CPU used = %.2f %%",100*fractionCpuUsed);
       }      
     }
@@ -88,11 +98,11 @@ class ConsumerStats: public Consumer {
       // todo: support for long long types
       // https://alice.its.cern.ch/jira/browse/FLPPROT-69
 
-      monitoringCollector->send({counterBlocks, "readout.Blocks"});
-//      monitoringCollector->send({counterBytesTotal, "readout.BytesTotal"});
-      monitoringCollector->send({counterBytesTotal, "readout.BytesTotal"}, DerivedMetricMode::RATE);
-      monitoringCollector->send({counterBytesDiff, "readout.BytesInterval"});
-//      monitoringCollector->send({(counterBytesTotal/(1024*1024)), "readout.MegaBytesTotal"});
+      sendMetricNoException({counterBlocks, "readout.Blocks"});
+//      sendMetricNoException({counterBytesTotal, "readout.BytesTotal"});
+      sendMetricNoException({counterBytesTotal, "readout.BytesTotal"}, DerivedMetricMode::RATE);
+      sendMetricNoException({counterBytesDiff, "readout.BytesInterval"});
+//      sendMetricNoException({(counterBytesTotal/(1024*1024)), "readout.MegaBytesTotal"});
 
       counterBytesDiff=0;
     }
