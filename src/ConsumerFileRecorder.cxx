@@ -27,6 +27,9 @@ class ConsumerFileRecorder: public Consumer {
         theLog.log("Maximum recording size: %lld bytes",counterBytesMax);
       }
     }
+    
+    cfg.getOptionalValue(cfgEntryPoint + ".dataBlockHeaderEnabled", recordWithDataBlockHeader, 0);
+    theLog.log("Recording internal data block headers = %d",recordWithDataBlockHeader);
   }
   ~ConsumerFileRecorder() {
     closeRecordingFile();
@@ -132,20 +135,22 @@ class ConsumerFileRecorder: public Consumer {
 
     for(;;) {
       if (fp!=NULL) {
-        void *ptr;
-        size_t size;
-        // write header
-        // as-is, some fields like data pointer will not be meaningful in file unless corrected. todo: correct them, e.g. replace data pointer by file offset.
-        ptr=&b->getData()->header;
-        size=b->getData()->header.headerSize;
-        //theLog.log("Writing header: %ld bytes @ %lp",(long)size,ptr);
-        if ((counterBytesMax)&&(counterBytesTotal+size>counterBytesMax)) {theLog.log("Maximum file size reached"); closeRecordingFile(); return 0;}
-        //if (writeToFile(fp,ptr,size)) {
-        if (fwrite(ptr,size,1,fp)!=1) {
-          break;
+        void *ptr=nullptr;
+        size_t size=0;
+        if (recordWithDataBlockHeader) {
+          // write header
+          // as-is, some fields like data pointer will not be meaningful in file unless corrected. todo: correct them, e.g. replace data pointer by file offset.
+          ptr=&b->getData()->header;
+          size=b->getData()->header.headerSize;
+          //theLog.log("Writing header: %ld bytes @ %lp",(long)size,ptr);
+          if ((counterBytesMax)&&(counterBytesTotal+size>counterBytesMax)) {theLog.log("Maximum file size reached"); closeRecordingFile(); return 0;}
+          //if (writeToFile(fp,ptr,size)) {
+          if (fwrite(ptr,size,1,fp)!=1) {
+            break;
+          }
+          counterBytesTotal+=size;
         }
         // write payload data     
-        counterBytesTotal+=size;        
         ptr=b->getData()->data;
         size=b->getData()->header.dataSize;
         //theLog.log("Writing payload: %ld bytes @ %lp",(long)size,ptr);
@@ -170,6 +175,7 @@ class ConsumerFileRecorder: public Consumer {
     unsigned long long counterBytesMax=0;
     FILE *fp;
     int recordingEnabled;
+    int recordWithDataBlockHeader=0; // if set, internal readout headers are included in file
     std::string fileName;
     void closeRecordingFile() {
       if (fp!=NULL) {
