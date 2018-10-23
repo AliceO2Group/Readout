@@ -134,7 +134,7 @@ int main(int argc, char* argv[])
         throw std::string(e.what());
       }
       # else
-        throw "This type of URI is not supported";     
+        throw std::string("This type of URI is not supported");
       #endif
     }
   }
