@@ -127,6 +127,12 @@ It takes as command-line argument the name of the configuration file to be used:
 
 readout.exe file://path/to/my/readout.cfg
 
+It may also be started by providing a URI for the O2 Configuration backend
+(with as optional extra parameter the entry point in the configuration tree, by default empty, i.e. top of the tree)
+
+readout.exe ini://path/to/my/readout.ini
+readout.exe consul://localhost:8500 /readout
+
 
 
 # Contact
