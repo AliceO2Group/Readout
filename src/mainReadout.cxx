@@ -13,6 +13,12 @@
 #include <Common/Fifo.h>
 #include <Common/Thread.h>
 
+#define WITH_CONFIG
+#ifdef WITH_CONFIG
+#include <Configuration/ConfigurationFactory.h>
+#endif
+
+
 #include <atomic>
 #include <chrono>
 #include <memory>
@@ -75,11 +81,15 @@ int main(int argc, char* argv[])
 {
   ConfigFile cfg;
   const char* cfgFileURI="";
+  const char* cfgFileEntryPoint=""; // where in the config tree to look for
   if (argc<2) {
     printf("Please provide path to configuration file\n");
     return -1;
   }
   cfgFileURI=argv[1];
+  if (argc>2) {
+    cfgFileEntryPoint=argv[2];
+  }
 
   // configure signal handlers for clean exit
   struct sigaction signalSettings;
@@ -105,9 +115,28 @@ int main(int argc, char* argv[])
     theLog.log("NUMA : no");
   #endif
   // load configuration file
-  theLog.log("Reading configuration from %s",cfgFileURI);
+  theLog.log("Reading configuration from %s %s",cfgFileURI,cfgFileEntryPoint);
   try {
-    cfg.load(cfgFileURI);
+    // check URI prefix
+    if (!strncmp(cfgFileURI,"file:",5)) {
+      // let's use the 'Common' config file library
+      cfg.load(cfgFileURI);  
+    } else {
+      // otherwise use the Configuration module, if available
+      #ifdef WITH_CONFIG
+      try {
+        std::unique_ptr<o2::configuration::ConfigurationInterface> conf = o2::configuration::ConfigurationFactory::getConfiguration(cfgFileURI);
+        boost::property_tree::ptree t=conf->getRecursive(cfgFileEntryPoint);
+        cfg.load(t);
+        //cfg.print();
+      }
+      catch (std::exception &e) {
+        throw std::string(e.what());
+      }
+      # else
+        throw std::string("This type of URI is not supported");
+      #endif
+    }
   }
   catch (std::string err) {
     theLog.log("Error : %s",err.c_str());
