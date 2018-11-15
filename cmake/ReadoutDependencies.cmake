@@ -1,4 +1,4 @@
-find_package(Boost COMPONENTS unit_test_framework program_options system thread system timer program_options random filesystem regex signals REQUIRED)
+find_package(Boost COMPONENTS container unit_test_framework program_options system thread system timer program_options random filesystem regex signals REQUIRED)
 find_package(Git QUIET)
 find_package(Monitoring REQUIRED)
 find_package(Configuration REQUIRED)
