@@ -5,7 +5,7 @@
 #include <ReadoutCard/MemoryMappedFile.h>
 #include <ReadoutCard/DmaChannelInterface.h>
 #include <ReadoutCard/Exception.h>
-#include <ReadoutCard/Driver.h>
+
 
 #include <string>
 #include <mutex>
@@ -66,8 +66,8 @@ class ReadoutEquipmentRORC : public ReadoutEquipment {
 };
 
 
-std::mutex readoutEquipmentRORCLock;
-bool isDriverInitialized=false;
+//std::mutex readoutEquipmentRORCLock;
+
 
 
 struct ReadoutEquipmentRORCException : virtual Exception {};
@@ -133,14 +133,6 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : 
       BOOST_THROW_EXCEPTION(ReadoutEquipmentRORCException() << ErrorInfo::Message("Superpage must be at least 32kB"));
     }
   
-    // make sure ROC driver is initialized once
-    readoutEquipmentRORCLock.lock();       
-    if (!isDriverInitialized) {
-      AliceO2::roc::driver::initialize();
-      isDriverInitialized=true;
-    }
-    readoutEquipmentRORCLock.unlock();
-    
     // open and configure ROC
     theLog.log("Opening ROC %s:%d",cardId.c_str(),cfgChannelNumber);
     AliceO2::roc::Parameters params;

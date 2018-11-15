@@ -12,7 +12,6 @@ InfoLogger theLog;
 #include <ReadoutCard/MemoryMappedFile.h>
 #include <ReadoutCard/DmaChannelInterface.h>
 #include <ReadoutCard/Exception.h>
-#include <ReadoutCard/Driver.h>
 
 #include <vector>
 #include <time.h>
@@ -256,8 +255,6 @@ int main(int argc, char**argv) {
   
 
 
-
-  AliceO2::roc::driver::initialize();
 
   std::vector<ROCdevice> devices;
   
