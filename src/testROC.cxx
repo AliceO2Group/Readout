@@ -95,7 +95,6 @@ ROCdevice::ROCdevice(std::string id) {
       mp->getBaseBlockAddress(), mp->getBaseBlockSize()
   });
 
-  params.setForcedUnlockEnabled(true);
   params.setLinkMask(AliceO2::roc::Parameters::linkMaskFromString(cfgLinkMask));
 
 
@@ -152,10 +151,10 @@ int ROCdevice::doLoop() {
     while ((channel->getReadyQueueSize()>0)) {
       auto superpage = channel->getSuperpage(); // this is the first superpage in FIFO ... let's check its state
       if (superpage.isFilled()) {
-        mp->releasePage(superpage.userData);
+        mp->releasePage(superpage.getUserData());
         channel->popSuperpage();
         nPop++;
-        nBytes+=superpage.size;
+        nBytes+=superpage.getSize();
       } else {
         break;
       }
@@ -170,9 +169,9 @@ int ROCdevice::doLoop() {
       void *newPage=mp->getPage();
       if (newPage!=nullptr) {
         AliceO2::roc::Superpage superpage;
-        superpage.offset=(char *)newPage-(char *)mp->getBaseBlockAddress();
-        superpage.size=superPageSize;
-        superpage.userData=newPage;
+        superpage.setOffset((char *)newPage-(char *)mp->getBaseBlockAddress());
+        superpage.setSize(superPageSize);
+        superpage.setUserData(newPage);
         channel->pushSuperpage(superpage);
         nPush++;
       } else {

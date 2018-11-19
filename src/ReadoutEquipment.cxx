@@ -232,3 +232,12 @@ Thread::CallbackResult  ReadoutEquipment::threadCallback(void *arg) {
   }
   return Thread::CallbackResult::Ok;
 }
+
+
+void ReadoutEquipment::setDataOn() {
+  isDataOn=true;
+}
+
+void ReadoutEquipment::setDataOff() {
+  isDataOn=false;
+}

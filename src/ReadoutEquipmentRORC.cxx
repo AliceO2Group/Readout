@@ -27,10 +27,12 @@ class ReadoutEquipmentRORC : public ReadoutEquipment {
     ReadoutEquipmentRORC(ConfigFile &cfg, std::string name="rorcReadout");
     ~ReadoutEquipmentRORC();
 
+  private:
     Thread::CallbackResult prepareBlocks();
     DataBlockContainerReference getNextBlock(); 
-  
-  private:
+    void setDataOn();
+    void setDataOff();
+ 
     Thread::CallbackResult  populateFifoOut(); // the data readout loop function
     
     AliceO2::roc::ChannelFactory::DmaChannelSharedPtr channel;    // channel to ROC device
@@ -172,9 +174,6 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : 
        baseAddress, blockSize
     });
        
-    // clear locks if necessary
-    params.setForcedUnlockEnabled(true);
-
     // define link mask
     // this is harmless for C-RORC
     params.setLinkMask(AliceO2::roc::Parameters::linkMaskFromString(cfgLinkMask));
@@ -199,14 +198,6 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : 
 
     // todo: log parameters ?
 
-    // start DMA    
-    theLog.log("Starting DMA for ROC %s:%d",cardId.c_str(),cfgChannelNumber);
-    channel->startDma();    
-    
-    // get FIFO depth (it should be fully empty when starting)
-    RocFifoSize=channel->getTransferQueueAvailable();
-    theLog.log("ROC input queue size = %d pages",RocFifoSize);
-    if (RocFifoSize==0) {RocFifoSize=1;}
 
     // reset timeframe id
     currentTimeframe=0;
@@ -233,10 +224,6 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : 
 
 
 ReadoutEquipmentRORC::~ReadoutEquipmentRORC() {
-  if (isInitialized) {
-    channel->stopDma();
-  }
-
   if (cfgRdhCheckEnabled) {
     theLog.log("Equipment %s : %llu timeframes, %llu pages, RDH checks %llu ok, %llu errors",name.c_str(),statsNumberOfTimeframes,statsNumberOfPages,statsRdhCheckOk,statsRdhCheckErr);  
   }
@@ -245,6 +232,8 @@ ReadoutEquipmentRORC::~ReadoutEquipmentRORC() {
 
 Thread::CallbackResult ReadoutEquipmentRORC::prepareBlocks(){
   if (!isInitialized) return  Thread::CallbackResult::Error;
+  if (!isDataOn) return  Thread::CallbackResult::Idle;
+  
   int isActive=0;
   
   // keep track of situations where the queue is completely empty
@@ -266,9 +255,9 @@ Thread::CallbackResult ReadoutEquipmentRORC::prepareBlocks(){
     if (newPage!=nullptr) {   
       // todo: check page is aligned as expected      
       AliceO2::roc::Superpage superpage;
-      superpage.offset=(char *)newPage-(char *)mp->getBaseBlockAddress()+pageSpaceReserved;
-      superpage.size=superPageSize;
-      superpage.userData=newPage;
+      superpage.setOffset((char *)newPage-(char *)mp->getBaseBlockAddress()+pageSpaceReserved);
+      superpage.setSize(superPageSize);
+      superpage.setUserData(newPage);
       channel->pushSuperpage(superpage);      
       isActive=1;
       nPushed++;
@@ -317,6 +306,10 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
 
   DataBlockContainerReference nextBlock=nullptr;
   
+  // ensure the initialization was fine in the main thread
+  if (!isInitialized) {
+  	return nullptr;
+  }  
   //channel->fillSuperpages();
     
   // check for completed page
@@ -324,9 +317,10 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
     auto superpage = channel->getSuperpage(); // this is the first superpage in FIFO ... let's check its state
     if (superpage.isFilled()) {
       std::shared_ptr<DataBlockContainer>d=nullptr;
+//      printf ("received a page with %d bytes - isFilled=%d isREady=%d\n",(int)superpage.getReceived(),(int)superpage.isFilled(),(int)superpage.isReady());
       try {
         if (pageSpaceReserved>=sizeof(DataBlock)) {
-          d=mp->getNewDataBlockContainer((void *)(superpage.userData));
+          d=mp->getNewDataBlockContainer((void *)(superpage.getUserData()));
         } else {
           // todo: allocate data block container elsewhere than beginning of page
           //d=mp->getNewDataBlockContainer(nullptr);        
@@ -412,6 +406,8 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
                 errorDescription.clear();
               }
               statsRdhCheckErr++;
+	      // stop on first RDH error (should distinguich valid/invalid block length)
+	      break;
             } else {
               statsRdhCheckOk++;
 
@@ -453,4 +449,27 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
 
 std::unique_ptr<ReadoutEquipment> getReadoutEquipmentRORC(ConfigFile &cfg, std::string cfgEntryPoint) {
   return std::make_unique<ReadoutEquipmentRORC>(cfg,cfgEntryPoint);
+}
+
+
+void ReadoutEquipmentRORC::setDataOn() {
+  if (isInitialized) {
+    // start DMA    
+    theLog.log("Starting DMA for ROC %s",getName().c_str());
+    channel->startDma();
+
+    // get FIFO depth (it should be fully empty when starting)
+    RocFifoSize=channel->getTransferQueueAvailable();
+    theLog.log("ROC input queue size = %d pages",RocFifoSize);
+    if (RocFifoSize==0) {RocFifoSize=1;}
+  }
+  ReadoutEquipment::setDataOn();
+}
+
+void ReadoutEquipmentRORC::setDataOff() {
+  if (isInitialized) {
+    theLog.log("Stopping DMA for ROC %s",getName().c_str());
+    channel->stopDma();
+  }
+  ReadoutEquipment::setDataOff();
 }
