@@ -392,6 +392,9 @@ int main(int argc, char* argv[])
       readoutDevice->start();
   }
 
+  for (auto && readoutDevice : readoutDevices) {
+      readoutDevice->setDataOn();
+  }
   theLog.log("Running");
 
   // reset exit timeout, if any
@@ -412,11 +415,11 @@ int main(int argc, char* argv[])
     if (isRunning) {
       if (((cfgExitTimeout>0)&&(t.isTimeout()))||(ShutdownRequest)) {
         isRunning=0;
-        theLog.log("Stopping readout");
-        for (auto && readoutDevice : readoutDevices) {
-          readoutDevice->stop();
+        theLog.log("Stopping data readout");
+	for (auto && readoutDevice : readoutDevices) {
+          readoutDevice->setDataOff();	  
         }
-        theLog.log("Readout stopped");
+	
         t.reset(1000000);  // add a delay before stopping aggregator - continune to empty FIFOs
 
         // notify consumers of imminent data flow stop
@@ -452,7 +455,11 @@ int main(int argc, char* argv[])
     theLog.log("Stopping callgrind instrumentation");
   #endif
 
-
+  for (auto && readoutDevice : readoutDevices) {
+    readoutDevice->stop();
+  }
+  theLog.log("Readout stopped");
+  	
   theLog.log("Stopping aggregator");
   agg->stop();
 

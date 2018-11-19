@@ -29,6 +29,10 @@ class ReadoutEquipment {
   void stop();
   const std::string & getName();
 
+  // enable / disable data production by the equipment
+  virtual void setDataOn();
+  virtual void setDataOff();
+
 // protected:
 // todo: give direct access to output FIFO?
   std::shared_ptr<AliceO2::Common::Fifo<DataBlockContainerReference>> dataOut;
@@ -44,9 +48,11 @@ class ReadoutEquipment {
   virtual Thread::CallbackResult prepareBlocks() {return Thread::CallbackResult::Idle;};
   virtual DataBlockContainerReference getNextBlock() {return nullptr;};
 
-
   protected:
-    
+  // data enabled ? controlled by setDataOn/setDataOff
+  bool isDataOn=false;
+
+   
   // Definition of performance counters for readout statistics.
   // Each counter is assigned a unique integer index (incremental, starting 0).
   // The last element can be used to get the number of counters defined.
