@@ -197,7 +197,7 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : 
     
 
     // todo: log parameters ?
-
+    usingSoftwareClock=true;
 
     // reset timeframe id
     currentTimeframe=0;
@@ -311,7 +311,7 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
   	return nullptr;
   }  
   //channel->fillSuperpages();
-    
+     
   // check for completed page
   if ((channel->getReadyQueueSize()>0)) {
     auto superpage = channel->getSuperpage(); // this is the first superpage in FIFO ... let's check its state
@@ -341,6 +341,8 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
         channel->popSuperpage();
         nextBlock=d;
         
+	//printf("\nPage %llu\n",statsNumberOfPages);	
+	
         // validate RDH structure, if configured to do so
         int linkId=-1;
         int hbOrbit=-1;
@@ -362,19 +364,29 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
           std::string errorDescription;
           size_t blockSize=d->getData()->header.dataSize;
           uint8_t *baseAddress=(uint8_t *)(d->getData()->data);
+	  int rdhIndexInPage=0;
+	  
           for (size_t pageOffset=0;pageOffset<blockSize;) {
             RdhHandle h(baseAddress+pageOffset);
-            
+            rdhIndexInPage++;
+	    
+            //printf("RDH #%d @ 0x%X : next block @ +%d bytes\n",rdhIndexInPage,(unsigned int)pageOffset,h.getOffsetNextPacket());
+	    
             if (linkId==-1) {
               linkId=h.getLinkId();
+	      //printf("Page %llu, link %d\n",statsNumberOfPages,linkId);	
+	      //printf("Page for link %d\n",linkId);	
             } else {
               if (linkId!=h.getLinkId()) {
-                printf("incosistent link ids: %d != %d\n",linkId,h.getLinkId());
+                printf("RDH #%d @ 0x%X : inconsistent link ids: %d != %d\n",rdhIndexInPage,(unsigned int)pageOffset,linkId,h.getLinkId());
+		break; // stop checking this page
               }
             }
             
             if (hbOrbit==-1) {
               hbOrbit=h.getHbOrbit();
+	      //printf("HB orbit %u\n",hbOrbit);
+	      //printf("Page %llu, link %d, orbit %u\n",statsNumberOfPages,linkId,hbOrbit);
               if ((statsNumberOfPages==1) || ((uint32_t)hbOrbit>=currentTimeframeHbOrbitBegin+timeframePeriodOrbits)) {
                 if (statsNumberOfPages==1) {
                   firstTimeframeHbOrbitBegin=hbOrbit;
@@ -396,7 +408,8 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
             //data format:
             // RDH v3 = https://docs.google.com/document/d/1otkSDYasqpVBDnxplBI7dWNxaZohctA-bvhyrzvtLoQ/edit?usp=sharing
             if (h.validateRdh(errorDescription)) {
-              if (cfgRdhDumpEnabled) {
+	      bool cfgRdhDumpErrorEnabled=1;
+              if ((cfgRdhDumpEnabled)||(cfgRdhDumpErrorEnabled)) {
                 for (int i=0;i<16;i++) {
                   printf("%08X ",(int)(((uint32_t*)baseAddress)[i]));
                 }
@@ -420,7 +433,11 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
 
               }
             }
-            pageOffset+=h.getBlockLength();
+	    uint16_t offsetNextPacket=h.getOffsetNextPacket();
+	    if (offsetNextPacket==0) {
+	      break;
+	    }
+	    pageOffset+=offsetNextPacket;            
           }
         }
         if (linkId>=0) {
