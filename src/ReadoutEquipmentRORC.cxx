@@ -174,9 +174,6 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : 
        baseAddress, blockSize
     });
        
-    // clear locks if necessary
-    params.setForcedUnlockEnabled(true);
-
     // define link mask
     // this is harmless for C-RORC
     params.setLinkMask(AliceO2::roc::Parameters::linkMaskFromString(cfgLinkMask));
@@ -258,9 +255,9 @@ Thread::CallbackResult ReadoutEquipmentRORC::prepareBlocks(){
     if (newPage!=nullptr) {   
       // todo: check page is aligned as expected      
       AliceO2::roc::Superpage superpage;
-      superpage.offset=(char *)newPage-(char *)mp->getBaseBlockAddress()+pageSpaceReserved;
-      superpage.size=superPageSize;
-      superpage.userData=newPage;
+      superpage.setOffset((char *)newPage-(char *)mp->getBaseBlockAddress()+pageSpaceReserved);
+      superpage.setSize(superPageSize);
+      superpage.setUserData(newPage);
       channel->pushSuperpage(superpage);      
       isActive=1;
       nPushed++;
@@ -323,7 +320,7 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
 //      printf ("received a page with %d bytes - isFilled=%d isREady=%d\n",(int)superpage.getReceived(),(int)superpage.isFilled(),(int)superpage.isReady());
       try {
         if (pageSpaceReserved>=sizeof(DataBlock)) {
-          d=mp->getNewDataBlockContainer((void *)(superpage.userData));
+          d=mp->getNewDataBlockContainer((void *)(superpage.getUserData()));
         } else {
           // todo: allocate data block container elsewhere than beginning of page
           //d=mp->getNewDataBlockContainer(nullptr);        
