@@ -417,6 +417,9 @@ int main(int argc, char* argv[])
         isRunning=0;
         theLog.log("Stopping data readout");
 	for (auto && readoutDevice : readoutDevices) {
+      	  // at the moment, we stop readout loop before stopping data (and loose the last pages)
+	  // otherwise we get incomplete pages of unkown size, impossible to parse
+          readoutDevice->stop();
           readoutDevice->setDataOff();	  
         }
 	
