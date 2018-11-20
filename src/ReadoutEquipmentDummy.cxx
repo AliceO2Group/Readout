@@ -26,6 +26,9 @@ class ReadoutEquipmentDummy : public ReadoutEquipment {
 ReadoutEquipmentDummy::ReadoutEquipmentDummy(ConfigFile &cfg, std::string cfgEntryPoint) : ReadoutEquipment(cfg, cfgEntryPoint) {
 
   // get configuration values
+  // configuration parameter: | equipment-dummy-* | eventMaxSize | int | 128k | Maximum size of randomly generated event. |
+  // configuration parameter: | equipment-dummy-* | eventMinSize | int | 128k | Minimum size of randomly generated event. |
+  // configuration parameter: | equipment-dummy-* | fillData | int | 0 | If non-zero, data payload is filled with a counter. Otherwise (default), no write operation is performed, random data from memory is kept in payload. |
   cfg.getOptionalValue<int>(cfgEntryPoint + ".eventMaxSize", eventMaxSize, (int)128*1024);
   cfg.getOptionalValue<int>(cfgEntryPoint + ".eventMinSize", eventMinSize, (int)128*1024);
   cfg.getOptionalValue<int>(cfgEntryPoint + ".fillData", fillData, (int)0);

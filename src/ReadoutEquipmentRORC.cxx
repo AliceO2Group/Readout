@@ -81,37 +81,48 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : 
     // get parameters from configuration
     // config keys are the same as the corresponding set functions in AliceO2::roc::Parameters
     
+    // configuration parameter: | equipment-rorc-* | cardId | string | | ID of the board to be used. Typically, a PCI bus device id. c.f. AliceO2::roc::Parameters. |
     std::string cardId=cfg.getValue<std::string>(name + ".cardId");
     
+    // configuration parameter: | equipment-rorc-* | channelNumber | int | 0 | Channel number of the board to be used. Typically 0 for CRU, or 1-6 for CRORC. c.f. AliceO2::roc::Parameters. |
     int cfgChannelNumber=0;
     cfg.getOptionalValue<int>(name + ".channelNumber", cfgChannelNumber);
 
+    // configuration parameter: | equipment-rorc-* | generatorEnabled | int | 0 | If non-zero, enable card internal generator. c.f. AliceO2::roc::Parameters. |
     int cfgGeneratorEnabled=0;
     cfg.getOptionalValue<int>(name + ".generatorEnabled", cfgGeneratorEnabled);
     
+    // configuration parameter: | equipment-rorc-* | generatorDataSize | int | 8192 | If generatorEnabled, defines size of data generated. c.f. AliceO2::roc::Parameters. |
     int cfgGeneratorDataSize=8192;
     cfg.getOptionalValue<int>(name + ".generatorDataSize", cfgGeneratorDataSize);
     
+    // configuration parameter: | equipment-rorc-* | generatorLoopback | string | INTERNAL | If generatorEnabled, defines loopback mode. Otherwise, parameter automatically set to NONE. Possible values: NONE, DIU, SIU, INTERNAL. c.f. AliceO2::roc::Parameters. |
     std::string cfgGeneratorLoopback="INTERNAL";
     cfg.getOptionalValue<std::string>(name + ".generatorLoopback", cfgGeneratorLoopback);
 
+    // configuration parameter: | equipment-rorc-* | generatorPattern | string | INCREMENTAL | If generatorEnabled, defines pattern of data generated. Possible values: ALTERNATING,CONSTANT,DECREMENTAL, FLYING_0, FLYING_1, INCREMENTAL, RANDOM, UNKNOWN. c.f. AliceO2::roc::Parameters. |
     std::string cfgGeneratorPattern="INCREMENTAL";
     cfg.getOptionalValue<std::string>(name + ".generatorPattern", cfgGeneratorPattern);
-    
+ 
+     // configuration parameter: | equipment-rorc-* | generatorRandomSizeEnabled | int | 0 | Enable (value=1) or disable (value=0) random size when using internal data generator. c.f. AliceO2::roc::Parameters. |  
     int cfgGeneratorRandomSizeEnabled=0;
     cfg.getOptionalValue<int>(name + ".generatorRandomSizeEnabled", cfgGeneratorRandomSizeEnabled);
     
+    // configuration parameter: | equipment-rorc-* | linkMask | string | 0-31 | List of links to be enabled. For CRU, in the 0-31 range. Can be a single value, a comma-separated list, a range or comma-separated list of ranges. c.f. AliceO2::roc::Parameters. |
     std::string cfgLinkMask="0-31";
     cfg.getOptionalValue<std::string>(name + ".linkMask", cfgLinkMask);
     
     //std::string cfgReadoutMode="CONTINUOUS";
     //cfg.getOptionalValue<std::string>(name + ".readoutMode", cfgReadoutMode);
     
+    // configuration parameter: | equipment-rorc-* | resetLevel | string | INTERNAL | Reset level of the device. Can be one of NOTHING, INTERNAL, INTERNAL_DIU, INTERNAL_DIU_SIU. c.f. AliceO2::roc::Parameters. |
     std::string cfgResetLevel="INTERNAL";
     cfg.getOptionalValue<std::string>(name + ".resetLevel", cfgResetLevel);
 
-    // extra configuration parameters    
+    // extra configuration parameters 
+    // configuration parameter: | equipment-rorc-* | rdhCheckEnabled | int | 0 | If set, data pages are parsed and RDH headers checked. Errors are reported in logs. |
     cfg.getOptionalValue<int>(name + ".rdhCheckEnabled", cfgRdhCheckEnabled);
+    // configuration parameter: | equipment-rorc-* | rdhDumpEnabled | int | 0 | If set, data pages are parsed and RDH headers summary printed. Setting a negative number will print only the first N RDH.|
     cfg.getOptionalValue<int>(name + ".rdhDumpEnabled", cfgRdhDumpEnabled);
         
 /*    // get readout memory buffer parameters

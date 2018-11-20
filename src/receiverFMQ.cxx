@@ -107,18 +107,23 @@ int main(int argc, const char **argv) {
     return -1;
   }
 
+  // configuration parameter: | receiverFMQ | transportType | string | shmem | c.f. parameter with same name in consumer-FMQchannel-* |
   std::string cfgTransportType="shmem";
   cfg.getOptionalValue<std::string>(cfgEntryPoint + ".transportType", cfgTransportType);
 
+  // configuration parameter: | receiverFMQ | channelName | string | readout | c.f. parameter with same name in consumer-FMQchannel-* |
   std::string cfgChannelName="readout";
   cfg.getOptionalValue<std::string>(cfgEntryPoint + ".channelName", cfgChannelName);
 
+  // configuration parameter: | receiverFMQ | channelType | string | pair | c.f. parameter with same name in consumer-FMQchannel-* |
   std::string cfgChannelType="pair";
   cfg.getOptionalValue<std::string>(cfgEntryPoint + ".channelType", cfgChannelType);
 
+  // configuration parameter: | receiverFMQ | channelAddress | string | ipc:///tmp/pipe-readout | c.f. parameter with same name in consumer-FMQchannel-* |
   std::string cfgChannelAddress="ipc:///tmp/pipe-readout";
   cfg.getOptionalValue<std::string>(cfgEntryPoint + ".channelAddress", cfgChannelAddress);
 
+  // configuration parameter: | receiverFMQ | decodingMode | string | none | Decoding mode of the readout FMQ output stream. Possible values: none (no decoding), readout (wp5 protocol) |
   std::string cfgDecodingMode="none";
   cfg.getOptionalValue<std::string>(cfgEntryPoint + ".decodingMode", cfgDecodingMode);
   enum decodingMode {none=0, readout=1};

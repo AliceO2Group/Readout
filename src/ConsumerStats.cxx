@@ -112,15 +112,19 @@ class ConsumerStats: public Consumer {
   public:
   ConsumerStats(ConfigFile &cfg, std::string cfgEntryPoint):Consumer(cfg,cfgEntryPoint) {
 
+    // configuration parameter: | consumer-stats-* | monitoringEnabled | int | 0 | Enable (1) or disable (0) readout monitoring. |
     cfg.getOptionalValue(cfgEntryPoint + ".monitoringEnabled", monitoringEnabled, 0);
     if (monitoringEnabled) {
+      // configuration parameter: | consumer-stats-* | monitoringUpdatePeriod | int | 10 | Period of readout monitoring updates. |
       cfg.getOptionalValue(cfgEntryPoint + ".monitoringUpdatePeriod", monitoringUpdatePeriod, 10);
+      // configuration parameter: | consumer-stats-* | monitoringURI | string |  | URI to connect O2 monitoring service. c.f. o2::monitoring. |
       const std::string configURI=cfg.getValue<std::string>(cfgEntryPoint + ".monitoringURI");
       theLog.log("Monitoring enabled - period %ds - using %s",monitoringUpdatePeriod,configURI.c_str());
 
       monitoringCollector=MonitoringFactory::Get(configURI.c_str());
 
       // enable process monitoring
+      // configuration parameter: | consumer-stats-* | processMonitoringInterval | int | 0 | Period of process monitoring updates (O2 standard metrics). If zero (default), disabled.|
       int processMonitoringInterval=0;
       cfg.getOptionalValue(cfgEntryPoint + ".processMonitoringInterval", processMonitoringInterval, 0);
       if (processMonitoringInterval>0) {
