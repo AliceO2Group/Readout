@@ -1,13 +1,15 @@
 # Readout configuration parameters reference
 
 ## Sections
-The readout configuration is splitted in different sections. Some sections have a unique instance (single name), some may have multiple instances (prefix-[instance name], shown as prefix-\* in this document).
+The readout configuration is split in different sections. Some sections have a unique instance (single name), some may have multiple instances (prefix-[instance name], shown as prefix-\* in this document).
 
 The *readout* section defines global parameters.
 The *bank-\** section defines parameters for the memory banks.
 The *equipment-\** section defines parameters for the readout equipments.
 The *consumer-\** section defines parameters for the readout data consumers.
 The *receiverFMQ-\** section defines parameters for the test receiverFMQ.exe program, and usually kept at the same place as readout parameters for coherency.
+
+Please see the provided example configuration files to see how they are usually arranged.
 
 ## Parameter types
 
