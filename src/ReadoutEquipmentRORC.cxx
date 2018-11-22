@@ -9,6 +9,7 @@
 
 #include <string>
 #include <mutex>
+#include <cstring>
 
 #include <Common/Timer.h>
 
@@ -47,6 +48,8 @@ class ReadoutEquipmentRORC : public ReadoutEquipment {
     int cfgRdhCheckEnabled=0; // flag to enable RDH check at runtime
     int cfgRdhDumpEnabled=0;  // flag to enable RDH dump at runtime
 
+    int cfgCleanPageBeforeUse=0; // flag to enable filling page with zeros before giving for writing
+    
     unsigned long long statsRdhCheckOk=0;   // number of RDH structs which have passed check ok
     unsigned long long statsRdhCheckErr=0;  // number of RDH structs which have not passed check    
     unsigned long long statsNumberOfPages=0; // number of pages read out
@@ -124,6 +127,12 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : 
     cfg.getOptionalValue<int>(name + ".rdhCheckEnabled", cfgRdhCheckEnabled);
     // configuration parameter: | equipment-rorc-* | rdhDumpEnabled | int | 0 | If set, data pages are parsed and RDH headers summary printed. Setting a negative number will print only the first N RDH.|
     cfg.getOptionalValue<int>(name + ".rdhDumpEnabled", cfgRdhDumpEnabled);
+    
+    // configuration parameter: | equipment-rorc-* | cleanPageBeforeUse | int | 0 | If set, data pages are filled with zero before being given for writing by device. Slow, but usefull to readout incomplete pages (driver currently does not return correctly number of bytes written in page. |
+    cfg.getOptionalValue<int>(name + ".cleanPageBeforeUse", cfgCleanPageBeforeUse);
+    if (cfgCleanPageBeforeUse) {
+      theLog.log("Superpages will be cleaned before each DMA - this may be slow!");
+    }
         
 /*    // get readout memory buffer parameters
     std::string sMemorySize=cfg.getValue<std::string>(name + ".memoryBufferSize");
@@ -265,6 +274,10 @@ Thread::CallbackResult ReadoutEquipmentRORC::prepareBlocks(){
     void *newPage=mp->getPage();
     if (newPage!=nullptr) {   
       // todo: check page is aligned as expected      
+      // optionnaly, cleanup page before use
+      if (cfgCleanPageBeforeUse) {
+      	std::memset(newPage,0,mp->getPageSize());
+      }
       AliceO2::roc::Superpage superpage;
       superpage.setOffset((char *)newPage-(char *)mp->getBaseBlockAddress()+pageSpaceReserved);
       superpage.setSize(superPageSize);
