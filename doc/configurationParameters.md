@@ -39,6 +39,8 @@ The parameters related to 3rd-party libraries are described here for convenience
 |--|--|--|--|--|
 | readout | rate | double | -1 | Data rate limit, per equipment, in Hertz. -1 for unlimited. |
 | readout | exitTimeout | double | -1 | Time in seconds after which the program exits automatically. -1 for unlimited. |
+| readout | flushEquipmentTimeout | double | 0 | Time in seconds to wait for data once the equipments are stopped. 0 means stop immediately. |
+| readout | disableAggregatorSlicing | int | 0 | When set, the aggregator slicing is disabled, data pages are passed through without grouping/slicing. |
 | bank-* | enabled | int | 1 | Enable (value=1) or disable (value=0) the memory bank. |
 | bank-* | size | bytes | | Size of the memory bank, in bytes. |
 | bank-* | type | string| | Support used to allocate memory. Possible values: malloc, MemoryMappedFile. |
@@ -75,6 +77,7 @@ The parameters related to 3rd-party libraries are described here for convenience
 | equipment-rorc-* | resetLevel | string | INTERNAL | Reset level of the device. Can be one of NOTHING, INTERNAL, INTERNAL_DIU, INTERNAL_DIU_SIU. c.f. AliceO2::roc::Parameters. |
 | equipment-rorc-* | rdhCheckEnabled | int | 0 | If set, data pages are parsed and RDH headers checked. Errors are reported in logs. |
 | equipment-rorc-* | rdhDumpEnabled | int | 0 | If set, data pages are parsed and RDH headers summary printed. Setting a negative number will print only the first N RDH.|
+| equipment-rorc-* | cleanPageBeforeUse | int | 0 | If set, data pages are filled with zero before being given for writing by device. Slow, but usefull to readout incomplete pages (driver currently does not return correctly number of bytes written in page. |
 | consumer-* | enabled | int | 1 | Enable (value=1) or disable (value=0) the consumer. |
 | consumer-* | consumerType | string |  | The type of consumer to be instanciated. One of:stats, FairMQDevice, DataSampling, FairMQChannel, fileRecorder, checker. |
 | consumer-stats-* | monitoringEnabled | int | 0 | Enable (1) or disable (0) readout monitoring. |
