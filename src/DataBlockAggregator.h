@@ -67,6 +67,7 @@ class DataBlockAggregator {
   void start(); // starts processing thread
   void stop(int waitStopped=1);  // stop processing thread (and possibly wait it terminates)
 
+  int disableSlicing=0;	// when set, slicer is disabled, data is just passed through
 
   static Thread::CallbackResult threadCallback(void *arg);
 

@@ -158,8 +158,16 @@ int main(int argc, char* argv[])
   
 
   // extract optional configuration parameters
+  // configuration parameter: | readout | exitTimeout | double | -1 | Time in seconds after which the program exits automatically. -1 for unlimited. |
   double cfgExitTimeout=-1;
   cfg.getOptionalValue<double>("readout.exitTimeout",cfgExitTimeout);
+  // configuration parameter: | readout | flushEquipmentTimeout | double | 0 | Time in seconds to wait for data once the equipments are stopped. 0 means stop immediately. |
+  double cfgFlushEquipmentTimeout=0;
+  cfg.getOptionalValue<double>("readout.flushEquipmentTimeout",cfgFlushEquipmentTimeout);
+  // configuration parameter: | readout | disableAggregatorSlicing | int | 0 | When set, the aggregator slicing is disabled, data pages are passed through without grouping/slicing. |
+  int cfgDisableAggregatorSlicing=0;
+  cfg.getOptionalValue<int>("readout.disableAggregatorSlicing",cfgDisableAggregatorSlicing);
+  
   
 
   // configuration of memory banks
@@ -168,13 +176,15 @@ int main(int argc, char* argv[])
      // skip disabled
     int enabled=1;
     try {
+      // configuration parameter: | bank-* | enabled | int | 1 | Enable (1) or disable (0) the memory bank. |
       enabled=cfg.getValue<int>(kName + ".enabled");
     }
     catch (...) {
     }
     if (!enabled) {continue;}
 
-    // bank size    
+    // bank size
+    // configuration parameter: | bank-* | size | bytes | | Size of the memory bank, in bytes. |
     std::string cfgSize="";
     cfg.getOptionalValue<std::string>(kName + ".size",cfgSize);
     long long mSize=ReadoutUtils::getNumberOfBytesFromString(cfgSize.c_str());
@@ -184,6 +194,7 @@ int main(int argc, char* argv[])
     }
 
     // bank type
+    // configuration parameter: | bank-* | type | string| | Support used to allocate memory. Possible values: malloc, MemoryMappedFile. |
     std::string cfgType="";
     try {
       cfgType=cfg.getValue<std::string>(kName + ".type");
@@ -195,6 +206,7 @@ int main(int argc, char* argv[])
     if (cfgType.length()==0) {continue;}
 
     // numa node
+    // configuration parameter: | bank-* | numaNode | int | -1| Numa node where memory should be allocated. -1 means unspecified (system will choose). |
     int cfgNumaNode=-1;
     cfg.getOptionalValue<int>(kName + ".numaNode",cfgNumaNode);
 
@@ -250,6 +262,7 @@ int main(int argc, char* argv[])
     // skip disabled
     int enabled=1;
     try {
+      // configuration parameter: | consumer-* | enabled | int | 1 | Enable (value=1) or disable (value=0) the consumer. |
       enabled=cfg.getValue<int>(kName + ".enabled");
     }
     catch (...) {
@@ -259,6 +272,7 @@ int main(int argc, char* argv[])
     // instanciate consumer of appropriate type
     std::unique_ptr<Consumer> newConsumer=nullptr;
     try {
+      // configuration parameter: | consumer-* | consumerType | string |  | The type of consumer to be instanciated. One of:stats, FairMQDevice, DataSampling, FairMQChannel, fileRecorder, checker. |
       std::string cfgType="";
       cfgType=cfg.getValue<std::string>(kName + ".consumerType");
       theLog.log("Configuring consumer %s: %s",kName.c_str(),cfgType.c_str());
@@ -318,10 +332,12 @@ int main(int argc, char* argv[])
     //}
 
     // skip disabled equipments
+    // configuration parameter: | equipment-* | enabled | int | 1 | Enable (value=1) or disable (value=0) the equipment. |
     int enabled=1;
     cfg.getOptionalValue<int>(kName + ".enabled",enabled);
     if (!enabled) {continue;}
 
+    // configuration parameter: | equipment-* | equipmentType | string |  | The type of equipment to be instanciated. One of: dummy, rorc, cruEmulator |
     std::string cfgEquipmentType="";
     cfgEquipmentType=cfg.getValue<std::string>(kName + ".equipmentType");
     theLog.log("Configuring equipment %s: %s",kName.c_str(),cfgEquipmentType.c_str());
@@ -371,7 +387,7 @@ int main(int argc, char* argv[])
   AliceO2::Common::Fifo<DataSetReference> agg_output(1000);
   int nEquipmentsAggregated=0;
   auto agg=std::make_unique<DataBlockAggregator>(&agg_output,"Aggregator");
-  
+    
   for (auto && readoutDevice : readoutDevices) {
       //theLog.log("Adding equipment: %s",readoutDevice->getName().c_str());
       agg->addInput(readoutDevice->dataOut);
@@ -380,6 +396,10 @@ int main(int argc, char* argv[])
   theLog.log("Aggregator: %d equipments", nEquipmentsAggregated);
 
   theLog.log("Starting aggregator");
+  if (cfgDisableAggregatorSlicing) {
+    theLog.log("Aggregator slicing disabled");
+    agg->disableSlicing=1;
+  }
   agg->start();
 
   // notify consumers of imminent data flow start
@@ -417,10 +437,18 @@ int main(int argc, char* argv[])
         isRunning=0;
         theLog.log("Stopping data readout");
 	for (auto && readoutDevice : readoutDevices) {
-          readoutDevice->setDataOff();	  
+      	  
+	  if (cfgFlushEquipmentTimeout<=0) {
+	    theLog.log("Stopping immediately readout equipments, last pages might be lost");
+	    // stop readout loop before stopping data (and loose the last pages)
+            // otherwise we get incomplete pages of unkown size (driver bug), impossible to parse
+	    readoutDevice->stop();
+	  }
+          readoutDevice->setDataOff();
+	  // todo: should flush aggregator content after a while
         }
 	
-        t.reset(1000000);  // add a delay before stopping aggregator - continune to empty FIFOs
+        t.reset(cfgFlushEquipmentTimeout*1000000);  // add a delay before stopping aggregator - continune to empty FIFOs
 
         // notify consumers of imminent data flow stop
         for (auto& c : dataConsumers) {
