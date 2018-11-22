@@ -161,6 +161,13 @@ int main(int argc, char* argv[])
   // configuration parameter: | readout | exitTimeout | double | -1 | Time in seconds after which the program exits automatically. -1 for unlimited. |
   double cfgExitTimeout=-1;
   cfg.getOptionalValue<double>("readout.exitTimeout",cfgExitTimeout);
+  // configuration parameter: | readout | flushEquipmentTimeout | double | 0 | Time in seconds to wait for data once the equipments are stopped. 0 means stop immediately. |
+  double cfgFlushEquipmentTimeout=0;
+  cfg.getOptionalValue<double>("readout.flushEquipmentTimeout",cfgFlushEquipmentTimeout);
+  // configuration parameter: | readout | disableAggregatorSlicing | int | 0 | When set, the aggregator slicing is disabled, data pages are passed through without grouping/slicing. |
+  int cfgDisableAggregatorSlicing=0;
+  cfg.getOptionalValue<int>("readout.disableAggregatorSlicing",cfgDisableAggregatorSlicing);
+  
   
 
   // configuration of memory banks
@@ -380,7 +387,7 @@ int main(int argc, char* argv[])
   AliceO2::Common::Fifo<DataSetReference> agg_output(1000);
   int nEquipmentsAggregated=0;
   auto agg=std::make_unique<DataBlockAggregator>(&agg_output,"Aggregator");
-  
+    
   for (auto && readoutDevice : readoutDevices) {
       //theLog.log("Adding equipment: %s",readoutDevice->getName().c_str());
       agg->addInput(readoutDevice->dataOut);
@@ -389,6 +396,10 @@ int main(int argc, char* argv[])
   theLog.log("Aggregator: %d equipments", nEquipmentsAggregated);
 
   theLog.log("Starting aggregator");
+  if (cfgDisableAggregatorSlicing) {
+    theLog.log("Aggregator slicing disabled");
+    agg->disableSlicing=1;
+  }
   agg->start();
 
   // notify consumers of imminent data flow start
@@ -426,13 +437,18 @@ int main(int argc, char* argv[])
         isRunning=0;
         theLog.log("Stopping data readout");
 	for (auto && readoutDevice : readoutDevices) {
-      	  // at the moment, we stop readout loop before stopping data (and loose the last pages)
-	  // otherwise we get incomplete pages of unkown size, impossible to parse
-          readoutDevice->stop();
-          readoutDevice->setDataOff();	  
+      	  
+	  if (cfgFlushEquipmentTimeout<=0) {
+	    theLog.log("Stopping immediately readout equipments, last pages might be lost");
+	    // stop readout loop before stopping data (and loose the last pages)
+            // otherwise we get incomplete pages of unkown size (driver bug), impossible to parse
+	    readoutDevice->stop();
+	  }
+          readoutDevice->setDataOff();
+	  // todo: should flush aggregator content after a while
         }
 	
-        t.reset(1000000);  // add a delay before stopping aggregator - continune to empty FIFOs
+        t.reset(cfgFlushEquipmentTimeout*1000000);  // add a delay before stopping aggregator - continune to empty FIFOs
 
         // notify consumers of imminent data flow stop
         for (auto& c : dataConsumers) {
