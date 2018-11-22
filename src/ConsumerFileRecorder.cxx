@@ -9,6 +9,7 @@ class ConsumerFileRecorder: public Consumer {
     counterBytesTotal=0;
     fp=NULL;
     
+    // configuration parameter: | consumer-fileRecorder-* | fileName | string |  | Path to the file where to record data. The following variables are replaced at runtime: ${XXX} -> get variable XXX from environment, %t -> unix timestamp (seconds since epoch), %T -> formatted date/time. |
     fileName=cfg.getValue<std::string>(cfgEntryPoint + ".fileName");
     if (fileName.length()>0) {
       theLog.log("Recording path = %s",fileName.c_str());
@@ -20,6 +21,7 @@ class ConsumerFileRecorder: public Consumer {
       theLog.log("Recording enabled");
     }
     
+    // configuration parameter: | consumer-fileRecorder-* | bytesMax | bytes | 0 | Maximum number of bytes to write to file. Data pages are never truncated, so if writing the full page would exceed this limit, no data from that page is written at all and file is closed. If zero (default), no maximum size set.|
     std::string sMaxBytes;
     if (cfg.getOptionalValue<std::string>(cfgEntryPoint + ".bytesMax",sMaxBytes)==0) {
       counterBytesMax=ReadoutUtils::getNumberOfBytesFromString(sMaxBytes.c_str());
@@ -28,6 +30,7 @@ class ConsumerFileRecorder: public Consumer {
       }
     }
     
+    // configuration parameter: | consumer-fileRecorder-* | dataBlockHeaderEnabled | int | 0 | Enable (1) or disable (0) the writing to file of the internal readout header (Common::DataBlockHeaderBase struct) between the data pages, to easily navigate through the file without RDH decoding. If disabled, the raw data pages received from CRU are written without further formatting. |
     cfg.getOptionalValue(cfgEntryPoint + ".dataBlockHeaderEnabled", recordWithDataBlockHeader, 0);
     theLog.log("Recording internal data block headers = %d",recordWithDataBlockHeader);
   }

@@ -104,9 +104,10 @@ Readout is configured with a ".ini"-formatted file. A documented example file is
 and distribution. Each readout component is configured in a different file section.
 The section name is used to get the type of the component to be instanciated.
 Equipments should be prefixed as [equipment-...].
-Consumers should be prefixed as [consumer-...]
-Settings for data sampling are in section [sampling] (NB: to be moved to a consumer instead?).
-General settings are defined in section [readout]
+Consumers should be prefixed as [consumer-...].
+General settings are defined in section [readout].
+
+A reference of all configuration parameters is defined in the configurationParameters.md file.
 
 To setup a new readout configuration starting from the provided file, the basic steps are:
 - define a memory layout suitable for your readout.

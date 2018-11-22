@@ -9,6 +9,7 @@
 
 #include <string>
 #include <mutex>
+#include <cstring>
 
 #include <Common/Timer.h>
 
@@ -47,6 +48,8 @@ class ReadoutEquipmentRORC : public ReadoutEquipment {
     int cfgRdhCheckEnabled=0; // flag to enable RDH check at runtime
     int cfgRdhDumpEnabled=0;  // flag to enable RDH dump at runtime
 
+    int cfgCleanPageBeforeUse=0; // flag to enable filling page with zeros before giving for writing
+    
     unsigned long long statsRdhCheckOk=0;   // number of RDH structs which have passed check ok
     unsigned long long statsRdhCheckErr=0;  // number of RDH structs which have not passed check    
     unsigned long long statsNumberOfPages=0; // number of pages read out
@@ -81,38 +84,55 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : 
     // get parameters from configuration
     // config keys are the same as the corresponding set functions in AliceO2::roc::Parameters
     
+    // configuration parameter: | equipment-rorc-* | cardId | string | | ID of the board to be used. Typically, a PCI bus device id. c.f. AliceO2::roc::Parameters. |
     std::string cardId=cfg.getValue<std::string>(name + ".cardId");
     
+    // configuration parameter: | equipment-rorc-* | channelNumber | int | 0 | Channel number of the board to be used. Typically 0 for CRU, or 1-6 for CRORC. c.f. AliceO2::roc::Parameters. |
     int cfgChannelNumber=0;
     cfg.getOptionalValue<int>(name + ".channelNumber", cfgChannelNumber);
 
+    // configuration parameter: | equipment-rorc-* | generatorEnabled | int | 0 | If non-zero, enable card internal generator. c.f. AliceO2::roc::Parameters. |
     int cfgGeneratorEnabled=0;
     cfg.getOptionalValue<int>(name + ".generatorEnabled", cfgGeneratorEnabled);
     
+    // configuration parameter: | equipment-rorc-* | generatorDataSize | int | 8192 | If generatorEnabled, defines size of data generated. c.f. AliceO2::roc::Parameters. |
     int cfgGeneratorDataSize=8192;
     cfg.getOptionalValue<int>(name + ".generatorDataSize", cfgGeneratorDataSize);
     
+    // configuration parameter: | equipment-rorc-* | generatorLoopback | string | INTERNAL | If generatorEnabled, defines loopback mode. Otherwise, parameter automatically set to NONE. Possible values: NONE, DIU, SIU, INTERNAL. c.f. AliceO2::roc::Parameters. |
     std::string cfgGeneratorLoopback="INTERNAL";
     cfg.getOptionalValue<std::string>(name + ".generatorLoopback", cfgGeneratorLoopback);
 
+    // configuration parameter: | equipment-rorc-* | generatorPattern | string | INCREMENTAL | If generatorEnabled, defines pattern of data generated. Possible values: ALTERNATING,CONSTANT,DECREMENTAL, FLYING_0, FLYING_1, INCREMENTAL, RANDOM, UNKNOWN. c.f. AliceO2::roc::Parameters. |
     std::string cfgGeneratorPattern="INCREMENTAL";
     cfg.getOptionalValue<std::string>(name + ".generatorPattern", cfgGeneratorPattern);
-    
+ 
+     // configuration parameter: | equipment-rorc-* | generatorRandomSizeEnabled | int | 0 | Enable (value=1) or disable (value=0) random size when using internal data generator. c.f. AliceO2::roc::Parameters. |  
     int cfgGeneratorRandomSizeEnabled=0;
     cfg.getOptionalValue<int>(name + ".generatorRandomSizeEnabled", cfgGeneratorRandomSizeEnabled);
     
+    // configuration parameter: | equipment-rorc-* | linkMask | string | 0-31 | List of links to be enabled. For CRU, in the 0-31 range. Can be a single value, a comma-separated list, a range or comma-separated list of ranges. c.f. AliceO2::roc::Parameters. |
     std::string cfgLinkMask="0-31";
     cfg.getOptionalValue<std::string>(name + ".linkMask", cfgLinkMask);
     
     //std::string cfgReadoutMode="CONTINUOUS";
     //cfg.getOptionalValue<std::string>(name + ".readoutMode", cfgReadoutMode);
     
+    // configuration parameter: | equipment-rorc-* | resetLevel | string | INTERNAL | Reset level of the device. Can be one of NOTHING, INTERNAL, INTERNAL_DIU, INTERNAL_DIU_SIU. c.f. AliceO2::roc::Parameters. |
     std::string cfgResetLevel="INTERNAL";
     cfg.getOptionalValue<std::string>(name + ".resetLevel", cfgResetLevel);
 
-    // extra configuration parameters    
+    // extra configuration parameters 
+    // configuration parameter: | equipment-rorc-* | rdhCheckEnabled | int | 0 | If set, data pages are parsed and RDH headers checked. Errors are reported in logs. |
     cfg.getOptionalValue<int>(name + ".rdhCheckEnabled", cfgRdhCheckEnabled);
+    // configuration parameter: | equipment-rorc-* | rdhDumpEnabled | int | 0 | If set, data pages are parsed and RDH headers summary printed. Setting a negative number will print only the first N RDH.|
     cfg.getOptionalValue<int>(name + ".rdhDumpEnabled", cfgRdhDumpEnabled);
+    
+    // configuration parameter: | equipment-rorc-* | cleanPageBeforeUse | int | 0 | If set, data pages are filled with zero before being given for writing by device. Slow, but usefull to readout incomplete pages (driver currently does not return correctly number of bytes written in page. |
+    cfg.getOptionalValue<int>(name + ".cleanPageBeforeUse", cfgCleanPageBeforeUse);
+    if (cfgCleanPageBeforeUse) {
+      theLog.log("Superpages will be cleaned before each DMA - this may be slow!");
+    }
         
 /*    // get readout memory buffer parameters
     std::string sMemorySize=cfg.getValue<std::string>(name + ".memoryBufferSize");
@@ -198,6 +218,8 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : 
 
     // todo: log parameters ?
 
+    // for the time being, use only software clock... feature to be checked
+    usingSoftwareClock=true;
 
     // reset timeframe id
     currentTimeframe=0;
@@ -254,6 +276,10 @@ Thread::CallbackResult ReadoutEquipmentRORC::prepareBlocks(){
     void *newPage=mp->getPage();
     if (newPage!=nullptr) {   
       // todo: check page is aligned as expected      
+      // optionnaly, cleanup page before use
+      if (cfgCleanPageBeforeUse) {
+      	std::memset(newPage,0,mp->getPageSize());
+      }
       AliceO2::roc::Superpage superpage;
       superpage.setOffset((char *)newPage-(char *)mp->getBaseBlockAddress()+pageSpaceReserved);
       superpage.setSize(superPageSize);
@@ -311,7 +337,7 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
   	return nullptr;
   }  
   //channel->fillSuperpages();
-    
+     
   // check for completed page
   if ((channel->getReadyQueueSize()>0)) {
     auto superpage = channel->getSuperpage(); // this is the first superpage in FIFO ... let's check its state
@@ -341,6 +367,8 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
         channel->popSuperpage();
         nextBlock=d;
         
+	//printf("\nPage %llu\n",statsNumberOfPages);	
+	
         // validate RDH structure, if configured to do so
         int linkId=-1;
         int hbOrbit=-1;
@@ -362,19 +390,29 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
           std::string errorDescription;
           size_t blockSize=d->getData()->header.dataSize;
           uint8_t *baseAddress=(uint8_t *)(d->getData()->data);
+	  int rdhIndexInPage=0;
+	  
           for (size_t pageOffset=0;pageOffset<blockSize;) {
             RdhHandle h(baseAddress+pageOffset);
-            
+            rdhIndexInPage++;
+	    
+            //printf("RDH #%d @ 0x%X : next block @ +%d bytes\n",rdhIndexInPage,(unsigned int)pageOffset,h.getOffsetNextPacket());
+	    
             if (linkId==-1) {
               linkId=h.getLinkId();
+	      //printf("Page %llu, link %d\n",statsNumberOfPages,linkId);	
+	      //printf("Page for link %d\n",linkId);	
             } else {
               if (linkId!=h.getLinkId()) {
-                printf("incosistent link ids: %d != %d\n",linkId,h.getLinkId());
+                printf("RDH #%d @ 0x%X : inconsistent link ids: %d != %d\n",rdhIndexInPage,(unsigned int)pageOffset,linkId,h.getLinkId());
+		break; // stop checking this page
               }
             }
             
             if (hbOrbit==-1) {
               hbOrbit=h.getHbOrbit();
+	      //printf("HB orbit %u\n",hbOrbit);
+	      //printf("Page %llu, link %d, orbit %u\n",statsNumberOfPages,linkId,hbOrbit);
               if ((statsNumberOfPages==1) || ((uint32_t)hbOrbit>=currentTimeframeHbOrbitBegin+timeframePeriodOrbits)) {
                 if (statsNumberOfPages==1) {
                   firstTimeframeHbOrbitBegin=hbOrbit;
@@ -396,7 +434,8 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
             //data format:
             // RDH v3 = https://docs.google.com/document/d/1otkSDYasqpVBDnxplBI7dWNxaZohctA-bvhyrzvtLoQ/edit?usp=sharing
             if (h.validateRdh(errorDescription)) {
-              if (cfgRdhDumpEnabled) {
+	      bool cfgRdhDumpErrorEnabled=1;
+              if ((cfgRdhDumpEnabled)||(cfgRdhDumpErrorEnabled)) {
                 for (int i=0;i<16;i++) {
                   printf("%08X ",(int)(((uint32_t*)baseAddress)[i]));
                 }
@@ -420,7 +459,11 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
 
               }
             }
-            pageOffset+=h.getBlockLength();
+	    uint16_t offsetNextPacket=h.getOffsetNextPacket();
+	    if (offsetNextPacket==0) {
+	      break;
+	    }
+	    pageOffset+=offsetNextPacket;            
           }
         }
         if (linkId>=0) {

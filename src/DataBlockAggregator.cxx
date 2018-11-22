@@ -162,29 +162,29 @@ Thread::CallbackResult DataBlockAggregator::executeCallback() {
   for (unsigned int ix=0; ix<nInputs; ix++) {
     int i=(ix + nextIndex) % nInputs;
 
-if (0) {
-    // no slicing... pass through
-    if (output->isFull()) {
-      return Thread::CallbackResult::Idle;
-    }
-    if (inputs[i]->isEmpty()) {
+    if (disableSlicing) {
+      // no slicing... pass through
+      if (output->isFull()) {
+	return Thread::CallbackResult::Idle;
+      }
+      if (inputs[i]->isEmpty()) {
+	continue;
+      }
+      DataBlockContainerReference b=nullptr;
+      inputs[i]->pop(b);
+      nBlocksIn++;
+      DataSetReference bcv=nullptr;
+      try {
+	bcv=std::make_shared<DataSet>();
+      }
+      catch(...) {
+	return Thread::CallbackResult::Error;
+      }
+      bcv->push_back(b);
+      output->push(bcv);
+      nSlicesOut++;
       continue;
-    }
-    DataBlockContainerReference b=nullptr;
-    inputs[i]->pop(b);
-    nBlocksIn++;
-    DataSetReference bcv=nullptr;
-    try {
-      bcv=std::make_shared<DataSet>();
-    }
-    catch(...) {
-      return Thread::CallbackResult::Error;
-    }
-    bcv->push_back(b);
-    output->push(bcv);
-    nSlicesOut++;
-    continue;
- }   
+   }   
 
     for (int j=0;j<1024;j++) {
       if (inputs[i]->isEmpty()) {
