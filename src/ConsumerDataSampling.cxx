@@ -2,6 +2,7 @@
 
 #ifdef WITH_FAIRMQ
 
+#include <thread>
 #include <fairmq/FairMQDevice.h>
 #include <fairmq/FairMQMessage.h>
 #include <fairmq/FairMQTransportFactory.h>
@@ -20,7 +21,6 @@ class ConsumerDataSampling: public Consumer {
 
       void Run() override {
         while (CheckCurrentState(RUNNING)) {
-          //printf("loop Run()\n");
           usleep(200000);
         }
       }
@@ -39,7 +39,7 @@ class ConsumerDataSampling: public Consumer {
   private:
     std::vector<FairMQChannel> channels;
     FMQSender sender;
-
+    std::thread deviceThread;
 
     // todo: check why this type is not public in FMQ interface?
     typedef std::unordered_map<std::string, std::vector<FairMQChannel>> FairMQMap;
@@ -47,8 +47,9 @@ class ConsumerDataSampling: public Consumer {
 
     std::shared_ptr<FairMQTransportFactory> transportFactory;
 
-  public: 
+  public:
   ConsumerDataSampling(ConfigFile &cfg, std::string cfgEntryPoint) : Consumer(cfg,cfgEntryPoint), channels(1) {
+    channels[0].UpdateChannelName("data-out");
     channels[0].UpdateType("pub");  // pub or push?
     channels[0].UpdateMethod("bind");
     channels[0].UpdateAddress("ipc:///tmp/readout-pipe-1");
@@ -57,7 +58,6 @@ class ConsumerDataSampling: public Consumer {
     if (!channels[0].ValidateChannel()) {
       throw "ConsumerDataSampling: channel validation failed";
     }
-
 
     // todo: def "data-out" as const string to name output channel to which we will push
     m.emplace(std::string("data-out"),channels);
@@ -70,6 +70,8 @@ class ConsumerDataSampling: public Consumer {
     }
 
     transportFactory = FairMQTransportFactory::CreateTransportFactory("zeromq");
+
+    deviceThread = std::thread(&ConsumerDataSampling::runDevice, this);
 
     sender.fChannels = m;
     sender.SetTransport("zeromq");
@@ -88,11 +90,20 @@ class ConsumerDataSampling: public Consumer {
     sender.ChangeState(FairMQStateMachine::Event::RESET_DEVICE);
     sender.WaitForEndOfState(FairMQStateMachine::Event::RESET_DEVICE);
     sender.ChangeState(FairMQStateMachine::Event::END);
+
+    if (deviceThread.joinable()) {
+      deviceThread.join();
+    }
   }
   int pushData(DataBlockContainerReference &b) {
 
     // we create a copy of the reference, in a newly allocated object, so that reference is kept alive until this new object is destroyed in the cleanupCallback
     DataBlockContainerReference *ptr=new DataBlockContainerReference(b);
+
+    if (sender.CheckCurrentState(FairMQStateMachine::Event::RUN) ) {
+      LOG(ERROR) << "ConsumerDataSampling: Trying to send data when the device is not in RUN state";
+      return -1;
+    }
 
     std::unique_ptr<FairMQMessage> msgHeader(transportFactory->CreateMessage((void *)&(b->getData()->header), (size_t)(b->getData()->header.headerSize), cleanupCallback, (void *)nullptr));
     std::unique_ptr<FairMQMessage> msgBody(transportFactory->CreateMessage((void *)(b->getData()->data), (size_t)(b->getData()->header.dataSize), cleanupCallback, (void *)(ptr)));
@@ -106,6 +117,11 @@ class ConsumerDataSampling: public Consumer {
     return 0;
   }
   private:
+
+  void runDevice() {
+    sender.RunStateMachine();
+  }
+
 };
 
 
