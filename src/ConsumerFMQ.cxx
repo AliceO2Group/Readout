@@ -3,6 +3,7 @@
 
 #ifdef WITH_FAIRMQ
 
+#include <thread>
 #include <fairmq/FairMQDevice.h>
 #include <fairmq/FairMQMessage.h>
 #include <fairmq/FairMQTransportFactory.h>
@@ -49,9 +50,9 @@ class ConsumerFMQ: public Consumer {
     FairMQMap m;
 
     std::shared_ptr<FairMQTransportFactory> transportFactory;
+    std::thread deviceThread;
 
   public:
-
 
   ConsumerFMQ(ConfigFile &cfg, std::string cfgEntryPoint) : Consumer(cfg,cfgEntryPoint), channels(1) {
 
@@ -77,6 +78,8 @@ class ConsumerFMQ: public Consumer {
 
     transportFactory = FairMQTransportFactory::CreateTransportFactory("zeromq");
 
+    deviceThread = std::thread(&ConsumerFMQ::runDevice, this);
+
     sender.fChannels = m;
     sender.SetTransport("zeromq");
     sender.ChangeState(FairMQStateMachine::Event::INIT_DEVICE);
@@ -95,6 +98,10 @@ class ConsumerFMQ: public Consumer {
     sender.ChangeState(FairMQStateMachine::Event::RESET_DEVICE);
     sender.WaitForEndOfState(FairMQStateMachine::Event::RESET_DEVICE);
     sender.ChangeState(FairMQStateMachine::Event::END);
+
+    if (deviceThread.joinable()) {
+      deviceThread.join();
+    }
   }
 
   int pushData(DataBlockContainerReference &b) {
@@ -121,6 +128,10 @@ class ConsumerFMQ: public Consumer {
     return 0;
   }
   private:
+
+  void runDevice() {
+    sender.RunStateMachine();
+  }
 };
 
 
