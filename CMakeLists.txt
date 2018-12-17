@@ -39,18 +39,9 @@ set(VERSION_MINOR "0")
 set(VERSION_PATCH "0")
 set(VERSION ${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH})
 
-# C++14
-IF (CMAKE_VERSION VERSION_LESS 3.1)
-    include(CheckCXXCompilerFlag)
-    CHECK_CXX_COMPILER_FLAG(-std=c++14 COMPILER_SUPPORTS_CXX14)
-    if (COMPILER_SUPPORTS_CXX14)
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
-    else ()
-        message(ERROR "The compiler ${CMAKE_CXX_COMPILER} has no C++14 support. Please use a different C++ compiler.")
-    endif ()
-ELSE ()
-    set(CMAKE_CXX_STANDARD 14)  # proper way in CMake >= 3.1
-ENDIF ()
+# C++17
+set(CMAKE_CXX_STANDARD 17)
+
 
 # Add compiler flags for warnings and (more importantly) fPIC and debug symbols
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -pedantic -Wextra -fPIC -g")
