@@ -170,7 +170,7 @@ class ConsumerFileRecorder: public Consumer {
       }
       return 0;
     }
-    theLog.logError("File write error: %s");
+    theLog.logError("File write error: will stop recording now");
     closeRecordingFile();
     return -1;
   }
