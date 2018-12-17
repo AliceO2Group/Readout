@@ -1,6 +1,7 @@
 #include "Consumer.h"
 #include "ReadoutUtils.h"
 #include <iomanip>
+#include <errno.h>
 
 class ConsumerFileRecorder: public Consumer {
   public: 
@@ -112,7 +113,7 @@ class ConsumerFileRecorder: public Consumer {
     
     fp=fopen(newFileName.c_str(),"wb");
     if (fp==NULL) {
-      theLog.log("Failed to create file");
+      theLog.log(InfoLogger::Severity::Error,"Failed to create file: %s",strerror(errno));
       return -1;
     }
     return 0;
@@ -169,7 +170,7 @@ class ConsumerFileRecorder: public Consumer {
       }
       return 0;
     }
-    theLog.log("File write error");
+    theLog.logError("File write error: will stop recording now");
     closeRecordingFile();
     return -1;
   }
