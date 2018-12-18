@@ -100,14 +100,14 @@ underlying MemPool, with ad-hoc release callback.
 
 # Configuration
 
+A reference of readout configuration parameters is available in [a separate document](configurationParameters.md).
+
 Readout is configured with a ".ini"-formatted file. A documented example file is provided with the source code
 and distribution. Each readout component is configured in a different file section.
 The section name is used to get the type of the component to be instanciated.
 Equipments should be prefixed as [equipment-...].
 Consumers should be prefixed as [consumer-...].
 General settings are defined in section [readout].
-
-A reference of all configuration parameters is defined in the configurationParameters.md file.
 
 To setup a new readout configuration starting from the provided file, the basic steps are:
 - define a memory layout suitable for your readout.
