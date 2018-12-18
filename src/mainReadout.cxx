@@ -232,7 +232,7 @@ int main(int argc, char* argv[])
     catch (...) {    
     }
     if (b==nullptr) {
-      theLog.log("Failed to create memory bank %s",kName.c_str());
+      theLog.log(InfoLogger::Severity::Error,"Failed to create memory bank %s",kName.c_str());
       continue;
     }
     // cleanup the memory range
@@ -306,11 +306,11 @@ int main(int argc, char* argv[])
       }
     }
     catch (const std::exception& ex) {
-        theLog.log("Failed to configure consumer %s : %s",kName.c_str(), ex.what());
+        theLog.log(InfoLogger::Severity::Error,"Failed to configure consumer %s : %s",kName.c_str(), ex.what());
         continue;
     }
     catch (...) {
-        theLog.log("Failed to configure consumer %s",kName.c_str());
+        theLog.log(InfoLogger::Severity::Error,"Failed to configure consumer %s",kName.c_str());
         continue;
     }
 
@@ -355,17 +355,17 @@ int main(int argc, char* argv[])
       }
     }
     catch (std::string errMsg) {
-        theLog.log("Failed to configure equipment %s : %s",kName.c_str(),errMsg.c_str());
+        theLog.log(InfoLogger::Severity::Error,"Failed to configure equipment %s : %s",kName.c_str(),errMsg.c_str());
         nEquipmentFailures++;
         continue;
     }
     catch (int errNo) {
-        theLog.log("Failed to configure equipment %s : error #%d",kName.c_str(),errNo);
+        theLog.log(InfoLogger::Severity::Error,"Failed to configure equipment %s : error #%d",kName.c_str(),errNo);
         nEquipmentFailures++;
         continue;
     }
     catch (...) {
-        theLog.log("Failed to configure equipment %s",kName.c_str());
+        theLog.log(InfoLogger::Severity::Error,"Failed to configure equipment %s",kName.c_str());
         nEquipmentFailures++;
         continue;
     }
@@ -377,7 +377,7 @@ int main(int argc, char* argv[])
   }
 
   if (nEquipmentFailures) {
-    theLog.log("Some equipments failed to initialize, exiting");
+    theLog.log(InfoLogger::Severity::Fatal,"Some equipments failed to initialize, exiting");
     return -1;
   }
 

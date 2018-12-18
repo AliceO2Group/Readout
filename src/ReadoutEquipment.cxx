@@ -58,7 +58,7 @@ ReadoutEquipment::ReadoutEquipment(ConfigFile &cfg, std::string cfgEntryPoint) {
     
   // log config summary
   theLog.log("Equipment %s: from config [%s], max rate=%lf Hz, idleSleepTime=%d us, outputFifoSize=%d", name.c_str(), cfgEntryPoint.c_str(), readoutRate, cfgIdleSleepTime, cfgOutputFifoSize);
-  theLog.log("Equipment %s: requesting memory pool %d pages x %d bytes from bank %s, block aligned @ 0x%X, 1st page offset @ 0x%X", name.c_str(),(int) memoryPoolNumberOfPages, (int) memoryPoolPageSize, memoryBankName.c_str(),(int)cfgBlockAlign,(int)cfgFirstPageOffset);
+  theLog.log("Equipment %s: requesting memory pool %d pages x %d bytes from bank '%s', block aligned @ 0x%X, 1st page offset @ 0x%X", name.c_str(),(int) memoryPoolNumberOfPages, (int) memoryPoolPageSize, memoryBankName.c_str(),(int)cfgBlockAlign,(int)cfgFirstPageOffset);
   if (disableOutput) {
     theLog.log("Equipment %s: output DISABLED ! Data will be readout and dropped immediately",name.c_str());
   }
@@ -88,8 +88,14 @@ ReadoutEquipment::ReadoutEquipment(ConfigFile &cfg, std::string cfgEntryPoint) {
     firstPageOffset=cfgFirstPageOffset-pageSpaceReserved;
   }
   theLog.log("pageSpaceReserved = %d, aligning 1st page @ 0x%X",(int)pageSpaceReserved,(int)firstPageOffset);
-  mp=theMemoryBankManager.getPagedPool(memoryPoolPageSize, memoryPoolNumberOfPages, memoryBankName, firstPageOffset, cfgBlockAlign);
+  mp=nullptr;
+  try {
+    mp=theMemoryBankManager.getPagedPool(memoryPoolPageSize, memoryPoolNumberOfPages, memoryBankName, firstPageOffset, cfgBlockAlign);
+  }
+  catch(...) {
+  }
   if (mp==nullptr) {
+    theLog.log(InfoLogger::Severity::Error,"Failed to create pool of memory pages");
     throw __LINE__;
   }
 

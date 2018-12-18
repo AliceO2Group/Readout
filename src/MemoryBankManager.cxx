@@ -1,5 +1,8 @@
 #include "MemoryBankManager.h"
 
+#include <InfoLogger/InfoLogger.hxx>
+using namespace AliceO2::InfoLogger;
+extern InfoLogger theLog;
 
 MemoryBankManager::MemoryBankManager() {
 }
@@ -40,6 +43,11 @@ std::shared_ptr<MemoryPagesPool>  MemoryBankManager::getPagedPool(size_t pageSiz
   {
     std::unique_lock<std::mutex> lock(bankMutex);
 
+    if (banks.size()==0) {
+      theLog.log(InfoLogger::Severity::Error,"Can not create memory pool: no memory bank defined");
+      return nullptr;
+    }
+
     // look for corresponding named bank
     // if not specified, used first one...
     unsigned int ix=0;
@@ -55,11 +63,15 @@ std::shared_ptr<MemoryPagesPool>  MemoryBankManager::getPagedPool(size_t pageSiz
       if (banks.size()) {
 	ix=0;
 	bankFound=true;
+        theLog.log(InfoLogger::Severity::Info,"Bank name not specified, using first one (%s)",banks[ix].name.c_str());	
       }
     }
     if (!bankFound) {
+      theLog.log(InfoLogger::Severity::Error,"Can not find specified memory bank '%s'",bankName.c_str());
       return nullptr;
     }
+
+    //theLog.log(InfoLogger::Severity::Info,"Allocating %ld x %ld bytes from memory bank '%s'",pageNumber,pageSize,banks[ix].name.c_str());
 
     // reserve space from big block 
     baseAddress=banks[ix].bank->getBaseAddress();
@@ -86,6 +98,7 @@ std::shared_ptr<MemoryPagesPool>  MemoryBankManager::getPagedPool(size_t pageSiz
     
     // check not exceeding bank size
     if (offset+blockSize>banks[ix].bank->getSize()) {
+      theLog.log(InfoLogger::Severity::Error,"Not enough space left in memory bank '%s' (need %ld bytes more)",banks[ix].name.c_str(),offset+blockSize-banks[ix].bank->getSize());
       throw std::bad_alloc();
     }
 
