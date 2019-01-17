@@ -18,6 +18,12 @@ ReadoutEquipment::ReadoutEquipment(ConfigFile &cfg, std::string cfgEntryPoint) {
   // configuration parameter: | equipment-* | name | string| | Name used to identify this equipment (in logs). By default, it takes the name of the configuration section, equipment-xxx |
   cfg.getOptionalValue<std::string>(cfgEntryPoint + ".name", name, cfgEntryPoint);
 
+  // A number to identify equipment (used e.g. to tag data produced by this equipment)
+  // configuration parameter: | equipment-* | id | int| | Optional. Number used to identify equipment (used e.g. in file recording). Range 1-65535.|
+  int cfgEquipmentId=undefinedEquipmentId;
+  cfg.getOptionalValue<int>(cfgEntryPoint + ".id", cfgEquipmentId);
+  id=(uint16_t)cfgEquipmentId; // int to 16-bit value
+
   // target readout rate in Hz, -1 for unlimited (default). Global parameter, same for all equipments.
   // configuration parameter: | readout | rate | double | -1 | Data rate limit, per equipment, in Hertz. -1 for unlimited. |
   cfg.getOptionalValue<double>("readout.rate", readoutRate, -1.0);
@@ -135,7 +141,7 @@ void ReadoutEquipment::stop() {
   
   theLog.log("Average pages pushed per iteration: %.1f",equipmentStats[EquipmentStatsIndexes::nBlocksOut].get()*1.0/(equipmentStats[EquipmentStatsIndexes::nLoop].get()-equipmentStats[EquipmentStatsIndexes::nIdle].get()));
   theLog.log("Average fifoready occupancy: %.1f",equipmentStats[EquipmentStatsIndexes::fifoOccupancyFreeBlocks].get()*1.0/(equipmentStats[EquipmentStatsIndexes::nLoop].get()-equipmentStats[EquipmentStatsIndexes::nIdle].get()));
-  theLog.log("Average data throughput: %s",ReadoutUtils::NumberOfBytesToString(equipmentStats[EquipmentStatsIndexes::nBytesOut].get()/runningTime,"Bytes/s").c_str());
+  theLog.log("Average data throughput: %s",ReadoutUtils::NumberOfBytesToString(equipmentStats[EquipmentStatsIndexes::nBytesOut].get()/runningTime,"B/s").c_str());
 }
 
 ReadoutEquipment::~ReadoutEquipment() {
@@ -196,6 +202,8 @@ Thread::CallbackResult  ReadoutEquipment::threadCallback(void *arg) {
       if (nextBlock==nullptr) {
         break;
       }
+      // tag data with equipment Id
+      nextBlock->getData()->header.equipmentId=ptr->id;
 
       if (!ptr->disableOutput) {
         // push new page to output fifo
