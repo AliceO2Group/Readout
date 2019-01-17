@@ -3,49 +3,143 @@
 #include <iomanip>
 #include <errno.h>
 
+
+// a struct to store info related to one file
+class FileHandle {
+  public:
+  
+  FileHandle(std::string &_path, InfoLogger *_theLog=nullptr, unsigned long long _maxFileSize=0) {
+    theLog=_theLog;
+    path=_path;
+    counterBytesTotal=0;
+    maxFileSize=_maxFileSize;
+    if (theLog!=nullptr) {
+      theLog->log("Opening file for writing: %s", path.c_str());
+    }
+    fp=fopen(path.c_str(),"wb");
+    if (fp==NULL) {
+      if (theLog!=nullptr) {
+        theLog->log(InfoLogger::Severity::Error,"Failed to create file: %s", strerror(errno));
+      }
+      return;
+    }
+    isOk=true;
+  }
+  
+  ~FileHandle() {
+    close();
+  }
+
+  void close() {
+    if (fp!=NULL) {
+      if (theLog!=nullptr) {
+	theLog->log("Closing file %s : %llu bytes (~%s)", path.c_str(), counterBytesTotal, ReadoutUtils::NumberOfBytesToString(counterBytesTotal,"B").c_str());
+      }
+      fclose(fp);
+      fp=NULL;
+    }
+    isOk=false;
+  }
+
+  // write to file
+  // data given by 'ptr', number of bytes given by 'size'
+  // return one of the status code below
+  enum Status {Success=0, Error=-1, MaxFileSize=1};
+  FileHandle::Status write(void *ptr, size_t size) {
+    if (isFull) {
+      // report only first occurence of MaxFileSize
+      return Status::Success;
+    }
+    if ((size<=0) || (ptr==nullptr)) {
+      return Status::Success;
+    }
+    if ((maxFileSize)&&(counterBytesTotal+size>maxFileSize)) {
+      if (theLog!=nullptr) {
+	theLog->log("Maximum file size reached");
+      }
+      isFull=true;
+      close();
+      return Status::MaxFileSize;
+    }
+    if (fp==NULL) {
+      return Status::Error;
+    }
+    if (fwrite(ptr,size,1,fp)!=1) {
+      return Status::Error;
+    }
+    counterBytesTotal+=size;
+    //printf("%s: %llu bytes\n",path.c_str(),counterBytesTotal);
+    return Status::Success;
+  }
+
+  bool isFileOk() {return isOk;}
+
+  private:
+  std::string path="";                      // path to the file (final, after variables substitution)
+  unsigned long long counterBytesTotal=0;   // number of bytes written to file
+  unsigned long long maxFileSize=0;     // max number of bytes to write to file (0=no limit)
+  FILE *fp=NULL;                            // handle to file for I/O
+  InfoLogger *theLog=nullptr;               // handle to infoLogger for messages
+  bool isFull=false;                        // flag set when maximum file size reached
+  bool isOk=false;                          // flag set when file ready for writing
+};
+
+
+
 class ConsumerFileRecorder: public Consumer {
   public: 
   
   ConsumerFileRecorder(ConfigFile &cfg, std::string cfgEntryPoint):Consumer(cfg,cfgEntryPoint) {
-    counterBytesTotal=0;
-    fp=NULL;
     
-    // configuration parameter: | consumer-fileRecorder-* | fileName | string |  | Path to the file where to record data. The following variables are replaced at runtime: ${XXX} -> get variable XXX from environment, %t -> unix timestamp (seconds since epoch), %T -> formatted date/time. |
+    // configuration parameter: | consumer-fileRecorder-* | fileName | string |  | Path to the file where to record data. The following variables are replaced at runtime: ${XXX} -> get variable XXX from environment, %t -> unix timestamp (seconds since epoch), %T -> formatted date/time, %i -> equipment ID of each data chunk (used to write data from different equipments to different output files). |
     fileName=cfg.getValue<std::string>(cfgEntryPoint + ".fileName");
-    if (fileName.length()>0) {
-      theLog.log("Recording path = %s",fileName.c_str());
-      createFile();
-    }
-    if (fp==NULL) {
-      theLog.log("Recording disabled");
-    } else {
-      theLog.log("Recording enabled");
-    }
+    theLog.log("Recording path = %s",fileName.c_str());
     
-    // configuration parameter: | consumer-fileRecorder-* | bytesMax | bytes | 0 | Maximum number of bytes to write to file. Data pages are never truncated, so if writing the full page would exceed this limit, no data from that page is written at all and file is closed. If zero (default), no maximum size set.|
+    // configuration parameter: | consumer-fileRecorder-* | bytesMax | bytes | 0 | Maximum number of bytes to write to each file. Data pages are never truncated, so if writing the full page would exceed this limit, no data from that page is written at all and file is closed. If zero (default), no maximum size set.|
     std::string sMaxBytes;
     if (cfg.getOptionalValue<std::string>(cfgEntryPoint + ".bytesMax",sMaxBytes)==0) {
-      counterBytesMax=ReadoutUtils::getNumberOfBytesFromString(sMaxBytes.c_str());
-      if (counterBytesMax) {
-        theLog.log("Maximum recording size: %lld bytes",counterBytesMax);
+      maxFileSize=ReadoutUtils::getNumberOfBytesFromString(sMaxBytes.c_str());
+      if (maxFileSize) {
+        theLog.log("Maximum recording size: %lld bytes",maxFileSize);
       }
     }
     
     // configuration parameter: | consumer-fileRecorder-* | dataBlockHeaderEnabled | int | 0 | Enable (1) or disable (0) the writing to file of the internal readout header (Common::DataBlockHeaderBase struct) between the data pages, to easily navigate through the file without RDH decoding. If disabled, the raw data pages received from CRU are written without further formatting. |
     cfg.getOptionalValue(cfgEntryPoint + ".dataBlockHeaderEnabled", recordWithDataBlockHeader, 0);
-    theLog.log("Recording internal data block headers = %d",recordWithDataBlockHeader);
+    theLog.log("Recording internal data block headers = %d",recordWithDataBlockHeader);    
+
+    // check status
+    if (createFile()==0) {
+      recordingEnabled=true;
+      theLog.log("Recording enabled");
+    } else {
+      theLog.log(InfoLogger::Severity::Warning,"Recording disabled");
+    }
   }
+
   ~ConsumerFileRecorder() {
-    closeRecordingFile();
+    if (defaultFile!=nullptr) {
+      defaultFile->close();
+      defaultFile=nullptr;
+    }
+    for (auto& kv : fileEqMap) {
+      kv.second->close();
+    }
   }
   
-  int createFile() {
-    // create the file name according to specified path
-    
+  // create handle to recording file based on configuration
+  // optional params:
+  // equipmentID: use given equipment Id
+  // delayIfEquipmentId: when set, file is not created immediately
+  // getNewFp: if not null, function will copy handle to created file in the given variable
+  int createFile(std::shared_ptr<FileHandle> *getNewHandle=nullptr, int equipmentId=undefinedEquipmentId, bool delayIfEquipmentId=true) {
+
+    // create the file name according to specified path    
     // parse the string, and subst variables:
     // ${XXX} -> get variable XXX from environment
     // %t -> unix timestamp (seconds since epoch)
     // %T -> formatted date/time
+    // %i -> equipment ID of each data chunk (used to write data from different equipments to different output files).
     
     std::string newFileName;
     
@@ -91,7 +185,14 @@ class ConsumerFileRecorder: public Consumer {
             std::stringstream buffer;
             buffer << std::put_time(&tm, "%Y_%m_%d__%H_%M_%S__");
             newFileName+=buffer.str();
-          } else {
+          } else if (*it=='i') {
+	    if (equipmentId==undefinedEquipmentId) {
+	      newFileName+="undefined";
+	    } else {	    
+	      newFileName+=std::to_string(equipmentId);
+	    }
+	    perEquipmentRecordingFile=true;
+	  } else {
             parseError++;
           }
         } else {
@@ -106,88 +207,122 @@ class ConsumerFileRecorder: public Consumer {
       }
     }  
     if (parseError) {
-      theLog.log("Failed to parse recording file path");
+      theLog.log(InfoLogger::Severity::Error,"Failed to parse recording file path");
       return -1;
     }
-    theLog.log(("Opening file for writing: " + newFileName).c_str());
     
-    fp=fopen(newFileName.c_str(),"wb");
-    if (fp==NULL) {
-      theLog.log(InfoLogger::Severity::Error,"Failed to create file: %s",strerror(errno));
+    if ((perEquipmentRecordingFile)&&(delayIfEquipmentId)) {
+      // delay file creation to arrival of data... equipmentId is not known yet !
+      theLog.log("Per-equipment recording file selected, opening of file(s) delayed (until data available)");
+      return 0;
+    }
+      
+    // create file handle    
+    std::shared_ptr<FileHandle> newHandle=std::make_shared<FileHandle>(newFileName,&theLog,maxFileSize);
+    if (!newHandle->isFileOk()) {
+      // no need to log a special message, error printed by FileHandle constructor
       return -1;
     }
+
+    // store new handle where appropriate
+    if (perEquipmentRecordingFile) {
+      fileEqMap.insert(FilePerEquipmentPair(equipmentId,newHandle));
+    } else {
+      defaultFile=newHandle;
+    }
+
+    // return a copy of new file handle
+    if (getNewHandle!=nullptr) {
+      *getNewHandle=newHandle;
+    }
+    
     return 0;
   }
   
-  // fwrite function with partial write auto-retry
-  int writeToFile(FILE *fp, void *data, size_t numberOfBytes) {
-    unsigned char *buffer=(unsigned char *)data;
-    for (int i=0;i<1024;i++) {
-      //theLog.log("write %ld @ %lp",numberOfBytes,buffer);
-      size_t bytesWritten=fwrite(buffer,1,numberOfBytes,fp);
-      //if (bytesWritten<0) {break;}
-      if (bytesWritten>numberOfBytes) {break;}
-      if (bytesWritten==0) {usleep(1000);}
-      if (bytesWritten==numberOfBytes) {return 0;}
-      numberOfBytes-=bytesWritten;
-      buffer=&buffer[bytesWritten];
-    }
-    return -1;
-  }
-  
+
   int pushData(DataBlockContainerReference &b) {
 
-    for(;;) {
-      if (fp!=NULL) {
-        void *ptr=nullptr;
-        size_t size=0;
-        if (recordWithDataBlockHeader) {
-          // write header
-          // as-is, some fields like data pointer will not be meaningful in file unless corrected. todo: correct them, e.g. replace data pointer by file offset.
-          ptr=&b->getData()->header;
-          size=b->getData()->header.headerSize;
-          //theLog.log("Writing header: %ld bytes @ %lp",(long)size,ptr);
-          if ((counterBytesMax)&&(counterBytesTotal+size>counterBytesMax)) {theLog.log("Maximum file size reached"); closeRecordingFile(); return 0;}
-          //if (writeToFile(fp,ptr,size)) {
-          if (fwrite(ptr,size,1,fp)!=1) {
-            break;
-          }
-          counterBytesTotal+=size;
-        }
-        // write payload data     
-        ptr=b->getData()->data;
-        size=b->getData()->header.dataSize;
-        //theLog.log("Writing payload: %ld bytes @ %lp",(long)size,ptr);
-        if ((counterBytesMax)&&(counterBytesTotal+size>counterBytesMax)) {theLog.log("Maximum file size reached"); closeRecordingFile(); return 0;}
-        if ((size>0)&&(ptr!=nullptr)) {
-          //if (writeToFile(fp,ptr,size)) {
-          if (fwrite(ptr,size,1,fp)!=1) {
-            break;
-          }
-        }
-        counterBytesTotal+=size;
-        //theLog.log("File size: %ld bytes",(long)counterBytesTotal);
+    // do nothing if recording disabled
+    if (!recordingEnabled) {
+      return 0;
+    }
+    
+    // the file handle to be used for this block
+    // by default, the main file
+    std::shared_ptr<FileHandle> fpUsed;
+    
+    // does it depend on equipmentId ?
+    if (perEquipmentRecordingFile) {
+      // select appropriate file for recording
+      int eqId=b->getData()->header.equipmentId;
+      // is there already a file for this equipment?
+      FilePerEquipmentMapIterator it;
+      it=fileEqMap.find(eqId);
+      if (it == fileEqMap.end()) {
+        createFile(&fpUsed,eqId,false);
+      } else {
+        fpUsed=it->second;
+      }
+    } else {
+      fpUsed=defaultFile;
+    }
+ 
+    if (fpUsed==nullptr) {
+      theLog.logError("No valid file available: will stop recording now");
+      recordingEnabled=false;
+      return -1;
+    }
+        
+    void *ptr=nullptr;
+    size_t size=0;
+    FileHandle::Status status=FileHandle::Status::Success;
+    if ((status==FileHandle::Status::Success) && (recordWithDataBlockHeader)) {
+      // write header
+      // as-is, some fields like data pointer will not be meaningful in file unless corrected. todo: correct them, e.g. replace data pointer by file offset.
+      ptr=&b->getData()->header;
+      size=b->getData()->header.headerSize;
+      status=fpUsed->write(ptr,size);
+    }
+    if ((status==FileHandle::Status::Success)) {
+      // write payload data     
+      ptr=b->getData()->data;
+      size=b->getData()->header.dataSize;
+      status=fpUsed->write(ptr,size);
+    }
+    if (status==FileHandle::Status::Success) {
+      return 0;
+    }
+    if (status==FileHandle::Status::MaxFileSize) {
+      if (!perEquipmentRecordingFile) {
+        recordingEnabled=false; // no need to further try to write data somewhere if single file
       }
       return 0;
     }
+
     theLog.logError("File write error: will stop recording now");
-    closeRecordingFile();
+    recordingEnabled=false;
+    fpUsed->close();
     return -1;
   }
+
+  
   private:
-    unsigned long long counterBytesTotal;
-    unsigned long long counterBytesMax=0;
-    FILE *fp;
-    int recordingEnabled;
-    int recordWithDataBlockHeader=0; // if set, internal readout headers are included in file
-    std::string fileName;
-    void closeRecordingFile() {
-      if (fp!=NULL) {
-        theLog.log("Closing %s",fileName.c_str());
-        fclose(fp);
-        fp=NULL;
-      }
-    }
+
+
+    std::shared_ptr<FileHandle> defaultFile;  // the file to be used by default
+    
+    typedef std::map<int, std::shared_ptr<FileHandle>> FilePerEquipmentMap;
+    typedef std::map<int, std::shared_ptr<FileHandle>>::iterator FilePerEquipmentMapIterator;
+    typedef std::pair<int, std::shared_ptr<FileHandle>> FilePerEquipmentPair;
+    FilePerEquipmentMap fileEqMap;             // a map to store a file handle for each equipmentId
+    bool perEquipmentRecordingFile=false;	// when set, use one recording file per data-generating equipment (from the "equipmentId" tag in data block header)
+    
+    bool recordingEnabled=false;  // if not set, recording is disabled
+
+    // from configuration
+    std::string fileName="";                 // path/filename to be used for recording (may include variables evaluated at runtime, on file creation)
+    int recordWithDataBlockHeader=0;         // if set, internal readout headers are included in file
+    unsigned long long maxFileSize=0;    // maximum number of bytes to write (in each file)
 };
 
 

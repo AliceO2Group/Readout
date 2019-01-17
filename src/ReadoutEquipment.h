@@ -93,6 +93,8 @@ class ReadoutEquipment {
   // unsigned long long nBlocksOut;
   double readoutRate;
   std::string name;  // name of the equipment
+
+  uint16_t id=undefinedEquipmentId; // id of equipment (optional, used to tag data blocks)
   
   std::shared_ptr<MemoryPagesPool> mp; // a memory pool from which to allocate data pages
   int memoryPoolPageSize=0; // size if each page in pool

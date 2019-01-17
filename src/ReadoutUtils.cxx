@@ -54,7 +54,16 @@ std::string ReadoutUtils::NumberOfBytesToString(double value,const char*suffix) 
   if (suffix==nullptr) {
     suffix="";
   }
-  snprintf(bufStr,sizeof(bufStr)-1,"%.03lf %s%s",scaledValue,prefixes[prefixIndex],suffix);
+  // optimize number of digits displayed
+  int l=(int)floor(log10(fabs(scaledValue)));
+  if (l<0) {
+    l=3;
+  } else if (l<=3) {
+    l=3-l;
+  } else {
+    l=0;
+  }
+  snprintf(bufStr,sizeof(bufStr)-1,"%.*lf %s%s",l,scaledValue,prefixes[prefixIndex],suffix);
   return std::string(bufStr);  
 }
 
