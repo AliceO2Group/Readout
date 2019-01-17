@@ -48,6 +48,7 @@ The parameters related to 3rd-party libraries are described here for convenience
 | equipment-* | enabled | int | 1 | Enable (value=1) or disable (value=0) the equipment. |
 | equipment-* | equipmentType | string |  | The type of equipment to be instanciated. One of: dummy, rorc, cruEmulator |
 | equipment-* | name | string| | Name used to identify this equipment (in logs). By default, it takes the name of the configuration section, equipment-xxx |
+| equipment-* | id | int| | Optional. Number used to identify equipment (used e.g. in file recording). Range 1-65535.|
 | equipment-* | idleSleepTime | int | 200 | Thread idle sleep time, in microseconds. |
 | equipment-* | outputFifoSize | int | 1000 | Size of output fifo (number of pages). |
 | equipment-* | memoryBankName | string | | Name of bank to be used. By default, it uses the first available bank declared. |
@@ -84,8 +85,8 @@ The parameters related to 3rd-party libraries are described here for convenience
 | consumer-stats-* | monitoringUpdatePeriod | int | 10 | Period of readout monitoring updates. |
 | consumer-stats-* | processMonitoringInterval | int | 0 | Period of process monitoring updates (O2 standard metrics). If zero (default), disabled.|
 | consumer-stats-* | monitoringURI | string |  | URI to connect O2 monitoring service. c.f. o2::monitoring. |
-| consumer-fileRecorder-* | fileName | string |  | Path to the file where to record data. The following variables are replaced at runtime: ${XXX} -> get variable XXX from environment, %t -> unix timestamp (seconds since epoch), %T -> formatted date/time. |
-| consumer-fileRecorder-* | bytesMax | bytes | 0 | Maximum number of bytes to write to file. Data pages are never truncated, so if writing the full page would exceed this limit, no data from that page is written at all and file is closed. If zero (default), no maximum size set.|
+| consumer-fileRecorder-* | fileName | string |  | Path to the file where to record data. The following variables are replaced at runtime: ${XXX} -> get variable XXX from environment, %t -> unix timestamp (seconds since epoch), %T -> formatted date/time, %i -> equipment ID of each data chunk (used to write data from different equipments to different output files). |
+| consumer-fileRecorder-* | bytesMax | bytes | 0 | Maximum number of bytes to write to each file. Data pages are never truncated, so if writing the full page would exceed this limit, no data from that page is written at all and file is closed. If zero (default), no maximum size set.|
 | consumer-fileRecorder-* | dataBlockHeaderEnabled | int | 0 | Enable (1) or disable (0) the writing to file of the internal readout header (Common::DataBlockHeaderBase struct) between the data pages, to easily navigate through the file without RDH decoding. If disabled, the raw data pages received from CRU are written without further formatting. |
 | consumer-FMQchannel-* | disableSending | int | 0 | If set, no data is output to FMQ channel. Used for performance test to create FMQ shared memory segment without pushing the data. |
 | consumer-FMQchannel-* | sessionName | string | default | Name of the FMQ session. c.f. FairMQ::FairMQChannel.h |
