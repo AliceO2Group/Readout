@@ -43,7 +43,7 @@ The parameters related to 3rd-party libraries are described here for convenience
 | readout | disableAggregatorSlicing | int | 0 | When set, the aggregator slicing is disabled, data pages are passed through without grouping/slicing. |
 | bank-* | enabled | int | 1 | Enable (value=1) or disable (value=0) the memory bank. |
 | bank-* | size | bytes | | Size of the memory bank, in bytes. |
-| bank-* | type | string| | Support used to allocate memory. Possible values: malloc, MemoryMappedFile. |
+| bank-* | type | string| | Support used to allocate memory. Possible values: malloc, MemoryMappedFile. For MemoryMappedFile, the name given to the bank (bank-*) is reused in the filesystem namespace to create the resource, so make sure it is unique on a given machine for all instances of readout. |
 | bank-* | numaNode | int | -1| Numa node where memory should be bound. -1 means unspecified (system will choose). |
 | equipment-* | enabled | int | 1 | Enable (value=1) or disable (value=0) the equipment. |
 | equipment-* | equipmentType | string |  | The type of equipment to be instanciated. One of: dummy, rorc, cruEmulator |
