@@ -4,5 +4,6 @@ This file describes the main feature changes for each readout.exe released versi
 
 ## [next tag] - [release date]
 - Addition of release notes.
+- Added configuration paramters for consumer-FMQchannel: enableRawFormat, fmqProgOptions
 
 

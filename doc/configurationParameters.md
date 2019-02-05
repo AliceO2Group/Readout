@@ -89,6 +89,7 @@ The parameters related to 3rd-party libraries are described here for convenience
 | consumer-fileRecorder-* | bytesMax | bytes | 0 | Maximum number of bytes to write to each file. Data pages are never truncated, so if writing the full page would exceed this limit, no data from that page is written at all and file is closed. If zero (default), no maximum size set.|
 | consumer-fileRecorder-* | dataBlockHeaderEnabled | int | 0 | Enable (1) or disable (0) the writing to file of the internal readout header (Common::DataBlockHeaderBase struct) between the data pages, to easily navigate through the file without RDH decoding. If disabled, the raw data pages received from CRU are written without further formatting. |
 | consumer-FMQchannel-* | disableSending | int | 0 | If set, no data is output to FMQ channel. Used for performance test to create FMQ shared memory segment without pushing the data. |
+| consumer-FMQchannel-* | enableRawFormat | int | 0 | If set, data is pushed in raw format without additional headers, 1 FMQ message per data page. |
 | consumer-FMQchannel-* | sessionName | string | default | Name of the FMQ session. c.f. FairMQ::FairMQChannel.h |
 | consumer-FMQchannel-* | transportType | string | shmem| Name of the FMQ transport. Typically: zeromq or shmem. c.f. FairMQ::FairMQChannel.h |
 | consumer-FMQchannel-* | channelName | string | readout | Name of the FMQ channel. c.f. FairMQ::FairMQChannel.h |
@@ -98,6 +99,7 @@ The parameters related to 3rd-party libraries are described here for convenience
 | consumer-FMQchannel-* | unmanagedMemorySize | bytes |  | Size of the memory region to be created. c.f. FairMQ::FairMQUnmanagedRegion.h. If not set, no special FMQ memory region is created. |
 | consumer-FMQchannel-* | memoryPoolPageSize | bytes | 0 | c.f. same parameter in bank-*. |
 | consumer-FMQchannel-* | memoryPoolNumberOfPages | int | 100 | c.f. same parameter in bank-*. |
+| consumer-FMQchannel-* | fmqProgOptions | string |  | Additional FMQ program options parameters, as a comma-separated list of key=value pairs. |
 | receiverFMQ | transportType | string | shmem | c.f. parameter with same name in consumer-FMQchannel-* |
 | receiverFMQ | channelName | string | readout | c.f. parameter with same name in consumer-FMQchannel-* |
 | receiverFMQ | channelType | string | pair | c.f. parameter with same name in consumer-FMQchannel-* |
