@@ -1,4 +1,5 @@
 #include "Consumer.h"
+#include "ReadoutUtils.h"
 
 #include <Common/DataBlock.h>
 #include <Common/DataBlockContainer.h>
@@ -20,28 +21,6 @@ using namespace o2::monitoring;
 
 // macro to get number of element in static array
 #define STATIC_ARRAY_ELEMENT_COUNT(x) sizeof(x)/sizeof(x[0])
-
-// function to convert a value in bytes to a prefixed number 3+3 digits
-// suffix is the "base unit" to add after calculated prefix, e.g. Byte-> kBytes
-std::string NumberOfBytesToString(double value, const char*suffix, int base=1024) {
-  const char *prefixes[]={"","k","M","G","T","P"};
-  int maxPrefixIndex=STATIC_ARRAY_ELEMENT_COUNT(prefixes)-1;
-  int prefixIndex=log(value)/log(base);
-  if (prefixIndex>maxPrefixIndex) {
-    prefixIndex=maxPrefixIndex;
-  }
-  if (prefixIndex<0) {
-    prefixIndex=0;
-  }
-  double scaledValue=value/pow(base,prefixIndex);
-  char bufStr[64];
-  if (suffix==nullptr) {
-    suffix="";
-  }
-  snprintf(bufStr,sizeof(bufStr)-1,"%.03lf %s%s",scaledValue,prefixes[prefixIndex],suffix);
-  return std::string(bufStr);
-}
-
 
 
 
