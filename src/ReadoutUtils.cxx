@@ -1,6 +1,6 @@
 #include "ReadoutUtils.h"
 #include <math.h>
-
+#include <sstream>
 
 #include "RAWDataHeader.h"
 
@@ -72,4 +72,37 @@ void dumpRDH(o2::Header::RAWDataHeader *rdh) {
   printf("\tTRG orbit=%d bc=%d\n",(int)rdh->triggerOrbit,(int)rdh->triggerBC);
   printf("\tHB  orbit=%d bc=%d\n",(int)rdh->heartbeatOrbit,(int)rdh->heartbeatBC);
   printf("\tfeeId=%d\tlinkId=%d\n",(int)rdh->feeId,(int)rdh->linkId);
+}
+
+int getKeyValuePairsFromString(const std::string &input, std::map<std::string,std::string> &output){   
+  std::string s;
+  output.clear();
+  while (getline(std::istringstream(input), s, ',')) {
+      std::size_t ix = s.find("=");
+      if (ix!=std::string::npos) {
+	output.insert(std::pair<std::string,std::string>(s.substr(0,ix),s.substr(ix)));
+      } else {
+	return -1;
+      }
+  }
+  return 0;
+}
+
+std::string NumberOfBytesToString(double value, const char*suffix, int base) {
+  const char *prefixes[]={"","k","M","G","T","P"};
+  int maxPrefixIndex=STATIC_ARRAY_ELEMENT_COUNT(prefixes)-1;
+  int prefixIndex=log(value)/log(base);
+  if (prefixIndex>maxPrefixIndex) {
+    prefixIndex=maxPrefixIndex;
+  }
+  if (prefixIndex<0) {
+    prefixIndex=0;
+  }
+  double scaledValue=value/pow(base,prefixIndex);
+  char bufStr[64];
+  if (suffix==nullptr) {
+    suffix="";
+  }
+  snprintf(bufStr,sizeof(bufStr)-1,"%.03lf %s%s",scaledValue,prefixes[prefixIndex],suffix);
+  return std::string(bufStr);
 }

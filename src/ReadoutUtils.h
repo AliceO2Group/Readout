@@ -2,6 +2,7 @@
 #define _READOUTUTILS_H
 
 #include <string>
+#include <map>
 
 #include <Common/Configuration.h>
 
@@ -20,10 +21,17 @@ std::string NumberOfBytesToString(double value,const char*suffix);
 
 }
 
-
 // print RDH struct content to stdout
 void dumpRDH(o2::Header::RAWDataHeader *rdh);
 
+// parse a string of coma-separated key=value pairs into a map
+// e.g. key1=value1, key2=value2, key3=value3 ...
+// returns 0 on success, -1 on error
+int getKeyValuePairsFromString(const std::string &input, std::map<std::string,std::string> &output);
+
+// function to convert a value in bytes to a prefixed number 3+3 digits
+// suffix is the "base unit" to add after calculated prefix, e.g. Byte-> kBytes
+std::string NumberOfBytesToString(double value, const char*suffix, int base=1024);
 
 // end of _READOUTUTILS_H
 #endif
