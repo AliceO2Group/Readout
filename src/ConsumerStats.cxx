@@ -146,6 +146,7 @@ class ConsumerStats: public Consumer {
       theLog.log("Stats: average block size = %llu bytes",(unsigned long long)counterBytesTotal/counterBlocks);
       theLog.log("Stats: average block rate = %s",NumberOfBytesToString((counterBlocks)/elapsedTime,"Hz",1000).c_str());
       theLog.log("Stats: average throughput = %s",NumberOfBytesToString(counterBytesTotal/elapsedTime,"B/s").c_str());
+      theLog.log("Stats: average throughput = %s",NumberOfBytesToString(counterBytesTotal*8/elapsedTime,"bits/s",1000).c_str());
       theLog.log("Stats: elapsed time = %.5lfs",elapsedTime);
       publishStats();
     } else {
