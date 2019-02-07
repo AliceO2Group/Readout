@@ -100,6 +100,9 @@ The parameters related to 3rd-party libraries are described here for convenience
 | consumer-FMQchannel-* | memoryPoolPageSize | bytes | 0 | c.f. same parameter in bank-*. |
 | consumer-FMQchannel-* | memoryPoolNumberOfPages | int | 100 | c.f. same parameter in bank-*. |
 | consumer-FMQchannel-* | fmqProgOptions | string |  | Additional FMQ program options parameters, as a comma-separated list of key=value pairs. |
+| consumer-tcp-* | port | int | 10001 | Remote server TCP port number to connect to. |
+| consumer-tcp-* | host | string | localhost | Remote server IP name to connect to. |
+| consumer-tcp-* | ncx | int | 1 | Number of parallel streams (and threads) to use. The port number specified in 'port' parameter will be increased by 1 for each extra connection. |
 | receiverFMQ | transportType | string | shmem | c.f. parameter with same name in consumer-FMQchannel-* |
 | receiverFMQ | channelName | string | readout | c.f. parameter with same name in consumer-FMQchannel-* |
 | receiverFMQ | channelType | string | pair | c.f. parameter with same name in consumer-FMQchannel-* |
