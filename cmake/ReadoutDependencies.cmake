@@ -56,6 +56,8 @@ endif (Numa_FOUND)
 
 ADD_DEFINITIONS(-DWITH_DATASAMPLING)
 
+get_target_property(InfoLogger_INCLUDE_DIRS AliceO2::InfoLogger INTERFACE_INCLUDE_DIRECTORIES)
+
 o2_define_bucket(
         NAME
         o2_readout_bucket
@@ -69,7 +71,7 @@ o2_define_bucket(
         ${Configuration_LIBRARIES}
         ${Monitoring_LIBRARIES}
         ${Common_LIBRARIES}
-        ${InfoLogger_LIBRARIES}
+        AliceO2::InfoLogger
         ${ReadoutCard_LIBRARIES}
         ${DataSampling_LIBRARIES}
         ${Numa_LIBRARIES}
@@ -77,7 +79,6 @@ o2_define_bucket(
         SYSTEMINCLUDE_DIRECTORIES
         ${Boost_INCLUDE_DIRS}
         ${Monitoring_INCLUDE_DIRS}
-        ${InfoLogger_INCLUDE_DIRS}
         ${ReadoutCard_INCLUDE_DIRS}
         ${DataSampling_INCLUDE_DIRS}
         ${Configuration_INCLUDE_DIRS}
