@@ -47,7 +47,8 @@ class ConsumerFMQchannel: public Consumer {
     std::shared_ptr<FairMQTransportFactory> transportFactory;
     FairMQUnmanagedRegionPtr memoryBuffer=nullptr;
     bool disableSending=0;
-
+    bool enableRawFormat=false;
+    
     std::shared_ptr<MemoryBank> memBank;  // a dedicated memory bank allocated by FMQ mechanism
     std::shared_ptr<MemoryPagesPool> mp; // a memory pool from which to allocate data pages
 
@@ -67,6 +68,14 @@ class ConsumerFMQchannel: public Consumer {
     if (cfgDisableSending) {
       theLog.log("FMQ message sending disabled");
       disableSending=true;
+    }
+    
+    // configuration parameter: | consumer-FMQchannel-* | enableRawFormat | int | 0 | If set, data is pushed in raw format without additional headers, 1 FMQ message per data page. |
+    int cfgEnableRawFormat=0;
+    cfg.getOptionalValue<int>(cfgEntryPoint + ".enableRawFormat", cfgEnableRawFormat);
+    if (cfgEnableRawFormat) {
+      theLog.log("FMQ message output in raw format: 1 message per data page");
+      enableRawFormat=true;
     }
 
     // configuration parameter: | consumer-FMQchannel-* | sessionName | string | default | Name of the FMQ session. c.f. FairMQ::FairMQChannel.h |
@@ -93,6 +102,18 @@ class ConsumerFMQchannel: public Consumer {
 
     FairMQProgOptions fmqOptions;
     fmqOptions.SetValue<std::string>("session", cfgSessionName);
+
+    // configuration parameter: | consumer-FMQchannel-* | fmqProgOptions | string |  | Additional FMQ program options parameters, as a comma-separated list of key=value pairs. |
+    std::string cfgFmqOptions="";
+    cfg.getOptionalValue<std::string>(cfgEntryPoint + ".fmqProgOptions", cfgFmqOptions);
+    std::map<std::string,std::string> mapOptions;
+    if (getKeyValuePairsFromString(cfgFmqOptions,mapOptions)) {
+      throw("Can not parse configuration item fmqProgOptions");
+    }
+    for(auto &it: mapOptions) {
+      fmqOptions.SetValue<std::string>(it.first, it.second);
+      theLog.log("Setting FMQ option %s = %s",it.first.c_str(),it.second.c_str());
+    }
 
     transportFactory=FairMQTransportFactory::CreateTransportFactory(cfgTransportType, fair::mq::tools::Uuid(), &fmqOptions);
     sendingChannel=std::make_unique<FairMQChannel>(cfgChannelName, cfgChannelType, transportFactory);
@@ -167,9 +188,8 @@ class ConsumerFMQchannel: public Consumer {
     }
 
 
-    // debug mode to send in simple format
-    bool simpleSend=false;
-    if (simpleSend) {
+    // debug mode to send in simple raw format: 1 FMQ message per data page
+    if (enableRawFormat) {
       // we just ship one FMQmessage per incoming data page
       for (auto &br : *bc) {
         DataBlock *b=br->getData();

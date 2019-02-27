@@ -301,6 +301,8 @@ int main(int argc, char* argv[])
         newConsumer=getUniqueConsumerFileRecorder(cfg, kName);
       } else if (!cfgType.compare("checker")) {
         newConsumer=getUniqueConsumerDataChecker(cfg, kName);
+      } else if (!cfgType.compare("tcp")) {
+        newConsumer=getUniqueConsumerTCP(cfg, kName);
       } else {
         theLog.log("Unknown consumer type '%s' for [%s]",cfgType.c_str(),kName.c_str());
       }

@@ -1,4 +1,5 @@
 #include "Consumer.h"
+#include "ReadoutUtils.h"
 
 #include <Common/DataBlock.h>
 #include <Common/DataBlockContainer.h>
@@ -11,7 +12,7 @@
 
 #include <sys/time.h>
 #include <sys/resource.h>
-
+#include <unordered_map>
 
 
 #include <Monitoring/MonitoringFactory.h>
@@ -20,28 +21,6 @@ using namespace o2::monitoring;
 
 // macro to get number of element in static array
 #define STATIC_ARRAY_ELEMENT_COUNT(x) sizeof(x)/sizeof(x[0])
-
-// function to convert a value in bytes to a prefixed number 3+3 digits
-// suffix is the "base unit" to add after calculated prefix, e.g. Byte-> kBytes
-std::string NumberOfBytesToString(double value, const char*suffix, int base=1024) {
-  const char *prefixes[]={"","k","M","G","T","P"};
-  int maxPrefixIndex=STATIC_ARRAY_ELEMENT_COUNT(prefixes)-1;
-  int prefixIndex=log(value)/log(base);
-  if (prefixIndex>maxPrefixIndex) {
-    prefixIndex=maxPrefixIndex;
-  }
-  if (prefixIndex<0) {
-    prefixIndex=0;
-  }
-  double scaledValue=value/pow(base,prefixIndex);
-  char bufStr[64];
-  if (suffix==nullptr) {
-    suffix="";
-  }
-  snprintf(bufStr,sizeof(bufStr)-1,"%.03lf %s%s",scaledValue,prefixes[prefixIndex],suffix);
-  return std::string(bufStr);
-}
-
 
 
 
@@ -63,6 +42,14 @@ class ConsumerStats: public Consumer {
   struct rusage currentUsage; // variable to keep track of last getrusage() result  
   double timePreviousGetrusage=0; // variable storing 'runningTime' value when getrusage was previously called (0 if not called yet)
   double cpuUsedOverLastInterval=0; // average CPU usage over latest measurement interval
+  
+  // per-equipment statistics
+  struct EquipmentStats {
+    uint64_t counterBytesPayload=0;
+  };
+  typedef std::unordered_map<uint16_t, EquipmentStats> EquipmentStatsMap;
+  EquipmentStatsMap equipmentStatsMap;
+  
   
   
   void sendMetricNoException(Metric&& metric, DerivedMetricMode mode = DerivedMetricMode::NONE){
@@ -104,6 +91,13 @@ class ConsumerStats: public Consumer {
       sendMetricNoException({counterBytesDiff, "readout.BytesInterval"});
 //      sendMetricNoException({(counterBytesTotal/(1024*1024)), "readout.MegaBytesTotal"});
 
+      // per-equipment stats
+      for (auto &it : equipmentStatsMap) {
+        std::string metricName= "readout.BytesEquipment." + std::to_string(it.first);
+	//sendMetricNoException(Metric{it.second.counterBytesPayload, "readout.BytesEquipment"}.addTags({(unsigned int)it.first}), DerivedMetricMode::RATE);
+	sendMetricNoException(Metric{it.second.counterBytesPayload, metricName}, DerivedMetricMode::RATE);
+      }
+      
       counterBytesDiff=0;
     }
   }
@@ -152,6 +146,7 @@ class ConsumerStats: public Consumer {
       theLog.log("Stats: average block size = %llu bytes",(unsigned long long)counterBytesTotal/counterBlocks);
       theLog.log("Stats: average block rate = %s",NumberOfBytesToString((counterBlocks)/elapsedTime,"Hz",1000).c_str());
       theLog.log("Stats: average throughput = %s",NumberOfBytesToString(counterBytesTotal/elapsedTime,"B/s").c_str());
+      theLog.log("Stats: average throughput = %s",NumberOfBytesToString(counterBytesTotal*8/elapsedTime,"bits/s",1000).c_str());
       theLog.log("Stats: elapsed time = %.5lfs",elapsedTime);
       publishStats();
     } else {
@@ -165,6 +160,21 @@ class ConsumerStats: public Consumer {
     counterBytesTotal+=newBytes;
     counterBytesDiff+=newBytes;
     counterBytesHeader+=b->getData()->header.headerSize;
+
+    // per-equipment stats
+    uint16_t eqId=b->getData()->header.equipmentId;
+    if (eqId!=undefinedEquipmentId) {
+      // is there already a stats counter for this equipment?
+      auto it=equipmentStatsMap.find(eqId);
+      if (it == equipmentStatsMap.end()) {
+        // no matching equipment found, add it to the list
+        EquipmentStats newStats;
+      	equipmentStatsMap.insert({eqId,newStats});
+      } else {
+        // equipment found, update counters
+        it->second.counterBytesPayload+=b->getData()->header.dataSize;
+      }
+    }    
 
     if (monitoringEnabled) {
       // todo: do not check time every push() if it goes fast...

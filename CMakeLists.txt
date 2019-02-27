@@ -86,6 +86,7 @@ add_library(
         src/RdhUtils.cxx
         src/CounterStats.cxx
         src/MemoryHandler.cxx
+	src/SocketTx.cxx
 )
 add_library(
         objMemUtils OBJECT
@@ -98,6 +99,7 @@ set(CONSUMERS_SRCS
         src/ConsumerStats.cxx
         src/ConsumerFileRecorder.cxx
         src/ConsumerDataChecker.cxx
+        src/ConsumerTCP.cxx
         )
 if (FAIRROOT_FOUND)
     list(APPEND CONSUMERS_SRCS src/ConsumerFMQ.cxx)
@@ -118,7 +120,8 @@ add_subdirectory(doc)
 
 O2_GENERATE_EXECUTABLE(
         EXE_NAME readout.exe
-        SOURCES src/mainReadout.cxx $<TARGET_OBJECTS:objReadoutEquipment> $<TARGET_OBJECTS:objReadoutAggregator> $<TARGET_OBJECTS:objReadoutConsumers> $<TARGET_OBJECTS:objReadoutUtils> $<TARGET_OBJECTS:objMemUtils>
+        SOURCES src/mainReadout.cxx $<TARGET_OBJECTS:objReadoutEquipment> $<TARGET_OBJECTS:objReadoutAggregator> $<TARGET_OBJECTS:objReadoutConsumers>
+ $<TARGET_OBJECTS:objReadoutUtils> $<TARGET_OBJECTS:objMemUtils>
         BUCKET_NAME ${BUCKET_NAME}
 )
 
