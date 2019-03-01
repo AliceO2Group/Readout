@@ -40,7 +40,7 @@ class SocketTx {
   int serverPort; // remote server port
   
   private:  
-  std::atomic<int> isSending=0; // if set, thread busy sending. if not set, new block can be pushed
+  std::atomic<int> isSending; // if set, thread busy sending. if not set, new block can be pushed
   DataBlockContainerReference currentBlock=nullptr; // current data chunk being sent
   size_t currentBlockIndex=0; // number of bytes of chunk already sent
   

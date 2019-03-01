@@ -1,182 +1,258 @@
 ####################################
-# General project definition
+# cmake Readout
 ####################################
 
-CMAKE_MINIMUM_REQUIRED(VERSION 3.5.2 FATAL_ERROR)
+# cmake settings
+CMAKE_MINIMUM_REQUIRED(VERSION 3.8.0 FATAL_ERROR)
+cmake_policy(VERSION ${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION})
 
-### CMP0025   Compiler id for Apple Clang is now AppleClang.
-### CMP0042   MACOSX_RPATH is enabled by default.
+# define project
+project(
+  Readout
+  DESCRIPTION "O2 Readout process"
+  LANGUAGES CXX
+)
 
-FOREACH (p
-        CMP0025 # CMake 3.0
-        CMP0042 # CMake 3.0
-        )
-    IF (POLICY ${p})
-        cmake_policy(SET ${p} NEW)
-    ENDIF ()
-endforeach ()
-
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake) # project specific cmake dir
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/../cmake)
-
-project(Readout)
-
-# Load some basic macros which are needed later on
-include(O2Utils)
-include(ReadoutDependencies)
-
-# Set the default build type to "RelWithDebInfo"
-if (NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE "RelWithDebInfo"
-            CACHE
-            STRING "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel Coverage."
-            FORCE)
-endif (NOT CMAKE_BUILD_TYPE)
-
-# Set the version number of your project here (format is MAJOR.MINOR.PATCHLEVEL - e.g. 1.0.0)
-set(VERSION_MAJOR "0")
-set(VERSION_MINOR "0")
-set(VERSION_PATCH "0")
-set(VERSION ${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH})
-
-# C++17
+# global compilation options
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
+# define project directories
+# build-time binaries
+set(EXECUTABLE_OUTPUT_PATH "${CMAKE_BINARY_DIR}/bin")
+# local sources
+set(SOURCE_DIR src)
 
-# Add compiler flags for warnings and (more importantly) fPIC and debug symbols
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -pedantic -Wextra -fPIC -g")
+# add local modules directory
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
-####################################
-# Module, library and executable definition
-####################################
-
-set(MODULE_NAME "Readout")
-
-O2_SETUP(NAME ${MODULE_NAME})
-
-include_directories(
-        ${Boost_INCLUDE_DIRS}
-        ${Monitoring_INCLUDE_DIRS}
-        ${FAIRROOT_INCLUDE_DIR}
-        ${_fairmq_incdir}
-        ${_fairlogger_incdir}
-        ${ZeroMQ_INCLUDE_DIR}
-        ${Common_INCLUDE_DIRS}
-        ${Configuration_INCLUDE_DIRS}
-        ${InfoLogger_INCLUDE_DIRS}
-        ${ReadoutCard_INCLUDE_DIRS}
-        ${DataSampling_INCLUDE_DIRS}
-        ${Numa_INCLUDE_DIRS}
-)
-
-add_library(
-        objReadoutEquipment OBJECT
-        src/ReadoutEquipment.cxx
-        src/ReadoutEquipmentDummy.cxx
-        src/ReadoutEquipmentRORC.cxx
-        src/ReadoutEquipmentCruEmulator.cxx
-)
-add_library(
-        objReadoutAggregator OBJECT
-        src/DataBlockAggregator.cxx
-)
-add_library(
-        objReadoutUtils OBJECT
-        src/ReadoutUtils.cxx
-        src/RdhUtils.cxx
-        src/CounterStats.cxx
-        src/MemoryHandler.cxx
-	src/SocketTx.cxx
-)
-add_library(
-        objMemUtils OBJECT
-        src/MemoryBank.cxx
-        src/MemoryBankManager.cxx
-        src/MemoryPagesPool.cxx
-)
-set(CONSUMERS_SRCS
-        src/Consumer.cxx
-        src/ConsumerStats.cxx
-        src/ConsumerFileRecorder.cxx
-        src/ConsumerDataChecker.cxx
-        src/ConsumerTCP.cxx
-        )
-if (FAIRROOT_FOUND)
-    list(APPEND CONSUMERS_SRCS src/ConsumerFMQ.cxx)
-    list(APPEND CONSUMERS_SRCS src/ConsumerFMQchannel.cxx)
-    list(APPEND CONSUMERS_SRCS src/ConsumerDataSampling.cxx)
-endif ()
-add_library(
-        objReadoutConsumers OBJECT
-        ${CONSUMERS_SRCS}
-)
-
-set(BUCKET_NAME o2_readout_bucket)
-if (FAIRROOT_FOUND)
-    set(BUCKET_NAME o2_readout_with_fair)
-endif ()
-
+# add subdirectories
 add_subdirectory(doc)
 
-O2_GENERATE_EXECUTABLE(
-        EXE_NAME readout.exe
-        SOURCES src/mainReadout.cxx $<TARGET_OBJECTS:objReadoutEquipment> $<TARGET_OBJECTS:objReadoutAggregator> $<TARGET_OBJECTS:objReadoutConsumers>
- $<TARGET_OBJECTS:objReadoutUtils> $<TARGET_OBJECTS:objMemUtils>
-        BUCKET_NAME ${BUCKET_NAME}
-)
 
-O2_GENERATE_EXECUTABLE(
-        EXE_NAME receiverFMQ.exe
-        SOURCES src/receiverFMQ.cxx $<TARGET_OBJECTS:objReadoutUtils>
-        BUCKET_NAME ${BUCKET_NAME}
-)
 
-O2_GENERATE_EXECUTABLE(
-        EXE_NAME testMemoryBanks.exe
-        SOURCES src/testMemoryBanks.cxx $<TARGET_OBJECTS:objMemUtils>
-        BUCKET_NAME ${BUCKET_NAME}
-)
+###################################################
+# dependencies
+###################################################
 
-if (FAIRROOT_FOUND)
-O2_GENERATE_EXECUTABLE(
-        EXE_NAME testTxFMQ.exe
-        SOURCES src/testTxFMQ.cxx $<TARGET_OBJECTS:objReadoutUtils>
-        BUCKET_NAME ${BUCKET_NAME}
-)
+# dependencies to build Readout
+find_package(Common REQUIRED)
+find_package(InfoLogger REQUIRED)
+find_package(Configuration REQUIRED)
+find_package(Monitoring REQUIRED)
+find_package(ReadoutCard REQUIRED)
+find_package(Numa)
+find_package(FairMQ)
 
-O2_GENERATE_EXECUTABLE(
-        EXE_NAME testRxFMQ.exe
-        SOURCES src/testRxFMQ.cxx $<TARGET_OBJECTS:objReadoutUtils>
-        BUCKET_NAME ${BUCKET_NAME}
-)
+# extract include directories from targets
+get_target_property(InfoLogger_INCLUDE_DIRS AliceO2::InfoLogger INTERFACE_INCLUDE_DIRECTORIES)
+get_target_property(Common_INCLUDE_DIRS AliceO2::Common INTERFACE_INCLUDE_DIRECTORIES)
+get_target_property(ReadoutCard_INCLUDE_DIRS AliceO2::ReadoutCard INTERFACE_INCLUDE_DIRECTORIES)
+get_target_property(Monitoring_INCLUDE_DIRS AliceO2::Monitoring INTERFACE_INCLUDE_DIRECTORIES)
+get_target_property(Configuration_INCLUDE_DIRS AliceO2::Configuration INTERFACE_INCLUDE_DIRECTORIES)
+
+# check FairMQ
+if (NOT FairMQ_FOUND)
+  message(STATUS "FMQ not found, corresponding features disabled")
+else ()
+  message(STATUS "FMQ found: ${FairMQ_ROOT}")
+  get_target_property(FairMQ_INCLUDE_DIRS FairMQ::FairMQ INTERFACE_INCLUDE_DIRECTORIES)
 endif ()
 
-O2_GENERATE_EXECUTABLE(
-        EXE_NAME readRaw.exe
-        SOURCES src/readRaw.cxx $<TARGET_OBJECTS:objReadoutUtils>
-        BUCKET_NAME ${BUCKET_NAME}
+
+#################
+# temporary hacks to fix non-working AliceO2::ReadoutCard target
+# library
+if ("${ReadoutCard_LIBRARIES}" STREQUAL "")
+	find_library (ReadoutCard_LIBRARIES ReadoutCard NO_DEFAULT_PATH PATHS "${ReadoutCard_INCLUDE_DIRS}/.." PATH_SUFFIXES "lib" "lib64")
+	message(STATUS "ReadoutCard_LIBRARIES = ${ReadoutCard_LIBRARIES}")
+endif()
+#get_target_property(ReadoutCard_LIBS AliceO2::ReadoutCard INTERFACE_LINK_LIBRARIES)
+#message("ReadoutCard_LIBS=${ReadoutCard_LIBS}")
+# includes
+list(APPEND ReadoutCard_INCLUDE_DIRS ${Boost_INCLUDE_DIRS})
+#################
+
+
+# define include directories
+set(READOUT_INCLUDE_DIRS
+ ${InfoLogger_INCLUDE_DIRS}
+ ${ReadoutCard_INCLUDE_DIRS}
+ ${Common_INCLUDE_DIRS}
+ ${Monitoring_INCLUDE_DIRS}
+ ${Configuration_INCLUDE_DIRS}
+ ${FairMQ_INCLUDE_DIRS}
 )
 
-O2_GENERATE_EXECUTABLE(
-        EXE_NAME testROC.exe
-        SOURCES src/testROC.cxx $<TARGET_OBJECTS:objMemUtils>
-        BUCKET_NAME ${BUCKET_NAME}
+# define liraries to be linked
+set(READOUT_LINK_LIBRARIES
+  AliceO2::InfoLogger
+  AliceO2::Common
+  AliceO2::Monitoring
+  AliceO2::Configuration
+#  AliceO2::ReadoutCard
+  ${ReadoutCard_LIBRARIES}
 )
 
-O2_GENERATE_EXECUTABLE(
-        EXE_NAME testMonitor.exe
-        SOURCES src/testMonitor.cxx
-        BUCKET_NAME ${BUCKET_NAME}
+
+
+###################################################
+# group readout features in (reusable) objects
+###################################################
+
+# equipments
+add_library(
+        objReadoutEquipment OBJECT
+        ${SOURCE_DIR}/ReadoutEquipment.cxx
+        ${SOURCE_DIR}/ReadoutEquipmentDummy.cxx
+        ${SOURCE_DIR}/ReadoutEquipmentRORC.cxx
+        ${SOURCE_DIR}/ReadoutEquipmentCruEmulator.cxx
+)
+target_include_directories(objReadoutEquipment PRIVATE ${READOUT_INCLUDE_DIRS})
+
+# aggregators
+add_library(
+        objReadoutAggregator OBJECT
+        ${SOURCE_DIR}/DataBlockAggregator.cxx
+)
+target_include_directories(objReadoutAggregator PRIVATE ${READOUT_INCLUDE_DIRS})
+
+# utilities
+add_library(
+        objReadoutUtils OBJECT
+        ${SOURCE_DIR}/ReadoutUtils.cxx
+        ${SOURCE_DIR}/RdhUtils.cxx
+        ${SOURCE_DIR}/CounterStats.cxx
+        ${SOURCE_DIR}/MemoryHandler.cxx
+	${SOURCE_DIR}/SocketTx.cxx
+)
+target_include_directories(objReadoutUtils PRIVATE ${READOUT_INCLUDE_DIRS})
+
+# memory handling
+add_library(
+        objMemUtils OBJECT
+        ${SOURCE_DIR}/MemoryBank.cxx
+        ${SOURCE_DIR}/MemoryBankManager.cxx
+        ${SOURCE_DIR}/MemoryPagesPool.cxx
+)
+target_include_directories(objMemUtils PRIVATE ${READOUT_INCLUDE_DIRS})
+
+# consumers
+add_library(
+        objReadoutConsumers OBJECT
+)
+target_sources(
+	objReadoutConsumers
+	PRIVATE
+        ${SOURCE_DIR}/Consumer.cxx
+        ${SOURCE_DIR}/ConsumerStats.cxx
+        ${SOURCE_DIR}/ConsumerFileRecorder.cxx
+        ${SOURCE_DIR}/ConsumerDataChecker.cxx
+        ${SOURCE_DIR}/ConsumerTCP.cxx
+	$<${FairMQ_FOUND}:${SOURCE_DIR}/ConsumerFMQ.cxx ${SOURCE_DIR}/ConsumerFMQchannel.cxx ${SOURCE_DIR}/ConsumerDataSampling.cxx>
+)
+target_include_directories(objReadoutConsumers PRIVATE ${READOUT_INCLUDE_DIRS})
+
+
+
+###################################################
+# executables
+###################################################
+
+# readout.exe : main executable
+add_executable(
+	readout.exe
+	${SOURCE_DIR}/mainReadout.cxx
+	$<TARGET_OBJECTS:objReadoutEquipment>
+	$<TARGET_OBJECTS:objReadoutAggregator>
+	$<TARGET_OBJECTS:objReadoutConsumers>
+	$<TARGET_OBJECTS:objReadoutUtils>
+	$<TARGET_OBJECTS:objMemUtils>
 )
 
-# Install some extra files
+# a test FMQ device receiver
+add_executable(
+	receiverFMQ.exe
+        ${SOURCE_DIR}/receiverFMQ.cxx
+	$<TARGET_OBJECTS:objReadoutUtils>
+)
+
+# a test FMQ channel sender
+add_executable(
+	testTxFMQ.exe
+        ${SOURCE_DIR}/testTxFMQ.cxx
+	$<TARGET_OBJECTS:objReadoutUtils>
+)
+
+# a test FMQ channel receiver
+add_executable(
+	testRxFMQ.exe
+        ${SOURCE_DIR}/testRxFMQ.cxx
+	$<TARGET_OBJECTS:objReadoutUtils>
+)
+
+# a test to check memory banks
+add_executable(
+        testMemoryBanks.exe
+        ${SOURCE_DIR}/testMemoryBanks.cxx
+	$<TARGET_OBJECTS:objMemUtils>
+)
+
+# a RAW data file reader/checker
+add_executable(
+        readRaw.exe
+        ${SOURCE_DIR}/readRaw.cxx
+	$<TARGET_OBJECTS:objReadoutUtils>
+)
+
+# a minimal test program to readout a ROC device
+add_executable(
+	testROC.exe
+        ${SOURCE_DIR}/testROC.cxx
+	$<TARGET_OBJECTS:objMemUtils>
+)
+
+# a minimal test program to check Monitoring library
+add_executable(
+	testMonitor.exe
+        ${SOURCE_DIR}/testMonitor.cxx
+)
+
+# disable some executables when corresponding dependencies not found
+if (NOT FAIRMQ_FOUND)
+	set_target_properties(testTxFMQ.exe testRxFMQ.exe PROPERTIES EXCLUDE_FROM_ALL 1)
+endif ()
+
+# set include andlibraries for all
+set(executables readout.exe receiverFMQ.exe testTxFMQ.exe testRxFMQ.exe testMemoryBanks.exe readRaw.exe testROC.exe testMonitor.exe)
+foreach (exe ${executables})
+	target_include_directories(${exe} PRIVATE ${READOUT_INCLUDE_DIRS})
+	target_link_libraries(${exe} PRIVATE ${READOUT_LINK_LIBRARIES})
+endforeach ()
+
+
+
+###################################################
+# files installation
+###################################################
+
 install(
         FILES readout.cfg
         DESTINATION ${CMAKE_INSTALL_PREFIX}/etc
-        PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
+        PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
+)
 	
 install(
-        FILES src/RAWDataHeader.h
+        FILES ${SOURCE_DIR}/RAWDataHeader.h
         DESTINATION ${CMAKE_INSTALL_PREFIX}/include/${MODULE_NAME}
-        PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
+        PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
+)
 
+foreach (exe ${executables})
+	get_target_property(IS_EXCLUDED ${exe} EXCLUDE_FROM_ALL)
+	if(NOT ${IS_EXCLUDED})
+		install(TARGETS ${exe} DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
+	endif ()
+endforeach ()

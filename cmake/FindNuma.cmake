@@ -25,7 +25,7 @@ find_package_handle_standard_args(
 if(${Numa_FOUND})
     message(
     STATUS
-    "Found Numa (include: ${Numa_INCLUDE_DIRS} library: ${Numa_LIBRARIES}")    
+    "Found Numa (include: ${Numa_INCLUDE_DIRS} library: ${Numa_LIBRARIES})")    
 endif()
 
 mark_as_advanced(Numa_INCLUDE_DIRS Numa_LIBRARIES)
