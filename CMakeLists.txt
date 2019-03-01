@@ -65,7 +65,7 @@ endif ()
 #################
 # temporary hacks to fix non-working AliceO2::ReadoutCard target
 # library
-if (NOT ${ReadoutCard_LIBRARIES})
+if (${ReadoutCard_LIBRARIES} STREQUAL "")
 	find_library (ReadoutCard_LIBRARIES ReadoutCard NO_DEFAULT_PATH PATHS "${ReadoutCard_INCLUDE_DIRS}/.." PATH_SUFFIXES "lib" "lib64")
 	message(STATUS "ReadoutCard_LIBRARIES = ${ReadoutCard_LIBRARIES}")
 endif()
