@@ -64,13 +64,15 @@ endif ()
 
 #################
 # temporary hacks to fix non-working AliceO2::ReadoutCard target
+# library
+if (NOT ${ReadoutCard_LIBRARIES})
+	find_library (ReadoutCard_LIBRARIES ReadoutCard NO_DEFAULT_PATH PATHS "${ReadoutCard_INCLUDE_DIRS}/.." PATH_SUFFIXES "lib" "lib64")
+	message(STATUS "ReadoutCard_LIBRARIES = ${ReadoutCard_LIBRARIES}")
+endif()
+#get_target_property(ReadoutCard_LIBS AliceO2::ReadoutCard INTERFACE_LINK_LIBRARIES)
+#message("ReadoutCard_LIBS=${ReadoutCard_LIBS}")
 # includes
 list(APPEND ReadoutCard_INCLUDE_DIRS ${Boost_INCLUDE_DIRS})
-# library
-#find_library (ReadoutCard_LIBRARIES ReadoutCard NO_DEFAULT_PATH PATHS "${ReadoutCard_INCLUDE_DIRS}/.." PATH_SUFFIXES "lib" "lib64")
-#message("lib: ${ReadoutCard_LIBRARIES}")
-#get_target_property(ReadoutCard_LIBS AliceO2::ReadoutCard INTERFACE_LINK_LIBRARIES)
-#message("ReadoutCardLibs=${ReadoutCard_LIBS}")
 #################
 
 
