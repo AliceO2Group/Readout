@@ -9,3 +9,6 @@ This file describes the main feature changes for each readout.exe released versi
 
 ## v0.19 - 01/03/2019
 - CMake updated. Now depends on FairMQ instead of FairRoot.
+
+## v0.19.1 - 07/03/2019
+- fix for FairMQ build.
