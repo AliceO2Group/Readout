@@ -13,7 +13,6 @@
 #include <Common/Fifo.h>
 #include <Common/Thread.h>
 
-#define WITH_CONFIG
 #ifdef WITH_CONFIG
 #include <Configuration/ConfigurationFactory.h>
 #endif
