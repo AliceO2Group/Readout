@@ -40,9 +40,9 @@ add_subdirectory(doc)
 # dependencies to build Readout
 find_package(Common REQUIRED)
 find_package(InfoLogger REQUIRED)
-find_package(Configuration REQUIRED)
 find_package(Monitoring REQUIRED)
 find_package(ReadoutCard REQUIRED)
+find_package(Configuration)
 find_package(Numa)
 find_package(FairMQ)
 
@@ -51,7 +51,9 @@ get_target_property(InfoLogger_INCLUDE_DIRS AliceO2::InfoLogger INTERFACE_INCLUD
 get_target_property(Common_INCLUDE_DIRS AliceO2::Common INTERFACE_INCLUDE_DIRECTORIES)
 get_target_property(ReadoutCard_INCLUDE_DIRS AliceO2::ReadoutCard INTERFACE_INCLUDE_DIRECTORIES)
 get_target_property(Monitoring_INCLUDE_DIRS AliceO2::Monitoring INTERFACE_INCLUDE_DIRECTORIES)
-get_target_property(Configuration_INCLUDE_DIRS AliceO2::Configuration INTERFACE_INCLUDE_DIRECTORIES)
+if (Configuration_FOUND)
+  get_target_property(Configuration_INCLUDE_DIRS AliceO2::Configuration INTERFACE_INCLUDE_DIRECTORIES)
+endif()
 
 # check FairMQ
 # FairMQ::FairMQ target does not provide the transitive dependency on FairLogger and Boost, so we have to add them manually
@@ -64,11 +66,11 @@ else ()
   message(STATUS "FairLogger found: ${FairLogger_ROOT}")
   get_target_property(FairMQ_INCLUDE_DIRS FairMQ::FairMQ INTERFACE_INCLUDE_DIRECTORIES)
   get_target_property(FairLogger_INCLUDE_DIRS FairLogger::FairLogger INTERFACE_INCLUDE_DIRECTORIES)
-  list(APPEND FairMQ_INCLUDE_DIRS ${FairLogger_INCLUDE_DIRS})
+  list(APPEND FairMQ_INCLUDE_DIRS ${FairLogger_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
 endif ()
 
 # add flags to enable optional features in Readout, based on available dependencies
-add_compile_definitions($<$<BOOL:Numa_FOUND>:WITH_NUMA> $<$<BOOL:Configuration_FOUND>:WITH_CONFIG> $<$<BOOL:FairMQ_FOUND>:WITH_FAIRMQ>)
+add_compile_definitions($<$<BOOL:${Numa_FOUND}>:WITH_NUMA> $<$<BOOL:${Configuration_FOUND}>:WITH_CONFIG> $<$<BOOL:${FairMQ_FOUND}>:WITH_FAIRMQ>)
 
 #################
 # temporary hacks to fix non-working AliceO2::ReadoutCard target
@@ -99,11 +101,11 @@ set(READOUT_LINK_LIBRARIES
   AliceO2::InfoLogger
   AliceO2::Common
   AliceO2::Monitoring
-  AliceO2::Configuration
 #  AliceO2::ReadoutCard
   ${ReadoutCard_LIBRARIES}
-  $<$<BOOL:Numa_FOUND>:numa>
-  $<$<BOOL:FairMQ_FOUND>:FairMQ::FairMQ>
+  $<$<BOOL:${Configuration_FOUND}>:AliceO2::Configuration>
+  $<$<BOOL:${Numa_FOUND}>:numa>
+  $<$<BOOL:${FairMQ_FOUND}>:FairMQ::FairMQ>
 )
 
 
@@ -161,7 +163,7 @@ target_sources(
         ${SOURCE_DIR}/ConsumerFileRecorder.cxx
         ${SOURCE_DIR}/ConsumerDataChecker.cxx
         ${SOURCE_DIR}/ConsumerTCP.cxx
-	$<${FairMQ_FOUND}:${SOURCE_DIR}/ConsumerFMQ.cxx ${SOURCE_DIR}/ConsumerFMQchannel.cxx ${SOURCE_DIR}/ConsumerDataSampling.cxx>
+	$<$<BOOL:${FairMQ_FOUND}>:${SOURCE_DIR}/ConsumerFMQ.cxx ${SOURCE_DIR}/ConsumerFMQchannel.cxx ${SOURCE_DIR}/ConsumerDataSampling.cxx>
 )
 target_include_directories(objReadoutConsumers PRIVATE ${READOUT_INCLUDE_DIRS})
 
