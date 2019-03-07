@@ -54,13 +54,21 @@ get_target_property(Monitoring_INCLUDE_DIRS AliceO2::Monitoring INTERFACE_INCLUD
 get_target_property(Configuration_INCLUDE_DIRS AliceO2::Configuration INTERFACE_INCLUDE_DIRECTORIES)
 
 # check FairMQ
-if (NOT FairMQ_FOUND)
-  message(STATUS "FMQ not found, corresponding features disabled")
+# FairMQ::FairMQ target does not provide the transitive dependency on FairLogger and Boost, so we have to add them manually
+find_package(Boost COMPONENTS container thread regex date_time signals )
+find_package(FairLogger)
+if ((NOT FairMQ_FOUND) OR (NOT FairLogger_FOUND))
+  message(STATUS "FairMQ or FairLogger not found, corresponding features disabled")
 else ()
-  message(STATUS "FMQ found: ${FairMQ_ROOT}")
+  message(STATUS "FairMQ found: ${FairMQ_ROOT}")
+  message(STATUS "FairLogger found: ${FairLogger_ROOT}")
   get_target_property(FairMQ_INCLUDE_DIRS FairMQ::FairMQ INTERFACE_INCLUDE_DIRECTORIES)
+  get_target_property(FairLogger_INCLUDE_DIRS FairLogger::FairLogger INTERFACE_INCLUDE_DIRECTORIES)
+  list(APPEND FairMQ_INCLUDE_DIRS ${FairLogger_INCLUDE_DIRS})
 endif ()
 
+# add flags to enable optional features in Readout, based on available dependencies
+add_compile_definitions($<$<BOOL:Numa_FOUND>:WITH_NUMA> $<$<BOOL:Configuration_FOUND>:WITH_CONFIG> $<$<BOOL:FairMQ_FOUND>:WITH_FAIRMQ>)
 
 #################
 # temporary hacks to fix non-working AliceO2::ReadoutCard target
@@ -94,6 +102,8 @@ set(READOUT_LINK_LIBRARIES
   AliceO2::Configuration
 #  AliceO2::ReadoutCard
   ${ReadoutCard_LIBRARIES}
+  $<$<BOOL:Numa_FOUND>:numa>
+  $<$<BOOL:FairMQ_FOUND>:FairMQ::FairMQ>
 )
 
 
