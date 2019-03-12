@@ -22,6 +22,8 @@
 #include <chrono>
 #include <memory>
 #include <signal.h>
+#include <vector>
+#include <map>
 
 #include "ReadoutEquipment.h"
 #include "DataBlockAggregator.h"
@@ -256,6 +258,7 @@ int main(int argc, char* argv[])
   
   // configuration of data consumers
   std::vector<std::unique_ptr<Consumer>> dataConsumers;
+  std::map<Consumer *, std::string> consumersOutput; // for the consumers having an output, keep a reference to the consumer and the name of the consumer to which to push data
   for (auto kName : ConfigFileBrowser (&cfg,"consumer-")) {
 
     // skip disabled
@@ -268,10 +271,14 @@ int main(int argc, char* argv[])
     }
     if (!enabled) {continue;}
 
+    // configuration parameter: | consumer-* | consumerOutput | string |  | Name of the consumer where the output of this consumer (if any) should be pushed. |
+    std::string cfgOutput="";
+    cfg.getOptionalValue<std::string>(kName + ".consumerOutput",cfgOutput);
+
     // instanciate consumer of appropriate type
     std::unique_ptr<Consumer> newConsumer=nullptr;
     try {
-      // configuration parameter: | consumer-* | consumerType | string |  | The type of consumer to be instanciated. One of:stats, FairMQDevice, DataSampling, FairMQChannel, fileRecorder, checker. |
+      // configuration parameter: | consumer-* | consumerType | string |  | The type of consumer to be instanciated. One of:stats, FairMQDevice, DataSampling, FairMQChannel, fileRecorder, checker, processor, tcp. |
       std::string cfgType="";
       cfgType=cfg.getValue<std::string>(kName + ".consumerType");
       theLog.log("Configuring consumer %s: %s",kName.c_str(),cfgType.c_str());
@@ -300,6 +307,8 @@ int main(int argc, char* argv[])
         newConsumer=getUniqueConsumerFileRecorder(cfg, kName);
       } else if (!cfgType.compare("checker")) {
         newConsumer=getUniqueConsumerDataChecker(cfg, kName);
+      } else if (!cfgType.compare("processor")) {
+        newConsumer=getUniqueConsumerDataProcessor(cfg, kName);
       } else if (!cfgType.compare("tcp")) {
         newConsumer=getUniqueConsumerTCP(cfg, kName);
       } else {
@@ -310,15 +319,46 @@ int main(int argc, char* argv[])
         theLog.log(InfoLogger::Severity::Error,"Failed to configure consumer %s : %s",kName.c_str(), ex.what());
         continue;
     }
+    catch (const std::string& ex) {
+        theLog.log(InfoLogger::Severity::Error,"Failed to configure consumer %s : %s",kName.c_str(), ex.c_str());
+        continue;
+    }
     catch (...) {
         theLog.log(InfoLogger::Severity::Error,"Failed to configure consumer %s",kName.c_str());
         continue;
     }
 
     if (newConsumer!=nullptr) {
+      if (cfgOutput.length()>0) {
+        consumersOutput.insert(std::pair<Consumer *, std::string>(newConsumer.get(),cfgOutput));        
+      }
+      newConsumer->name=kName;
       dataConsumers.push_back(std::move(newConsumer));
     }
 
+  }
+  
+  // try to link consumers with output
+  for(auto const &p : consumersOutput) {
+    // search for consumer with this name
+    bool found=false;
+    std::string err="not found";
+    for(auto const &c: dataConsumers) {
+      if (c->name==p.second) {
+        if (c->isForwardConsumer) {
+          err="already used";
+          break;
+        }
+        theLog.log("Output of %s will be pushed to %s",p.first->name.c_str(),c->name.c_str());
+        found=true;
+        c->isForwardConsumer=true;
+        p.first->forwardConsumer=c.get();
+        break;
+      }
+    }
+    if (!found) {
+      theLog.log(InfoLogger::Severity::Error,"Failed to attach consumer %s to %s (%s)",p.first->name.c_str(),p.second.c_str(),err.c_str());
+    }
   }
 
 
@@ -469,7 +509,10 @@ int main(int argc, char* argv[])
 
     if (bc!=nullptr) {
       for (auto& c : dataConsumers) {
-        c->pushData(bc);
+        // push only to "prime" consumers, not to those getting data directly forwarded from another consumer
+        if (c->isForwardConsumer==false) {
+          c->pushData(bc);
+        }
       }
 
     } else {
@@ -493,6 +536,19 @@ int main(int argc, char* argv[])
   agg->stop();
 
   theLog.log("Stopping consumers");
+  theLog.log("primary consumers");
+  for(int i=0;i<dataConsumers.size();i++) {
+    if (!dataConsumers[i]->isForwardConsumer) {
+      dataConsumers[i]=nullptr;
+    }
+  }
+  theLog.log("secondary consumers");
+  for(int i=0;i<dataConsumers.size();i++) {
+    if (dataConsumers[i]!=nullptr) {
+      dataConsumers[i]=nullptr;
+    }
+  }  
+  
   // close consumers before closing readout equipments (owner of data blocks)
   dataConsumers.clear();
 

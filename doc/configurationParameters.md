@@ -80,7 +80,8 @@ The parameters related to 3rd-party libraries are described here for convenience
 | equipment-rorc-* | rdhDumpEnabled | int | 0 | If set, data pages are parsed and RDH headers summary printed. Setting a negative number will print only the first N RDH.|
 | equipment-rorc-* | cleanPageBeforeUse | int | 0 | If set, data pages are filled with zero before being given for writing by device. Slow, but usefull to readout incomplete pages (driver currently does not return correctly number of bytes written in page. |
 | consumer-* | enabled | int | 1 | Enable (value=1) or disable (value=0) the consumer. |
-| consumer-* | consumerType | string |  | The type of consumer to be instanciated. One of:stats, FairMQDevice, DataSampling, FairMQChannel, fileRecorder, checker. |
+| consumer-* | consumerType | string |  | The type of consumer to be instanciated. One of:stats, FairMQDevice, DataSampling, FairMQChannel, fileRecorder, checker, processor, tcp. |
+| consumer-* | consumerOutput | string |  | Name of the consumer where the output of this consumer (if any) should be pushed. |
 | consumer-stats-* | monitoringEnabled | int | 0 | Enable (1) or disable (0) readout monitoring. |
 | consumer-stats-* | monitoringUpdatePeriod | int | 10 | Period of readout monitoring updates. |
 | consumer-stats-* | processMonitoringInterval | int | 0 | Period of process monitoring updates (O2 standard metrics). If zero (default), disabled.|
@@ -104,6 +105,8 @@ The parameters related to 3rd-party libraries are described here for convenience
 | consumer-tcp-* | port | int | 10001 | Remote server TCP port number to connect to. |
 | consumer-tcp-* | host | string | localhost | Remote server IP name to connect to. |
 | consumer-tcp-* | ncx | int | 1 | Number of parallel streams (and threads) to use. The port number specified in 'port' parameter will be increased by 1 for each extra connection. |
+| consumer-processor-* | libraryPath | string |  | Path to the library file providing the processBlock() function to be used. |
+| consumer-processor-* | numberOfThreads | int | 1 | Number of threads running the processBlock() function in parallel. |
 | receiverFMQ | transportType | string | shmem | c.f. parameter with same name in consumer-FMQchannel-* |
 | receiverFMQ | channelName | string | readout | c.f. parameter with same name in consumer-FMQchannel-* |
 | receiverFMQ | channelType | string | pair | c.f. parameter with same name in consumer-FMQchannel-* |

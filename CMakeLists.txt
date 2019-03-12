@@ -24,6 +24,8 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(EXECUTABLE_OUTPUT_PATH "${CMAKE_BINARY_DIR}/bin")
 # local sources
 set(SOURCE_DIR src)
+# installation of libraries
+set(CMAKE_INSTALL_LIBDIR lib)
 
 # add local modules directory
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
@@ -45,6 +47,7 @@ find_package(ReadoutCard REQUIRED)
 find_package(Configuration)
 find_package(Numa)
 find_package(FairMQ)
+find_package(ZLIB)
 
 # extract include directories from targets
 get_target_property(InfoLogger_INCLUDE_DIRS AliceO2::InfoLogger INTERFACE_INCLUDE_DIRECTORIES)
@@ -98,6 +101,7 @@ set(READOUT_INCLUDE_DIRS
 
 # define liraries to be linked
 set(READOUT_LINK_LIBRARIES
+  ${CMAKE_DL_LIBS}
   AliceO2::InfoLogger
   AliceO2::Common
   AliceO2::Monitoring
@@ -162,11 +166,25 @@ target_sources(
         ${SOURCE_DIR}/ConsumerStats.cxx
         ${SOURCE_DIR}/ConsumerFileRecorder.cxx
         ${SOURCE_DIR}/ConsumerDataChecker.cxx
+        ${SOURCE_DIR}/ConsumerDataProcessor.cxx
         ${SOURCE_DIR}/ConsumerTCP.cxx
 	$<$<BOOL:${FairMQ_FOUND}>:${SOURCE_DIR}/ConsumerFMQ.cxx ${SOURCE_DIR}/ConsumerFMQchannel.cxx ${SOURCE_DIR}/ConsumerDataSampling.cxx>
 )
 target_include_directories(objReadoutConsumers PRIVATE ${READOUT_INCLUDE_DIRS})
 
+
+# processor libraries
+find_package(ZLIB)
+if (ZLIB_FOUND)
+  add_library(
+          ProcessorZlibCompress
+          SHARED
+          ${SOURCE_DIR}/ProcessorZlibCompress.cxx
+  )
+  target_include_directories(ProcessorZlibCompress PRIVATE ${READOUT_INCLUDE_DIRS} ${ZLIB_INCLUDE_DIRS})
+  target_link_libraries(ProcessorZlibCompress ZLIB::ZLIB)
+  list(APPEND libraries ProcessorZlibCompress)
+endif()
 
 
 ###################################################
@@ -237,7 +255,7 @@ if (NOT FAIRMQ_FOUND)
 	set_target_properties(testTxFMQ.exe testRxFMQ.exe PROPERTIES EXCLUDE_FROM_ALL 1)
 endif ()
 
-# set include andlibraries for all
+# set include and libraries for all
 set(executables readout.exe receiverFMQ.exe testTxFMQ.exe testRxFMQ.exe testMemoryBanks.exe readRaw.exe testROC.exe testMonitor.exe)
 foreach (exe ${executables})
 	target_include_directories(${exe} PRIVATE ${READOUT_INCLUDE_DIRS})
@@ -267,4 +285,8 @@ foreach (exe ${executables})
 	if(NOT ${IS_EXCLUDED})
 		install(TARGETS ${exe} DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
 	endif ()
+endforeach ()
+
+foreach (lib ${libraries})
+	install(TARGETS ${lib} DESTINATION ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR})
 endforeach ()

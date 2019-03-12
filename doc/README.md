@@ -55,6 +55,9 @@ CRU internal data generator.
 - ConsumerFairMQChannel : pushes data outside readout process as a FairMQ channel - with the WP5 format.
   This consumer may also create shared memory banks (see Memory management) to be used by equipments.
 - ConsumerTCP: pushes the raw data payload by TCP/IP socket(s). This is meant to be used for network tests, not for production (FMQ is the supported O2 transport mechanism).
+- ConsumerDataProcessor: allows to call a user-provided function (dynamically loaded at runtime from library) on each data page produced by readout.
+  See ConsumerDataProcessor.cxx for function footprint and ProcessorZlibCompress.cxx for example compression implementation.
+  Note that the option 'consumerOutput' can be useful to forward the result of this processing function to another consumer (e.g. file recorder, transport, etc).
 
 They all follow the interface defined in the base Consumer Class.
 
