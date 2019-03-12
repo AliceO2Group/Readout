@@ -8,11 +8,12 @@
 class FileHandle {
   public:
   
-  FileHandle(std::string &_path, InfoLogger *_theLog=nullptr, unsigned long long _maxFileSize=0) {
+  FileHandle(std::string &_path, InfoLogger *_theLog=nullptr, unsigned long long _maxFileSize=0, int _maxPages=0) {
     theLog=_theLog;
     path=_path;
     counterBytesTotal=0;
     maxFileSize=_maxFileSize;
+    maxPages=_maxPages;
     if (theLog!=nullptr) {
       theLog->log("Opening file for writing: %s", path.c_str());
     }
@@ -43,9 +44,10 @@ class FileHandle {
 
   // write to file
   // data given by 'ptr', number of bytes given by 'size'
+  // isPage is a flag telling if the data belongs to a page (for the 'number of pages written' counter)
   // return one of the status code below
   enum Status {Success=0, Error=-1, MaxFileSize=1};
-  FileHandle::Status write(void *ptr, size_t size) {
+  FileHandle::Status write(void *ptr, size_t size, bool isPage=false) {
     if (isFull) {
       // report only first occurence of MaxFileSize
       return Status::Success;
@@ -61,6 +63,14 @@ class FileHandle {
       close();
       return Status::MaxFileSize;
     }
+    if ((maxPages)&&(counterPages>=maxPages)) {
+      if (theLog!=nullptr) {
+	theLog->log("Maximum number of pages in file reached");
+      }
+      isFull=true;
+      close();
+      return Status::MaxFileSize;
+    }    
     if (fp==NULL) {
       return Status::Error;
     }
@@ -68,7 +78,10 @@ class FileHandle {
       return Status::Error;
     }
     counterBytesTotal+=size;
-    //printf("%s: %llu bytes\n",path.c_str(),counterBytesTotal);
+    if (isPage) {
+      counterPages++;
+    }
+    //printf("%s: %llu/%llu bytes %d/%d pages\n",path.c_str(),counterBytesTotal,maxFileSize,counterPages,maxPages);
     return Status::Success;
   }
 
@@ -77,7 +90,9 @@ class FileHandle {
   private:
   std::string path="";                      // path to the file (final, after variables substitution)
   unsigned long long counterBytesTotal=0;   // number of bytes written to file
-  unsigned long long maxFileSize=0;     // max number of bytes to write to file (0=no limit)
+  unsigned long long maxFileSize=0;         // max number of bytes to write to file (0=no limit)
+  int counterPages=0;                       // number of pages received so far
+  int maxPages=0;                           // max number of pages accepted by recorder (0=no limit)
   FILE *fp=NULL;                            // handle to file for I/O
   InfoLogger *theLog=nullptr;               // handle to infoLogger for messages
   bool isFull=false;                        // flag set when maximum file size reached
@@ -101,6 +116,14 @@ class ConsumerFileRecorder: public Consumer {
       maxFileSize=ReadoutUtils::getNumberOfBytesFromString(sMaxBytes.c_str());
       if (maxFileSize) {
         theLog.log("Maximum recording size: %lld bytes",maxFileSize);
+      }
+    }
+
+    // configuration parameter: | consumer-fileRecorder-* | pagesMax | int | 0 | Maximum number of data pages accepted by recorder. If zero (default), no maximum set.|
+    maxFilePages=0;
+    if (cfg.getOptionalValue<int>(cfgEntryPoint + ".pagesMax",maxFilePages)==0) {
+      if (maxFilePages) {
+        theLog.log("Maximum recording size: %d pages",maxFilePages);
       }
     }
     
@@ -218,7 +241,7 @@ class ConsumerFileRecorder: public Consumer {
     }
       
     // create file handle    
-    std::shared_ptr<FileHandle> newHandle=std::make_shared<FileHandle>(newFileName,&theLog,maxFileSize);
+    std::shared_ptr<FileHandle> newHandle=std::make_shared<FileHandle>(newFileName,&theLog,maxFileSize,maxFilePages);
     if (!newHandle->isFileOk()) {
       // no need to log a special message, error printed by FileHandle constructor
       return -1;
@@ -281,13 +304,13 @@ class ConsumerFileRecorder: public Consumer {
       // as-is, some fields like data pointer will not be meaningful in file unless corrected. todo: correct them, e.g. replace data pointer by file offset.
       ptr=&b->getData()->header;
       size=b->getData()->header.headerSize;
-      status=fpUsed->write(ptr,size);
+      status=fpUsed->write(ptr,size,false); // header does not count as a page
     }
     if ((status==FileHandle::Status::Success)) {
       // write payload data     
       ptr=b->getData()->data;
       size=b->getData()->header.dataSize;
-      status=fpUsed->write(ptr,size);
+      status=fpUsed->write(ptr,size,true); // payload count as a page
     }
     if (status==FileHandle::Status::Success) {
       return 0;
@@ -322,7 +345,8 @@ class ConsumerFileRecorder: public Consumer {
     // from configuration
     std::string fileName="";                 // path/filename to be used for recording (may include variables evaluated at runtime, on file creation)
     int recordWithDataBlockHeader=0;         // if set, internal readout headers are included in file
-    unsigned long long maxFileSize=0;    // maximum number of bytes to write (in each file)
+    unsigned long long maxFileSize=0;        // maximum number of bytes to write (in each file)
+    int maxFilePages=0;                      // maximum number of pages to write (in each file)
 };
 
 
