@@ -28,7 +28,7 @@ ReadoutEquipmentDummy::ReadoutEquipmentDummy(ConfigFile &cfg, std::string cfgEnt
   // get configuration values
   // configuration parameter: | equipment-dummy-* | eventMaxSize | int | 128k | Maximum size of randomly generated event. |
   // configuration parameter: | equipment-dummy-* | eventMinSize | int | 128k | Minimum size of randomly generated event. |
-  // configuration parameter: | equipment-dummy-* | fillData | int | 0 | If non-zero, data payload is filled with a counter. Otherwise (default), no write operation is performed, random data from memory is kept in payload. |
+  // configuration parameter: | equipment-dummy-* | fillData | int | 0 | Pattern used to fill data page: (0) no pattern used, data page is left untouched, with whatever values were in memory (1) incremental byte pattern (2) incremental word pattern, with one random word out of 5. |
   cfg.getOptionalValue<int>(cfgEntryPoint + ".eventMaxSize", eventMaxSize, (int)128*1024);
   cfg.getOptionalValue<int>(cfgEntryPoint + ".eventMinSize", eventMinSize, (int)128*1024);
   cfg.getOptionalValue<int>(cfgEntryPoint + ".fillData", fillData, (int)0);
@@ -80,8 +80,16 @@ DataBlockContainerReference ReadoutEquipmentDummy::getNextBlock() {
 
     // optionaly fill data range
     if (fillData==1) {
+      // incremental byte pattern
       for (int k=0;k<dSize;k++) {
         b->data[k]=(char)k;
+      }
+    } else if (fillData==2) {
+      // incremental word pattern, with one random word out of 5
+      int *pi=(int *)b->data;
+      for (int k=0;k<dSize/sizeof(int);k++) {
+        pi[k]=k;
+        if (k%5==0) pi[k]=rand();
       }
     }
   }
