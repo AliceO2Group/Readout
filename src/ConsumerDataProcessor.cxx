@@ -78,7 +78,7 @@ public:
           isActive=1;
           DataBlockContainerReference result=nullptr;
           //if (debug) {printf("thread %d : got %p\n",threadId,bc.get());}
-          fProcess(bc,result);          
+          fProcess(bc,result);
           if (result) {
             outputFifo->push(result);
           }
@@ -124,8 +124,8 @@ class ConsumerDataProcessor: public Consumer {
 
   std::atomic<int> shutdown; // flag set to 1 to request thread termination    
   std::unique_ptr<std::thread> outputThread; // the collector thread taking care of emptying processors output fifos
-  int cfgIdleSleepTime=100; // sleep time (microseconds) for the processing threads (see class processThread) and the collector thread aggregating output
-  int cfgFifoSize=10; // fifo size for the processing threads (see class processThread)
+  int cfgIdleSleepTime; // sleep time (microseconds) for the processing threads (see class processThread) and the collector thread aggregating output
+  int cfgFifoSize; // fifo size for the processing threads (see class processThread)
   
   
   public:
@@ -150,6 +150,12 @@ class ConsumerDataProcessor: public Consumer {
       theLog.logError("Library - processBlock() not found");
       throw __LINE__;
     }
+
+    // configuration parameter: | consumer-processor-* | threadInputFifoSize | int | 10 | Size of input FIFO, where pending data are waiting to be processed. |
+    cfg.getOptionalValue<int>(cfgEntryPoint + ".threadInputFifoSize",cfgFifoSize, 10);
+
+    // configuration parameter: | consumer-processor-* | threadIdleSleepTime | int | 1000 | Sleep time (microseconds) of inactive thread, before polling for next data. |
+    cfg.getOptionalValue<int>(cfgEntryPoint + ".threadIdleSleepTime",cfgIdleSleepTime, 1000);
     
     // create a thread pool for the processing
     // configuration parameter: | consumer-processor-* | numberOfThreads | int | 1 | Number of threads running the processBlock() function in parallel. |
@@ -198,12 +204,13 @@ class ConsumerDataProcessor: public Consumer {
     // find a free thread to process it, or drop it
     int i;
     for (i=0;i<numberOfThreads;i++) {
-      int ix=(i+threadIndex)%numberOfThreads;
-      if (threadPool[ix]->inputFifo->isFull()) {continue;}
-      //if (debug) {printf("pushing %p to thread %d\n",b.get(),ix+1);}      
-      threadPool[ix]->inputFifo->push(b);
-      threadIndex=ix+1;
-      break;
+      threadIndex++;
+      if (threadIndex==numberOfThreads) {threadIndex=0;}      
+//      if (threadPool[threadIndex]->inputFifo->isFull()) {continue;
+//      if (debug) {printf("pushing %p to thread %d\n",b.get(),threadIndex+1);}      
+      if (threadPool[threadIndex]->inputFifo->push(b)==0) {
+        break;
+      }
     }
 
     // update stats

@@ -106,6 +106,8 @@ The parameters related to 3rd-party libraries are described here for convenience
 | consumer-tcp-* | host | string | localhost | Remote server IP name to connect to. |
 | consumer-tcp-* | ncx | int | 1 | Number of parallel streams (and threads) to use. The port number specified in 'port' parameter will be increased by 1 for each extra connection. |
 | consumer-processor-* | libraryPath | string |  | Path to the library file providing the processBlock() function to be used. |
+| consumer-processor-* | threadInputFifoSize | int | 10 | Size of input FIFO, where pending data are waiting to be processed. |
+| consumer-processor-* | threadIdleSleepTime | int | 1000 | Sleep time (microseconds) of inactive thread, before polling for next data. |
 | consumer-processor-* | numberOfThreads | int | 1 | Number of threads running the processBlock() function in parallel. |
 | receiverFMQ | transportType | string | shmem | c.f. parameter with same name in consumer-FMQchannel-* |
 | receiverFMQ | channelName | string | readout | c.f. parameter with same name in consumer-FMQchannel-* |
