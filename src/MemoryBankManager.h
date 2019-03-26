@@ -46,6 +46,11 @@ class MemoryBankManager {
     std::vector<memoryRange> rangesInUse; // list of ranges (with reference to bank base address) currently used in the bank
   };
   
+  
+  // get list of memory regions currently registered
+  int getMemoryRegions(std::vector<memoryRange> &ranges);
+  
+  
   private:
  
   std::vector<bankDescriptor> banks; // list of registered memory banks

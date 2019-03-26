@@ -113,3 +113,16 @@ std::shared_ptr<MemoryPagesPool>  MemoryBankManager::getPagedPool(size_t pageSiz
 
 // a global MemoryBankManager instance
 MemoryBankManager theMemoryBankManager;
+
+
+int MemoryBankManager::getMemoryRegions(std::vector<memoryRange> &ranges){
+  std::unique_lock<std::mutex> lock(bankMutex); 
+  ranges.clear();
+  for (unsigned int ix=0;ix<banks.size();ix++) {
+    memoryRange r;
+    r.offset=(size_t)banks[ix].bank->getBaseAddress();
+    r.size=(size_t)banks[ix].bank->getSize();
+    ranges.push_back(r);
+  }  
+  return 0;
+}
