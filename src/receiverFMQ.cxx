@@ -266,11 +266,17 @@ int main(int argc, const char **argv) {
 
   fd.fChannels = m;
   fd.SetTransport("zeromq");
-  fd.ChangeState(FairMQStateMachine::Event::INIT_DEVICE);
-  fd.WaitForEndOfState(FairMQStateMachine::Event::INIT_DEVICE);
-  fd.ChangeState(FairMQStateMachine::Event::INIT_TASK);
-  fd.WaitForEndOfState(FairMQStateMachine::Event::INIT_TASK);
-  fd.ChangeState(FairMQStateMachine::Event::RUN);
+  fd.ChangeState(fair::mq::Transition::InitDevice);
+  fd.WaitForState(fair::mq::State::InitializingDevice);
+  fd.ChangeState(fair::mq::Transition::CompleteInit);
+  fd.WaitForState(fair::mq::State::Initialized);
+  fd.ChangeState(fair::mq::Transition::Bind);
+  fd.WaitForState(fair::mq::State::Bound);
+  fd.ChangeState(fair::mq::Transition::Connect);
+  fd.WaitForState(fair::mq::State::DeviceReady);
+  fd.ChangeState(fair::mq::Transition::InitTask);
+  fd.WaitForState(fair::mq::State::Ready);
+  fd.ChangeState(fair::mq::Transition::Run);
 
 //    fd.InteractiveStateLoop();
 
@@ -280,12 +286,13 @@ int main(int argc, const char **argv) {
   }
   printf("Exit requested\n");
 
-  fd.ChangeState(FairMQStateMachine::Event::STOP);
-  fd.ChangeState(FairMQStateMachine::Event::RESET_TASK);
-  fd.WaitForEndOfState(FairMQStateMachine::Event::RESET_TASK);
-  fd.ChangeState(FairMQStateMachine::Event::RESET_DEVICE);
-  fd.WaitForEndOfState(FairMQStateMachine::Event::RESET_DEVICE);
-  fd.ChangeState(FairMQStateMachine::Event::END);
+  fd.ChangeState(fair::mq::Transition::Stop);
+  fd.WaitForState(fair::mq::State::Ready);
+  fd.ChangeState(fair::mq::Transition::ResetTask);
+  fd.WaitForState(fair::mq::State::DeviceReady);
+  fd.ChangeState(fair::mq::Transition::ResetDevice);
+  fd.WaitForState(fair::mq::State::Idle);
+  fd.ChangeState(fair::mq::Transition::End);
 
   printf("Done!\n");
   return 0;

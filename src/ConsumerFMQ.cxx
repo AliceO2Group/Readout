@@ -82,22 +82,29 @@ class ConsumerFMQ: public Consumer {
 
     sender.fChannels = m;
     sender.SetTransport("zeromq");
-    sender.ChangeState(FairMQStateMachine::Event::INIT_DEVICE);
-    sender.WaitForEndOfState(FairMQStateMachine::Event::INIT_DEVICE);
-    sender.ChangeState(FairMQStateMachine::Event::INIT_TASK);
-    sender.WaitForEndOfState(FairMQStateMachine::Event::INIT_TASK);
-    sender.ChangeState(FairMQStateMachine::Event::RUN);
+    sender.ChangeState(fair::mq::Transition::InitDevice);
+    sender.WaitForState(fair::mq::State::InitializingDevice);
+    sender.ChangeState(fair::mq::Transition::CompleteInit);
+    sender.WaitForState(fair::mq::State::Initialized);
+    sender.ChangeState(fair::mq::Transition::Bind);
+    sender.WaitForState(fair::mq::State::Bound);
+    sender.ChangeState(fair::mq::Transition::Connect);
+    sender.WaitForState(fair::mq::State::DeviceReady);
+    sender.ChangeState(fair::mq::Transition::InitTask);
+    sender.WaitForState(fair::mq::State::Ready);
+    sender.ChangeState(fair::mq::Transition::Run);
 
 //    sender.InteractiveStateLoop();
   }
 
   ~ConsumerFMQ() {
-    sender.ChangeState(FairMQStateMachine::Event::STOP);
-    sender.ChangeState(FairMQStateMachine::Event::RESET_TASK);
-    sender.WaitForEndOfState(FairMQStateMachine::Event::RESET_TASK);
-    sender.ChangeState(FairMQStateMachine::Event::RESET_DEVICE);
-    sender.WaitForEndOfState(FairMQStateMachine::Event::RESET_DEVICE);
-    sender.ChangeState(FairMQStateMachine::Event::END);
+    sender.ChangeState(fair::mq::Transition::Stop);
+    sender.WaitForState(fair::mq::State::Ready);
+    sender.ChangeState(fair::mq::Transition::ResetTask);
+    sender.WaitForState(fair::mq::State::DeviceReady);
+    sender.ChangeState(fair::mq::Transition::ResetDevice);
+    sender.WaitForState(fair::mq::State::Idle);
+    sender.ChangeState(fair::mq::Transition::End);
 
     if (deviceThread.joinable()) {
       deviceThread.join();

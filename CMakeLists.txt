@@ -44,7 +44,7 @@ find_package(Monitoring REQUIRED)
 find_package(ReadoutCard REQUIRED)
 find_package(Configuration)
 find_package(Numa)
-find_package(FairMQ)
+find_package(FairMQ 1.4.2)
 
 # extract include directories from targets
 get_target_property(InfoLogger_INCLUDE_DIRS AliceO2::InfoLogger INTERFACE_INCLUDE_DIRECTORIES)
