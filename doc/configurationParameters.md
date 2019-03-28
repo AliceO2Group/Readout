@@ -50,7 +50,7 @@ The parameters related to 3rd-party libraries are described here for convenience
 | equipment-* | name | string| | Name used to identify this equipment (in logs). By default, it takes the name of the configuration section, equipment-xxx |
 | equipment-* | id | int| | Optional. Number used to identify equipment (used e.g. in file recording). Range 1-65535.|
 | equipment-* | idleSleepTime | int | 200 | Thread idle sleep time, in microseconds. |
-| equipment-* | outputFifoSize | int | 1000 | Size of output fifo (number of pages). |
+| equipment-* | outputFifoSize | int | -1 | Size of output fifo (number of pages). If -1, set to the same value as memoryPoolNumberOfPages (this ensures that nothing can block the equipment while there are free pages). |
 | equipment-* | memoryBankName | string | | Name of bank to be used. By default, it uses the first available bank declared. |
 | equipment-* | memoryPoolPageSize | bytes | | Size of each memory page to be created. Some space might be kept in each page for internal readout usage. |
 | equipment-* | memoryPoolNumberOfPages | int | | Number of pages to be created for this equipment, taken from the chosen memory bank.|
