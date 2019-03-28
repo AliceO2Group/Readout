@@ -19,6 +19,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
+# by default, build optimized release code
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Release)
+endif()
+
 # define project directories
 # build-time binaries
 set(EXECUTABLE_OUTPUT_PATH "${CMAKE_BINARY_DIR}/bin")
@@ -48,6 +53,7 @@ find_package(Configuration)
 find_package(Numa)
 find_package(FairMQ)
 find_package(ZLIB)
+#find_package(RDMA)
 
 # extract include directories from targets
 get_target_property(InfoLogger_INCLUDE_DIRS AliceO2::InfoLogger INTERFACE_INCLUDE_DIRECTORIES)
@@ -73,7 +79,7 @@ else ()
 endif ()
 
 # add flags to enable optional features in Readout, based on available dependencies
-add_compile_definitions($<$<BOOL:${Numa_FOUND}>:WITH_NUMA> $<$<BOOL:${Configuration_FOUND}>:WITH_CONFIG> $<$<BOOL:${FairMQ_FOUND}>:WITH_FAIRMQ>)
+add_compile_definitions($<$<BOOL:${Numa_FOUND}>:WITH_NUMA> $<$<BOOL:${RDMA_FOUND}>:WITH_RDMA> $<$<BOOL:${Configuration_FOUND}>:WITH_CONFIG> $<$<BOOL:${FairMQ_FOUND}>:WITH_FAIRMQ> )
 
 #################
 # temporary hacks to fix non-working AliceO2::ReadoutCard target
@@ -108,8 +114,9 @@ set(READOUT_LINK_LIBRARIES
 #  AliceO2::ReadoutCard
   ${ReadoutCard_LIBRARIES}
   $<$<BOOL:${Configuration_FOUND}>:AliceO2::Configuration>
-  $<$<BOOL:${Numa_FOUND}>:numa>
   $<$<BOOL:${FairMQ_FOUND}>:FairMQ::FairMQ>
+  ${Numa_LIBRARIES}
+  ${RDMA_LIBRARIES}
 )
 
 
@@ -169,6 +176,7 @@ target_sources(
         ${SOURCE_DIR}/ConsumerDataProcessor.cxx
         ${SOURCE_DIR}/ConsumerTCP.cxx
 	$<$<BOOL:${FairMQ_FOUND}>:${SOURCE_DIR}/ConsumerFMQ.cxx ${SOURCE_DIR}/ConsumerFMQchannel.cxx ${SOURCE_DIR}/ConsumerDataSampling.cxx>
+	$<$<BOOL:${RDMA_FOUND}>:${SOURCE_DIR}/ConsumerRDMA.cxx>
 )
 target_include_directories(objReadoutConsumers PRIVATE ${READOUT_INCLUDE_DIRS})
 

@@ -115,6 +115,12 @@ int main(int argc, char* argv[])
   #else
     theLog.log("NUMA : no");
   #endif
+  #ifdef WITH_RDMA
+    theLog.log("RDMA : yes");
+  #else
+    theLog.log("RDMA : no");
+  #endif
+  
   // load configuration file
   theLog.log("Reading configuration from %s %s",cfgFileURI,cfgFileEntryPoint);
   try {
@@ -311,6 +317,12 @@ int main(int argc, char* argv[])
         newConsumer=getUniqueConsumerDataProcessor(cfg, kName);
       } else if (!cfgType.compare("tcp")) {
         newConsumer=getUniqueConsumerTCP(cfg, kName);
+      } else if (!cfgType.compare("rdma")) {
+        #ifdef WITH_RDMA
+	  newConsumer=getUniqueConsumerRDMA(cfg, kName);
+	#else
+	  theLog.log("Skipping %s: %s - not supported by this build", kName.c_str(), cfgType.c_str());
+	#endif
       } else {
         theLog.log("Unknown consumer type '%s' for [%s]",cfgType.c_str(),kName.c_str());
       }
