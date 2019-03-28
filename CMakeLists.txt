@@ -53,7 +53,7 @@ find_package(Configuration)
 find_package(Numa)
 find_package(FairMQ)
 find_package(ZLIB)
-#find_package(RDMA)
+find_package(RDMA)
 
 # extract include directories from targets
 get_target_property(InfoLogger_INCLUDE_DIRS AliceO2::InfoLogger INTERFACE_INCLUDE_DIRECTORIES)
