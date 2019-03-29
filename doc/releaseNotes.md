@@ -15,7 +15,7 @@ This file describes the main feature changes for each readout.exe released versi
 ## v0.19.1 - 07/03/2019
 - Fix for FairMQ build.
 
-## next version
+## v0.20 - 29/03/2019
 - New configuration parameters:
 	- consumer-fileRecorder: added parameter pagesMax.
 	- consumer-*: added parameter consumerOutput, to chain consumers (e.g. to record data output from a consumer-processor instance).
