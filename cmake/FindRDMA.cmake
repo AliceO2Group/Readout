@@ -22,7 +22,7 @@ find_library(
 
 # rdmacm
 find_path(
-  RDMACMA NAMES rdma/rdma_cma.h
+  RDMACMA_INCLUDE_DIR NAMES rdma/rdma_cma.h
   PATHS ${RDMA_ROOT} ${RDMA_ROOT}/include)
 
 find_library(
@@ -33,12 +33,13 @@ find_library(
 # check all components found
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(
-  RDMA DEFAULT_MSG IBVERBS_INCLUDE_DIR RDMACMA IBVERBS_LIBRARY RDMACMA_LIBRARY)
+  RDMA DEFAULT_MSG IBVERBS_INCLUDE_DIR RDMACMA_INCLUDE_DIR IBVERBS_LIBRARY RDMACMA_LIBRARY)
 
 # define RDMA variables
 if(${RDMA_FOUND})
-    set(RDMA_INCLUDE_DIRS ${IBVERBS_INCLUDE_DIR} ${RDMACMA})
+    set(RDMA_INCLUDE_DIRS ${IBVERBS_INCLUDE_DIR} ${RDMACMA_INCLUDE_DIR})
     list(REMOVE_DUPLICATES RDMA_INCLUDE_DIRS)
+
 
     set(RDMA_LIBRARIES ${IBVERBS_LIBRARY} ${RDMACMA_LIBRARY})
     list(REMOVE_DUPLICATES RDMA_LIBRARIES)
