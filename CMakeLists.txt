@@ -107,7 +107,6 @@ set(READOUT_INCLUDE_DIRS
 
 # define liraries to be linked
 set(READOUT_LINK_LIBRARIES
-  ${CMAKE_DL_LIBS}
   AliceO2::InfoLogger
   AliceO2::Common
   AliceO2::Monitoring
@@ -123,6 +122,11 @@ if(RDMA_FOUND)
   list(APPEND READOUT_LINK_LIBRARIES ${RDMA_LIBRARIES})
 endif()
 
+# some systems don't need an explicit library to have dlopen()
+check_library_exists(${CMAKE_DL_LIBS} dlopen "" HAVE_LIBDL)
+if (HAVE_LIBDL)
+  list(APPEND READOUT_LINK_LIBRARIES ${CMAKE_DL_LIBS})
+endif (HAVE_LIBDL)
 
 
 ###################################################
@@ -196,6 +200,14 @@ if (ZLIB_FOUND)
   target_include_directories(ProcessorZlibCompress PRIVATE ${READOUT_INCLUDE_DIRS} ${ZLIB_INCLUDE_DIRS})
   target_link_libraries(ProcessorZlibCompress ZLIB::ZLIB)
   list(APPEND libraries ProcessorZlibCompress)
+endif()
+
+# some systems don't like creating libs with undefined symbols
+set(no_lookup_compilers "Clang" "AppleClang")
+if (${CMAKE_CXX_COMPILER_ID} IN_LIST no_lookup_compilers)
+  foreach(lib ${libraries})
+    set_target_properties(${lib} PROPERTIES LINK_FLAGS "-undefined dynamic_lookup")
+  endforeach()
 endif()
 
 
