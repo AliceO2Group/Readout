@@ -123,10 +123,9 @@ if(RDMA_FOUND)
 endif()
 
 # some systems don't need an explicit library to have dlopen()
-check_library_exists(${CMAKE_DL_LIBS} dlopen "" HAVE_LIBDL)
-if (HAVE_LIBDL)
+if (CMAKE_DL_LIBS)
   list(APPEND READOUT_LINK_LIBRARIES ${CMAKE_DL_LIBS})
-endif (HAVE_LIBDL)
+endif()
 
 
 ###################################################
