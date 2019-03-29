@@ -115,9 +115,13 @@ set(READOUT_LINK_LIBRARIES
   ${ReadoutCard_LIBRARIES}
   $<$<BOOL:${Configuration_FOUND}>:AliceO2::Configuration>
   $<$<BOOL:${FairMQ_FOUND}>:FairMQ::FairMQ>
-  ${Numa_LIBRARIES}
-  ${RDMA_LIBRARIES}
 )
+if(Numa_FOUND)
+  list(APPEND READOUT_LINK_LIBRARIES ${Numa_LIBRARIES})
+endif()
+if(RDMA_FOUND)
+  list(APPEND READOUT_LINK_LIBRARIES ${RDMA_LIBRARIES})
+endif()
 
 
 
