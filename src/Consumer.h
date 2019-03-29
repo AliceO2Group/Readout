@@ -1,5 +1,5 @@
 #include <Common/Configuration.h>
-
+#include <Common/Fifo.h>
 
 #include <Common/DataBlock.h>
 #include <Common/DataBlockContainer.h>
@@ -28,6 +28,12 @@ class Consumer {
   
   protected:
     InfoLogger theLog;
+    
+    
+  public:
+  Consumer *forwardConsumer=nullptr; // consumer where to push output data, if any
+  bool isForwardConsumer=false; // this consumer will get data from output of another consumer
+  std::string name; // name of this consumer
 };
 
 
@@ -36,6 +42,8 @@ std::unique_ptr<Consumer> getUniqueConsumerFMQ(ConfigFile &cfg, std::string cfgE
 std::unique_ptr<Consumer> getUniqueConsumerFMQchannel(ConfigFile &cfg, std::string cfgEntryPoint);
 std::unique_ptr<Consumer> getUniqueConsumerFileRecorder(ConfigFile &cfg, std::string cfgEntryPoint);
 std::unique_ptr<Consumer> getUniqueConsumerDataChecker(ConfigFile &cfg, std::string cfgEntryPoint);
+std::unique_ptr<Consumer> getUniqueConsumerDataProcessor(ConfigFile &cfg, std::string cfgEntryPoint);
 std::unique_ptr<Consumer> getUniqueConsumerDataSampling(ConfigFile &cfg, std::string cfgEntryPoint);
 std::unique_ptr<Consumer> getUniqueConsumerTCP(ConfigFile &cfg, std::string cfgEntryPoint);
+std::unique_ptr<Consumer> getUniqueConsumerRDMA(ConfigFile &cfg, std::string cfgEntryPoint);
 
