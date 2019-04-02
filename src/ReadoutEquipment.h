@@ -110,3 +110,4 @@ class ReadoutEquipment {
 std::unique_ptr<ReadoutEquipment> getReadoutEquipmentDummy(ConfigFile &cfg, std::string cfgEntryPoint);
 std::unique_ptr<ReadoutEquipment> getReadoutEquipmentRORC(ConfigFile &cfg, std::string cfgEntryPoint);
 std::unique_ptr<ReadoutEquipment> getReadoutEquipmentCruEmulator(ConfigFile &cfg, std::string cfgEntryPoint);
+std::unique_ptr<ReadoutEquipment> getReadoutEquipmentPlayer(ConfigFile &cfg, std::string cfgEntryPoint);

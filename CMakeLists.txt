@@ -139,6 +139,7 @@ add_library(
         ${SOURCE_DIR}/ReadoutEquipmentDummy.cxx
         ${SOURCE_DIR}/ReadoutEquipmentRORC.cxx
         ${SOURCE_DIR}/ReadoutEquipmentCruEmulator.cxx
+        ${SOURCE_DIR}/ReadoutEquipmentPlayer.cxx	
 )
 target_include_directories(objReadoutEquipment PRIVATE ${READOUT_INCLUDE_DIRS})
 

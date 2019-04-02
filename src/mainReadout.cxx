@@ -403,6 +403,8 @@ int main(int argc, char* argv[])
         newDevice=getReadoutEquipmentRORC(cfg,kName);
       } else if (!cfgEquipmentType.compare("cruEmulator")) {
         newDevice=getReadoutEquipmentCruEmulator(cfg,kName);
+      } else if (!cfgEquipmentType.compare("player")) {
+        newDevice=getReadoutEquipmentPlayer(cfg,kName);
       } else {
         theLog.log("Unknown equipment type '%s' for [%s]",cfgEquipmentType.c_str(),kName.c_str());
       }
