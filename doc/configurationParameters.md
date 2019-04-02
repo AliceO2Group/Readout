@@ -46,7 +46,7 @@ The parameters related to 3rd-party libraries are described here for convenience
 | bank-* | type | string| | Support used to allocate memory. Possible values: malloc, MemoryMappedFile. For MemoryMappedFile, the name given to the bank (bank-*) is reused in the filesystem namespace to create the resource, so make sure it is unique on a given machine for all instances of readout. |
 | bank-* | numaNode | int | -1| Numa node where memory should be bound. -1 means unspecified (system will choose). |
 | equipment-* | enabled | int | 1 | Enable (value=1) or disable (value=0) the equipment. |
-| equipment-* | equipmentType | string |  | The type of equipment to be instanciated. One of: dummy, rorc, cruEmulator |
+| equipment-* | equipmentType | string |  | The type of equipment to be instanciated. One of: dummy, rorc, cruEmulator, player. |
 | equipment-* | name | string| | Name used to identify this equipment (in logs). By default, it takes the name of the configuration section, equipment-xxx |
 | equipment-* | id | int| | Optional. Number used to identify equipment (used e.g. in file recording). Range 1-65535.|
 | equipment-* | idleSleepTime | int | 200 | Thread idle sleep time, in microseconds. |
@@ -67,6 +67,9 @@ The parameters related to 3rd-party libraries are described here for convenience
 | equipment-cruemulator-* | linkId | int | 0 | Id of first link. If numberOfLinks>1, ids will range from linkId to linkId+numberOfLinks-1. |
 | equipment-cruemulator-* | TFperiod | int | 256 | Duration of a timeframe, in number of LHC orbits. |
 | equipment-cruemulator-* | HBperiod | int | 1 | Interval between 2 HeartBeat triggers, in number of LHC orbits. |
+| equipment-player-* | filePath | string | | Path of file containing data to be injected in readout. |
+| equipment-player-* | preLoad | int | 1 | If 1, data pages preloaded with file content on startup. If 0, data is copied at runtime. |
+| equipment-player-* | fillPage | int | 1 | If 1, content of data file is copied multiple time in each data page until page is full (or almost full: on the last iteration, there is no partial copy if remaining space is smaller than full file size). If 0, data file is copied exactly once in each data page. |
 | equipment-rorc-* | cardId | string | | ID of the board to be used. Typically, a PCI bus device id. c.f. AliceO2::roc::Parameters. |
 | equipment-rorc-* | channelNumber | int | 0 | Channel number of the board to be used. Typically 0 for CRU, or 1-6 for CRORC. c.f. AliceO2::roc::Parameters. |
 | equipment-rorc-* | generatorEnabled | int | 0 | If non-zero, enable card internal generator. c.f. AliceO2::roc::Parameters. |
