@@ -26,5 +26,6 @@ This file describes the main feature changes for each readout.exe released versi
 	- Added libProcessorZlibCompress as example consumer-processor library.
 - Added consumer-rdma:
 	- It allows to send data by RDMA/ibverbs, for testing purposes.
-
-
+	
+## next version
+- Added libProcessorLZ4Compress for fast compression testing.

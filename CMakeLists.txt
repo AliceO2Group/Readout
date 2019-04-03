@@ -190,6 +190,8 @@ target_include_directories(objReadoutConsumers PRIVATE ${READOUT_INCLUDE_DIRS})
 
 
 # processor libraries
+
+# ZLIB compression
 find_package(ZLIB)
 if (ZLIB_FOUND)
   add_library(
@@ -201,6 +203,36 @@ if (ZLIB_FOUND)
   target_link_libraries(ProcessorZlibCompress ZLIB::ZLIB)
   list(APPEND libraries ProcessorZlibCompress)
 endif()
+
+# LZ4 compression
+# needs explicit enabling with -DWITH_LZ4=1
+if (WITH_LZ4)
+set(LZ4_DIR ${CMAKE_BINARY_DIR}/lz4/lib)
+include(ExternalProject)
+  externalproject_add (lz4
+    GIT_REPOSITORY "https://github.com/lz4/lz4.git"
+    GIT_TAG "v1.8.3"
+    LOG_DOWNLOAD 1
+    UPDATE_COMMAND ""
+    PATCH_COMMAND ""
+    BUILD_COMMAND make -C ${LZ4_DIR} -j
+    CONFIGURE_COMMAND ""
+    TEST_COMMAND ""
+    INSTALL_COMMAND ""
+    SOURCE_DIR "${CMAKE_BINARY_DIR}/lz4"
+ )
+ add_library(
+   ProcessorLZ4Compress
+   SHARED
+   ${SOURCE_DIR}/ProcessorLZ4Compress.cxx
+ )
+ add_dependencies(ProcessorLZ4Compress lz4)
+ target_include_directories(ProcessorLZ4Compress PRIVATE ${READOUT_INCLUDE_DIRS} ${LZ4_DIR})
+ target_link_libraries(ProcessorLZ4Compress ${LZ4_DIR}/liblz4.a)
+ list(APPEND libraries ProcessorLZ4Compress)
+endif()
+
+
 
 # some systems don't like creating libs with undefined symbols
 set(no_lookup_compilers "Clang" "AppleClang")

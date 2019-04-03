@@ -60,7 +60,8 @@ CRU internal data generator.
 - ConsumerDataProcessor: allows to call a user-provided function (dynamically loaded at runtime from library) on each data page produced by readout.
   See ConsumerDataProcessor.cxx for function footprint and ProcessorZlibCompress.cxx for example compression implementation.
   Note that the option 'consumerOutput' can be useful to forward the result of this processing function to another consumer (e.g. file recorder, transport, etc).
-
+  The following processor libraries are provided with readout: ProcessorZlibCompress, ProcessorLZ4Compress.
+  
 They all follow the interface defined in the base Consumer Class.
 
 
