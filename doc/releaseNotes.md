@@ -29,3 +29,5 @@ This file describes the main feature changes for each readout.exe released versi
 	
 ## next version
 - Added libProcessorLZ4Compress for fast compression testing.
+- New configuration parameters:
+	- consumer-stats: added parameter consoleUpdate.
