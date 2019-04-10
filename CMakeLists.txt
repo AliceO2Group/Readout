@@ -19,11 +19,18 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
+# by default, build optimized release code
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Release)
+endif()
+
 # define project directories
 # build-time binaries
 set(EXECUTABLE_OUTPUT_PATH "${CMAKE_BINARY_DIR}/bin")
 # local sources
 set(SOURCE_DIR src)
+# installation of libraries
+set(CMAKE_INSTALL_LIBDIR lib)
 
 # add local modules directory
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
@@ -45,6 +52,8 @@ find_package(ReadoutCard REQUIRED)
 find_package(Configuration)
 find_package(Numa)
 find_package(FairMQ 1.4.2)
+find_package(ZLIB)
+find_package(RDMA)
 
 # extract include directories from targets
 get_target_property(InfoLogger_INCLUDE_DIRS AliceO2::InfoLogger INTERFACE_INCLUDE_DIRECTORIES)
@@ -70,7 +79,7 @@ else ()
 endif ()
 
 # add flags to enable optional features in Readout, based on available dependencies
-add_compile_definitions($<$<BOOL:${Numa_FOUND}>:WITH_NUMA> $<$<BOOL:${Configuration_FOUND}>:WITH_CONFIG> $<$<BOOL:${FairMQ_FOUND}>:WITH_FAIRMQ>)
+add_compile_definitions($<$<BOOL:${Numa_FOUND}>:WITH_NUMA> $<$<BOOL:${RDMA_FOUND}>:WITH_RDMA> $<$<BOOL:${Configuration_FOUND}>:WITH_CONFIG> $<$<BOOL:${FairMQ_FOUND}>:WITH_FAIRMQ> )
 
 #################
 # temporary hacks to fix non-working AliceO2::ReadoutCard target
@@ -104,10 +113,19 @@ set(READOUT_LINK_LIBRARIES
 #  AliceO2::ReadoutCard
   ${ReadoutCard_LIBRARIES}
   $<$<BOOL:${Configuration_FOUND}>:AliceO2::Configuration>
-  $<$<BOOL:${Numa_FOUND}>:numa>
   $<$<BOOL:${FairMQ_FOUND}>:FairMQ::FairMQ>
 )
+if(Numa_FOUND)
+  list(APPEND READOUT_LINK_LIBRARIES ${Numa_LIBRARIES})
+endif()
+if(RDMA_FOUND)
+  list(APPEND READOUT_LINK_LIBRARIES ${RDMA_LIBRARIES})
+endif()
 
+# some systems don't need an explicit library to have dlopen()
+if (CMAKE_DL_LIBS)
+  list(APPEND READOUT_LINK_LIBRARIES ${CMAKE_DL_LIBS})
+endif()
 
 
 ###################################################
@@ -121,6 +139,7 @@ add_library(
         ${SOURCE_DIR}/ReadoutEquipmentDummy.cxx
         ${SOURCE_DIR}/ReadoutEquipmentRORC.cxx
         ${SOURCE_DIR}/ReadoutEquipmentCruEmulator.cxx
+        ${SOURCE_DIR}/ReadoutEquipmentPlayer.cxx	
 )
 target_include_directories(objReadoutEquipment PRIVATE ${READOUT_INCLUDE_DIRS})
 
@@ -162,11 +181,34 @@ target_sources(
         ${SOURCE_DIR}/ConsumerStats.cxx
         ${SOURCE_DIR}/ConsumerFileRecorder.cxx
         ${SOURCE_DIR}/ConsumerDataChecker.cxx
+        ${SOURCE_DIR}/ConsumerDataProcessor.cxx
         ${SOURCE_DIR}/ConsumerTCP.cxx
 	$<$<BOOL:${FairMQ_FOUND}>:${SOURCE_DIR}/ConsumerFMQ.cxx ${SOURCE_DIR}/ConsumerFMQchannel.cxx ${SOURCE_DIR}/ConsumerDataSampling.cxx>
+	$<$<BOOL:${RDMA_FOUND}>:${SOURCE_DIR}/ConsumerRDMA.cxx>
 )
 target_include_directories(objReadoutConsumers PRIVATE ${READOUT_INCLUDE_DIRS})
 
+
+# processor libraries
+find_package(ZLIB)
+if (ZLIB_FOUND)
+  add_library(
+          ProcessorZlibCompress
+          SHARED
+          ${SOURCE_DIR}/ProcessorZlibCompress.cxx
+  )
+  target_include_directories(ProcessorZlibCompress PRIVATE ${READOUT_INCLUDE_DIRS} ${ZLIB_INCLUDE_DIRS})
+  target_link_libraries(ProcessorZlibCompress ZLIB::ZLIB)
+  list(APPEND libraries ProcessorZlibCompress)
+endif()
+
+# some systems don't like creating libs with undefined symbols
+set(no_lookup_compilers "Clang" "AppleClang")
+if (${CMAKE_CXX_COMPILER_ID} IN_LIST no_lookup_compilers)
+  foreach(lib ${libraries})
+    set_target_properties(${lib} PROPERTIES LINK_FLAGS "-undefined dynamic_lookup")
+  endforeach()
+endif()
 
 
 ###################################################
@@ -237,7 +279,7 @@ if (NOT FAIRMQ_FOUND)
 	set_target_properties(testTxFMQ.exe testRxFMQ.exe PROPERTIES EXCLUDE_FROM_ALL 1)
 endif ()
 
-# set include andlibraries for all
+# set include and libraries for all
 set(executables readout.exe receiverFMQ.exe testTxFMQ.exe testRxFMQ.exe testMemoryBanks.exe readRaw.exe testROC.exe testMonitor.exe)
 foreach (exe ${executables})
 	target_include_directories(${exe} PRIVATE ${READOUT_INCLUDE_DIRS})
@@ -267,4 +309,8 @@ foreach (exe ${executables})
 	if(NOT ${IS_EXCLUDED})
 		install(TARGETS ${exe} DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
 	endif ()
+endforeach ()
+
+foreach (lib ${libraries})
+	install(TARGETS ${lib} DESTINATION ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR})
 endforeach ()

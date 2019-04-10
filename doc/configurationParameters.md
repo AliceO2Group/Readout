@@ -46,11 +46,11 @@ The parameters related to 3rd-party libraries are described here for convenience
 | bank-* | type | string| | Support used to allocate memory. Possible values: malloc, MemoryMappedFile. For MemoryMappedFile, the name given to the bank (bank-*) is reused in the filesystem namespace to create the resource, so make sure it is unique on a given machine for all instances of readout. |
 | bank-* | numaNode | int | -1| Numa node where memory should be bound. -1 means unspecified (system will choose). |
 | equipment-* | enabled | int | 1 | Enable (value=1) or disable (value=0) the equipment. |
-| equipment-* | equipmentType | string |  | The type of equipment to be instanciated. One of: dummy, rorc, cruEmulator |
+| equipment-* | equipmentType | string |  | The type of equipment to be instanciated. One of: dummy, rorc, cruEmulator, player. |
 | equipment-* | name | string| | Name used to identify this equipment (in logs). By default, it takes the name of the configuration section, equipment-xxx |
 | equipment-* | id | int| | Optional. Number used to identify equipment (used e.g. in file recording). Range 1-65535.|
 | equipment-* | idleSleepTime | int | 200 | Thread idle sleep time, in microseconds. |
-| equipment-* | outputFifoSize | int | 1000 | Size of output fifo (number of pages). |
+| equipment-* | outputFifoSize | int | -1 | Size of output fifo (number of pages). If -1, set to the same value as memoryPoolNumberOfPages (this ensures that nothing can block the equipment while there are free pages). |
 | equipment-* | memoryBankName | string | | Name of bank to be used. By default, it uses the first available bank declared. |
 | equipment-* | memoryPoolPageSize | bytes | | Size of each memory page to be created. Some space might be kept in each page for internal readout usage. |
 | equipment-* | memoryPoolNumberOfPages | int | | Number of pages to be created for this equipment, taken from the chosen memory bank.|
@@ -59,7 +59,7 @@ The parameters related to 3rd-party libraries are described here for convenience
 | equipment-* | blockAlign | bytes | 2M | Alignment of the beginning of the big memory block from which the pool is created. Pool will start at a multiple of this value. Each page will then begin at a multiple of memoryPoolPageSize from the beginning of big block. |
 | equipment-dummy-* | eventMaxSize | int | 128k | Maximum size of randomly generated event. |
 | equipment-dummy-* | eventMinSize | int | 128k | Minimum size of randomly generated event. |
-| equipment-dummy-* | fillData | int | 0 | If non-zero, data payload is filled with a counter. Otherwise (default), no write operation is performed, random data from memory is kept in payload. |
+| equipment-dummy-* | fillData | int | 0 | Pattern used to fill data page: (0) no pattern used, data page is left untouched, with whatever values were in memory (1) incremental byte pattern (2) incremental word pattern, with one random word out of 5. |
 | equipment-cruemulator-* | maxBlocksPerPage | int | 0 | [obsolete- not used]. Maximum number of blocks per page. |
 | equipment-cruemulator-* | cruBlockSize | int | 8192 | Size of a RDH block. |
 | equipment-cruemulator-* | numberOfLinks | int | 1 | Number of GBT links simulated by equipment. |
@@ -67,6 +67,9 @@ The parameters related to 3rd-party libraries are described here for convenience
 | equipment-cruemulator-* | linkId | int | 0 | Id of first link. If numberOfLinks>1, ids will range from linkId to linkId+numberOfLinks-1. |
 | equipment-cruemulator-* | TFperiod | int | 256 | Duration of a timeframe, in number of LHC orbits. |
 | equipment-cruemulator-* | HBperiod | int | 1 | Interval between 2 HeartBeat triggers, in number of LHC orbits. |
+| equipment-player-* | filePath | string | | Path of file containing data to be injected in readout. |
+| equipment-player-* | preLoad | int | 1 | If 1, data pages preloaded with file content on startup. If 0, data is copied at runtime. |
+| equipment-player-* | fillPage | int | 1 | If 1, content of data file is copied multiple time in each data page until page is full (or almost full: on the last iteration, there is no partial copy if remaining space is smaller than full file size). If 0, data file is copied exactly once in each data page. |
 | equipment-rorc-* | cardId | string | | ID of the board to be used. Typically, a PCI bus device id. c.f. AliceO2::roc::Parameters. |
 | equipment-rorc-* | channelNumber | int | 0 | Channel number of the board to be used. Typically 0 for CRU, or 1-6 for CRORC. c.f. AliceO2::roc::Parameters. |
 | equipment-rorc-* | generatorEnabled | int | 0 | If non-zero, enable card internal generator. c.f. AliceO2::roc::Parameters. |
@@ -80,13 +83,15 @@ The parameters related to 3rd-party libraries are described here for convenience
 | equipment-rorc-* | rdhDumpEnabled | int | 0 | If set, data pages are parsed and RDH headers summary printed. Setting a negative number will print only the first N RDH.|
 | equipment-rorc-* | cleanPageBeforeUse | int | 0 | If set, data pages are filled with zero before being given for writing by device. Slow, but usefull to readout incomplete pages (driver currently does not return correctly number of bytes written in page. |
 | consumer-* | enabled | int | 1 | Enable (value=1) or disable (value=0) the consumer. |
-| consumer-* | consumerType | string |  | The type of consumer to be instanciated. One of:stats, FairMQDevice, DataSampling, FairMQChannel, fileRecorder, checker. |
+| consumer-* | consumerType | string |  | The type of consumer to be instanciated. One of:stats, FairMQDevice, DataSampling, FairMQChannel, fileRecorder, checker, processor, tcp, rdma. |
+| consumer-* | consumerOutput | string |  | Name of the consumer where the output of this consumer (if any) should be pushed. |
 | consumer-stats-* | monitoringEnabled | int | 0 | Enable (1) or disable (0) readout monitoring. |
 | consumer-stats-* | monitoringUpdatePeriod | int | 10 | Period of readout monitoring updates. |
 | consumer-stats-* | processMonitoringInterval | int | 0 | Period of process monitoring updates (O2 standard metrics). If zero (default), disabled.|
 | consumer-stats-* | monitoringURI | string |  | URI to connect O2 monitoring service. c.f. o2::monitoring. |
 | consumer-fileRecorder-* | fileName | string |  | Path to the file where to record data. The following variables are replaced at runtime: ${XXX} -> get variable XXX from environment, %t -> unix timestamp (seconds since epoch), %T -> formatted date/time, %i -> equipment ID of each data chunk (used to write data from different equipments to different output files). |
 | consumer-fileRecorder-* | bytesMax | bytes | 0 | Maximum number of bytes to write to each file. Data pages are never truncated, so if writing the full page would exceed this limit, no data from that page is written at all and file is closed. If zero (default), no maximum size set.|
+| consumer-fileRecorder-* | pagesMax | int | 0 | Maximum number of data pages accepted by recorder. If zero (default), no maximum set.|
 | consumer-fileRecorder-* | dataBlockHeaderEnabled | int | 0 | Enable (1) or disable (0) the writing to file of the internal readout header (Common::DataBlockHeaderBase struct) between the data pages, to easily navigate through the file without RDH decoding. If disabled, the raw data pages received from CRU are written without further formatting. |
 | consumer-FMQchannel-* | disableSending | int | 0 | If set, no data is output to FMQ channel. Used for performance test to create FMQ shared memory segment without pushing the data. |
 | consumer-FMQchannel-* | enableRawFormat | int | 0 | If set, data is pushed in raw format without additional headers, 1 FMQ message per data page. |
@@ -103,6 +108,12 @@ The parameters related to 3rd-party libraries are described here for convenience
 | consumer-tcp-* | port | int | 10001 | Remote server TCP port number to connect to. |
 | consumer-tcp-* | host | string | localhost | Remote server IP name to connect to. |
 | consumer-tcp-* | ncx | int | 1 | Number of parallel streams (and threads) to use. The port number specified in 'port' parameter will be increased by 1 for each extra connection. |
+| consumer-processor-* | libraryPath | string |  | Path to the library file providing the processBlock() function to be used. |
+| consumer-processor-* | threadInputFifoSize | int | 10 | Size of input FIFO, where pending data are waiting to be processed. |
+| consumer-processor-* | threadIdleSleepTime | int | 1000 | Sleep time (microseconds) of inactive thread, before polling for next data. |
+| consumer-processor-* | numberOfThreads | int | 1 | Number of threads running the processBlock() function in parallel. |
+| consumer-rdma-* | port | int | 10001 | Remote server TCP port number to connect to. |
+| consumer-rdma-* | host | string | localhost | Remote server IP name to connect to. |
 | receiverFMQ | transportType | string | shmem | c.f. parameter with same name in consumer-FMQchannel-* |
 | receiverFMQ | channelName | string | readout | c.f. parameter with same name in consumer-FMQchannel-* |
 | receiverFMQ | channelType | string | pair | c.f. parameter with same name in consumer-FMQchannel-* |
