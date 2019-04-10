@@ -459,7 +459,7 @@ int main(int argc, char* argv[])
 
   // notify consumers of imminent data flow start
   for (auto& c : dataConsumers) {
-    c->starting();
+    c->start();
   }
 
   theLog.log("Starting readout equipments");
@@ -507,7 +507,7 @@ int main(int argc, char* argv[])
 
         // notify consumers of imminent data flow stop
         for (auto& c : dataConsumers) {
-          c->stopping();
+          c->stop();
         }
 
       }
