@@ -120,6 +120,11 @@ const std::string & ReadoutEquipment::getName() {
 }
 
 void ReadoutEquipment::start() {
+  // reset counters
+  for (int i=0; i<(int)EquipmentStatsIndexes::maxIndex; i++) {
+    equipmentStats[i].reset();
+  }
+  
   readoutThread->start();
   if (readoutRate>0) {
     clk.reset(1000000.0/readoutRate);

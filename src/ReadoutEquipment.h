@@ -90,7 +90,6 @@ class ReadoutEquipment {
   AliceO2::Common::Timer clk;
   AliceO2::Common::Timer clk0;
 
-  // unsigned long long nBlocksOut;
   double readoutRate;
   std::string name;  // name of the equipment
 
