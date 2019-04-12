@@ -54,6 +54,7 @@ find_package(Numa)
 find_package(FairMQ 1.4.2)
 find_package(ZLIB)
 find_package(RDMA)
+#find_package(Occ)
 
 # extract include directories from targets
 get_target_property(InfoLogger_INCLUDE_DIRS AliceO2::InfoLogger INTERFACE_INCLUDE_DIRECTORIES)
@@ -77,6 +78,13 @@ else ()
   get_target_property(FairLogger_INCLUDE_DIRS FairLogger::FairLogger INTERFACE_INCLUDE_DIRECTORIES)
   list(APPEND FairMQ_INCLUDE_DIRS ${FairLogger_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
 endif ()
+
+# check OCC
+if (Occ_FOUND)
+  message(STATUS "Control-OCCPlugin found")
+else ()
+  message(WARNING "Control-OCCPlugin not found, correpsonding features will be disabled.")
+endif(Occ_FOUND)
 
 # add flags to enable optional features in Readout, based on available dependencies
 add_compile_definitions($<$<BOOL:${Numa_FOUND}>:WITH_NUMA> $<$<BOOL:${RDMA_FOUND}>:WITH_RDMA> $<$<BOOL:${Configuration_FOUND}>:WITH_CONFIG> $<$<BOOL:${FairMQ_FOUND}>:WITH_FAIRMQ> )
