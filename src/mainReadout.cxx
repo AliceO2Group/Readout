@@ -761,7 +761,8 @@ int main(int argc, char* argv[])
     return err;
   }
 
-  for (int i=0;i<3;i++) {
+  // loop for testing, single iteration in normal conditions
+  for (int i=0;i<1;i++) {
   
   err=theReadout.start();
   if (err) {
