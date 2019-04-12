@@ -28,10 +28,10 @@ This file describes the main feature changes for each readout.exe released versi
 	- It allows to send data by RDMA/ibverbs, for testing purposes.
 	
 ## v0.21 - 11/04/2019
+- Adapt to FairMQ v1.4.2+
+
+## v0.22 - 12/04/2019
 - Added libProcessorLZ4Compress for fast compression testing.
 - New configuration parameters:
 	- consumer-stats: added parameter consoleUpdate.
-- Adapt to FairMQ v1.4.2+
-
-## next version
 - Added internal state machine for control
