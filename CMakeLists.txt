@@ -54,6 +54,7 @@ find_package(Numa)
 find_package(FairMQ 1.4.2)
 find_package(ZLIB)
 find_package(RDMA)
+#find_package(Occ)
 
 # extract include directories from targets
 get_target_property(InfoLogger_INCLUDE_DIRS AliceO2::InfoLogger INTERFACE_INCLUDE_DIRECTORIES)
@@ -77,6 +78,13 @@ else ()
   get_target_property(FairLogger_INCLUDE_DIRS FairLogger::FairLogger INTERFACE_INCLUDE_DIRECTORIES)
   list(APPEND FairMQ_INCLUDE_DIRS ${FairLogger_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
 endif ()
+
+# check OCC
+if (Occ_FOUND)
+  message(STATUS "Control-OCCPlugin found")
+else ()
+  message(WARNING "Control-OCCPlugin not found, correpsonding features will be disabled.")
+endif(Occ_FOUND)
 
 # add flags to enable optional features in Readout, based on available dependencies
 add_compile_definitions($<$<BOOL:${Numa_FOUND}>:WITH_NUMA> $<$<BOOL:${RDMA_FOUND}>:WITH_RDMA> $<$<BOOL:${Configuration_FOUND}>:WITH_CONFIG> $<$<BOOL:${FairMQ_FOUND}>:WITH_FAIRMQ> )
@@ -190,6 +198,8 @@ target_include_directories(objReadoutConsumers PRIVATE ${READOUT_INCLUDE_DIRS})
 
 
 # processor libraries
+
+# ZLIB compression
 find_package(ZLIB)
 if (ZLIB_FOUND)
   add_library(
@@ -201,6 +211,36 @@ if (ZLIB_FOUND)
   target_link_libraries(ProcessorZlibCompress ZLIB::ZLIB)
   list(APPEND libraries ProcessorZlibCompress)
 endif()
+
+# LZ4 compression
+# needs explicit enabling with -DWITH_LZ4=1
+if (WITH_LZ4)
+set(LZ4_DIR ${CMAKE_BINARY_DIR}/lz4/lib)
+include(ExternalProject)
+  externalproject_add (lz4
+    GIT_REPOSITORY "https://github.com/lz4/lz4.git"
+    GIT_TAG "v1.8.3"
+    LOG_DOWNLOAD 1
+    UPDATE_COMMAND ""
+    PATCH_COMMAND ""
+    BUILD_COMMAND make -C ${LZ4_DIR} -j
+    CONFIGURE_COMMAND ""
+    TEST_COMMAND ""
+    INSTALL_COMMAND ""
+    SOURCE_DIR "${CMAKE_BINARY_DIR}/lz4"
+ )
+ add_library(
+   ProcessorLZ4Compress
+   SHARED
+   ${SOURCE_DIR}/ProcessorLZ4Compress.cxx
+ )
+ add_dependencies(ProcessorLZ4Compress lz4)
+ target_include_directories(ProcessorLZ4Compress PRIVATE ${READOUT_INCLUDE_DIRS} ${LZ4_DIR})
+ target_link_libraries(ProcessorLZ4Compress ${LZ4_DIR}/liblz4.a)
+ list(APPEND libraries ProcessorLZ4Compress)
+endif()
+
+
 
 # some systems don't like creating libs with undefined symbols
 set(no_lookup_compilers "Clang" "AppleClang")

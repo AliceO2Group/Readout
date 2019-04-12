@@ -23,8 +23,8 @@ class Consumer {
   // iterate through blocks of a dataset, using the per-block pushData() method. Returns number of successfully pushed blocks in set.
   virtual int pushData(DataSetReference &bc); 
     
-  virtual int starting() {return 0;}; // function called when starting data taking. Data will soon start to flow in.
-  virtual int stopping() {return 0;}; // function called when stopping data taking. Data will soon stop to flow in (but pushData will still be called while fifo not empty).
+  virtual int start() {return 0;}; // function called just before starting data taking. Data will soon start to flow in.
+  virtual int stop() {return 0;}; // function called just after stopping data taking, after the last call to pushData(). Not called before input FIFO empty.
   
   protected:
     InfoLogger theLog;

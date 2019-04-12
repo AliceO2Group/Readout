@@ -27,21 +27,24 @@ using namespace o2::monitoring;
 class ConsumerStats: public Consumer {
   private:
   uint64_t counterBlocks;
+  uint64_t counterBlocksDiff;
   uint64_t counterBytesTotal;
   uint64_t counterBytesHeader;
   uint64_t counterBytesDiff;
   AliceO2::Common::Timer runningTime;
   AliceO2::Common::Timer monitoringUpdateTimer;
   double elapsedTime; // value used for rates computation
-  
+  double intervalStartTime; // counter for interval statistics, keeps last timestamp
+    
   int monitoringEnabled;
-  int monitoringUpdatePeriod;
+  double monitoringUpdatePeriod;
   std::unique_ptr<Monitoring> monitoringCollector;
-
+  int consoleUpdate; // if set, stats will be published also on console
+  
   struct rusage previousUsage; // variable to keep track of last getrusage() result
   struct rusage currentUsage; // variable to keep track of last getrusage() result  
-  double timePreviousGetrusage=0; // variable storing 'runningTime' value when getrusage was previously called (0 if not called yet)
-  double cpuUsedOverLastInterval=0; // average CPU usage over latest measurement interval
+  double timePreviousGetrusage; // variable storing 'runningTime' value when getrusage was previously called (0 if not called yet)
+  double cpuUsedOverLastInterval; // average CPU usage over latest measurement interval
   
   // per-equipment statistics
   struct EquipmentStats {
@@ -50,7 +53,24 @@ class ConsumerStats: public Consumer {
   typedef std::unordered_map<uint16_t, EquipmentStats> EquipmentStatsMap;
   EquipmentStatsMap equipmentStatsMap;
   
+  bool isRunning=false;
   
+  // reset all counters and timers for a fresh start
+  // must be called once before first publishStats() call
+  void reset() {
+    counterBlocks=0;
+    counterBlocksDiff=0;
+    counterBytesTotal=0;
+    counterBytesHeader=0;
+    counterBytesDiff=0;
+    elapsedTime=0.0;
+    intervalStartTime=0;
+    timePreviousGetrusage=0;
+    cpuUsedOverLastInterval=0.0;
+    equipmentStatsMap.clear();
+    monitoringUpdateTimer.reset(monitoringUpdatePeriod*1000000);
+    runningTime.reset();
+  }
   
   void sendMetricNoException(Metric&& metric, DerivedMetricMode mode = DerivedMetricMode::NONE){
     try {
@@ -80,6 +100,17 @@ class ConsumerStats: public Consumer {
     timePreviousGetrusage=now;
     previousUsage=currentUsage;
     // todo: per thread? -> add feature in Thread class
+
+    if (consoleUpdate) {
+      if (intervalStartTime) {
+        double intervalTime=now-intervalStartTime;
+	if (intervalTime>0) {
+          theLog.log("Last interval (%.2fs): blocksRx=%ld, block rate=%.2lf, bytesRx=%ld, rate=%s",
+	    intervalTime,counterBlocksDiff,counterBlocksDiff/intervalTime,counterBytesDiff,NumberOfBytesToString(counterBytesDiff*8/intervalTime,"b/s",1000).c_str());
+	}
+      }
+      intervalStartTime=now;
+    } 
   
     if (monitoringEnabled) {
       // todo: support for long long types
@@ -97,24 +128,52 @@ class ConsumerStats: public Consumer {
 	//sendMetricNoException(Metric{it.second.counterBytesPayload, "readout.BytesEquipment"}.addTags({(unsigned int)it.first}), DerivedMetricMode::RATE);
 	sendMetricNoException(Metric{it.second.counterBytesPayload, metricName}, DerivedMetricMode::RATE);
       }
-      
-      counterBytesDiff=0;
     }
+
+    counterBytesDiff=0;
+    counterBlocksDiff=0;
+      
   }
 
+  // run a function in a separate thread to publish data regularly, until flag isShutdown is set
+  std::unique_ptr<std::thread> periodicUpdateThread; // the thread running periodic updates
+  bool periodicUpdateThreadShutdown; // flag to stop periodicUpdateThread
+  void periodicUpdate() {
+    periodicUpdateThreadShutdown=0;
+    
+    // periodic update
+    for(;!periodicUpdateThreadShutdown;) {
+      if (!isRunning) {
+        usleep(100000);
+        continue;
+      }
+
+      double timeUntilTimeout=monitoringUpdateTimer.getRemainingTime(); // measured in seconds
+      if (timeUntilTimeout<=0) {
+        publishStats();
+        monitoringUpdateTimer.increment();
+      } else {
+        if (timeUntilTimeout>1) {
+	  timeUntilTimeout=1.0; // avoid a sleep longer than 1s to allow exiting promptly
+	}
+        usleep((int)(timeUntilTimeout*1000000));
+      }
+    }
+  }
 
   public:
   ConsumerStats(ConfigFile &cfg, std::string cfgEntryPoint):Consumer(cfg,cfgEntryPoint) {
 
     // configuration parameter: | consumer-stats-* | monitoringEnabled | int | 0 | Enable (1) or disable (0) readout monitoring. |
     cfg.getOptionalValue(cfgEntryPoint + ".monitoringEnabled", monitoringEnabled, 0);
+    // configuration parameter: | consumer-stats-* | monitoringUpdatePeriod | double | 10 | Period of readout monitoring updates, in seconds. |
+    cfg.getOptionalValue(cfgEntryPoint + ".monitoringUpdatePeriod", monitoringUpdatePeriod, 10.0);
+
     if (monitoringEnabled) {
-      // configuration parameter: | consumer-stats-* | monitoringUpdatePeriod | int | 10 | Period of readout monitoring updates. |
-      cfg.getOptionalValue(cfgEntryPoint + ".monitoringUpdatePeriod", monitoringUpdatePeriod, 10);
       // configuration parameter: | consumer-stats-* | monitoringURI | string |  | URI to connect O2 monitoring service. c.f. o2::monitoring. |
       const std::string configURI=cfg.getValue<std::string>(cfgEntryPoint + ".monitoringURI");
-      theLog.log("Monitoring enabled - period %ds - using %s",monitoringUpdatePeriod,configURI.c_str());
 
+      theLog.log("Monitoring enabled - period %.2fs - using %s",monitoringUpdatePeriod,configURI.c_str());
       monitoringCollector=MonitoringFactory::Get(configURI.c_str());
 
       // enable process monitoring
@@ -124,39 +183,35 @@ class ConsumerStats: public Consumer {
       if (processMonitoringInterval>0) {
         monitoringCollector->enableProcessMonitoring(processMonitoringInterval);
       }
-
-      monitoringUpdateTimer.reset(monitoringUpdatePeriod*1000000);
     }
 
-    counterBytesTotal=0;
-    counterBytesHeader=0;
-    counterBlocks=0;
-    counterBytesDiff=0;
-    runningTime.reset();
-    elapsedTime=0.0;
+    // configuration parameter: | consumer-stats-* | consoleUpdate | int | 0 | If non-zero, periodic updates also output on the log console (at rate defined in monitoringUpdatePeriod). If zero, periodic log output is disabled. |
+    cfg.getOptionalValue(cfgEntryPoint + ".consoleUpdate", consoleUpdate, 0);
+    if (consoleUpdate) {
+      theLog.log("Periodic console statistics enabled");
+    }
 
+    // make sure to initialize all counters and timers
+    reset();
+        
+    // start thread for periodic updates
+    std::function<void(void)> l = std::bind(&ConsumerStats::periodicUpdate, this);
+    periodicUpdateThread=std::make_unique<std::thread>(l);    
   }
+
   ~ConsumerStats() {
-    if (elapsedTime==0) {
-      theLog.log("Stopping stats clock");
-      elapsedTime=runningTime.getTime();
+    if (isRunning) {
+      stop();
     }
-    if (counterBytesTotal>0) {
-      theLog.log("Statistics for %s",this->name.c_str());
-      theLog.log("Stats: %llu blocks, %.2f MB, %.2f%% header overhead",(unsigned long long)counterBlocks,counterBytesTotal/(1024*1024.0),counterBytesHeader*100.0/counterBytesTotal);
-      theLog.log("Stats: average block size = %llu bytes",(unsigned long long)counterBytesTotal/counterBlocks);
-      theLog.log("Stats: average block rate = %s",NumberOfBytesToString((counterBlocks)/elapsedTime,"Hz",1000).c_str());
-      theLog.log("Stats: average throughput = %s",NumberOfBytesToString(counterBytesTotal/elapsedTime,"B/s").c_str());
-      theLog.log("Stats: average throughput = %s",NumberOfBytesToString(counterBytesTotal*8/elapsedTime,"bits/s",1000).c_str());
-      theLog.log("Stats: elapsed time = %.5lfs",elapsedTime);
-      publishStats();
-    } else {
-      theLog.log("Stats: no data received");
-    }
+
+    periodicUpdateThreadShutdown=1;
+    periodicUpdateThread->join();
   }
+
   int pushData(DataBlockContainerReference &b) {
     
     counterBlocks++;
+    counterBlocksDiff++;
     int newBytes=b->getData()->header.dataSize;
     counterBytesTotal+=newBytes;
     counterBytesDiff+=newBytes;
@@ -177,26 +232,40 @@ class ConsumerStats: public Consumer {
       }
     }    
 
-    if (monitoringEnabled) {
-      // todo: do not check time every push() if it goes fast...
-      if (monitoringUpdateTimer.isTimeout()) {
-        publishStats();
-        monitoringUpdateTimer.increment();
-      }
-    }
-
     return 0;
   }
   
-  int starting() {
+  int start() {
     theLog.log("Starting stats clock");
-    runningTime.reset();
+    reset();
+
+    // publish once on start
+    publishStats();
+
+    isRunning=true;
     return 0;
   };
 
-  int stopping() {
+  int stop() {    
+    isRunning=false;
     theLog.log("Stopping stats clock");
     elapsedTime=runningTime.getTime();
+   
+    // publish once more on stop
+    publishStats();
+   
+    if (counterBytesTotal>0) {
+      theLog.log("Statistics for %s",this->name.c_str());
+      theLog.log("Stats: %llu blocks, %.2f MB, %.2f%% header overhead",(unsigned long long)counterBlocks,counterBytesTotal/(1024*1024.0),counterBytesHeader*100.0/counterBytesTotal);
+      theLog.log("Stats: average block size = %llu bytes",(unsigned long long)counterBytesTotal/counterBlocks);
+      theLog.log("Stats: average block rate = %s",NumberOfBytesToString((counterBlocks)/elapsedTime,"Hz",1000).c_str());
+      theLog.log("Stats: average throughput = %s",NumberOfBytesToString(counterBytesTotal/elapsedTime,"B/s").c_str());
+      theLog.log("Stats: average throughput = %s",NumberOfBytesToString(counterBytesTotal*8/elapsedTime,"bits/s",1000).c_str());
+      theLog.log("Stats: elapsed time = %.5lfs",elapsedTime);
+    } else {
+      theLog.log("Stats: no data received");
+    }
+    
     return 0;
   };
 
