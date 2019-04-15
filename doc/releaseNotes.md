@@ -35,3 +35,7 @@ This file describes the main feature changes for each readout.exe released versi
 - New configuration parameters:
 	- consumer-stats: added parameter consoleUpdate.
 - Added internal state machine for control
+
+## next version
+-  New configuration parameters:
+	- equipment-*: added parameter consoleStatsUpdateTime.

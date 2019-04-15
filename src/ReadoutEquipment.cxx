@@ -64,6 +64,10 @@ ReadoutEquipment::ReadoutEquipment(ConfigFile &cfg, std::string cfgEntryPoint) {
   std::string cfgStringBlockAlign="2M";
   cfg.getOptionalValue<std::string>(cfgEntryPoint + ".blockAlign", cfgStringBlockAlign);
   size_t cfgBlockAlign=(size_t)ReadoutUtils::getNumberOfBytesFromString(cfgStringBlockAlign.c_str());
+  
+  // output periodic statistics on console
+  // configuration parameter: | equipment-* | consoleStatsUpdateTime | double | 0 | If set, number of seconds between printing statistics on console. |
+  cfg.getOptionalValue<double>(cfgEntryPoint + ".consoleStatsUpdateTime", cfgConsoleStatsUpdateTime);
     
   // log config summary
   theLog.log("Equipment %s: from config [%s], max rate=%lf Hz, idleSleepTime=%d us, outputFifoSize=%d", name.c_str(), cfgEntryPoint.c_str(), readoutRate, cfgIdleSleepTime, cfgOutputFifoSize);
@@ -74,6 +78,7 @@ ReadoutEquipment::ReadoutEquipment(ConfigFile &cfg, std::string cfgEntryPoint) {
   
   // init stats
   equipmentStats.resize(EquipmentStatsIndexes::maxIndex);
+  equipmentStatsLast.resize(EquipmentStatsIndexes::maxIndex);
 
   // creation of memory pool for data pages
   // todo: also allocate pool of DataBlockContainers? at the same time? reserve space at start of pages?
@@ -123,6 +128,7 @@ void ReadoutEquipment::start() {
   // reset counters
   for (int i=0; i<(int)EquipmentStatsIndexes::maxIndex; i++) {
     equipmentStats[i].reset();
+    equipmentStatsLast[i]=0;
   }
   
   readoutThread->start();
@@ -130,6 +136,9 @@ void ReadoutEquipment::start() {
     clk.reset(1000000.0/readoutRate);
   }
   clk0.reset();
+  
+  // reset stats timer
+  consoleStatsTimer.reset(cfgConsoleStatsUpdateTime*1000000);
 }
 
 void ReadoutEquipment::stop() {
@@ -254,6 +263,19 @@ Thread::CallbackResult  ReadoutEquipment::threadCallback(void *arg) {
       
     // todo: add SLICER to aggregate together time-range data
     // todo: get other FIFO status
+
+    // print statistics on console, if configured
+    if (ptr->cfgConsoleStatsUpdateTime>0) {
+      if (ptr->consoleStatsTimer.isTimeout()) {         
+        for (int i=0; i<(int)EquipmentStatsIndexes::maxIndex; i++) {
+          CounterValue vNew=ptr->equipmentStats[i].getCount();
+          CounterValue vDiff=vNew-ptr->equipmentStatsLast[i];
+          ptr->equipmentStatsLast[i]=vNew;
+          theLog.log("%s.%s : diff=%lu total=%lu",ptr->name.c_str(),ptr->EquipmentStatsNames[i],vDiff,vNew);
+        }
+        ptr->consoleStatsTimer.increment();
+      }
+    }
 
     break;
   }
