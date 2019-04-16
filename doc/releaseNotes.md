@@ -36,7 +36,7 @@ This file describes the main feature changes for each readout.exe released versi
 	- consumer-stats: added parameter consoleUpdate.
 - Added internal state machine for control
 
-## next version
+##  v0.23 - 16/04/2019
 - New configuration parameters:
 	- equipment-*: added parameter consoleStatsUpdateTime.
 - Consumer-rdma:
