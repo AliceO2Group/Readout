@@ -198,14 +198,33 @@ class ConsumerRDMA: public Consumer {
     std::vector<MemoryBankManager::memoryRange> memoryRegions;
     theMemoryBankManager.getMemoryRegions(memoryRegions);
     
+    // check if memory regions contiguous
+    char *p0=nullptr;
+    char *p1=nullptr;
+    bool isContiguous=true;    
     for(auto const &r: memoryRegions) {
-      void *p=(void *)r.offset;
-      size_t sz=r.size;
-      theLog.log("registering %p : %ld",p,sz);
-      
-      mr = ibv_reg_mr(pd, p, sz, IBV_ACCESS_LOCAL_WRITE);
-      if (mr==nullptr) {throw __LINE__;}      
+      char *pr=(char *)r.offset;
+      if (p0==nullptr) {
+        p0=pr;
+      } else {
+        if (pr!=p1) {
+	  isContiguous=false;
+	  break;
+	}
+      }      
+      p1=&pr[r.size];
+    }  
+    if (isContiguous) {
+      size_t sz=p1-p0;
+      theLog.log("Banks contiguous, registering them in one go: %p - %p (size %lu)",p0,p1-1,sz);
+      mr = ibv_reg_mr(pd, p0, sz, IBV_ACCESS_LOCAL_WRITE);
+      if (mr==nullptr) {throw __LINE__;}
+    } else {
+      theLog.log("Banks not contiguous, configuration not supported");
+      throw __LINE__;
     }
+
+
     
     // create queue pair (QP)
     struct ibv_qp_init_attr qp_attr;
