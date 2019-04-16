@@ -37,5 +37,7 @@ This file describes the main feature changes for each readout.exe released versi
 - Added internal state machine for control
 
 ## next version
--  New configuration parameters:
+- New configuration parameters:
 	- equipment-*: added parameter consoleStatsUpdateTime.
+- Consumer-rdma:
+	- Multiple banks supported only if contiguous.
