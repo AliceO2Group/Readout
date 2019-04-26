@@ -50,6 +50,8 @@ class MemoryBankManager {
   // get list of memory regions currently registered
   int getMemoryRegions(std::vector<memoryRange> &ranges);
   
+  // reset bank manager in fresh state, in particular: clear all banks
+  void reset();
   
   private:
  
