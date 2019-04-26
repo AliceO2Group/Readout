@@ -1,6 +1,7 @@
 #include <thread>
 #include <memory>
 #include <atomic>
+#include <string>
 #include <Common/Timer.h>
 
 #include <Common/DataBlock.h>
