@@ -12,6 +12,7 @@
 #include <Common/Timer.h>
 #include <Common/Fifo.h>
 #include <Common/Thread.h>
+#include <thread>
 
 #ifdef WITH_CONFIG
 #include <Configuration/ConfigurationFactory.h>
@@ -99,6 +100,8 @@ class Readout {
   int iterateRunning();
   int iterateCheck();
 
+  void loopRunning(); // called in state "running"
+  
   private:
   
   ConfigFile cfg;
@@ -117,8 +120,10 @@ class Readout {
   std::unique_ptr<DataBlockAggregator> agg;
   std::unique_ptr<AliceO2::Common::Fifo<DataSetReference>> agg_output;
 
-  int isRunning=0; // set to 1 when running
-  AliceO2::Common::Timer t; // time counter from start()
+  int isRunning=0; // set to 1 when running, 0 when not running (or should stop running)
+  AliceO2::Common::Timer startTimer; // time counter from start()
+  AliceO2::Common::Timer stopTimer; // time counter from stop()
+  std::unique_ptr<std::thread> runningThread; // the thread active in "running" state
 
   int latencyFd=-1; // file descriptor for the "deep sleep" disabled
 
@@ -175,6 +180,8 @@ int Readout::init(int argc, char* argv[]) {
 }
 
 int Readout::configure() {
+  theLog.log("Readout executing CONFIGURE");
+  
   // load configuration file
   theLog.log("Reading configuration from %s %s",cfgFileURI,cfgFileEntryPoint);
   try {
@@ -493,18 +500,24 @@ int Readout::configure() {
   agg_output=std::make_unique<AliceO2::Common::Fifo<DataSetReference>>(1000);
   int nEquipmentsAggregated=0;
   agg=std::make_unique<DataBlockAggregator>(agg_output.get(),"Aggregator");
-    
+      
   for (auto && readoutDevice : readoutDevices) {
       //theLog.log("Adding equipment: %s",readoutDevice->getName().c_str());
       agg->addInput(readoutDevice->dataOut);
       nEquipmentsAggregated++;
   }
   theLog.log("Aggregator: %d equipments", nEquipmentsAggregated);
+  
+  theLog.log("Readout completed CONFIGURE");
   return 0;
 }
 
 int Readout::start() {
-
+  theLog.log("Readout executing START");
+  
+  // cleanup exit conditions
+  ShutdownRequest=0;  
+  
   theLog.log("Starting aggregator");
   if (cfgDisableAggregatorSlicing) {
     theLog.log("Aggregator slicing disabled");
@@ -525,25 +538,65 @@ int Readout::start() {
   for (auto && readoutDevice : readoutDevices) {
       readoutDevice->setDataOn();
   }
-  theLog.log("Running");
-
+   
   // reset exit timeout, if any
   if (cfgExitTimeout>0) {
-    t.reset(cfgExitTimeout*1000000);
+    startTimer.reset(cfgExitTimeout*1000000);
     theLog.log("Automatic exit in %.2f seconds",cfgExitTimeout);
   }
-  isRunning=1;
 
-  theLog.log("Entering loop");
+  theLog.log("Running");
+  isRunning=1;
+    
+  // start thread for main loop
+  std::function<void(void)> l = std::bind(&Readout::loopRunning, this);
+  runningThread=std::make_unique<std::thread>(l);
+
+  theLog.log("Readout completed START");
+  return 0;
+}
+
+void Readout::loopRunning() {
+
+  theLog.log("Entering main loop");  
   #ifdef CALLGRIND
     theLog.log("Starting callgrind instrumentation");
     CALLGRIND_START_INSTRUMENTATION;
   #endif
 
-  return 0;
+  for (;;) {
+    if ((!isRunning) && ((cfgFlushEquipmentTimeout<=0) || (stopTimer.isTimeout()))) {
+        break;
+    }
+
+    DataSetReference bc=nullptr;
+    agg_output->pop(bc);
+
+    if (bc!=nullptr) {
+      for (auto& c : dataConsumers) {
+        // push only to "prime" consumers, not to those getting data directly forwarded from another consumer
+        if (c->isForwardConsumer==false) {
+          c->pushData(bc);
+        }
+      }
+    } else {
+      // we are idle...
+      // todo: set configurable idling time
+      usleep(1000);
+    }
+  }
+
+  #ifdef CALLGRIND
+    CALLGRIND_STOP_INSTRUMENTATION;
+    CALLGRIND_DUMP_STATS;
+    theLog.log("Stopping callgrind instrumentation");
+  #endif
+  theLog.log("Exiting main loop");
 }
 
+
 int Readout::iterateCheck() {
+  usleep(100000);
   if (isError) {
     return -1;
   }
@@ -551,54 +604,40 @@ int Readout::iterateCheck() {
 }
 
 int Readout::iterateRunning() {
-  if (isRunning) {
-    if (((cfgExitTimeout>0)&&(t.isTimeout()))||(ShutdownRequest)) {
-      isRunning=0;
-      theLog.log("Stopping data readout");
-      for (auto && readoutDevice : readoutDevices) {
-
-	if (cfgFlushEquipmentTimeout<=0) {
-	  theLog.log("Stopping immediately readout equipments, last pages might be lost");
-	  // stop readout loop before stopping data (and loose the last pages)
-          // otherwise we get incomplete pages of unkown size (driver bug), impossible to parse
-	  readoutDevice->stop();
-	}
-        readoutDevice->setDataOff();
-	// todo: should flush aggregator content after a while
-      }
-
-      t.reset(cfgFlushEquipmentTimeout*1000000);  // add a delay before stopping aggregator - continune to empty FIFOs
-    }
-  } else {
-    if (t.isTimeout()) {
-      return 1; // should stop running
-    }
+  usleep(100000);
+  if (((cfgExitTimeout>0)&&(startTimer.isTimeout()))||(ShutdownRequest)) {
+    return 1;
   }
-
-  DataSetReference bc=nullptr;
-  agg_output->pop(bc);
-
-
-  if (bc!=nullptr) {
-    for (auto& c : dataConsumers) {
-      // push only to "prime" consumers, not to those getting data directly forwarded from another consumer
-      if (c->isForwardConsumer==false) {
-        c->pushData(bc);
-      }
-    }
-  } else {
-    usleep(1000);
+  if (isError) {
+    return -1;
   }
-
   return 0;
 }
 
 int Readout::stop() {
-  #ifdef CALLGRIND
-    CALLGRIND_STOP_INSTRUMENTATION;
-    CALLGRIND_DUMP_STATS;
-    theLog.log("Stopping callgrind instrumentation");
-  #endif
+
+  theLog.log("Readout executing STOP");
+  
+  // raise flag
+  isRunning=0;
+  stopTimer.reset(cfgFlushEquipmentTimeout*1000000);  // add a delay before stopping aggregator - continune to empty FIFOs
+
+  for (auto && readoutDevice : readoutDevices) {
+    if (cfgFlushEquipmentTimeout<=0) {
+      theLog.log("Stopping immediately readout equipments, last pages might be lost");
+      // stop readout loop before stopping data (and loose the last pages)
+      // otherwise we get incomplete pages of unkown size (driver bug), impossible to parse
+      readoutDevice->stop();
+    }
+    readoutDevice->setDataOff();
+    // todo: should flush aggregator content after a while
+  }
+  
+  // wait main thread completed
+  if (runningThread!=nullptr) {
+    runningThread->join();
+  }
+  runningThread=nullptr;
 
   for (auto && readoutDevice : readoutDevices) {
     readoutDevice->stop();
@@ -615,26 +654,33 @@ int Readout::stop() {
   }
 
   // ensure output buffers empty ?
+  
+  theLog.log("Readout completed STOP");
   return 0;
 }
 
 int Readout::reset() {
-
+  
+  theLog.log("Readout executing RESET");
+  
   // close consumers before closing readout equipments (owner of data blocks)
-  theLog.log("primary consumers");
-  for(int i=0;i<dataConsumers.size();i++) {
+  theLog.log("Releasing primary consumers");
+  for(int i=0;i<dataConsumers.size();i++) {    
     if (!dataConsumers[i]->isForwardConsumer) {
+      theLog.log("Releasing consumer %s",dataConsumers[i]->name.c_str());
       dataConsumers[i]=nullptr;
     }
   }
-  theLog.log("secondary consumers");
+  theLog.log("Releasing secondary consumers");
   for(int i=0;i<dataConsumers.size();i++) {
     if (dataConsumers[i]!=nullptr) {
+      theLog.log("Releasing consumer %s",dataConsumers[i]->name.c_str());
       dataConsumers[i]=nullptr;
     }
   }  
   dataConsumers.clear();
 
+  theLog.log("Releasing aggregator");
   agg_output->clear();
   agg=nullptr;  // destroy aggregator, and release blocks it may still own.
    
@@ -643,23 +689,29 @@ int Readout::reset() {
   for (auto && readoutDevice : readoutDevices) {
       // ensure nothing left in output FIFO to allow releasing memory
 //      printf("readout: in=%llu  out=%llu\n",readoutDevice->dataOut->getNumberIn(),readoutDevice->dataOut->getNumberOut());
+      theLog.log("Releasing equipment %s",readoutDevice->getName().c_str());
       readoutDevice->dataOut->clear();
   }
 
 //  printf("agg: in=%llu  out=%llu\n",agg_output.getNumberIn(),agg_output.getNumberOut());
 
-  theLog.log("Closing readout devices");
+  theLog.log("Releasing readout devices");
   for (size_t i = 0, size = readoutDevices.size(); i != size; ++i) {
     readoutDevices[i]=nullptr;  // effectively deletes the device
   }
-  //readoutDevices.clear(); // to do it all in one go
+  readoutDevices.clear();
 
+  // reset memory manager
+  theLog.log("Releasing memory bank manager");
+  theMemoryBankManager.reset();
+
+  // closing latency file
   if (latencyFd>=0) {
     close(latencyFd);
     latencyFd=-1;
   }
 
-  theLog.log("Operations completed");
+  theLog.log("Readout completed RESET");
   return 0;
 }
 
@@ -668,52 +720,84 @@ int Readout::reset() {
 class ReadoutOCCStateMachine : public RuntimeControlledObject
 {
 public:
-  ReadoutOCCStateMachine(Readout *r) : RuntimeControlledObject("Readout Process") {
-    theReadout=r;
+  ReadoutOCCStateMachine(std::unique_ptr<Readout> r) : RuntimeControlledObject("Readout Process") {
+    theReadout=std::move(r);
   }
 
-  int executeConfigure(const PropertyMap& properties){
+  int executeConfigure(const boost::property_tree::ptree & properties){
+    if (theReadout==nullptr) {
+      return -1;
+    }
     return theReadout->configure();
   }
   
   int executeReset() {
+    if (theReadout==nullptr) {
+      return -1;
+    }
     return theReadout->reset();
   }
   
   int executeRecover() {
+    if (theReadout==nullptr) {
+      return -1;
+    }
     return -1;
   }
   
   int executeStart() {
+    if (theReadout==nullptr) {
+      return -1;
+    }
     return theReadout->start();
   }
   
   int executeStop() {
+    if (theReadout==nullptr) {
+      return -1;
+    }
     return theReadout->stop();
   }
   
   int executePause() {
+    if (theReadout==nullptr) {
+      return -1;
+    }
     return -1;
   }
   
   int executeResume() {
+    if (theReadout==nullptr) {
+      return -1;
+    }
     return -1;
   }
 
   int executeExit() {
-    return -1;
+    if (theReadout==nullptr) {
+      return -1;
+    }
+    theReadout=nullptr;
+    return 0;
   }
 
   int iterateRunning() {
+    if (theReadout==nullptr) {
+      return -1;
+    }
     return theReadout->iterateRunning();
   }
   
   int iterateCheck() {
+//    printf("iterateCheck\n");
+    if (theReadout==nullptr) {
+      return 0;
+    }
     return theReadout->iterateCheck();
   }
   
 private:
-  Readout *theReadout=nullptr;  
+  std::unique_ptr<Readout> theReadout=nullptr;  
 };
 #endif
 
@@ -723,66 +807,68 @@ private:
 // the main program loop
 int main(int argc, char* argv[])
 {
-  Readout theReadout;
+  std::unique_ptr<Readout> theReadout=std::make_unique<Readout>();
   
   int err=0;
 
-  err=theReadout.init(argc,argv);
+  err=theReadout->init(argc,argv);
   if (err) {
     return err;
   }
 
-#ifdef WITH_OCC
-
-  // start OCC - control
-  ReadoutOCCStateMachine csm(&theReadout);
-  OccInstance occ(&csm);
-
-  for (;;) {
-    sleep(1);
-    if (ShutdownRequest) {
-      break;
+  bool occMode=false;
+  if (getenv("OCC_CONTROL_PORT")!=nullptr) {
+    occMode=true;
+  }
+  
+  if (occMode) {
+    #ifdef WITH_OCC
+      theLog.log("Readout entering OCC state machine");
+      ReadoutOCCStateMachine csm(std::move(theReadout));
+      OccInstance occ(&csm);
+      occ.wait();
+    #else
+      theLog.log(InfoLogger::Severity::Error,"OCC mode requested but not available in this build");
+      return -1;
+    #endif    
+  } else {
+    theLog.log("Readout entering standalone state machine"); 
+    err=theReadout->configure();
+    if (err) {
+      return err;
+    }
+    // loop for testing, single iteration in normal conditions
+    for (int i=0;i<1;i++) {
+      err=theReadout->start();
+      if (err) {
+        return err;
+      }
+      while (1) {
+        err=theReadout->iterateRunning();
+        if (err==1) {
+          theLog.log("Readout reported that work is completed");
+          break;
+        } else if (err!=0) {
+          theLog.log(InfoLogger::Severity::Error,"Readout reported an error while running");
+          break;
+        }
+        err=theReadout->iterateCheck();
+        if (err) {
+          theLog.log(InfoLogger::Severity::Error,"Readout reported an error");
+          break;
+        }
+      }
+      err=theReadout->stop();
+      if (err) {
+        return err;
+      }
+    }
+    err=theReadout->reset();
+    if (err) {
+      return err;
     }
   }
-  occ.wait();
-
-/*
-  // stop OCC - control
-  stopOcc();
-  return 0;
-}
-*/
-
-
-#else
-  
-  err=theReadout.configure();
-  if (err) {
-    return err;
-  }
-
-  // loop for testing, single iteration in normal conditions
-  for (int i=0;i<1;i++) {
-  
-  err=theReadout.start();
-  if (err) {
-    return err;
-  }
-  while (1) {
-    err=theReadout.iterateRunning();
-    if (err) break;
-    err=theReadout.iterateCheck();
-    if (err) break;
-  }
-  err=theReadout.stop();
-  if (err) {
-    return err;
-  }
-  
-  sleep(3);
-  }
-  
-#endif
  
+  theLog.log("Readout process exiting");
   return 0;
 }
