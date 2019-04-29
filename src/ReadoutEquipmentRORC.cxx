@@ -47,7 +47,8 @@ class ReadoutEquipmentRORC : public ReadoutEquipment {
 
     int cfgRdhCheckEnabled=0; // flag to enable RDH check at runtime
     int cfgRdhDumpEnabled=0;  // flag to enable RDH dump at runtime
-
+    int cfgRdhDumpErrorEnabled=1;  // flag to enable RDH error log at runtime
+    
     int cfgCleanPageBeforeUse=0; // flag to enable filling page with zeros before giving for writing
     
     unsigned long long statsRdhCheckOk=0;   // number of RDH structs which have passed check ok
@@ -407,7 +408,7 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
 	      //printf("Page for link %d\n",linkId);	
             } else {
               if (linkId!=h.getLinkId()) {
-                if (rdhDumpErrorEnabled) {printf("RDH #%d @ 0x%X : inconsistent link ids: %d != %d\n",rdhIndexInPage,(unsigned int)pageOffset,linkId,h.getLinkId());}
+                if (cfgRdhDumpErrorEnabled) {printf("RDH #%d @ 0x%X : inconsistent link ids: %d != %d\n",rdhIndexInPage,(unsigned int)pageOffset,linkId,h.getLinkId());}
                 statsRdhCheckStreamErr++;
 		break; // stop checking this page
               }
@@ -425,7 +426,7 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
                 currentTimeframeHbOrbitBegin=hbOrbit-((hbOrbit-firstTimeframeHbOrbitBegin)%timeframePeriodOrbits); // keep it periodic and aligned to 1st timeframe
                 int newTimeframe=1+(currentTimeframeHbOrbitBegin-firstTimeframeHbOrbitBegin)/timeframePeriodOrbits;
                 if (newTimeframe!=currentTimeframe+1) {
-                  if (rdhDumpErrorEnabled) {printf("Non-contiguous timeframe IDs %d ... %d\n",currentTimeframe,newTimeframe);}
+                  if (cfgRdhDumpErrorEnabled) {printf("Non-contiguous timeframe IDs %d ... %d\n",currentTimeframe,newTimeframe);}
                   statsRdhCheckStreamErr;
                 }
                 currentTimeframe=newTimeframe;
