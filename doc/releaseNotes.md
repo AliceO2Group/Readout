@@ -41,3 +41,8 @@ This file describes the main feature changes for each readout.exe released versi
 	- equipment-*: added parameter consoleStatsUpdateTime.
 - Consumer-rdma:
 	- Multiple banks supported only if contiguous.
+
+## v0.24 - 29/04/2019
+- Control: added state machine for readout.
+- New configuration parameters:
+	- equipment-rorc-*: added parameter rdhDumpErrorEnabled.

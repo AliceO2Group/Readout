@@ -54,7 +54,7 @@ find_package(Numa)
 find_package(FairMQ)
 find_package(ZLIB)
 find_package(RDMA)
-#find_package(Occ)
+find_package(Occ)
 
 # extract include directories from targets
 get_target_property(InfoLogger_INCLUDE_DIRS AliceO2::InfoLogger INTERFACE_INCLUDE_DIRECTORIES)
@@ -82,12 +82,13 @@ endif ()
 # check OCC
 if (Occ_FOUND)
   message(STATUS "Control-OCCPlugin found")
+  get_target_property(Occ_INCLUDE_DIRS AliceO2::Occ INTERFACE_INCLUDE_DIRECTORIES)
 else ()
   message(WARNING "Control-OCCPlugin not found, correpsonding features will be disabled.")
 endif(Occ_FOUND)
 
 # add flags to enable optional features in Readout, based on available dependencies
-add_compile_definitions($<$<BOOL:${Numa_FOUND}>:WITH_NUMA> $<$<BOOL:${RDMA_FOUND}>:WITH_RDMA> $<$<BOOL:${Configuration_FOUND}>:WITH_CONFIG> $<$<BOOL:${FairMQ_FOUND}>:WITH_FAIRMQ> )
+add_compile_definitions($<$<BOOL:${Numa_FOUND}>:WITH_NUMA> $<$<BOOL:${RDMA_FOUND}>:WITH_RDMA> $<$<BOOL:${Configuration_FOUND}>:WITH_CONFIG> $<$<BOOL:${FairMQ_FOUND}>:WITH_FAIRMQ> $<$<BOOL:${Occ_FOUND}>:WITH_OCC>)
 
 #################
 # temporary hacks to fix non-working AliceO2::ReadoutCard target
@@ -111,6 +112,7 @@ set(READOUT_INCLUDE_DIRS
  ${Monitoring_INCLUDE_DIRS}
  ${Configuration_INCLUDE_DIRS}
  ${FairMQ_INCLUDE_DIRS}
+ ${Occ_INCLUDE_DIRS}
 )
 
 # define liraries to be linked
@@ -122,6 +124,7 @@ set(READOUT_LINK_LIBRARIES
   ${ReadoutCard_LIBRARIES}
   $<$<BOOL:${Configuration_FOUND}>:AliceO2::Configuration>
   $<$<BOOL:${FairMQ_FOUND}>:FairMQ::FairMQ>
+  $<$<BOOL:${Occ_FOUND}>:AliceO2::Occ>
 )
 if(Numa_FOUND)
   list(APPEND READOUT_LINK_LIBRARIES ${Numa_LIBRARIES})

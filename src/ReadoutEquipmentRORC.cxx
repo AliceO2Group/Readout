@@ -47,11 +47,13 @@ class ReadoutEquipmentRORC : public ReadoutEquipment {
 
     int cfgRdhCheckEnabled=0; // flag to enable RDH check at runtime
     int cfgRdhDumpEnabled=0;  // flag to enable RDH dump at runtime
-
+    int cfgRdhDumpErrorEnabled=1;  // flag to enable RDH error log at runtime
+    
     int cfgCleanPageBeforeUse=0; // flag to enable filling page with zeros before giving for writing
     
     unsigned long long statsRdhCheckOk=0;   // number of RDH structs which have passed check ok
     unsigned long long statsRdhCheckErr=0;  // number of RDH structs which have not passed check    
+    unsigned long long statsRdhCheckStreamErr=0;  // number of inconsistencies in RDH stream (e.g. ids/timing compared to previous RDH)
     unsigned long long statsNumberOfPages=0; // number of pages read out
     unsigned long long statsNumberOfTimeframes=0; // number of timeframes read out
     
@@ -127,6 +129,8 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : 
     cfg.getOptionalValue<int>(name + ".rdhCheckEnabled", cfgRdhCheckEnabled);
     // configuration parameter: | equipment-rorc-* | rdhDumpEnabled | int | 0 | If set, data pages are parsed and RDH headers summary printed. Setting a negative number will print only the first N RDH.|
     cfg.getOptionalValue<int>(name + ".rdhDumpEnabled", cfgRdhDumpEnabled);
+    // configuration parameter: | equipment-rorc-* | rdhDumpErrorEnabled | int | 1 | If set, a log message is printed for each RDH header error found.|
+    cfg.getOptionalValue<int>(name + ".rdhDumpErrorEnabled", cfgRdhDumpErrorEnabled);
     
     // configuration parameter: | equipment-rorc-* | cleanPageBeforeUse | int | 0 | If set, data pages are filled with zero before being given for writing by device. Slow, but usefull to readout incomplete pages (driver currently does not return correctly number of bytes written in page. |
     cfg.getOptionalValue<int>(name + ".cleanPageBeforeUse", cfgCleanPageBeforeUse);
@@ -247,7 +251,7 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : 
 
 ReadoutEquipmentRORC::~ReadoutEquipmentRORC() {
   if (cfgRdhCheckEnabled) {
-    theLog.log("Equipment %s : %llu timeframes, %llu pages, RDH checks %llu ok, %llu errors",name.c_str(),statsNumberOfTimeframes,statsNumberOfPages,statsRdhCheckOk,statsRdhCheckErr);  
+    theLog.log("Equipment %s : %llu timeframes, %llu pages, RDH checks %llu ok, %llu errors, %llu stream inconsistencies",name.c_str(),statsNumberOfTimeframes,statsNumberOfPages,statsRdhCheckOk,statsRdhCheckErr,statsRdhCheckStreamErr);  
   }
 }
 
@@ -404,7 +408,8 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
 	      //printf("Page for link %d\n",linkId);	
             } else {
               if (linkId!=h.getLinkId()) {
-                printf("RDH #%d @ 0x%X : inconsistent link ids: %d != %d\n",rdhIndexInPage,(unsigned int)pageOffset,linkId,h.getLinkId());
+                if (cfgRdhDumpErrorEnabled) {printf("RDH #%d @ 0x%X : inconsistent link ids: %d != %d\n",rdhIndexInPage,(unsigned int)pageOffset,linkId,h.getLinkId());}
+                statsRdhCheckStreamErr++;
 		break; // stop checking this page
               }
             }
@@ -421,7 +426,8 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
                 currentTimeframeHbOrbitBegin=hbOrbit-((hbOrbit-firstTimeframeHbOrbitBegin)%timeframePeriodOrbits); // keep it periodic and aligned to 1st timeframe
                 int newTimeframe=1+(currentTimeframeHbOrbitBegin-firstTimeframeHbOrbitBegin)/timeframePeriodOrbits;
                 if (newTimeframe!=currentTimeframe+1) {
-                  printf("Non-contiguous timeframe IDs %d ... %d\n",currentTimeframe,newTimeframe);
+                  if (cfgRdhDumpErrorEnabled) {printf("Non-contiguous timeframe IDs %d ... %d\n",currentTimeframe,newTimeframe);}
+                  statsRdhCheckStreamErr;
                 }
                 currentTimeframe=newTimeframe;
                  //printf("Starting timeframe %d @ orbit %d (actual: %d)\n",currentTimeframe,(int)currentTimeframeHbOrbitBegin,(int)hbOrbit);
@@ -434,7 +440,6 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
             //data format:
             // RDH v3 = https://docs.google.com/document/d/1otkSDYasqpVBDnxplBI7dWNxaZohctA-bvhyrzvtLoQ/edit?usp=sharing
             if (h.validateRdh(errorDescription)) {
-	      bool cfgRdhDumpErrorEnabled=1;
               if ((cfgRdhDumpEnabled)||(cfgRdhDumpErrorEnabled)) {
                 for (int i=0;i<16;i++) {
                   printf("%08X ",(int)(((uint32_t*)baseAddress)[i]));

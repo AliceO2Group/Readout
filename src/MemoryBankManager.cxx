@@ -116,7 +116,7 @@ MemoryBankManager theMemoryBankManager;
 
 
 int MemoryBankManager::getMemoryRegions(std::vector<memoryRange> &ranges){
-  std::unique_lock<std::mutex> lock(bankMutex); 
+  std::unique_lock<std::mutex> lock(bankMutex);
   ranges.clear();
   for (unsigned int ix=0;ix<banks.size();ix++) {
     memoryRange r;
@@ -125,4 +125,13 @@ int MemoryBankManager::getMemoryRegions(std::vector<memoryRange> &ranges){
     ranges.push_back(r);
   }  
   return 0;
+}
+
+void MemoryBankManager::reset() {
+  std::unique_lock<std::mutex> lock(bankMutex);
+  for (auto &it : banks) {
+    int useCount=it.bank.use_count();
+    theLog.log("Releasing bank %s%s",it.name.c_str(),(useCount == 1) ? "" : "warning - still in use elsewhere !");
+  }
+  banks.clear(); 
 }

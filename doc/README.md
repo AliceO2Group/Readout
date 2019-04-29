@@ -125,21 +125,28 @@ If not specified, readout will use the first one available).
 
 # Usage
 
+Readout can be launched from a terminal. It takes as argument the name of the configuration file to be used:
 
-At the moment, readout is a command-line utility only. It starts taking data when
-launched, and stops when process exits (interactive CTRL+C, signal, or timeout
-if configured).
-It will be integrated with the O2 control system when available.
+ readout.exe file://path/to/my/readout.cfg
 
-It takes as command-line argument the name of the configuration file to be used:
-
-readout.exe file://path/to/my/readout.cfg
-
-It may also be started by providing a URI for the O2 Configuration backend
+This parameter can also be a URI for the O2 Configuration backend
 (with as optional extra parameter the entry point in the configuration tree, by default empty, i.e. top of the tree)
 
-readout.exe ini://path/to/my/readout.ini
-readout.exe consul://localhost:8500 /readout
+  readout.exe ini://path/to/my/readout.ini
+  readout.exe consul://localhost:8500 /readout
+
+Readout implements the [state machine](https://github.com/AliceO2Group/Control/tree/master/occ#the-occ-state-machine) defined by the O2 control system (OCC).
+
+By default, Readout starts as a standalone process, and automatically executes the state transitions to start taking data.
+It stays in the "running" state until an exit condition occurs, which can be one of:
+  - external signal received (SIGTERM/SIGQUIT/SIGINT), which can e.g. be triggered by interactive CTRL+C or kill command
+  - timeout, if configured (see [exitTimeout](configurationParameters.md) parameter).
+It then stops data taking, releases the resources, and exits.
+
+When the environment variable OCC_CONTROL_PORT is defined, Readout is controlled by OCC, and waits external control commands to change state.
+To launch Readout in this mode, simply set the variable, e.g. 
+  export OCC_CONTROL_PORT=47100
+For testing this mode, one can use the [peanut](https://github.com/AliceO2Group/Control/tree/master/occ#the-occ-state-machine) utility to send commands.
 
 
 
