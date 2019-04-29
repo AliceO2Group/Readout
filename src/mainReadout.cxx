@@ -605,7 +605,13 @@ int Readout::iterateCheck() {
 
 int Readout::iterateRunning() {
   usleep(100000);
-  if (((cfgExitTimeout>0)&&(startTimer.isTimeout()))||(ShutdownRequest)) {
+  //printf("running time: %.2f\n",startTimer.getTime());
+  if (ShutdownRequest) {
+    theLog.log("Exit requested");
+    return 1;
+  }
+  if ((cfgExitTimeout>0)&&(startTimer.isTimeout())) {
+    theLog.log("Exit timeout reached, %.2fs elapsed",cfgExitTimeout);
     return 1;
   }
   if (isError) {
@@ -846,7 +852,7 @@ int main(int argc, char* argv[])
       while (1) {
         err=theReadout->iterateRunning();
         if (err==1) {
-          theLog.log("Readout reported that work is completed");
+          theLog.log("Readout requesting to stop");
           break;
         } else if (err!=0) {
           theLog.log(InfoLogger::Severity::Error,"Readout reported an error while running");
