@@ -44,3 +44,5 @@ This file describes the main feature changes for each readout.exe released versi
 
 ## next version
 - Control: added state machine for readout.
+- New configuration parameters:
+	- equipment-rorc-*: added parameter rdhDumpErrorEnabled.
