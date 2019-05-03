@@ -29,6 +29,7 @@ This file describes the main feature changes for each readout.exe released versi
 	
 ## v0.21 - 11/04/2019
 - Adapt to FairMQ v1.4.2+
+- Added equipment-player, to inject data from files.
 
 ## v0.22 - 12/04/2019
 - Added libProcessorLZ4Compress for fast compression testing.
