@@ -149,6 +149,14 @@ To launch Readout in this mode, simply set the variable, e.g.
 For testing this mode, one can use the [peanut](https://github.com/AliceO2Group/Control/tree/master/occ#the-occ-state-machine) utility to send commands.
 
 
+# Utilities
+
+The following utilities are also available:
+
+- readRaw.exe
+ Provides means to check/display content of data files recorded with readout (consumerType=fileRecorder). To be usable with readRaw.exe, these files must be created with the
+ consumer option dataBlockHeaderEnabled=1, so that file content can be accessed page-by-page.
+
 
 # Contact
 sylvain.chapeland@cern.ch
