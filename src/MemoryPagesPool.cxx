@@ -97,7 +97,7 @@ std::shared_ptr<DataBlockContainer> MemoryPagesPool::getNewDataBlockContainer(vo
   };
   
   // create a container and associate data page and release callback
-  std::shared_ptr<DataBlockContainer> bc=std::make_shared<DataBlockContainer>(releaseCallback, (DataBlock*)newPage);
+  std::shared_ptr<DataBlockContainer> bc=std::make_shared<DataBlockContainer>(releaseCallback, (DataBlock*)newPage, pageSize);
   if (bc==nullptr) {
     releaseCallback();
     return nullptr;
