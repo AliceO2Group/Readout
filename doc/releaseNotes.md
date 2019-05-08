@@ -51,3 +51,4 @@ This file describes the main feature changes for each readout.exe released versi
 ## next release
 - libProcessorLZ4Compress output formatted in standard LZ4 file format. lz4 command line utility may be used to uncompress recorded data.
 - readRaw.exe utility updated. Provides means to check/display content of data files recorded with readout.
+- This version requires Common > v1.4.2
