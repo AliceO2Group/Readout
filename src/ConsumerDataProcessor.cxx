@@ -78,7 +78,10 @@ public:
           isActive=1;
           DataBlockContainerReference result=nullptr;
           //if (debug) {printf("thread %d : got %p\n",threadId,bc.get());}
-          fProcess(bc,result);
+          int err=fProcess(bc,result);
+          if (err) {
+            printf("processBlock() failed: error %d\n",err);
+          }
           if (result) {
             outputFifo->push(result);
           }
