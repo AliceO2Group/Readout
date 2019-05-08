@@ -172,7 +172,9 @@ The following utilities are also available:
  with [LZ4 algorithm](https://github.com/lz4/lz4). Output can be saved to file using consumerOutput parameter.
  Such files are compliant with lz4 format and can be decoded from the command line with e.g. 
     `lz4 -d /tmp/data.raw.lz4 /tmp/data.raw`
- The configured data page size should not exceed 4MB if LZ4 recording is enabled (this is the maximum allowed LZ4 frame size).
+ The configured data page size of all active equipments should not exceed 4MB if LZ4 recording is enabled
+ (this is the maximum allowed LZ4 frame size after compression, so in practice make it even smaller in case
+ data is not compressed effectively).
  Here is an example readout configuration snippet
  
   ```
