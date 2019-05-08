@@ -10,16 +10,23 @@
 #include <string.h>
 #include <stdint.h>
 
+#define ERR_SUCCESS 0
+#define ERR_ERROR_UNDEFINED -1
+#define ERR_NULL_INPUT -2
+#define ERR_MALLOC -3
+#define ERR_OUTPUT_BUFFER_TOO_SMALL -4
+#define ERR_LZ4_FAILED -5
+
 
 extern "C"
 {
  
   int processBlock(DataBlockContainerReference &input, DataBlockContainerReference &output) {
 
-    int err=-1; // function error flag, zero for sucess
+    int err=ERR_ERROR_UNDEFINED; // function error flag, zero for sucess
     
     void *ptrIn=input->getData()->data; // data input
-    if (ptrIn==NULL) {return -1;}
+    if (ptrIn==NULL) {return ERR_NULL_INPUT;}
     size_t sizeIn=input->getData()->header.dataSize; // input size (bytes)
 
     // define the LZ4 format header/trailer
@@ -51,44 +58,57 @@ extern "C"
     
     const int lz4FrameFormatBytes=sizeof(header)+sizeof(blockSize)+sizeof(trailer); // number of bytes needed for LZ4 frame formatting
     
-    // size of buffer to allocate = maximum size after compression + few bytes for LZ4 file formatting
-    int max = LZ4_compressBound(sizeIn) + lz4FrameFormatBytes;
+    // size needed for output buffer = maximum size after compression + few bytes for LZ4 file formatting
+    int outBufferSize = LZ4_compressBound(sizeIn) + lz4FrameFormatBytes;
 
     char *ptrOut=nullptr; // output buffer
     if (ptrOut==nullptr) {
-      ptrOut=(char *)malloc(max);
-      if (ptrOut==nullptr) {return -1;}
+      ptrOut=(char *)malloc(outBufferSize);
+      if (ptrOut==nullptr) {return ERR_MALLOC;}
     }
     
     // compress
-    size_t sizeOut = LZ4_compress_default(input->getData()->data, ptrOut, sizeIn, max);
-    blockSize=(uint32_t) (sizeOut & 0x7FFF); // highest bit zero when frame is LZ4 compressed
+    size_t sizeOut = LZ4_compress_default(input->getData()->data, ptrOut, sizeIn, outBufferSize);
     
     // copy-back result
-     if ((sizeOut+lz4FrameFormatBytes<=sizeIn)&&(sizeOut>0)) {
+    if (sizeOut>0) {
       // compression success
-      // and we are able to fit result+headers in same buffer
-      
-      // let's build a formatted output back in provided input buffer
-      char *ptrFormatted=(char*)input->getData()->data;
-      int ptrSize=0;
-      auto push = [&] (const void *source, size_t size) {
-        memcpy(&ptrFormatted[ptrSize],source,size);
-        ptrSize+=size;
-      };
-      
-      // append the different pieces
-      push(header,sizeof(header));
-      push(&blockSize,sizeof(blockSize));
-      push(ptrOut,sizeOut);
-      push(trailer,sizeof(trailer));
-      
-      // looks good, give it back
-      output=input;
-      output->getData()->header.dataSize=ptrSize;
-      err=0;
+      int64_t sizeAvailable=(char *)input->getData()+input->getDataBufferSize()-(char *)ptrIn; // remaining buffer size available after data ptr
+      int64_t sizeNeeded=sizeOut+lz4FrameFormatBytes;
+      if (sizeNeeded<=sizeAvailable) {
+        // we are able to fit result+headers in same buffer
+
+        // update lz4 block size
+        blockSize=(uint32_t) sizeOut;
+        blockSize &= 0x7FFFFFFF; // highest bit zero when frame is LZ4 compressed
+        
+        // let's build a formatted output back in provided input buffer
+        char *ptrFormatted=(char*)input->getData()->data;
+        int ptrSize=0;
+        auto push = [&] (const void *source, size_t size) {
+          memcpy(&ptrFormatted[ptrSize],source,size);
+          ptrSize+=size;
+        };
+
+        // append the different pieces
+        push(header,sizeof(header));
+        push(&blockSize,sizeof(blockSize));
+        push(ptrOut,sizeOut);
+        push(trailer,sizeof(trailer));
+
+        // looks good, give it back
+        output=input;
+        output->getData()->header.dataSize=ptrSize;
+        err=ERR_SUCCESS;
+      } else {
+        err=ERR_OUTPUT_BUFFER_TOO_SMALL;
+      }
+    } else {
+      err=ERR_LZ4_FAILED;
     }
-    free(ptrOut);
+    if (ptrOut!=nullptr) {
+      free(ptrOut);
+    }
     return err;
   }
 
