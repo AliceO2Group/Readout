@@ -127,13 +127,13 @@ If not specified, readout will use the first one available).
 
 Readout can be launched from a terminal. It takes as argument the name of the configuration file to be used:
 
- readout.exe file://path/to/my/readout.cfg
+ `readout.exe file://path/to/my/readout.cfg`
 
 This parameter can also be a URI for the O2 Configuration backend
 (with as optional extra parameter the entry point in the configuration tree, by default empty, i.e. top of the tree)
 
-  readout.exe ini://path/to/my/readout.ini
-  readout.exe consul://localhost:8500 /readout
+  `readout.exe ini://path/to/my/readout.ini`
+  `readout.exe consul://localhost:8500 /readout`
 
 Readout implements the [state machine](https://github.com/AliceO2Group/Control/tree/master/occ#the-occ-state-machine) defined by the O2 control system (OCC).
 
@@ -145,8 +145,49 @@ It then stops data taking, releases the resources, and exits.
 
 When the environment variable OCC_CONTROL_PORT is defined, Readout is controlled by OCC, and waits external control commands to change state.
 To launch Readout in this mode, simply set the variable, e.g. 
-  export OCC_CONTROL_PORT=47100
+  `export OCC_CONTROL_PORT=47100`
 For testing this mode, one can use the [peanut](https://github.com/AliceO2Group/Control/tree/master/occ#the-occ-state-machine) utility to send commands.
+
+
+# Utilities
+
+The following utilities are also available:
+
+- **readRaw.exe**
+ Provides means to check/display content of data files recorded with readout (consumerType=fileRecorder). To be usable with readRaw.exe, these files must be created with the
+ consumer option dataBlockHeaderEnabled=1, so that file content can be accessed page-by-page.
+  
+  ```
+  Usage: readRaw.exe [rawFilePath] [options]
+  List of options:
+       filePath=(string) : path to file
+       dumpRDH=0|1 : dump the RDH headers
+       validateRDH=0|1 : check the RDH headers
+       dumpDataBlockHeader=0|1 : dump the data block headers (internal readout headers)
+       dumpData=(int) : dump the data pages. If -1, all bytes. Otherwise, the first bytes only, as specified.
+  ```
+   
+- **libProcessorLZ4Compress**
+ To be used in a processor consumer. Allows to compress in real time the data
+ with [LZ4 algorithm](https://github.com/lz4/lz4). Output can be saved to file using consumerOutput parameter.
+ Such files are compliant with lz4 format and can be decoded from the command line with e.g. 
+    `lz4 -d /tmp/data.raw.lz4 /tmp/data.raw`
+ The configured data page size of all active equipments should not exceed 4MB if LZ4 recording is enabled
+ (this is the maximum allowed LZ4 frame size after compression, so in practice make it even smaller in case
+ data is not compressed effectively).
+ Here is an example readout configuration snippet
+ 
+  ```
+  [consumer-lz4]
+  consumerType=processor
+  libraryPath=libProcessorLZ4Compress.so
+  numberOfThreads=4
+  consumerOutput=consumer-rec-lz4
+
+  [consumer-rec-lz4]
+  consumerType=fileRecorder
+  fileName=/tmp/data.raw.lz4
+  ```
 
 
 

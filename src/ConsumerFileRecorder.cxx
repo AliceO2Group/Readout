@@ -99,6 +99,25 @@ class FileHandle {
   bool isOk=false;                          // flag set when file ready for writing
 };
 
+// data source tags used in file identifier
+struct DataSourceId {
+  uint32_t linkId;
+  uint16_t equipmentId;
+};
+
+// constant for undefined data source
+const DataSourceId undefinedDataSourceId={undefinedLinkId,undefinedEquipmentId};
+
+// comparison operator
+bool operator==(const DataSourceId& a, const DataSourceId& b)
+{
+  return ((a.linkId==b.linkId)&&(a.equipmentId==b.equipmentId));
+}
+
+// less operator
+bool operator<(const DataSourceId& a, const DataSourceId& b) {
+  return (a.equipmentId<b.equipmentId)||((a.equipmentId==b.equipmentId)&&(a.linkId<b.linkId));
+}
 
 
 class ConsumerFileRecorder: public Consumer {
@@ -106,7 +125,7 @@ class ConsumerFileRecorder: public Consumer {
   
   ConsumerFileRecorder(ConfigFile &cfg, std::string cfgEntryPoint):Consumer(cfg,cfgEntryPoint) {
     
-    // configuration parameter: | consumer-fileRecorder-* | fileName | string |  | Path to the file where to record data. The following variables are replaced at runtime: ${XXX} -> get variable XXX from environment, %t -> unix timestamp (seconds since epoch), %T -> formatted date/time, %i -> equipment ID of each data chunk (used to write data from different equipments to different output files). |
+    // configuration parameter: | consumer-fileRecorder-* | fileName | string |  | Path to the file where to record data. The following variables are replaced at runtime: ${XXX} -> get variable XXX from environment, %t -> unix timestamp (seconds since epoch), %T -> formatted date/time, %i -> equipment ID of each data chunk (used to write data from different equipments to different output files), %l -> link ID (used to write data from different links to different output files). |
     fileName=cfg.getValue<std::string>(cfgEntryPoint + ".fileName");
     theLog.log("Recording path = %s",fileName.c_str());
     
@@ -145,17 +164,21 @@ class ConsumerFileRecorder: public Consumer {
       defaultFile->close();
       defaultFile=nullptr;
     }
-    for (auto& kv : fileEqMap) {
+
+    for (auto& kv : filePerSourceMap) {
       kv.second->close();
+      kv.second=nullptr;
     }
+    filePerSourceMap.clear();
+
   }
   
   // create handle to recording file based on configuration
   // optional params:
   // equipmentID: use given equipment Id
-  // delayIfEquipmentId: when set, file is not created immediately
+  // delayIfSourceId: when set, file is not created immediately
   // getNewFp: if not null, function will copy handle to created file in the given variable
-  int createFile(std::shared_ptr<FileHandle> *getNewHandle=nullptr, int equipmentId=undefinedEquipmentId, bool delayIfEquipmentId=true) {
+  int createFile(std::shared_ptr<FileHandle> *getNewHandle=nullptr, const DataSourceId &sourceId=undefinedDataSourceId, bool delayIfSourceId=true) {
 
     // create the file name according to specified path    
     // parse the string, and subst variables:
@@ -163,6 +186,7 @@ class ConsumerFileRecorder: public Consumer {
     // %t -> unix timestamp (seconds since epoch)
     // %T -> formatted date/time
     // %i -> equipment ID of each data chunk (used to write data from different equipments to different output files).
+    // %l -> link ID of each data chunk (used to write data from different links to different output files).
     
     std::string newFileName;
     
@@ -209,13 +233,22 @@ class ConsumerFileRecorder: public Consumer {
             buffer << std::put_time(&tm, "%Y_%m_%d__%H_%M_%S__");
             newFileName+=buffer.str();
           } else if (*it=='i') {
-	    if (equipmentId==undefinedEquipmentId) {
+	    if (sourceId.equipmentId==undefinedEquipmentId) {
 	      newFileName+="undefined";
 	    } else {	    
-	      newFileName+=std::to_string(equipmentId);
+	      newFileName+=std::to_string(sourceId.equipmentId);
 	    }
-	    perEquipmentRecordingFile=true;
-	  } else {
+	    perSourceRecordingFile=true;
+            useSourceEquipmentId=true;
+	  } else if (*it=='l') {
+	    if (sourceId.linkId==undefinedLinkId) {
+	      newFileName+="undefined";
+	    } else {	    
+	      newFileName+=std::to_string(sourceId.linkId);
+	    }
+	    perSourceRecordingFile=true;
+            useSourceLinkId=true;
+          } else {
             parseError++;
           }
         } else {
@@ -234,9 +267,9 @@ class ConsumerFileRecorder: public Consumer {
       return -1;
     }
     
-    if ((perEquipmentRecordingFile)&&(delayIfEquipmentId)) {
+    if ((perSourceRecordingFile)&&(delayIfSourceId)) {
       // delay file creation to arrival of data... equipmentId is not known yet !
-      theLog.log("Per-equipment recording file selected, opening of file(s) delayed (until data available)");
+      theLog.log("Per-source recording file selected, opening of file(s) delayed (until data available)");
       return 0;
     }
       
@@ -248,8 +281,8 @@ class ConsumerFileRecorder: public Consumer {
     }
 
     // store new handle where appropriate
-    if (perEquipmentRecordingFile) {
-      fileEqMap.insert(FilePerEquipmentPair(equipmentId,newHandle));
+    if (perSourceRecordingFile) {
+      filePerSourceMap.insert(FilePerSourcePair(sourceId,newHandle));
     } else {
       defaultFile=newHandle;
     }
@@ -275,14 +308,21 @@ class ConsumerFileRecorder: public Consumer {
     std::shared_ptr<FileHandle> fpUsed;
     
     // does it depend on equipmentId ?
-    if (perEquipmentRecordingFile) {
+    if (perSourceRecordingFile) {
       // select appropriate file for recording
-      int eqId=b->getData()->header.equipmentId;
+      DataSourceId sourceId=undefinedDataSourceId;
+      if (useSourceEquipmentId) {
+        sourceId.equipmentId=b->getData()->header.equipmentId;
+      }
+      if (useSourceLinkId) {
+        sourceId.linkId=b->getData()->header.linkId;
+      }
+
       // is there already a file for this equipment?
-      FilePerEquipmentMapIterator it;
-      it=fileEqMap.find(eqId);
-      if (it == fileEqMap.end()) {
-        createFile(&fpUsed,eqId,false);
+      FilePerSourceMapIterator it;
+      it=filePerSourceMap.find(sourceId);
+      if (it == filePerSourceMap.end()) {
+        createFile(&fpUsed,sourceId,false);
       } else {
         fpUsed=it->second;
       }
@@ -316,7 +356,7 @@ class ConsumerFileRecorder: public Consumer {
       return 0;
     }
     if (status==FileHandle::Status::MaxFileSize) {
-      if (!perEquipmentRecordingFile) {
+      if (!perSourceRecordingFile) {
         recordingEnabled=false; // no need to further try to write data somewhere if single file
       }
       return 0;
@@ -334,12 +374,14 @@ class ConsumerFileRecorder: public Consumer {
 
     std::shared_ptr<FileHandle> defaultFile;  // the file to be used by default
     
-    typedef std::map<int, std::shared_ptr<FileHandle>> FilePerEquipmentMap;
-    typedef std::map<int, std::shared_ptr<FileHandle>>::iterator FilePerEquipmentMapIterator;
-    typedef std::pair<int, std::shared_ptr<FileHandle>> FilePerEquipmentPair;
-    FilePerEquipmentMap fileEqMap;             // a map to store a file handle for each equipmentId
-    bool perEquipmentRecordingFile=false;	// when set, use one recording file per data-generating equipment (from the "equipmentId" tag in data block header)
-    
+    typedef std::map<DataSourceId, std::shared_ptr<FileHandle>> FilePerSourceMap;
+    typedef std::map<DataSourceId, std::shared_ptr<FileHandle>>::iterator FilePerSourceMapIterator;
+    typedef std::pair<DataSourceId, std::shared_ptr<FileHandle>> FilePerSourcePair;
+    FilePerSourceMap filePerSourceMap; // a map to store a file handle for each data source (equipmentId, linkId)    
+    bool perSourceRecordingFile=false; // when set, recording file name is based on id(s) of data source (equipmentId, linkId)
+    bool useSourceLinkId=false; // when set, the link ID is used in file name
+    bool useSourceEquipmentId=false; // when set, the equipment ID is used in file name
+        
     bool recordingEnabled=false;  // if not set, recording is disabled
 
     // from configuration

@@ -219,10 +219,11 @@ endif()
 # needs explicit enabling with -DWITH_LZ4=1
 if (WITH_LZ4)
 set(LZ4_DIR ${CMAKE_BINARY_DIR}/lz4/lib)
+message(STATUS "LZ4 dir: ${LZ4_DIR}")
 include(ExternalProject)
   externalproject_add (lz4
     GIT_REPOSITORY "https://github.com/lz4/lz4.git"
-    GIT_TAG "v1.8.3"
+    GIT_TAG "v1.9.1"
     LOG_DOWNLOAD 1
     UPDATE_COMMAND ""
     PATCH_COMMAND ""
@@ -241,6 +242,7 @@ include(ExternalProject)
  target_include_directories(ProcessorLZ4Compress PRIVATE ${READOUT_INCLUDE_DIRS} ${LZ4_DIR})
  target_link_libraries(ProcessorLZ4Compress ${LZ4_DIR}/liblz4.a)
  list(APPEND libraries ProcessorLZ4Compress)
+ set_property(TARGET ProcessorLZ4Compress PROPERTY POSITION_INDEPENDENT_CODE ON)
 endif()
 
 

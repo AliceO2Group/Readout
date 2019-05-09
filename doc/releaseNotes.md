@@ -29,6 +29,7 @@ This file describes the main feature changes for each readout.exe released versi
 	
 ## v0.21 - 11/04/2019
 - Adapt to FairMQ v1.4.2+
+- Added equipment-player, to inject data from files.
 
 ## v0.22 - 12/04/2019
 - Added libProcessorLZ4Compress for fast compression testing.
@@ -46,3 +47,10 @@ This file describes the main feature changes for each readout.exe released versi
 - Control: added state machine for readout.
 - New configuration parameters:
 	- equipment-rorc-*: added parameter rdhDumpErrorEnabled.
+
+## v0.25 - 09/05/2019
+- libProcessorLZ4Compress output formatted in standard LZ4 file format. lz4 command line utility may be used to uncompress recorded data.
+- readRaw.exe utility updated. Provides means to check/display content of data files recorded with readout.
+- This version requires Common > v1.4.2
+- Updated configuration paramters:
+	- consumer-fileRecorder.fileName : can specify per-link filename with %l. Data from different links will be recorded to different files.
