@@ -72,7 +72,7 @@ find_package(FairLogger)
 if ((NOT FairMQ_FOUND) OR (NOT FairLogger_FOUND))
   message(STATUS "FairMQ or FairLogger not found, corresponding features disabled")
 else ()
-  message(STATUS "FairMQ found: ${FairMQ_ROOT}")
+  message(STATUS "FairMQ found: ${FairMQ_DIR}")
   message(STATUS "FairLogger found: ${FairLogger_ROOT}")
   get_target_property(FairMQ_INCLUDE_DIRS FairMQ::FairMQ INTERFACE_INCLUDE_DIRECTORIES)
   get_target_property(FairLogger_INCLUDE_DIRS FairLogger::FairLogger INTERFACE_INCLUDE_DIRECTORIES)
@@ -84,7 +84,7 @@ if (Occ_FOUND)
   message(STATUS "Control-OCCPlugin found")
   get_target_property(Occ_INCLUDE_DIRS AliceO2::Occ INTERFACE_INCLUDE_DIRECTORIES)
 else ()
-  message(WARNING "Control-OCCPlugin not found, correpsonding features will be disabled.")
+  message(STATUS "Control-OCCPlugin not found, corresponding features will be disabled.")
 endif(Occ_FOUND)
 
 # add flags to enable optional features in Readout, based on available dependencies
@@ -216,33 +216,20 @@ if (ZLIB_FOUND)
 endif()
 
 # LZ4 compression
-# needs explicit enabling with -DWITH_LZ4=1
-if (WITH_LZ4)
-set(LZ4_DIR ${CMAKE_BINARY_DIR}/lz4/lib)
-message(STATUS "LZ4 dir: ${LZ4_DIR}")
-include(ExternalProject)
-  externalproject_add (lz4
-    GIT_REPOSITORY "https://github.com/lz4/lz4.git"
-    GIT_TAG "v1.9.1"
-    LOG_DOWNLOAD 1
-    UPDATE_COMMAND ""
-    PATCH_COMMAND ""
-    BUILD_COMMAND make -C ${LZ4_DIR} -j
-    CONFIGURE_COMMAND ""
-    TEST_COMMAND ""
-    INSTALL_COMMAND ""
-    SOURCE_DIR "${CMAKE_BINARY_DIR}/lz4"
- )
- add_library(
-   ProcessorLZ4Compress
-   SHARED
-   ${SOURCE_DIR}/ProcessorLZ4Compress.cxx
- )
- add_dependencies(ProcessorLZ4Compress lz4)
- target_include_directories(ProcessorLZ4Compress PRIVATE ${READOUT_INCLUDE_DIRS} ${LZ4_DIR})
- target_link_libraries(ProcessorLZ4Compress ${LZ4_DIR}/liblz4.a)
- list(APPEND libraries ProcessorLZ4Compress)
- set_property(TARGET ProcessorLZ4Compress PROPERTY POSITION_INDEPENDENT_CODE ON)
+find_library (LZ4_LIB lz4 ${LZ4_DIR}/lib)
+if (LZ4_LIB)
+  message(STATUS "Found lz4 (library: ${LZ4_LIB})")
+  add_library(
+    ProcessorLZ4Compress
+    SHARED
+    ${SOURCE_DIR}/ProcessorLZ4Compress.cxx
+  )
+  target_include_directories(ProcessorLZ4Compress PRIVATE ${READOUT_INCLUDE_DIRS} ${LZ4_DIR}/include)
+  target_link_libraries(ProcessorLZ4Compress ${LZ4_LIB})
+  list(APPEND libraries ProcessorLZ4Compress)
+  set_property(TARGET ProcessorLZ4Compress PROPERTY POSITION_INDEPENDENT_CODE ON)
+else()
+  message(STATUS "lz4 not found")
 endif()
 
 
