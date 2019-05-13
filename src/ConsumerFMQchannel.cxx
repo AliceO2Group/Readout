@@ -224,7 +224,7 @@ class ConsumerFMQchannel: public Consumer {
     if (stfHeader==nullptr) {return -1;}
     stfHeader->timeframeId=0;
     stfHeader->numberOfHBF=0;
-    stfHeader->linkId=0;
+    stfHeader->linkId=undefinedLinkId;
 
     unsigned int lastHBid=-1;
     int isFirst=true;

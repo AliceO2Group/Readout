@@ -366,7 +366,7 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
         statsNumberOfPages++;
         
         d->getData()->header.dataSize=superpage.getReceived();
-        d->getData()->header.linkId=0; // TODO
+        d->getData()->header.linkId=undefinedLinkId; // TODO
 
         channel->popSuperpage();
         nextBlock=d;
