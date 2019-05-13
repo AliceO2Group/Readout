@@ -87,7 +87,7 @@ std::shared_ptr<DataBlockContainer> MemoryPagesPool::getNewDataBlockContainer(vo
   b->header.headerSize=sizeof(DataBlockHeaderBase);
   b->header.dataSize=pageSize-sizeof(DataBlock);
   b->header.id=0;
-  b->header.linkId=0;
+  b->header.linkId=undefinedLinkId;
   b->data=&(((char *)b)[sizeof(DataBlock)]);
 
   // define a function to put it back in pool after use
