@@ -48,7 +48,8 @@ class ReadoutEquipmentRORC : public ReadoutEquipment {
     int cfgRdhCheckEnabled=0; // flag to enable RDH check at runtime
     int cfgRdhDumpEnabled=0;  // flag to enable RDH dump at runtime
     int cfgRdhDumpErrorEnabled=1;  // flag to enable RDH error log at runtime
-    
+    int cfgRdhUseFirstInPageEnabled=0; // flag to enable reading of first RDH in page to populate readout headers
+        
     int cfgCleanPageBeforeUse=0; // flag to enable filling page with zeros before giving for writing
     
     unsigned long long statsRdhCheckOk=0;   // number of RDH structs which have passed check ok
@@ -131,7 +132,9 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : 
     cfg.getOptionalValue<int>(name + ".rdhDumpEnabled", cfgRdhDumpEnabled);
     // configuration parameter: | equipment-rorc-* | rdhDumpErrorEnabled | int | 1 | If set, a log message is printed for each RDH header error found.|
     cfg.getOptionalValue<int>(name + ".rdhDumpErrorEnabled", cfgRdhDumpErrorEnabled);
-    
+    // configuration parameter: | equipment-rorc-* | rdhUseFirstInPageEnabled | int | 0 | If set, the first RDH in each data page is used to populate readout headers (e.g. linkId).|
+    cfg.getOptionalValue<int>(name + ".rdhUseFirstInPageEnabled", cfgRdhUseFirstInPageEnabled);
+   
     // configuration parameter: | equipment-rorc-* | cleanPageBeforeUse | int | 0 | If set, data pages are filled with zero before being given for writing by device. Slow, but usefull to readout incomplete pages (driver currently does not return correctly number of bytes written in page. |
     cfg.getOptionalValue<int>(name + ".cleanPageBeforeUse", cfgCleanPageBeforeUse);
     if (cfgCleanPageBeforeUse) {
@@ -471,6 +474,12 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
 	    pageOffset+=offsetNextPacket;            
           }
         }
+        
+        if (cfgRdhUseFirstInPageEnabled) {
+          RdhHandle h(d->getData()->data);
+          linkId=h.getLinkId();
+        }
+        
         if (linkId>=0) {
           d->getData()->header.linkId=linkId;
         }
