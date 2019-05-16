@@ -45,23 +45,24 @@ class FileHandle {
   // write to file
   // data given by 'ptr', number of bytes given by 'size'
   // isPage is a flag telling if the data belongs to a page (for the 'number of pages written' counter)
+  // remainingBlockSize is taken into account not to exceed max file size, to avoid starting writing anything if the next write would reach limit
   // return one of the status code below
-  enum Status {Success=0, Error=-1, MaxFileSize=1};
-  FileHandle::Status write(void *ptr, size_t size, bool isPage=false) {
+  enum Status {Success=0, Error=-1, FileLimitsReached=1};
+  FileHandle::Status write(void *ptr, size_t size, bool isPage=false, size_t remainingBlockSize=0) {
     if (isFull) {
-      // report only first occurence of MaxFileSize
+      // report only first occurence of FileLimitsReached
       return Status::Success;
     }
     if ((size<=0) || (ptr==nullptr)) {
       return Status::Success;
     }
-    if ((maxFileSize)&&(counterBytesTotal+size>maxFileSize)) {
+    if ((maxFileSize)&&(counterBytesTotal+size+remainingBlockSize>maxFileSize)) {
       if (theLog!=nullptr) {
 	theLog->log("Maximum file size reached");
       }
       isFull=true;
       close();
-      return Status::MaxFileSize;
+      return Status::FileLimitsReached;
     }
     if ((maxPages)&&(counterPages>=maxPages)) {
       if (theLog!=nullptr) {
@@ -69,7 +70,7 @@ class FileHandle {
       }
       isFull=true;
       close();
-      return Status::MaxFileSize;
+      return Status::FileLimitsReached;
     }    
     if (fp==NULL) {
       return Status::Error;
@@ -97,6 +98,9 @@ class FileHandle {
   InfoLogger *theLog=nullptr;               // handle to infoLogger for messages
   bool isFull=false;                        // flag set when maximum file size reached
   bool isOk=false;                          // flag set when file ready for writing
+
+  public:
+  int fileId=0;                             // a placeholder for an incremental counter to identify current file Id (when file splitting enabled)
 };
 
 // data source tags used in file identifier
@@ -150,6 +154,20 @@ class ConsumerFileRecorder: public Consumer {
     cfg.getOptionalValue(cfgEntryPoint + ".dataBlockHeaderEnabled", recordWithDataBlockHeader, 0);
     theLog.log("Recording internal data block headers = %d",recordWithDataBlockHeader);    
 
+    // configuration parameter: | consumer-fileRecorder-* | filesMax | int | 1 | If 1 (default), file splitting is disabled: file is closed whenever a limit is reached on a given recording stream. Otherwise, file splitting is enabled: whenever the current file reaches a limit, it is closed an new one is created (with an incremental name). If <=0, an unlimited number of incremental chunks can be created. If non-zero, it defines the maximum number of chunks. The file name is suffixed with chunk number (by default, ".001, .002, ..." at the end of the file name. One may use "%c" in the file name to define where this incremental file counter is printed. |
+    filesMax=1;
+    if (cfg.getOptionalValue<int>(cfgEntryPoint + ".filesMax",filesMax)==0) {
+      if (filesMax==1) {
+        theLog.log("File splitting disabled");
+      } else {
+        if (filesMax>0) {
+          theLog.log("File splitting enabled - max %d files per stream",filesMax);
+        } else {
+          theLog.log("File splitting enabled - unlimited files");
+        }
+      }
+    }
+
     // check status
     if (createFile()==0) {
       recordingEnabled=true;
@@ -178,7 +196,7 @@ class ConsumerFileRecorder: public Consumer {
   // equipmentID: use given equipment Id
   // delayIfSourceId: when set, file is not created immediately
   // getNewFp: if not null, function will copy handle to created file in the given variable
-  int createFile(std::shared_ptr<FileHandle> *getNewHandle=nullptr, const DataSourceId &sourceId=undefinedDataSourceId, bool delayIfSourceId=true) {
+  int createFile(std::shared_ptr<FileHandle> *getNewHandle=nullptr, const DataSourceId &sourceId=undefinedDataSourceId, bool delayIfSourceId=true, int fileId=1) {
 
     // create the file name according to specified path    
     // parse the string, and subst variables:
@@ -187,9 +205,16 @@ class ConsumerFileRecorder: public Consumer {
     // %T -> formatted date/time
     // %i -> equipment ID of each data chunk (used to write data from different equipments to different output files).
     // %l -> link ID of each data chunk (used to write data from different links to different output files).
-    
+    // %f -> file number (incremental), when file splitting enabled (empty otherwise)    
     std::string newFileName;
-    
+
+    // string for file incremental ID
+    char sFileId[4]="";
+    if ((filesMax!=1) && (fileId>0)) {
+      snprintf(sFileId,sizeof(sFileId),"%03d",fileId);
+    }
+
+                
     int parseError=0;
     for (std::string::iterator it=fileName.begin();it!=fileName.end();++it) {
       // subst environment variable
@@ -248,7 +273,11 @@ class ConsumerFileRecorder: public Consumer {
 	    }
 	    perSourceRecordingFile=true;
             useSourceLinkId=true;
-          } else {
+          } else if (*it=='f') {
+            newFileName+=sFileId;
+            // clear, write ID once only
+            sFileId[0]=0;
+	  } else {
             parseError++;
           }
         } else {
@@ -264,6 +293,14 @@ class ConsumerFileRecorder: public Consumer {
     }  
     if (parseError) {
       theLog.log(InfoLogger::Severity::Error,"Failed to parse recording file path");
+      return -1;
+    }
+
+    // ensure file ends with file ID, if not written somewhere else already
+    newFileName+=sFileId;
+              
+    if ((fileId>filesMax)&&(filesMax>=1)) {
+      theLog.log(InfoLogger::Severity::Info,"Maximum number of files reached for this stream");
       return -1;
     }
     
@@ -282,7 +319,7 @@ class ConsumerFileRecorder: public Consumer {
 
     // store new handle where appropriate
     if (perSourceRecordingFile) {
-      filePerSourceMap.insert(FilePerSourcePair(sourceId,newHandle));
+      filePerSourceMap[sourceId]=newHandle;
     } else {
       defaultFile=newHandle;
     }
@@ -308,9 +345,9 @@ class ConsumerFileRecorder: public Consumer {
     std::shared_ptr<FileHandle> fpUsed;
     
     // does it depend on equipmentId ?
+    DataSourceId sourceId=undefinedDataSourceId;
     if (perSourceRecordingFile) {
-      // select appropriate file for recording
-      DataSourceId sourceId=undefinedDataSourceId;
+      // select appropriate file for recording      
       if (useSourceEquipmentId) {
         sourceId.equipmentId=b->getData()->header.equipmentId;
       }
@@ -329,37 +366,52 @@ class ConsumerFileRecorder: public Consumer {
     } else {
       fpUsed=defaultFile;
     }
- 
-    if (fpUsed==nullptr) {
-      theLog.logError("No valid file available: will stop recording now");
-      recordingEnabled=false;
-      return -1;
-    }
-        
-    void *ptr=nullptr;
-    size_t size=0;
-    FileHandle::Status status=FileHandle::Status::Success;
-    if ((status==FileHandle::Status::Success) && (recordWithDataBlockHeader)) {
-      // write header
-      // as-is, some fields like data pointer will not be meaningful in file unless corrected. todo: correct them, e.g. replace data pointer by file offset.
-      ptr=&b->getData()->header;
-      size=b->getData()->header.headerSize;
-      status=fpUsed->write(ptr,size,false); // header does not count as a page
-    }
-    if ((status==FileHandle::Status::Success)) {
-      // write payload data     
-      ptr=b->getData()->data;
-      size=b->getData()->header.dataSize;
-      status=fpUsed->write(ptr,size,true); // payload count as a page
-    }
-    if (status==FileHandle::Status::Success) {
-      return 0;
-    }
-    if (status==FileHandle::Status::MaxFileSize) {
-      if (!perSourceRecordingFile) {
-        recordingEnabled=false; // no need to further try to write data somewhere if single file
+    
+    // we have several attempts to write the file (e.g. in case it needs to be incremented)
+    for (int i=0;i<2;i++) {
+    
+      if (fpUsed==nullptr) {
+        theLog.logError("No valid file available: will stop recording now");
+        recordingEnabled=false;
+        return -1;
       }
-      return 0;
+        
+      void *ptr=nullptr;
+      size_t size=0;
+      FileHandle::Status status=FileHandle::Status::Success;
+      if ((status==FileHandle::Status::Success) && (recordWithDataBlockHeader)) {
+        // write header
+        // as-is, some fields like data pointer will not be meaningful in file unless corrected. todo: correct them, e.g. replace data pointer by file offset.
+        ptr=&b->getData()->header;
+        size=b->getData()->header.headerSize;
+        status=fpUsed->write(ptr,size,false,b->getData()->header.dataSize); // header does not count as a page, but we account for the payload size for the next write
+      }
+      if ((status==FileHandle::Status::Success)) {
+        // write payload data     
+        ptr=b->getData()->data;
+        size=b->getData()->header.dataSize;
+        status=fpUsed->write(ptr,size,true); // payload count as a page
+      }
+      if (status==FileHandle::Status::Success) {
+        return 0;
+      }
+      if (status==FileHandle::Status::FileLimitsReached) {
+        if (filesMax!=1) {
+          // let's move to next file chunk
+          int fileId=fpUsed->fileId;
+          fileId++;
+          if ((filesMax<1)||(fileId<=filesMax)) {
+            createFile(&fpUsed,sourceId,false,fileId);
+            if (fpUsed!=nullptr) {
+              fpUsed->fileId=fileId;
+            }
+          }
+        }
+        if (!perSourceRecordingFile) {
+          recordingEnabled=false; // no need to further try to write data somewhere if single file
+        }
+        return 0;
+      }
     }
 
     theLog.logError("File write error: will stop recording now");
@@ -389,6 +441,7 @@ class ConsumerFileRecorder: public Consumer {
     int recordWithDataBlockHeader=0;         // if set, internal readout headers are included in file
     unsigned long long maxFileSize=0;        // maximum number of bytes to write (in each file)
     int maxFilePages=0;                      // maximum number of pages to write (in each file)
+    int filesMax=0;                          // maximum number of files to write (for each stream)
 };
 
 
