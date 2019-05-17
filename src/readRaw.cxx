@@ -29,7 +29,7 @@ int main(int argc, const char *argv[]) {
   if (argc<2) {
     ERRLOG("Usage: %s [rawFilePath] [options]\nList of options:\n \
     filePath=(string) : path to file\n \
-    dataBlockEnabled=0|1: specify if file is with/without internal readout data block headers \
+    dataBlockEnabled=0|1: specify if file is with/without internal readout data block headers\n \
     dumpRDH=0|1 : dump the RDH headers\n \
     validateRDH=0|1 : check the RDH headers\n \
     dumpDataBlockHeader=0|1 : dump the data block headers (internal readout headers)\n \
