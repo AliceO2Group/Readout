@@ -200,6 +200,7 @@ Thread::CallbackResult ReadoutEquipmentCruEmulator::prepareBlocks() {
       rdh->heartbeatOrbit=nowHb;
       rdh->feeId=cfgFeeId;
       rdh->linkId=linkId;
+      rdh->offsetNextPacket=cruBlockSize;
 
       //printf("block %p offset %d / %d, link %d @ %p data=%p\n",b,offset,memPoolElementSize,linkId,rdh,b->data);
       //dumpRDH(rdh);
