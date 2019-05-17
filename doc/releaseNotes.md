@@ -58,3 +58,8 @@ This file describes the main feature changes for each readout.exe released versi
 ## v0.26 - 14/05/2019
 - New configuration parameters:
         - equipment-rorc.rdhUseFirstInPageEnabled : if set, the first RDH in each data page is used to populate readout headers (e.g. linkId). This avoids to enable a full check of all RDHs just for this purpose.
+
+## v0.27 - 17/05/2019
+- Updated configuration paramters:
+	- consumer-fileRecorder.filesMax : to record data in file chunks respecting the defined per-file limits (specify max number of files, or -1 for unlimited number of files). Compatible with LZ4 compression.
+- readRaw.exe utility: added option dataBlockEnabled to select file format, plus various formatting enhancements.

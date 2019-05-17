@@ -6,8 +6,12 @@ RdhHandle::RdhHandle(void *data) {
 RdhHandle::~RdhHandle(){
 }
 
-void RdhHandle::dumpRdh() {
-  printf("RDH @ 0x%p\n",(void *)rdhPtr);
+void RdhHandle::dumpRdh(long offset) {
+  if (offset==-1) {
+    printf("RDH @ 0x%p\n",(void *)rdhPtr);
+  } else {
+    printf("RDH @ 0x%08X\n",offset);
+  }
   printf("Version       = 0x%02X\n",(int)getHeaderVersion());
   printf("Header size   = %d\n",(int)getHeaderSize());
   printf("Block length (link) = %d bytes\n",(int)getBlockLength());

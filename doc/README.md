@@ -161,6 +161,7 @@ The following utilities are also available:
   Usage: readRaw.exe [rawFilePath] [options]
   List of options:
        filePath=(string) : path to file
+       dataBlockEnabled=0|1: specify if file is with/without internal readout data block headers
        dumpRDH=0|1 : dump the RDH headers
        validateRDH=0|1 : check the RDH headers
        dumpDataBlockHeader=0|1 : dump the data block headers (internal readout headers)

@@ -20,7 +20,8 @@ class RdhHandle {
   int validateRdh(std::string &err);
   
   // print RDH content 
-  void dumpRdh();
+  // offset is a value to be displayed as address. if -1, memory address is used.
+  void dumpRdh(long offset=-1);
  
   // access RDH fields
   // functions defined inline here
