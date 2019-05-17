@@ -4,12 +4,11 @@
 
 #include "RdhUtils.h"
 
-//#define ERRLOG(args...) fprintf(stderr,args)
-
 #include <stdio.h>
 #include <string>
 
-#define ERRLOG(args...) fprintf(stderr, args)
+//#define ERRLOG(args...) fprintf(stderr,args)
+#define ERRLOG(args...) fprintf(stdout, args)
 
 int main(int argc, const char *argv[]) {
 
@@ -22,6 +21,7 @@ int main(int argc, const char *argv[]) {
   bool validateRDH=true;
   bool dumpDataBlockHeader=false;
   int dumpData=0; // if set, number of bytes to dump in each data page
+  bool dataBlockHeaderEnabled=false;
   
   // parse input arguments
   // format is a list of key=value pairs
@@ -29,6 +29,7 @@ int main(int argc, const char *argv[]) {
   if (argc<2) {
     ERRLOG("Usage: %s [rawFilePath] [options]\nList of options:\n \
     filePath=(string) : path to file\n \
+    dataBlockEnabled=0|1: specify if file is with/without internal readout data block headers \
     dumpRDH=0|1 : dump the RDH headers\n \
     validateRDH=0|1 : check the RDH headers\n \
     dumpDataBlockHeader=0|1 : dump the data block headers (internal readout headers)\n \
@@ -63,6 +64,8 @@ int main(int argc, const char *argv[]) {
       }
     } else if (key == "filePath") {
       filePath=value;
+    } else if (key == "dataBlockHeaderEnabled") {
+      dataBlockHeaderEnabled=std::stoi(value);
     } else if (key == "dumpRDH") {
       dumpRDH=std::stoi(value);
     } else if (key == "validateRDH") {
@@ -83,7 +86,7 @@ int main(int argc, const char *argv[]) {
   }
 
   ERRLOG("Using data file %s\n",filePath.c_str());
-  ERRLOG("dumpRDH=%d validateRDH=%d dumpDataBlockHeader=%d dumpData=%d\n",(int)dumpRDH,(int)validateRDH,(int)dumpDataBlockHeader,dumpData);
+  ERRLOG("dataBlockHeaderEnabled=%d dumpRDH=%d validateRDH=%d dumpDataBlockHeader=%d dumpData=%d\n",(int)dataBlockHeaderEnabled,(int)dumpRDH,(int)validateRDH,(int)dumpDataBlockHeader,dumpData);
     
   // open raw data file
   FILE *fp=fopen(filePath.c_str(),"rb");
@@ -91,48 +94,64 @@ int main(int argc, const char *argv[]) {
     ERRLOG("Failed to open file\n");
     return -1;
   }
-  
+
+  // get file size
+  long fileSize=0;
+  // read all file in one go: get file size
+  if (fseeko64(fp, 0 , SEEK_END)) {ERRLOG("Failed to get file size"); return -1;}
+  fileSize=ftello64(fp);
+  if (fileSize<0) {ERRLOG("Failed to get file size"); return -1;}
+  if (fseeko64(fp, 0 , SEEK_SET)) {ERRLOG("Failed to rewing file"); return -1;}  
+  printf("File size: %ld bytes\n",fileSize);
+
   // read file
   unsigned long pageCount=0;
   unsigned long RDHBlockCount=0;
   unsigned long fileOffset=0;
-  for(fileOffset=0;;) {
+  for(fileOffset=0;fileOffset<fileSize;) {
   
     #define ERR_LOOP {ERRLOG("Error %d @ 0x%08lX\n",__LINE__,fileOffset); break;}
  
     unsigned long blockOffset=fileOffset;
+    long dataSize;
     
-    DataBlockHeaderBase hb;
-    if (fread(&hb,sizeof(hb),1,fp)!=1) {break;}
-    fileOffset+=sizeof(hb);
-    
-    if (hb.blockType!=DataBlockType::H_BASE) {ERR_LOOP;}
-    if (hb.headerSize!=sizeof(hb)) {ERR_LOOP;}
-    
-    if (dumpDataBlockHeader) {
-      printf("Block header %d @ %lu\n",pageCount+1,fileOffset-sizeof(hb));
-      printf("\tblockType = 0x%02X\n",hb.blockType);
-      printf("\theaderSize = %u\n",hb.headerSize);
-      printf("\tdataSize = %u\n",hb.dataSize);
-      printf("\tid = %lu\n",hb.id);
-      printf("\tlinkId = %u\n",hb.linkId);
-      printf("\tequipmentId = %d\n",(int)hb.equipmentId);
-      printf("\tdata @ %lu\n",fileOffset);
+    if (dataBlockHeaderEnabled) {
+      DataBlockHeaderBase hb;
+      if (fread(&hb,sizeof(hb),1,fp)!=1) {break;}
+      fileOffset+=sizeof(hb);
+
+      if (hb.blockType!=DataBlockType::H_BASE) {ERR_LOOP;}
+      if (hb.headerSize!=sizeof(hb)) {ERR_LOOP;}
+
+      if (dumpDataBlockHeader) {
+        printf("Block header %d @ %lu\n",pageCount+1,fileOffset-sizeof(hb));
+        printf("\tblockType = 0x%02X\n",hb.blockType);
+        printf("\theaderSize = %u\n",hb.headerSize);
+        printf("\tdataSize = %u\n",hb.dataSize);
+        printf("\tid = %lu\n",hb.id);
+        printf("\tlinkId = %u\n",hb.linkId);
+        printf("\tequipmentId = %d\n",(int)hb.equipmentId);
+        printf("\tdata @ %lu\n",fileOffset);
+      }      
+      dataSize=hb.dataSize;
+    } else {    
+      dataSize=fileSize;
     }
     
-    void *data=malloc(hb.dataSize);
+    if (dataSize==0) {ERR_LOOP;}      
+    void *data=malloc(dataSize);
     if (data==NULL) {ERR_LOOP;}
-    if (fread(data,hb.dataSize,1,fp)!=1) {ERR_LOOP;}
-    fileOffset+=hb.dataSize;
+    if (fread(data,dataSize,1,fp)!=1) {ERR_LOOP;}
+    fileOffset+=dataSize;
     pageCount++;
-
+      
     if (dumpData) {
-      int max=hb.dataSize;
+      long max=dataSize;
       if ((dumpData<max)&&(dumpData>0)) {
         max=dumpData;
       }
-      printf("Data page %d @ %lu",pageCount,fileOffset-hb.dataSize);
-      for (int i=0;i<max;i++) {
+      printf("Data page %d @ %lu",pageCount,fileOffset-dataSize);
+      for (long i=0;i<max;i++) {
         if (i%16==0) {
           printf("\n\t");
         }
@@ -144,21 +163,32 @@ int main(int argc, const char *argv[]) {
     
     if ((validateRDH)||(dumpRDH)) {
       std::string errorDescription;    
-      for (size_t pageOffset=0;pageOffset<hb.dataSize;) {
+      for (size_t pageOffset=0;pageOffset<dataSize;) {
+        printf("***\n");
         RDHBlockCount++;
         RdhHandle h(((uint8_t *)data)+pageOffset);
         
         if (dumpRDH) {
-          h.dumpRdh();
+          h.dumpRdh(pageOffset);
         }
+        
         int nErr=h.validateRdh(errorDescription);
         if (nErr) {
-          h.dumpRdh();
+          if (!dumpRDH) {
+            // dump RDH if not done already
+            h.dumpRdh(pageOffset);
+          }
           ERRLOG("File offset 0x%08lX + %ld\n%s",blockOffset,pageOffset,errorDescription.c_str());
           errorDescription.clear();
           break; // we can not continue decoding if RDH wrong, we are not sure if we can jump to the next ... or should we used fixed 8kB ?
         }
-        pageOffset+=(h.getBlockLength())*(size_t)32; // length counted in 256b words
+        
+        // go to next RDH
+	uint16_t offsetNextPacket=h.getOffsetNextPacket();
+	if (offsetNextPacket==0) {
+	  break;
+	}
+	pageOffset+=offsetNextPacket;            
       }
     }
         
