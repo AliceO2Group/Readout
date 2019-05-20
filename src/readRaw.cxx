@@ -98,10 +98,10 @@ int main(int argc, const char *argv[]) {
   // get file size
   long fileSize=0;
   // read all file in one go: get file size
-  if (fseeko64(fp, 0 , SEEK_END)) {ERRLOG("Failed to get file size"); return -1;}
-  fileSize=ftello64(fp);
+  if (fseek(fp, 0 , SEEK_END)) {ERRLOG("Failed to get file size"); return -1;}
+  fileSize=ftell(fp);
   if (fileSize<0) {ERRLOG("Failed to get file size"); return -1;}
-  if (fseeko64(fp, 0 , SEEK_SET)) {ERRLOG("Failed to rewing file"); return -1;}  
+  if (fseek(fp, 0 , SEEK_SET)) {ERRLOG("Failed to rewing file"); return -1;}  
   printf("File size: %ld bytes\n",fileSize);
 
   // read file
