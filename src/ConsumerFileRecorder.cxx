@@ -312,11 +312,15 @@ class ConsumerFileRecorder: public Consumer {
       
     // create file handle    
     std::shared_ptr<FileHandle> newHandle=std::make_shared<FileHandle>(newFileName,&theLog,maxFileSize,maxFilePages);
+    if (newHandle==nullptr) {
+      return -1;
+    }
     if (!newHandle->isFileOk()) {
       // no need to log a special message, error printed by FileHandle constructor
       return -1;
     }
-
+    newHandle->fileId=fileId;
+    
     // store new handle where appropriate
     if (perSourceRecordingFile) {
       filePerSourceMap[sourceId]=newHandle;
@@ -402,15 +406,8 @@ class ConsumerFileRecorder: public Consumer {
           fileId++;
           if ((filesMax<1)||(fileId<=filesMax)) {
             createFile(&fpUsed,sourceId,false,fileId);
-            if (fpUsed!=nullptr) {
-              fpUsed->fileId=fileId;
-            }
           }
         }
-        if (!perSourceRecordingFile) {
-          recordingEnabled=false; // no need to further try to write data somewhere if single file
-        }
-        return 0;
       }
     }
 
