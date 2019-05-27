@@ -63,3 +63,12 @@ This file describes the main feature changes for each readout.exe released versi
 - Updated configuration paramters:
 	- consumer-fileRecorder.filesMax : to record data in file chunks respecting the defined per-file limits (specify max number of files, or -1 for unlimited number of files). Compatible with LZ4 compression.
 - readRaw.exe utility: added option dataBlockEnabled to select file format, plus various formatting enhancements.
+
+## v0.28 - 27/05/2019
+- Updated configuration paramters:
+	- consumer-processor.ensurePageOrder : to keep the same page ordering after multi-threaded processing.
+- Data checks updates:
+	- RDH check: disabled block length check (might not be set)
+	- readRaw.exe: check order of triggers when RDH check enabled.
+- Experimental features:
+	- Added support for O2 logbook connectivity (not enabled in cmake).
