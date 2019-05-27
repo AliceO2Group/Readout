@@ -90,18 +90,6 @@ endif(Occ_FOUND)
 # add flags to enable optional features in Readout, based on available dependencies
 add_compile_definitions($<$<BOOL:${Numa_FOUND}>:WITH_NUMA> $<$<BOOL:${RDMA_FOUND}>:WITH_RDMA> $<$<BOOL:${Configuration_FOUND}>:WITH_CONFIG> $<$<BOOL:${FairMQ_FOUND}>:WITH_FAIRMQ> $<$<BOOL:${Occ_FOUND}>:WITH_OCC>)
 
-#################
-# temporary hacks to fix non-working AliceO2::ReadoutCard target
-# library
-if ("${ReadoutCard_LIBRARIES}" STREQUAL "")
-	find_library (ReadoutCard_LIBRARIES ReadoutCard NO_DEFAULT_PATH PATHS "${ReadoutCard_INCLUDE_DIRS}/.." PATH_SUFFIXES "lib" "lib64")
-	message(STATUS "ReadoutCard_LIBRARIES = ${ReadoutCard_LIBRARIES}")
-endif()
-#get_target_property(ReadoutCard_LIBS AliceO2::ReadoutCard INTERFACE_LINK_LIBRARIES)
-#message("ReadoutCard_LIBS=${ReadoutCard_LIBS}")
-# includes
-list(APPEND ReadoutCard_INCLUDE_DIRS ${Boost_INCLUDE_DIRS})
-#################
 
 
 # define include directories
@@ -120,8 +108,7 @@ set(READOUT_LINK_LIBRARIES
   AliceO2::InfoLogger
   AliceO2::Common
   AliceO2::Monitoring
-#  AliceO2::ReadoutCard
-  ${ReadoutCard_LIBRARIES}
+  AliceO2::ReadoutCard
   $<$<BOOL:${Configuration_FOUND}>:AliceO2::Configuration>
   $<$<BOOL:${FairMQ_FOUND}>:FairMQ::FairMQ>
   $<$<BOOL:${Occ_FOUND}>:AliceO2::Occ>

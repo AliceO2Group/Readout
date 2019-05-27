@@ -108,6 +108,11 @@ int main(int argc, const char *argv[]) {
   unsigned long pageCount=0;
   unsigned long RDHBlockCount=0;
   unsigned long fileOffset=0;
+  
+  bool isFirstTrigger=true;
+  uint32_t latestTriggerOrbit=0;
+  uint32_t latestTriggerBC=0;
+  
   for(fileOffset=0;fileOffset<fileSize;) {
   
     #define ERR_LOOP {ERRLOG("Error %d @ 0x%08lX\n",__LINE__,fileOffset); break;}
@@ -164,11 +169,11 @@ int main(int argc, const char *argv[]) {
     if ((validateRDH)||(dumpRDH)) {
       std::string errorDescription;    
       for (size_t pageOffset=0;pageOffset<dataSize;) {
-        printf("***\n");
         RDHBlockCount++;
         RdhHandle h(((uint8_t *)data)+pageOffset);
         
         if (dumpRDH) {
+          printf("***\n");
           h.dumpRdh(pageOffset);
         }
         
@@ -176,12 +181,30 @@ int main(int argc, const char *argv[]) {
         if (nErr) {
           if (!dumpRDH) {
             // dump RDH if not done already
+            printf("***\n");
             h.dumpRdh(pageOffset);
           }
           ERRLOG("File offset 0x%08lX + %ld\n%s",blockOffset,pageOffset,errorDescription.c_str());
           errorDescription.clear();
           break; // we can not continue decoding if RDH wrong, we are not sure if we can jump to the next ... or should we used fixed 8kB ?
         }
+        
+        bool isTriggerOrderOk=true;
+        if (isFirstTrigger) {
+          isFirstTrigger=false;
+        } else {
+          if (h.getTriggerOrbit()<latestTriggerOrbit) { isTriggerOrderOk=0; }
+          else if (h.getTriggerOrbit()==latestTriggerOrbit) {
+            if (h.getTriggerBC()<latestTriggerBC) { isTriggerOrderOk=0; }
+          }
+        }
+        if (!isTriggerOrderOk) {
+          ERRLOG("Trigger order mismatch@ file offset 0x%08lX + %ld : new %08X : %03X > previous: %08X : %03X \n",blockOffset,pageOffset, h.getTriggerOrbit(), h.getTriggerBC(), latestTriggerOrbit, latestTriggerBC); 
+        }
+        latestTriggerBC=h.getTriggerBC();
+        latestTriggerOrbit=h.getTriggerOrbit();
+        printf("%08X : %03X\n", h.getTriggerOrbit(), h.getTriggerBC());
+        
         
         // go to next RDH
 	uint16_t offsetNextPacket=h.getOffsetNextPacket();

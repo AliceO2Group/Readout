@@ -41,6 +41,9 @@ The parameters related to 3rd-party libraries are described here for convenience
 | readout | exitTimeout | double | -1 | Time in seconds after which the program exits automatically. -1 for unlimited. |
 | readout | flushEquipmentTimeout | double | 0 | Time in seconds to wait for data once the equipments are stopped. 0 means stop immediately. |
 | readout | disableAggregatorSlicing | int | 0 | When set, the aggregator slicing is disabled, data pages are passed through without grouping/slicing. |
+| readout | logbookEnabled | int | 0 | When set, the logbook is enabled and populated with readout stats at runtime. |
+| readout | logbookUrl | string | | The address to be used for the logbook API. |
+| readout | logbookApiToken | string | | The token to be used for the logbook API. |
 | bank-* | enabled | int | 1 | Enable (value=1) or disable (value=0) the memory bank. |
 | bank-* | size | bytes | | Size of the memory bank, in bytes. |
 | bank-* | type | string| | Support used to allocate memory. Possible values: malloc, MemoryMappedFile. For MemoryMappedFile, the name given to the bank (bank-*) is reused in the filesystem namespace to create the resource, so make sure it is unique on a given machine for all instances of readout. |
@@ -117,6 +120,7 @@ The parameters related to 3rd-party libraries are described here for convenience
 | consumer-processor-* | threadInputFifoSize | int | 10 | Size of input FIFO, where pending data are waiting to be processed. |
 | consumer-processor-* | threadIdleSleepTime | int | 1000 | Sleep time (microseconds) of inactive thread, before polling for next data. |
 | consumer-processor-* | numberOfThreads | int | 1 | Number of threads running the processBlock() function in parallel. |
+| consumer-processor-* | ensurePageOrder | int | 0 | If set, ensures that data pages goes out of the processing pool in same order as input (which is not guaranteed with multithreading otherwise). This option adds latency. |
 | consumer-rdma-* | port | int | 10001 | Remote server TCP port number to connect to. |
 | consumer-rdma-* | host | string | localhost | Remote server IP name to connect to. |
 | receiverFMQ | transportType | string | shmem | c.f. parameter with same name in consumer-FMQchannel-* |

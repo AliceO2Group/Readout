@@ -18,6 +18,9 @@
 #include <Configuration/ConfigurationFactory.h>
 #endif
 
+#ifdef WITH_LOGBOOK
+#include "JiskefetFactory.h"
+#endif
 
 #include <atomic>
 #include <chrono>
@@ -112,7 +115,10 @@ class Readout {
   double cfgExitTimeout;
   double cfgFlushEquipmentTimeout;
   int cfgDisableAggregatorSlicing;
-  
+  int cfgLogbookEnabled;
+  std::string cfgLogbookUrl;
+  std::string cfgLogbookApiToken;
+    
   //runtime entities
   std::vector<std::unique_ptr<Consumer>> dataConsumers;
   std::map<Consumer *, std::string> consumersOutput; // for the consumers having an output, keep a reference to the consumer and the name of the consumer to which to push data
@@ -130,6 +136,10 @@ class Readout {
   bool isError=0; // flag set to 1 when error has been detected
   std::vector<std::string> strErrors; // errors backlog
   std::mutex mutexErrors; // mutex to guard access to error variables
+  
+  #ifdef WITH_LOGBOOK
+  std::unique_ptr<jiskefet::JiskefetInterface> logbookHandle;
+  #endif
 };
 
 int Readout::init(int argc, char* argv[]) {
@@ -174,6 +184,11 @@ int Readout::init(int argc, char* argv[]) {
     theLog.log("OCC : yes");
   #else
     theLog.log("OCC : no");
+  #endif
+  #ifdef WITH_LOGBOOK
+    theLog.log("LOGBOOK : yes");
+  #else
+    theLog.log("LOGBOOK : no");
   #endif
   
   return 0;
@@ -235,8 +250,43 @@ int Readout::configure() {
   // configuration parameter: | readout | disableAggregatorSlicing | int | 0 | When set, the aggregator slicing is disabled, data pages are passed through without grouping/slicing. |
   cfgDisableAggregatorSlicing=0;
   cfg.getOptionalValue<int>("readout.disableAggregatorSlicing",cfgDisableAggregatorSlicing);
-  
-  
+  // configuration parameter: | readout | logbookEnabled | int | 0 | When set, the logbook is enabled and populated with readout stats at runtime. |
+  cfgLogbookEnabled=0; 
+  cfg.getOptionalValue<int>("readout.logbookEnabled",cfgLogbookEnabled);
+  if (cfgLogbookEnabled) {
+    #ifndef WITH_LOGBOOK
+      theLog.log(InfoLogger::Severity::Error,"Logbook enabled in configuration, but feature not available in this build");
+    #else
+      // configuration parameter: | readout | logbookUrl | string | | The address to be used for the logbook API. |
+      cfg.getOptionalValue<std::string>("readout.logbookUrl",cfgLogbookUrl);
+      // configuration parameter: | readout | logbookApiToken | string | | The token to be used for the logbook API. |
+      cfg.getOptionalValue<std::string>("readout.logbookApiToken",cfgLogbookApiToken);
+
+      theLog.log("Logbook enabled, using URL = %s",cfgLogbookUrl.c_str());
+      logbookHandle = jiskefet::getApiInstance(cfgLogbookUrl, cfgLogbookApiToken);
+      if (logbookHandle==nullptr) {
+        theLog.log(InfoLogger::Severity::Error,"Failed to create handle to logbook");
+      } else {
+        const int runNumber=123;
+        const std::string flpName="flp-test";
+        bool isOk=false;
+        try {
+          logbookHandle->flpUpdateCounters(runNumber, flpName, 0, 0, 0, 0);
+          isOk=true;
+        }
+        catch (const std::exception& ex) {
+          theLog.log(InfoLogger::Severity::Error,"Failed to update logbook: %s", ex.what());
+        }
+        catch (...) {
+         theLog.log(InfoLogger::Severity::Error,"Failed to update logbook: unknown exception");
+        }
+        if (!isOk) {
+          // closing logbook immediately
+          logbookHandle=nullptr;
+        }
+      }
+    #endif
+  }
 
   // configuration of memory banks
   int numaNodeChanged=0;
@@ -717,6 +767,11 @@ int Readout::reset() {
     latencyFd=-1;
   }
 
+  #ifdef WITH_LOGBOOK
+  // closing logbook
+  logbookHandle=nullptr;
+  #endif
+  
   theLog.log("Readout completed RESET");
   return 0;
 }
