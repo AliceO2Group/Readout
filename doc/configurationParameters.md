@@ -120,6 +120,7 @@ The parameters related to 3rd-party libraries are described here for convenience
 | consumer-processor-* | threadInputFifoSize | int | 10 | Size of input FIFO, where pending data are waiting to be processed. |
 | consumer-processor-* | threadIdleSleepTime | int | 1000 | Sleep time (microseconds) of inactive thread, before polling for next data. |
 | consumer-processor-* | numberOfThreads | int | 1 | Number of threads running the processBlock() function in parallel. |
+| consumer-processor-* | ensurePageOrder | int | 0 | If set, ensures that data pages goes out of the processing pool in same order as input (which is not guaranteed with multithreading otherwise). This option adds latency. |
 | consumer-rdma-* | port | int | 10001 | Remote server TCP port number to connect to. |
 | consumer-rdma-* | host | string | localhost | Remote server IP name to connect to. |
 | receiverFMQ | transportType | string | shmem | c.f. parameter with same name in consumer-FMQchannel-* |
