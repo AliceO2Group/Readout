@@ -19,6 +19,7 @@ void RdhHandle::dumpRdh(long offset) {
   printf("FEE Id        = %d\n",(int)getFeeId());
   printf("Link Id       = %d\n",(int)getLinkId());
   printf("Next block    = %d\n",(int)getOffsetNextPacket());
+  printf("Trigger Orbit / BC = %08X : %03X\n",getTriggerOrbit(),getTriggerBC());
   //printf("%04X %04X %04X %04X\n",rdhPtr->word3,rdhPtr->word2,rdhPtr->word1,rdhPtr->word0);
 }
 
@@ -39,12 +40,15 @@ int RdhHandle::validateRdh(std::string &err) {
     err+="Wrong link ID\n";
     retCode++;  
   }
+
+  /*
   // expecting block length <= 8kB
   if (getBlockLength()>8*1024) {
-    err+="Wrong block length\n";
+    err+="Wrong block length " + std::to_string(getBlockLength()) +"\n";
     retCode++;  
-
   }
+  */
+  
   // check FEE Id ?  
   return retCode;
 }
