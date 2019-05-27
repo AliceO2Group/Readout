@@ -130,6 +130,8 @@ class ConsumerDataProcessor: public Consumer {
   int cfgIdleSleepTime; // sleep time (microseconds) for the processing threads (see class processThread) and the collector thread aggregating output
   int cfgFifoSize; // fifo size for the processing threads (see class processThread)
   
+  int cfgEnsurePageOrder=0; // if set, will track incoming pages ID and make sure it goes out in same order
+  std::unique_ptr<AliceO2::Common::Fifo<DataBlockId>> idFifo; // fifo to keep track of order of IDs coming in
   
   public:
   
@@ -168,6 +170,14 @@ class ConsumerDataProcessor: public Consumer {
       threadPool.push_back(std::make_unique<processThread>(processBlock,i+1,cfgFifoSize,cfgIdleSleepTime));
     }
     
+    // create a FIFO to keep track of incoming page IDs
+    // configuration parameter: | consumer-processor-* | ensurePageOrder | int | 0 | If set, ensures that data pages goes out of the processing pool in same order as input (which is not guaranteed with multithreading otherwise). This option adds latency. |
+    cfg.getOptionalValue<int>(cfgEntryPoint + ".ensurePageOrder",cfgEnsurePageOrder,0);
+    if (cfgEnsurePageOrder) {
+      idFifo=std::make_unique<AliceO2::Common::Fifo<DataBlockId>>((int)(numberOfThreads*cfgFifoSize*2));
+      theLog.log("Page ordering enforced for processing output");
+    }
+    
     // create a collector thread to collect output blocks from the processing threads
     shutdown=0;
     std::function<void(void)> l = std::bind(&ConsumerDataProcessor::loopOutput, this);
@@ -192,6 +202,7 @@ class ConsumerDataProcessor: public Consumer {
     if (libHandle!=nullptr) {
       dlclose(libHandle);
     }
+    idFifo=nullptr;
     theLog.log("bytes processed: %lu bytes dropped: %lu acceptance rate: %.2lf%%",processedBytes,dropBytes,processedBlocks*100.0/(processedBlocks+dropBlocks));
     theLog.log("bytes accepted in: %lu bytes out: %lu compression %.4lf",processedBytes,processedBytesOut, processedBytesOut*1.0/processedBytes);
   }
@@ -203,6 +214,15 @@ class ConsumerDataProcessor: public Consumer {
     void *ptr=b->getData()->data;
     if (ptr==NULL) {return -1;}    
     size_t size=b->getData()->header.dataSize;
+    
+    // check we have space to keep track of this page
+    if (cfgEnsurePageOrder) {
+      if (idFifo->isFull()) {
+        dropBlocks++;
+        dropBytes+=size;
+        return 0;
+      }      
+    }
 
     // find a free thread to process it, or drop it
     int i;
@@ -225,32 +245,71 @@ class ConsumerDataProcessor: public Consumer {
       processedBlocks++;
     }
     
+    if (cfgEnsurePageOrder) {
+      idFifo->push(b->getData()->header.id);
+    }
+    
     return 0;
   }
   
   // collector thread loop: handle the output of processing threads
   void loopOutput(void) {
+  
+    bool isActive=0;
+    
+    // lambda function that pushes forward next available bage
+    auto pushPage = [&](DataBlockContainerReference bc) {
+      isActive=1;
+      //if (debug) {printf("output: got %p\n",bc.get());}
+      //printf("output: push %lu\n",bc->getData()->header.id);
+
+      this->processedBlocksOut++;
+      this->processedBytesOut+=bc->getData()->header.dataSize;
+
+      // forward it to next consumer, if one configured         
+      if (this->forwardConsumer!=nullptr) {
+        this->forwardConsumer->pushData(bc);
+      }
+    };
+  
+    int threadIx=0; // index of current thread being checked
+    
     for(;!shutdown;) {
-       bool isActive=0;
+       isActive=0;
 
-       // iterate over processing threads       
-       for (int i=0;i<numberOfThreads;i++) {
-         // get new output
-         DataBlockContainerReference bc=nullptr;
-         threadPool[i]->outputFifo->pop(bc);
-         if (bc==nullptr) {continue;}
-         isActive=1;
-         //if (debug) {printf("output: got %p\n",bc.get());}
+       DataBlockId nextId=0;
+       if (cfgEnsurePageOrder) {
+         // we want a specific page number
+         if (idFifo->front(nextId)==0) {
+           DataBlockContainerReference bc=nullptr;
+           for (int i=0;i<numberOfThreads;i++) {
+             int ix=(i+threadIx) % numberOfThreads; // we start from stored index
+             if (threadPool[ix]->outputFifo->front(bc)==0) {
+               if (bc->getData()->header.id==nextId) {
+                 // we found it !
+                 idFifo->pop(nextId);
+                 threadPool[ix]->outputFifo->pop(bc);
+                 pushPage(bc);
+                 // we increment start index, as it is more likely to have the next page
+                 threadIx++;
+                 break;
+               }
+             }
+           }
+         }
+         
+       } else {
 
-         processedBlocksOut++;
-         processedBytesOut+=bc->getData()->header.dataSize;
-
-         // forward it to next consumer, if one configured         
-         if (forwardConsumer!=nullptr) {
-           forwardConsumer->pushData(bc);
+         // iterate over all processing threads       
+         for (int i=0;i<numberOfThreads;i++) {
+           // get new output
+           DataBlockContainerReference bc=nullptr;
+           threadPool[i]->outputFifo->pop(bc);
+           if (bc==nullptr) {continue;}
+           pushPage(bc);
          }
        }
-        
+               
        // wait a bit if inactive        
        if (!isActive) {
          usleep(cfgIdleSleepTime);
