@@ -72,3 +72,8 @@ This file describes the main feature changes for each readout.exe released versi
 	- readRaw.exe: check order of triggers when RDH check enabled.
 - Experimental features:
 	- Added support for O2 logbook connectivity (not enabled in cmake).
+
+##
+- Updated configuration paramters:
+	- equipment-dummy.eventMinSize/eventMaxSize: now accept "bytes" prefix (k,M,...)
+- Added minimal example configuration files for cru and dummy equipments.
