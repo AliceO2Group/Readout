@@ -26,11 +26,18 @@ class ReadoutEquipmentDummy : public ReadoutEquipment {
 ReadoutEquipmentDummy::ReadoutEquipmentDummy(ConfigFile &cfg, std::string cfgEntryPoint) : ReadoutEquipment(cfg, cfgEntryPoint) {
 
   // get configuration values
-  // configuration parameter: | equipment-dummy-* | eventMaxSize | int | 128k | Maximum size of randomly generated event. |
-  // configuration parameter: | equipment-dummy-* | eventMinSize | int | 128k | Minimum size of randomly generated event. |
+  // configuration parameter: | equipment-dummy-* | eventMaxSize | bytes | 128k | Maximum size of randomly generated event. |
+  // configuration parameter: | equipment-dummy-* | eventMinSize | bytes | 128k | Minimum size of randomly generated event. |
   // configuration parameter: | equipment-dummy-* | fillData | int | 0 | Pattern used to fill data page: (0) no pattern used, data page is left untouched, with whatever values were in memory (1) incremental byte pattern (2) incremental word pattern, with one random word out of 5. |
-  cfg.getOptionalValue<int>(cfgEntryPoint + ".eventMaxSize", eventMaxSize, (int)128*1024);
-  cfg.getOptionalValue<int>(cfgEntryPoint + ".eventMinSize", eventMinSize, (int)128*1024);
+  std::string sBytes;
+  eventMaxSize=(int)128*1024;
+  eventMinSize=(int)128*1024;
+  if (cfg.getOptionalValue<std::string>(cfgEntryPoint + ".eventMaxSize",sBytes)==0) {
+      eventMaxSize=ReadoutUtils::getNumberOfBytesFromString(sBytes.c_str());
+  }
+  if (cfg.getOptionalValue<std::string>(cfgEntryPoint + ".eventMinSize",sBytes)==0) {
+      eventMinSize=ReadoutUtils::getNumberOfBytesFromString(sBytes.c_str());
+  }
   cfg.getOptionalValue<int>(cfgEntryPoint + ".fillData", fillData, (int)0);
 
   // log config summary
