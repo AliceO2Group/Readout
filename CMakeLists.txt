@@ -312,7 +312,7 @@ endforeach ()
 ###################################################
 
 install(
-        FILES readout.cfg
+        FILES readout.cfg readout-cru.cfg readout-dummy.cfg
         DESTINATION ${CMAKE_INSTALL_PREFIX}/etc
         PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
 )
