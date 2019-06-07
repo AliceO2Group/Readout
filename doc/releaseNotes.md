@@ -77,3 +77,5 @@ This file describes the main feature changes for each readout.exe released versi
 - Updated configuration paramters:
 	- equipment-dummy.eventMinSize/eventMaxSize: now accept "bytes" prefix (k,M,...)
 - Added minimal example configuration files for cru and dummy equipments.
+- Experimental features:
+        - Jiskefet logbook enabled in cmake.
