@@ -19,7 +19,7 @@
 #endif
 
 #ifdef WITH_LOGBOOK
-#include "JiskefetFactory.h"
+#include <JiskefetApiCpp/JiskefetFactory.h>
 #endif
 
 #include <atomic>
