@@ -34,6 +34,9 @@ class Consumer {
   Consumer *forwardConsumer=nullptr; // consumer where to push output data, if any
   bool isForwardConsumer=false; // this consumer will get data from output of another consumer
   std::string name; // name of this consumer
+  bool stopOnError=false; // if set, readout will stop when this consumer reports an error (isError flag or pushData() failing)
+  int isError=0; // flag which might be used to count number of errors occuring in the consumer
+  bool isErrorReported=false; // flag to keep track of error reports for this consumer
 };
 
 

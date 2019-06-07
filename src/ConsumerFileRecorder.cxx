@@ -174,6 +174,7 @@ class ConsumerFileRecorder: public Consumer {
       theLog.log("Recording enabled");
     } else {
       theLog.log(InfoLogger::Severity::Warning,"Recording disabled");
+      isError++;
     }
   }
 

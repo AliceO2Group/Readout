@@ -626,7 +626,16 @@ void Readout::loopRunning() {
       for (auto& c : dataConsumers) {
         // push only to "prime" consumers, not to those getting data directly forwarded from another consumer
         if (c->isForwardConsumer==false) {
-          c->pushData(bc);
+          if (c->pushData(bc)<0) {
+            c->isError++;
+          }
+        }
+        if ((c->isError)&&(c->stopOnError)) {
+          if (!c->isErrorReported) {
+            theLog.log(InfoLogger::Severity::Error,"Error detected in consumer %s",c->name.c_str());
+            c->isErrorReported=true;
+          }
+          isError=1;
         }
       }
     } else {
