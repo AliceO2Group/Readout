@@ -77,5 +77,6 @@ This file describes the main feature changes for each readout.exe released versi
 - Updated configuration paramters:
 	- equipment-dummy.eventMinSize/eventMaxSize: now accept "bytes" prefix (k,M,...)
 - Added minimal example configuration files for cru and dummy equipments.
+- Updated RDH definition to v4 (but still compatible with v3, as v4 features not yet used).
 - Experimental features:
         - Jiskefet logbook enabled in cmake.
