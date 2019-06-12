@@ -128,3 +128,4 @@ The parameters related to 3rd-party libraries are described here for convenience
 | receiverFMQ | channelType | string | pair | c.f. parameter with same name in consumer-FMQchannel-* |
 | receiverFMQ | channelAddress | string | ipc:///tmp/pipe-readout | c.f. parameter with same name in consumer-FMQchannel-* |
 | receiverFMQ | decodingMode | string | none | Decoding mode of the readout FMQ output stream. Possible values: none (no decoding), readout (wp5 protocol) |
+| consumer-data-sampling-* | address | string | ipc:///tmp/readout-pipe-1 | Address of the data sampling. |

@@ -50,7 +50,8 @@ class ConsumerDataSampling: public Consumer {
   public:
   ConsumerDataSampling(ConfigFile &cfg, std::string cfgEntryPoint) : Consumer(cfg,cfgEntryPoint), channels(1) {
     std::string address;
-    cfg.getOptionalValue<std::string>("consumer-data-sampling.address", address, "ipc:///tmp/readout-pipe-1");
+    // configuration parameter: | consumer-data-sampling-* | address | string | ipc:///tmp/readout-pipe-1 | Address of the data sampling. |
+    cfg.getOptionalValue<std::string>(cfgEntryPoint+".address", address, "ipc:///tmp/readout-pipe-1");
     channels[0].UpdateChannelName("data-out");
     channels[0].UpdateType("pub");  // pub or push?
     channels[0].UpdateMethod("bind");
