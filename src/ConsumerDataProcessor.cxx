@@ -218,9 +218,10 @@ class ConsumerDataProcessor: public Consumer {
     // check we have space to keep track of this page
     if (cfgEnsurePageOrder) {
       if (idFifo->isFull()) {
+        //printf("idFifo full\n");
         dropBlocks++;
         dropBytes+=size;
-        return 0;
+        return -1;
       }      
     }
 
@@ -238,8 +239,10 @@ class ConsumerDataProcessor: public Consumer {
 
     // update stats
     if (i==numberOfThreads) {
-      dropBlocks++;
+      //printf("all threads full\n");
+      dropBlocks++;      
       dropBytes+=size;
+      return -1;
     } else {
       processedBytes+=size;
       processedBlocks++;
@@ -268,7 +271,10 @@ class ConsumerDataProcessor: public Consumer {
 
       // forward it to next consumer, if one configured         
       if (this->forwardConsumer!=nullptr) {
-        this->forwardConsumer->pushData(bc);
+        if (this->forwardConsumer->pushData(bc)<0) {
+          //printf("forward consumer push error\n");
+          this->isError++;
+        }
       }
     };
   

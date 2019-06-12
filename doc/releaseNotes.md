@@ -72,3 +72,14 @@ This file describes the main feature changes for each readout.exe released versi
 	- readRaw.exe: check order of triggers when RDH check enabled.
 - Experimental features:
 	- Added support for O2 logbook connectivity (not enabled in cmake).
+
+##
+- Updated configuration paramters:
+	- equipment-dummy.eventMinSize/eventMaxSize: now accept "bytes" prefix (k,M,...)
+	- consumer-*.stopOnError: when set, readout will stop automatically on data consumer error (file recording, data processing not keeping up, etc).
+- Added minimal example configuration files for cru and dummy equipments.
+- Updated RDH definition to v4 (but still compatible with v3, as v4 features not yet used).
+- Experimental features:
+        - Jiskefet logbook enabled in cmake.
+- Enabled TimeFrame ID from RDH instead of software clock (effective when rdhUseFirstInPageEnabled=1).
+- receiverFMQ.exe: moved to multipart for readout decoding mode.

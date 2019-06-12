@@ -203,7 +203,7 @@ int main(int argc, const char *argv[]) {
         }
         latestTriggerBC=h.getTriggerBC();
         latestTriggerOrbit=h.getTriggerOrbit();
-        printf("%08X : %03X\n", h.getTriggerOrbit(), h.getTriggerBC());
+        //printf("%08X : %03X\n", h.getTriggerOrbit(), h.getTriggerBC());
         
         
         // go to next RDH

@@ -19,7 +19,7 @@
 #endif
 
 #ifdef WITH_LOGBOOK
-#include "JiskefetFactory.h"
+#include <JiskefetApiCpp/JiskefetFactory.h>
 #endif
 
 #include <atomic>
@@ -390,6 +390,10 @@ int Readout::configure() {
     std::string cfgOutput="";
     cfg.getOptionalValue<std::string>(kName + ".consumerOutput",cfgOutput);
 
+    // configuration parameter: | consumer-* | stopOnError | int | 0 | If 1, readout will stop automatically on consumer error. |
+    int cfgStopOnError=0;
+    cfg.getOptionalValue<int>(kName + ".stopOnError",cfgStopOnError);
+
     // instanciate consumer of appropriate type
     std::unique_ptr<Consumer> newConsumer=nullptr;
     try {
@@ -454,6 +458,9 @@ int Readout::configure() {
         consumersOutput.insert(std::pair<Consumer *, std::string>(newConsumer.get(),cfgOutput));        
       }
       newConsumer->name=kName;
+      if (cfgStopOnError) {
+        newConsumer->stopOnError=1;
+      }
       dataConsumers.push_back(std::move(newConsumer));
     }
 
@@ -626,7 +633,16 @@ void Readout::loopRunning() {
       for (auto& c : dataConsumers) {
         // push only to "prime" consumers, not to those getting data directly forwarded from another consumer
         if (c->isForwardConsumer==false) {
-          c->pushData(bc);
+          if (c->pushData(bc)<0) {
+            c->isError++;
+          }
+        }
+        if ((c->isError)&&(c->stopOnError)) {
+          if (!c->isErrorReported) {
+            theLog.log(InfoLogger::Severity::Error,"Error detected in consumer %s",c->name.c_str());
+            c->isErrorReported=true;
+          }
+          isError=1;
         }
       }
     } else {

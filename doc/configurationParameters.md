@@ -61,8 +61,8 @@ The parameters related to 3rd-party libraries are described here for convenience
 | equipment-* | firstPageOffset | bytes | | Offset of the first page, in bytes from the beginning of the memory pool. If not set (recommended), will start at memoryPoolPageSize (one free page is kept before the first usable page for readout internal use). |
 | equipment-* | blockAlign | bytes | 2M | Alignment of the beginning of the big memory block from which the pool is created. Pool will start at a multiple of this value. Each page will then begin at a multiple of memoryPoolPageSize from the beginning of big block. |
 | equipment-* | consoleStatsUpdateTime | double | 0 | If set, number of seconds between printing statistics on console. |
-| equipment-dummy-* | eventMaxSize | int | 128k | Maximum size of randomly generated event. |
-| equipment-dummy-* | eventMinSize | int | 128k | Minimum size of randomly generated event. |
+| equipment-dummy-* | eventMaxSize | bytes | 128k | Maximum size of randomly generated event. |
+| equipment-dummy-* | eventMinSize | bytes | 128k | Minimum size of randomly generated event. |
 | equipment-dummy-* | fillData | int | 0 | Pattern used to fill data page: (0) no pattern used, data page is left untouched, with whatever values were in memory (1) incremental byte pattern (2) incremental word pattern, with one random word out of 5. |
 | equipment-cruemulator-* | maxBlocksPerPage | int | 0 | [obsolete- not used]. Maximum number of blocks per page. |
 | equipment-cruemulator-* | cruBlockSize | int | 8192 | Size of a RDH block. |
@@ -91,6 +91,7 @@ The parameters related to 3rd-party libraries are described here for convenience
 | consumer-* | enabled | int | 1 | Enable (value=1) or disable (value=0) the consumer. |
 | consumer-* | consumerType | string |  | The type of consumer to be instanciated. One of:stats, FairMQDevice, DataSampling, FairMQChannel, fileRecorder, checker, processor, tcp, rdma. |
 | consumer-* | consumerOutput | string |  | Name of the consumer where the output of this consumer (if any) should be pushed. |
+| consumer-* | stopOnError | int | 0 | If 1, readout will stop automatically on consumer error. |
 | consumer-stats-* | monitoringEnabled | int | 0 | Enable (1) or disable (0) readout monitoring. |
 | consumer-stats-* | monitoringUpdatePeriod | double | 10 | Period of readout monitoring updates. |
 | consumer-stats-* | processMonitoringInterval | int | 0 | Period of process monitoring updates (O2 standard metrics). If zero (default), disabled.|

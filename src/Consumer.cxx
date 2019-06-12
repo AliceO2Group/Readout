@@ -1,11 +1,17 @@
 #include "Consumer.h"
 
 int Consumer::pushData(DataSetReference &bc) {
-   unsigned int success=0;
+   int success=0;
+   int error=0;
    for (auto &b : *bc) {
      if (!pushData(b)) {
-        success++;
+       success++;
+     } else {
+       error++;
      }
    }
-   return success;
+   if (error) {
+     return -error; // return a negative number indicating number of errors
+   }
+   return success; // return a positive number indicating number of success
 }
