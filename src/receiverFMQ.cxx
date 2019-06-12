@@ -156,66 +156,86 @@ int main(int argc, const char **argv) {
   AliceO2::Common::Timer runningTime;
   int statsTimeout=1000000;
   runningTime.reset(statsTimeout);
-  int STFpendingMsgs=0;
-  int n1,n2;
   unsigned long long nMsg=0;
   unsigned long long nBytes=0;
-
+  bool isMultiPart=false;
+  
+  if (mode==decodingMode::readout) {
+    isMultiPart=true;
+  }
+  
   theLog.log("Entering receiving loop");
 
   for (;!ShutdownRequest;){
     auto msg = pull.NewMessage();
     int timeout=1000;
-    if (pull.ReceiveAsync(msg)>0) {
-      if (msg->GetSize()==0) {continue;}
-      msgStats.increment(msg->GetSize());
-      nBytes+=msg->GetSize();
-      nMsg++;
-
-      //printf("Received message size %d\n",(int)msg->GetSize());
-
-      if (mode==decodingMode::readout) {
-        // expected format of received messages : (header + HB + HB ...)
-        if (STFpendingMsgs==0) {
-          // this should be a header
-          if (msg->GetSize()!=sizeof(SubTimeframe)) {
-            printf("protocol error! expecting STF header size %d but got %d bytes\n",(int)sizeof(SubTimeframe),(int)msg->GetSize());
-            return -1;
-          }
-          SubTimeframe *stf=(SubTimeframe *)msg->GetData();
-          if (stf->timeframeId%100==0) {
+    
+    if (isMultiPart) {
+      FairMQParts msgParts;
+      int64_t bytesReceived;
+      bytesReceived=pull.Receive(msgParts, timeout);
+      if (bytesReceived>0) {
+        nBytes+=bytesReceived;
+        nMsg++;
+	msgStats.increment(bytesReceived);
+	
+	if (mode==decodingMode::readout) {
+	
+	  int nPart=msgParts.Size();
+	  //printf("msg: %d parts\n",nPart);
+	  if (nPart<2) {
+	    printf("Error %d : %d parts in message\n",nPart);
+	    continue;
+	  }
+	  	  
+	  // expected format of received messages : (header + HB + HB ...)
+	  
+	  // first part is STF header
+	  if (msgParts[0].GetSize()!=sizeof(SubTimeframe)) {
+	    printf("Error %d : header wrong size %d != %d\n",(int)msgParts[0].GetSize(),(int)sizeof(SubTimeframe));
+	    continue;
+	  } 	  	  	  
+          SubTimeframe *stf=(SubTimeframe *)msgParts[0].GetData();
+	  if (stf->numberOfHBF!=nPart-1) {
+	    printf("Mismatch stf->numberOfHBF %d != %d message parts - 1\n",stf->numberOfHBF,nPart-1); 
+	    continue;
+	  }
+	  
+	  // number of message parts matches number of HBFs in header ?
+	  const int printStep=100;
+          if ((stf->timeframeId==1)||(stf->timeframeId%printStep==0)) {
             printf("Receiving TF %d link %d : %d HBf\n",(int)stf->timeframeId,(int)stf->linkId,(int)stf->numberOfHBF);
           }
-          STFpendingMsgs=stf->numberOfHBF;
-          n1=0;
-          n2=stf->numberOfHBF;
-        } else {
-          // this is a HBF
-          STFpendingMsgs--;
+	  
+	  for(int i=1;i<nPart;i++) {	  
+            if (msgParts[i].GetSize()%8192) {
+              printf("size not matching expected HBF size (multiple of 8k)\n");
+              break;
+            }
 
-          if (msg->GetSize()%8192) {
-            printf("size not matching expected HBF size (multiple of 8k)\n");
-            return -1;
+            /*// iterate from RDH to RDH in received message
+            int nBlocks=0;
+            char *payload=(char *)msgParts[i].GetData();
+            for (unsigned int offset=0;offset<msgParts[i].GetSize();){
+              o2::Header::RAWDataHeader *rdh=(o2::Header::RAWDataHeader *)&(payload[offset]);
+              //dumpRDH(rdh);
+              offset+=rdh->blockLength;
+              nBlocks++;
+            }
+            //printf("%d CRU blocks in HBF\n",nBlocks);
+	    */
           }
-          n1++;
-          //printf("received HBF %d/%d\n",n1,n2);
-
-          // iterate from RDH to RDH in received message
-          int nBlocks=0;
-          char *payload=(char *)msg->GetData();
-          for (unsigned int offset=0;offset<msg->GetSize();){
-            o2::Header::RAWDataHeader *rdh=(o2::Header::RAWDataHeader *)&(payload[offset]);
-            //dumpRDH(rdh);
-            offset+=rdh->blockLength;
-            nBlocks++;
-          }
-          //printf("%d CRU blocks in HBF\n",nBlocks);
-        }
-      } else {
-        //usleep(1000);
+	}
       }
     } else {
-      usleep(10000);
+      if (pull.ReceiveAsync(msg)>0) {
+	if (msg->GetSize()==0) {continue;}
+	msgStats.increment(msg->GetSize());
+	nBytes+=msg->GetSize();
+	nMsg++;
+      } else {
+	usleep(10000);
+      }
     }
     //printf("releasing msg %p\n",msg->GetData());
 
