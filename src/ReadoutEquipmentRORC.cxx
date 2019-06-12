@@ -225,12 +225,9 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : 
 
     // todo: log parameters ?
 
-    // for the time being, use only software clock... feature to be checked
-    usingSoftwareClock=true;
-
     // reset timeframe id
     currentTimeframe=0;
-    if (!cfgRdhCheckEnabled) {
+    if (!cfgRdhUseFirstInPageEnabled) {
       usingSoftwareClock=true; // if RDH disabled, use internal clock for TF id
     }
     if (usingSoftwareClock) {
@@ -366,23 +363,68 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
         theLog.log("make_shared<DataBlock> failed");
       }
       if (d!=nullptr) {
-        statsNumberOfPages++;
-        
-        d->getData()->header.dataSize=superpage.getReceived();
-        d->getData()->header.linkId=undefinedLinkId; // TODO
-
         channel->popSuperpage();
+        statsNumberOfPages++;
         nextBlock=d;
-        
+
 	//printf("\nPage %llu\n",statsNumberOfPages);	
-	
-        // validate RDH structure, if configured to do so
-        int linkId=-1;
+
+        // in software clock mode, set timeframe id based on current timestamp
+	if (usingSoftwareClock) {
+	  if (timeframeClock.isTimeout()) {
+	    currentTimeframe++;
+            statsNumberOfTimeframes++;
+	    timeframeClock.increment();
+	  }
+        }
+
+	// default values for metadata
+        int linkId=undefinedLinkId;
         int hbOrbit=-1;
+	
+        // retrieve metadata from RDH, if configured to do so
+        if ((cfgRdhUseFirstInPageEnabled)||(cfgRdhCheckEnabled)) {
+          RdhHandle h(d->getData()->data);
+          
+	  // check that it is a correct RDH
+	  std::string errorDescription;
+	  if (h.validateRdh(errorDescription)!=0) {
+	    theLog.log(InfoLogger::Severity::Warning,"First RDH in page is wrong: %s",errorDescription.c_str());    
+	  } else {
+	  
+	    //linkId
+	    linkId=h.getLinkId();
+
+	    // timeframe ID
+            hbOrbit=h.getHbOrbit();
+	    //printf("HB orbit %u\n",hbOrbit);
+	    //printf("Page %llu, link %d, orbit %u\n",statsNumberOfPages,linkId,hbOrbit);
+            if ((statsNumberOfPages==1) || ((uint32_t)hbOrbit>=currentTimeframeHbOrbitBegin+timeframePeriodOrbits)) {
+              if (statsNumberOfPages==1) {
+        	firstTimeframeHbOrbitBegin=hbOrbit;
+              }
+              statsNumberOfTimeframes++;
+              currentTimeframeHbOrbitBegin=hbOrbit-((hbOrbit-firstTimeframeHbOrbitBegin)%timeframePeriodOrbits); // keep it periodic and aligned to 1st timeframe
+              int newTimeframe=1+(currentTimeframeHbOrbitBegin-firstTimeframeHbOrbitBegin)/timeframePeriodOrbits;
+              if (newTimeframe!=currentTimeframe+1) {
+        	if (cfgRdhDumpErrorEnabled) {
+	          theLog.log(InfoLogger::Severity::Warning,"Non-contiguous timeframe IDs %d ... %d",currentTimeframe,newTimeframe);
+		}
+              }
+              currentTimeframe=newTimeframe;
+              // printf("Starting timeframe %d @ orbit %d (actual: %d)\n",currentTimeframe,(int)currentTimeframeHbOrbitBegin,(int)hbOrbit);
+            } else {
+               //printf("HB orbit %d\n",hbOrbit);
+            }
+	  }
+        }
+
+	// fill page metadata
+        d->getData()->header.dataSize=superpage.getReceived();
+        d->getData()->header.linkId=linkId;
+	d->getData()->header.id=currentTimeframe;       
                 
-        // checks to do:
-        // - HB clock consistent in all RDHs
-        // - increasing counters
+	// Dump RDH if configured to do so
 	if (cfgRdhDumpEnabled) {
 	  RdhBlockHandle b(d->getData()->data,d->getData()->header.dataSize);
 	  if (b.printSummary()) {
@@ -393,6 +435,7 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
 	  }
 	}
 
+	// validate RDH structure, if configured to do so
         if (cfgRdhCheckEnabled) {
           std::string errorDescription;
           size_t blockSize=d->getData()->header.dataSize;
@@ -405,41 +448,6 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
 	    
             //printf("RDH #%d @ 0x%X : next block @ +%d bytes\n",rdhIndexInPage,(unsigned int)pageOffset,h.getOffsetNextPacket());
 	    
-            if (linkId==-1) {
-              linkId=h.getLinkId();
-	      //printf("Page %llu, link %d\n",statsNumberOfPages,linkId);	
-	      //printf("Page for link %d\n",linkId);	
-            } else {
-              if (linkId!=h.getLinkId()) {
-                if (cfgRdhDumpErrorEnabled) {printf("RDH #%d @ 0x%X : inconsistent link ids: %d != %d\n",rdhIndexInPage,(unsigned int)pageOffset,linkId,h.getLinkId());}
-                statsRdhCheckStreamErr++;
-		break; // stop checking this page
-              }
-            }
-            
-            if (hbOrbit==-1) {
-              hbOrbit=h.getHbOrbit();
-	      //printf("HB orbit %u\n",hbOrbit);
-	      //printf("Page %llu, link %d, orbit %u\n",statsNumberOfPages,linkId,hbOrbit);
-              if ((statsNumberOfPages==1) || ((uint32_t)hbOrbit>=currentTimeframeHbOrbitBegin+timeframePeriodOrbits)) {
-                if (statsNumberOfPages==1) {
-                  firstTimeframeHbOrbitBegin=hbOrbit;
-                }
-                statsNumberOfTimeframes++;
-                currentTimeframeHbOrbitBegin=hbOrbit-((hbOrbit-firstTimeframeHbOrbitBegin)%timeframePeriodOrbits); // keep it periodic and aligned to 1st timeframe
-                int newTimeframe=1+(currentTimeframeHbOrbitBegin-firstTimeframeHbOrbitBegin)/timeframePeriodOrbits;
-                if (newTimeframe!=currentTimeframe+1) {
-                  if (cfgRdhDumpErrorEnabled) {printf("Non-contiguous timeframe IDs %d ... %d\n",currentTimeframe,newTimeframe);}
-                  statsRdhCheckStreamErr;
-                }
-                currentTimeframe=newTimeframe;
-                 //printf("Starting timeframe %d @ orbit %d (actual: %d)\n",currentTimeframe,(int)currentTimeframeHbOrbitBegin,(int)hbOrbit);
-              } else {
-                 //printf("HB orbit %d\n",hbOrbit);
-              }
-              
-            }           
-            
             //data format:
             // RDH v3 = https://docs.google.com/document/d/1otkSDYasqpVBDnxplBI7dWNxaZohctA-bvhyrzvtLoQ/edit?usp=sharing
             if (h.validateRdh(errorDescription)) {
@@ -464,36 +472,41 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
                   printf("%08X ",(int)(((uint32_t*)baseAddress+pageOffset)[i]));
                 }
                 printf("\n");
-
               }
             }
+
+	    // linkId should be same everywhere in page
+            if (linkId!=h.getLinkId()) {
+              if (cfgRdhDumpErrorEnabled) {
+	        theLog.log(InfoLogger::Severity::Warning,"RDH #%d @ 0x%X : inconsistent link ids: %d != %d",rdhIndexInPage,(unsigned int)pageOffset,linkId,h.getLinkId());
+              }
+              statsRdhCheckStreamErr++;
+	      break; // stop checking this page
+            }
+	    
+	    // check no timeframe overlap in page
+	    if ((uint32_t)hbOrbit>=currentTimeframeHbOrbitBegin+timeframePeriodOrbits) {
+              if (cfgRdhDumpErrorEnabled) {
+	        theLog.log(InfoLogger::Severity::Warning,"RDH #%d @ 0x%X : TimeFrame ID change in page not allowed : hbOrbit %u > %u + %u",
+		rdhIndexInPage,(unsigned int)pageOffset,(uint32_t)hbOrbit,currentTimeframeHbOrbitBegin,timeframePeriodOrbits);
+              }
+              statsRdhCheckStreamErr++;
+	      break; // stop checking this page	    
+	    }
+
+	    // TODO
+	    // check counter increasing
+	    // all have same TF id
+	    
+	    	    
 	    uint16_t offsetNextPacket=h.getOffsetNextPacket();
 	    if (offsetNextPacket==0) {
 	      break;
 	    }
-	    pageOffset+=offsetNextPacket;            
+	    pageOffset+=offsetNextPacket;
           }
         }
-        
-        if (cfgRdhUseFirstInPageEnabled) {
-          RdhHandle h(d->getData()->data);
-          linkId=h.getLinkId();
-        }
-        
-        if (linkId>=0) {
-          d->getData()->header.linkId=linkId;
-        }
-
-        if (usingSoftwareClock) {
-	  if (timeframeClock.isTimeout()) {
-	    currentTimeframe++;
-            statsNumberOfTimeframes++;
-	    timeframeClock.increment();
-	  }
-        }
-
-        // set timeframe id
-        d->getData()->header.id=currentTimeframe;        
+     
       }
       else {
         // no data block container... what to do???
