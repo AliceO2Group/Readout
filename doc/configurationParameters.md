@@ -91,6 +91,7 @@ The parameters related to 3rd-party libraries are described here for convenience
 | consumer-* | enabled | int | 1 | Enable (value=1) or disable (value=0) the consumer. |
 | consumer-* | consumerType | string |  | The type of consumer to be instanciated. One of:stats, FairMQDevice, DataSampling, FairMQChannel, fileRecorder, checker, processor, tcp, rdma. |
 | consumer-* | consumerOutput | string |  | Name of the consumer where the output of this consumer (if any) should be pushed. |
+| consumer-* | stopOnError | int | 0 | If 1, readout will stop automatically on consumer error. |
 | consumer-stats-* | monitoringEnabled | int | 0 | Enable (1) or disable (0) readout monitoring. |
 | consumer-stats-* | monitoringUpdatePeriod | double | 10 | Period of readout monitoring updates. |
 | consumer-stats-* | processMonitoringInterval | int | 0 | Period of process monitoring updates (O2 standard metrics). If zero (default), disabled.|
