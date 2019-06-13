@@ -71,6 +71,10 @@ class ReadoutEquipmentRORC : public ReadoutEquipment {
     uint32_t firstTimeframeHbOrbitBegin=0; // HbOrbit of beginning of first timeframe
         
     size_t superPageSize=0; // usable size of a superpage
+    
+    int32_t lastPacketDropped=0; // latest value of CRU packet dropped counter
+    uint64_t totalPacketDropped=0; // total number of packet dropped
+    AliceO2::Common::Timer packetDroppedTimer; // a timer to set period of packet dropped checks
 };
 
 
@@ -261,6 +265,24 @@ Thread::CallbackResult ReadoutEquipmentRORC::prepareBlocks(){
   if (!isDataOn) return  Thread::CallbackResult::Idle;
   
   int isActive=0;
+  
+  // check status of packets dropped
+  // Returns the number of dropped packets, as reported by the BAR
+  if ((isWaitingFirstLoop)||(packetDroppedTimer.isTimeout())) {
+    int32_t currentPacketDropped=0; //channel->getDroppedPackets();
+    if (currentPacketDropped!=lastPacketDropped) {
+      int32_t newPacketDropped=(currentPacketDropped-lastPacketDropped);
+      totalPacketDropped+=newPacketDropped;
+      lastPacketDropped=currentPacketDropped;
+      theLog.log(InfoLogger::Severity::Warning,"Equipment %s: CRU has dropped packets (new=%d total=%lu)",name.c_str(),newPacketDropped,totalPacketDropped);
+      isError++;
+    }
+    if (isWaitingFirstLoop) {
+      packetDroppedTimer.reset(1000000); // 1 sec interval
+    } else {
+      packetDroppedTimer.increment();
+    }
+  }
   
   // keep track of situations where the queue is completely empty
   // this means we have not filled it fast enough (except in first loop, where it's normal it is empty)
