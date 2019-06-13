@@ -73,7 +73,6 @@ class ReadoutEquipmentRORC : public ReadoutEquipment {
     size_t superPageSize=0; // usable size of a superpage
     
     int32_t lastPacketDropped=0; // latest value of CRU packet dropped counter
-    uint64_t totalPacketDropped=0; // total number of packet dropped
     AliceO2::Common::Timer packetDroppedTimer; // a timer to set period of packet dropped checks
 };
 
@@ -226,7 +225,6 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : 
     theLog.log("Equipment %s : PCI %s @ NUMA node %d, serial number %s, firmware version %s, card id %s", name.c_str(), infoPciAddress.c_str(), infoNumaNode, infoSerialNumber.c_str(),
     infoFirmwareVersion.c_str(), infoCardId.c_str());
     
-
     // todo: log parameters ?
 
     // reset timeframe id
@@ -255,7 +253,7 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : 
 
 ReadoutEquipmentRORC::~ReadoutEquipmentRORC() {
   if (cfgRdhCheckEnabled) {
-    theLog.log("Equipment %s : %llu timeframes, %llu pages, RDH checks %llu ok, %llu errors, %llu stream inconsistencies",name.c_str(),statsNumberOfTimeframes,statsNumberOfPages,statsRdhCheckOk,statsRdhCheckErr,statsRdhCheckStreamErr);  
+    theLog.log("Equipment %s : %llu timeframes, %llu pages, RDH checks %llu ok, %llu errors, %llu stream inconsistencies %d packets dropped by CRU",name.c_str(),statsNumberOfTimeframes,statsNumberOfPages,statsRdhCheckOk,statsRdhCheckErr,statsRdhCheckStreamErr,lastPacketDropped);  
   }
 }
 
@@ -269,14 +267,18 @@ Thread::CallbackResult ReadoutEquipmentRORC::prepareBlocks(){
   // check status of packets dropped
   // Returns the number of dropped packets, as reported by the BAR
   if ((isWaitingFirstLoop)||(packetDroppedTimer.isTimeout())) {
-    int32_t currentPacketDropped=0; //channel->getDroppedPackets();
-    if (currentPacketDropped!=lastPacketDropped) {
+    int32_t currentPacketDropped=channel->getDroppedPackets();
+    if ((currentPacketDropped!=lastPacketDropped)&&(!isWaitingFirstLoop)) {
       int32_t newPacketDropped=(currentPacketDropped-lastPacketDropped);
-      totalPacketDropped+=newPacketDropped;
-      lastPacketDropped=currentPacketDropped;
-      theLog.log(InfoLogger::Severity::Warning,"Equipment %s: CRU has dropped packets (new=%d total=%lu)",name.c_str(),newPacketDropped,totalPacketDropped);
-      isError++;
+      if (newPacketDropped>0) {        
+        theLog.log(InfoLogger::Severity::Warning,"Equipment %s: CRU has dropped packets (new=%d total=%d)",name.c_str(),newPacketDropped,currentPacketDropped);
+	if (stopOnError) {
+          theLog.log(InfoLogger::Severity::Error,"Equipment %s: some data has been lost)",name.c_str());
+	}
+        isError++;
+      }
     }
+    lastPacketDropped=currentPacketDropped;
     if (isWaitingFirstLoop) {
       packetDroppedTimer.reset(1000000); // 1 sec interval
     } else {
