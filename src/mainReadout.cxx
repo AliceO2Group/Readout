@@ -663,6 +663,11 @@ void Readout::loopRunning() {
 
 int Readout::iterateCheck() {
   usleep(100000);
+  for (auto && readoutDevice : readoutDevices) {
+      if ((readoutDevice->isError)&&(readoutDevice->stopOnError)) {
+        isError=1;
+      }
+  }  
   if (isError) {
     return -1;
   }

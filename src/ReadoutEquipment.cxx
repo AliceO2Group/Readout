@@ -68,6 +68,13 @@ ReadoutEquipment::ReadoutEquipment(ConfigFile &cfg, std::string cfgEntryPoint) {
   // output periodic statistics on console
   // configuration parameter: | equipment-* | consoleStatsUpdateTime | double | 0 | If set, number of seconds between printing statistics on console. |
   cfg.getOptionalValue<double>(cfgEntryPoint + ".consoleStatsUpdateTime", cfgConsoleStatsUpdateTime);
+
+    // configuration parameter: | equipment-* | stopOnError | int | 0 | If 1, readout will stop automatically on equipment error. |
+    int cfgStopOnError=0;
+    cfg.getOptionalValue<int>(cfgEntryPoint + ".stopOnError",cfgStopOnError);
+    if (cfgStopOnError) {
+      this->stopOnError=1;
+    }
     
   // log config summary
   theLog.log("Equipment %s: from config [%s], max rate=%lf Hz, idleSleepTime=%d us, outputFifoSize=%d", name.c_str(), cfgEntryPoint.c_str(), readoutRate, cfgIdleSleepTime, cfgOutputFifoSize);
