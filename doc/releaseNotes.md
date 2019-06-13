@@ -73,7 +73,7 @@ This file describes the main feature changes for each readout.exe released versi
 - Experimental features:
 	- Added support for O2 logbook connectivity (not enabled in cmake).
 
-##
+## v1.0.1 - 13/06/2019
 - Updated configuration paramters:
 	- equipment-dummy.eventMinSize/eventMaxSize: now accept "bytes" prefix (k,M,...)
 	- consumer-*.stopOnError: when set, readout will stop automatically on data consumer error (file recording, data processing not keeping up, etc).
