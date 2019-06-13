@@ -73,13 +73,15 @@ This file describes the main feature changes for each readout.exe released versi
 - Experimental features:
 	- Added support for O2 logbook connectivity (not enabled in cmake).
 
-##
+## v1.0.1 - 13/06/2019
 - Updated configuration paramters:
 	- equipment-dummy.eventMinSize/eventMaxSize: now accept "bytes" prefix (k,M,...)
 	- consumer-*.stopOnError: when set, readout will stop automatically on data consumer error (file recording, data processing not keeping up, etc).
+	- equipment-*.stopOnError: when set, readout will stop automatically on data equipment error (CRU packet dropped, etc).
 - Added minimal example configuration files for cru and dummy equipments.
 - Updated RDH definition to v4 (but still compatible with v3, as v4 features not yet used).
 - Experimental features:
         - Jiskefet logbook enabled in cmake.
 - Enabled TimeFrame ID from RDH instead of software clock (effective when rdhUseFirstInPageEnabled=1).
 - receiverFMQ.exe: moved to multipart for readout decoding mode.
+- Warning on CRU packet dropped.

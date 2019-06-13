@@ -33,6 +33,9 @@ class ReadoutEquipment {
   virtual void setDataOn();
   virtual void setDataOff();
 
+  bool stopOnError=false; // if set, readout will stop when this equipment reports an error (isError flag)
+  int isError=0; // flag which might be used to count number of errors occuring in the equipment
+
 // protected:
 // todo: give direct access to output FIFO?
   std::shared_ptr<AliceO2::Common::Fifo<DataBlockContainerReference>> dataOut;
