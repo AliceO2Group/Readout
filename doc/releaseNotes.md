@@ -85,3 +85,6 @@ This file describes the main feature changes for each readout.exe released versi
 - Enabled TimeFrame ID from RDH instead of software clock (effective when rdhUseFirstInPageEnabled=1).
 - receiverFMQ.exe: moved to multipart for readout decoding mode.
 - Warning on CRU packet dropped.
+
+## next version
+- Added LZ4 file support to readRaw.exe
