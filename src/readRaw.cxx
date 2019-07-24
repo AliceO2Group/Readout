@@ -7,6 +7,8 @@
 #include <stdio.h>
 #include <string>
 
+#include <lz4.h>
+
 //#define ERRLOG(args...) fprintf(stderr,args)
 #define ERRLOG(args...) fprintf(stdout, args)
 
@@ -108,10 +110,16 @@ int main(int argc, const char *argv[]) {
   unsigned long pageCount=0;
   unsigned long RDHBlockCount=0;
   unsigned long fileOffset=0;
+  unsigned long dataOffset=0; // to keep track of position in uncompressed data
+  unsigned long dataOffsetLast=0; // to print progress
+  const int dataOffsetProgressStep=1*1024L*1024L*1024L; // every 1GB, print where we are
   
   bool isFirstTrigger=true;
   uint32_t latestTriggerOrbit=0;
   uint32_t latestTriggerBC=0;
+  
+  const int maxBlockSize=128*1024L*1024L; // maximum memory allocated for page reading (or decompressing)
+  bool checkOrbitContiguous=true; // if set, verify that they are no holes in orbit number
   
   for(fileOffset=0;fileOffset<fileSize;) {
   
@@ -141,7 +149,31 @@ int main(int argc, const char *argv[]) {
       dataSize=hb.dataSize;
     } else {    
       dataSize=fileSize;
+      
+      if (dataSize>maxBlockSize) {
+        dataSize=maxBlockSize;
+      }
+      
+      if (fileType==FileType::lz4) {
+          // read start of LZ4 frame: header + size
+          const char header[]={0x04,0x22,0x4D,0x18,0x60,0x70,0x73};          
+          uint32_t blockSize=0;          
+          char buffer[sizeof(header)+sizeof(blockSize)];
+          if (fread(&buffer,sizeof(buffer),1,fp)!=1) {ERR_LOOP;}
+          
+          // check header correct
+          bool isHeaderOk=true;
+          for (int i=0;i<sizeof(header);i++) {
+            if (header[i]!=buffer[i]) {isHeaderOk=false; break;}
+          }
+          if (!isHeaderOk) {ERR_LOOP;}
+          blockSize=*((uint32_t *)&buffer[sizeof(header)]);
+          // use given LZ4 frame size
+          dataSize=blockSize;
+      }
     }
+    
+    //printf("Reading page %lu @ 0x%08lX (%.1fGB)\n",pageCount+1,fileOffset,fileOffset/(1024.0*1024.0*1024.0));
     
     if (dataSize==0) {ERR_LOOP;}      
     void *data=malloc(dataSize);
@@ -150,6 +182,29 @@ int main(int argc, const char *argv[]) {
     fileOffset+=dataSize;
     pageCount++;
       
+    if (fileType==FileType::lz4) {
+      // read trailer
+      const char trailer[]={0x00,0x00,0x00,0x00};
+      char buffer[sizeof(trailer)];
+      if (fread(&buffer,sizeof(buffer),1,fp)!=1) {ERR_LOOP;}
+
+      // check trailer correct
+      bool istrailerOk=true;
+      for (int i=0;i<sizeof(trailer);i++) {
+        if (trailer[i]!=buffer[i]) {istrailerOk=false; break;}
+      }
+      if (!istrailerOk) {ERR_LOOP;}
+      
+      // uncompress data
+      void *dataUncompressed=malloc(maxBlockSize);
+      if (dataUncompressed==NULL) {ERR_LOOP;}
+      int res=LZ4_decompress_safe ((char*)data,(char*)dataUncompressed,dataSize,maxBlockSize);
+      if ((res<=0)||(res>=maxBlockSize)) {ERR_LOOP;}
+      free(data);
+      data=dataUncompressed;
+      dataSize=res;      
+    }
+    
     if (dumpData) {
       long max=dataSize;
       if ((dumpData<max)&&(dumpData>0)) {
@@ -196,6 +251,8 @@ int main(int argc, const char *argv[]) {
           if (h.getTriggerOrbit()<latestTriggerOrbit) { isTriggerOrderOk=0; }
           else if (h.getTriggerOrbit()==latestTriggerOrbit) {
             if (h.getTriggerBC()<latestTriggerBC) { isTriggerOrderOk=0; }
+          } else if (checkOrbitContiguous && (h.getTriggerOrbit()!=latestTriggerOrbit+1)) {
+            isTriggerOrderOk=0;
           }
         }
         if (!isTriggerOrderOk) {
@@ -216,6 +273,13 @@ int main(int argc, const char *argv[]) {
     }
         
     free(data);
+    dataOffset+=dataSize;
+    if (dataOffsetProgressStep) {
+      if (dataOffset>dataOffsetLast+dataOffsetProgressStep) {
+        dataOffsetLast=dataOffset;
+        printf("Processed %.1fGB\n",dataOffset/(1024.0*1024.0*1024.0));    
+      }
+    }
   }
   ERRLOG("%lu data pages\n",pageCount);
   if (RDHBlockCount) {
