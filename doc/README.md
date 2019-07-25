@@ -90,6 +90,15 @@ and which bank to use (memoryBankName=bank-a1). By default of a bank name,
 readout will try to create the pool from the first bank available.
 Several memory pools can be created from the same memory bank, if space allows.
 
+The number of pages allocated for an equipment should be large enough to accomodate data of at least 2 subtimeframes
+Otherwise, the slicing into timeframes can not work, as it holds the data of current subtimeframe until it is complete
+(i.e. when data from next timeframe starts to reach it). If necessary (mostly for test/debug purpose), the slicer can
+be disabled by setting in the configuration the global parameter disableAggregatorSlicing=1.
+
+In practice, you should allocate enough buffer for several seconds, i.e. hundred(s) of subtimeframes.
+When you define the number of pages, take into account that the CRU stores data of different links in different pages.
+So the number of pages needed increases with the number of links used.
+
 
 # Data format
 Readout uses the data format defined in FlpPrototype for internal indexing of the pages.
