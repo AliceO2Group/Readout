@@ -46,7 +46,7 @@ The parameters related to 3rd-party libraries are described here for convenience
 | readout | logbookApiToken | string | | The token to be used for the logbook API. |
 | bank-* | enabled | int | 1 | Enable (value=1) or disable (value=0) the memory bank. |
 | bank-* | size | bytes | | Size of the memory bank, in bytes. |
-| bank-* | type | string| | Support used to allocate memory. Possible values: malloc, MemoryMappedFile. For MemoryMappedFile, the name given to the bank (bank-*) is reused in the filesystem namespace to create the resource, so make sure it is unique on a given machine for all instances of readout. |
+| bank-* | type | string| | Support used to allocate memory. Possible values: malloc, MemoryMappedFile. For MemoryMappedFile: 1) the name given to the bank (bank-*) is reused in the filesystem namespace to create the resource, so make sure it is unique on a given machine for all instances of readout 2) the hugePages are split evenly accross NUMA nodes, so make sure that the bank size can be allocated on a single node... if there are 2GB of hugePages on the system, you probably can't have a bank size bigger than 1G on a dual-node system. |
 | bank-* | numaNode | int | -1| Numa node where memory should be bound. -1 means unspecified (system will choose). |
 | equipment-* | enabled | int | 1 | Enable (value=1) or disable (value=0) the equipment. |
 | equipment-* | equipmentType | string |  | The type of equipment to be instanciated. One of: dummy, rorc, cruEmulator, player. |
