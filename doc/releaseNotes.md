@@ -88,3 +88,5 @@ This file describes the main feature changes for each readout.exe released versi
 
 ## next version
 - Added LZ4 file support to readRaw.exe
+- Updated configuration paramters:
+	- equipment-rorc.TFperiod: to configure length of timeframe, in number of orbits.

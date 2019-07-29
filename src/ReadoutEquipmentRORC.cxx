@@ -65,7 +65,7 @@ class ReadoutEquipmentRORC : public ReadoutEquipment {
 
     const unsigned int LHCBunches=3564;    // number of bunches in LHC
     const unsigned int LHCOrbitRate=11246; // LHC orbit rate, in Hz. 299792458 / 26659
-    const uint32_t timeframePeriodOrbits=256;   // timeframe interval duration in number of LHC orbits
+    uint32_t timeframePeriodOrbits=256;   // timeframe interval duration in number of LHC orbits
     
     uint32_t currentTimeframeHbOrbitBegin=0; // HbOrbit of beginning of timeframe 
     uint32_t firstTimeframeHbOrbitBegin=0; // HbOrbit of beginning of first timeframe
@@ -143,7 +143,12 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : 
     if (cfgCleanPageBeforeUse) {
       theLog.log("Superpages will be cleaned before each DMA - this may be slow!");
     }
-        
+    
+    // configuration parameter: | equipment-rorc-* | TFperiod | int | 256 | Duration of a timeframe, in number of LHC orbits. |
+    int cfgTFperiod=256;
+    cfg.getOptionalValue<int>(name + ".TFperiod", cfgTFperiod);
+    timeframePeriodOrbits=cfgTFperiod;
+    
 /*    // get readout memory buffer parameters
     std::string sMemorySize=cfg.getValue<std::string>(name + ".memoryBufferSize");
     std::string sPageSize=cfg.getValue<std::string>(name + ".memoryPageSize");
@@ -232,6 +237,7 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : 
     if (!cfgRdhUseFirstInPageEnabled) {
       usingSoftwareClock=true; // if RDH disabled, use internal clock for TF id
     }
+    theLog.log("Timeframe length = %d orbits",(int)timeframePeriodOrbits);
     if (usingSoftwareClock) {
       // reset timeframe clock
       double timeframeRate=LHCOrbitRate*1.0/timeframePeriodOrbits; // timeframe rate, in Hz
