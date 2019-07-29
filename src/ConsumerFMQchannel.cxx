@@ -233,15 +233,15 @@ class ConsumerFMQchannel: public Consumer {
       ix++;
       DataBlock *b=br->getData();
       if (isFirst) {
-        stfHeader->timeframeId=b->header.id;
+        stfHeader->timeframeId=b->header.timeframeId;
         stfHeader->linkId=b->header.linkId;
         stfHeader->numberOfHBF=0;
         isFirst=false;
       } else {
-        if (stfHeader->timeframeId!=b->header.id) {printf("mismatch tfId\n");}
+        if (stfHeader->timeframeId!=b->header.timeframeId) {printf("mismatch tfId\n");}
         if (stfHeader->linkId!=b->header.linkId) {printf("mismatch linkId\n");}
       }
-      //printf("block %d tf %d link %d\n",ix,b->header.id,b->header.linkId);
+      //printf("block %d tf %d link %d\n",ix,b->header.timeframeId,b->header.linkId);
       for (int offset=0;offset+cruBlockSize<=b->header.dataSize;offset+=cruBlockSize) {
         //printf("checking %p : %d\n",b,offset);
         o2::Header::RAWDataHeader *rdh=(o2::Header::RAWDataHeader *)&b->data[offset];

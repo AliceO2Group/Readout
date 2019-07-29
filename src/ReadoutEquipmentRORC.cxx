@@ -60,12 +60,12 @@ class ReadoutEquipmentRORC : public ReadoutEquipment {
     
     
     AliceO2::Common::Timer timeframeClock;	// timeframe id should be increased at each clock cycle
-    int currentTimeframe=0;	                // id of current timeframe
+    uint64_t currentTimeframe=0;	        // id of current timeframe
     bool usingSoftwareClock=false;              // if set, using internal software clock to generate timeframe id
 
     const unsigned int LHCBunches=3564;    // number of bunches in LHC
     const unsigned int LHCOrbitRate=11246; // LHC orbit rate, in Hz. 299792458 / 26659
-    const uint32_t timeframePeriodOrbits=256;   // timeframe interval duration in number of LHC orbits
+    uint32_t timeframePeriodOrbits=256;   // timeframe interval duration in number of LHC orbits
     
     uint32_t currentTimeframeHbOrbitBegin=0; // HbOrbit of beginning of timeframe 
     uint32_t firstTimeframeHbOrbitBegin=0; // HbOrbit of beginning of first timeframe
@@ -143,7 +143,12 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : 
     if (cfgCleanPageBeforeUse) {
       theLog.log("Superpages will be cleaned before each DMA - this may be slow!");
     }
-        
+    
+    // configuration parameter: | equipment-rorc-* | TFperiod | int | 256 | Duration of a timeframe, in number of LHC orbits. |
+    int cfgTFperiod=256;
+    cfg.getOptionalValue<int>(name + ".TFperiod", cfgTFperiod);
+    timeframePeriodOrbits=cfgTFperiod;
+    
 /*    // get readout memory buffer parameters
     std::string sMemorySize=cfg.getValue<std::string>(name + ".memoryBufferSize");
     std::string sPageSize=cfg.getValue<std::string>(name + ".memoryPageSize");
@@ -232,6 +237,7 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : 
     if (!cfgRdhUseFirstInPageEnabled) {
       usingSoftwareClock=true; // if RDH disabled, use internal clock for TF id
     }
+    theLog.log("Timeframe length = %d orbits",(int)timeframePeriodOrbits);
     if (usingSoftwareClock) {
       // reset timeframe clock
       double timeframeRate=LHCOrbitRate*1.0/timeframePeriodOrbits; // timeframe rate, in Hz
@@ -429,14 +435,14 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
               }
               statsNumberOfTimeframes++;
               currentTimeframeHbOrbitBegin=hbOrbit-((hbOrbit-firstTimeframeHbOrbitBegin)%timeframePeriodOrbits); // keep it periodic and aligned to 1st timeframe
-              int newTimeframe=1+(currentTimeframeHbOrbitBegin-firstTimeframeHbOrbitBegin)/timeframePeriodOrbits;
+              uint64_t newTimeframe=1+(currentTimeframeHbOrbitBegin-firstTimeframeHbOrbitBegin)/timeframePeriodOrbits;
               if (newTimeframe!=currentTimeframe+1) {
         	if (cfgRdhDumpErrorEnabled) {
-	          theLog.log(InfoLogger::Severity::Warning,"Non-contiguous timeframe IDs %d ... %d",currentTimeframe,newTimeframe);
+	          theLog.log(InfoLogger::Severity::Warning,"Non-contiguous timeframe IDs %llu ... %llu",currentTimeframe,newTimeframe);
 		}
               }
               currentTimeframe=newTimeframe;
-              // printf("Starting timeframe %d @ orbit %d (actual: %d)\n",currentTimeframe,(int)currentTimeframeHbOrbitBegin,(int)hbOrbit);
+              // printf("Starting timeframe %llu @ orbit %d (actual: %d)\n",currentTimeframe,(int)currentTimeframeHbOrbitBegin,(int)hbOrbit);
             } else {
                //printf("HB orbit %d\n",hbOrbit);
             }
@@ -446,7 +452,7 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
 	// fill page metadata
         d->getData()->header.dataSize=superpage.getReceived();
         d->getData()->header.linkId=linkId;
-	d->getData()->header.id=currentTimeframe;       
+	d->getData()->header.timeframeId=currentTimeframe;       
                 
 	// Dump RDH if configured to do so
 	if (cfgRdhDumpEnabled) {

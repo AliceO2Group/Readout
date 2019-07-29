@@ -21,7 +21,7 @@ class ReadoutEquipmentCruEmulator : public ReadoutEquipment {
   private:
     Thread::CallbackResult  populateFifoOut(); // iterative callback
 
-    DataBlockId currentId;  // current block id
+    uint64_t currentTimeframeId;  // current timeframe id
 
     int cfgNumberOfLinks; // number of links to simulate. Will create data blocks round-robin.
     int cfgFeeId; // FEE id to be used
@@ -73,7 +73,7 @@ ReadoutEquipmentCruEmulator::ReadoutEquipmentCruEmulator(ConfigFile &cfg, std::s
     name.c_str(), cfgMaxBlocksPerPage, cruBlockSize, cfgNumberOfLinks, cfgFeeId, cfgLinkId, cfgTFperiod, cfgHBperiod);
   
   // init variables
-  currentId=1; // TFid starts on 1
+  currentTimeframeId=1; // TFid starts on 1
    
   // initialize array of pending blocks (to be filled with data)
   pendingBlocks.resize(cfgNumberOfLinks);
@@ -156,7 +156,7 @@ Thread::CallbackResult ReadoutEquipmentCruEmulator::prepareBlocks() {
 
     nowOrbit=LHCorbit;
     nowBc=LHCbc;
-    unsigned int nowId=currentId;
+    uint64_t nowId=currentTimeframeId;
     
     int linkId=cfgLinkId+currentLink;
     int bytesAvailableInPage=b->header.dataSize; // a bit less than memoryPoolPageSize;
@@ -215,7 +215,7 @@ Thread::CallbackResult ReadoutEquipmentCruEmulator::prepareBlocks() {
     b->header.blockType=DataBlockType::H_BASE;
     b->header.headerSize=sizeof(DataBlockHeaderBase);
     b->header.dataSize=dSize;
-    b->header.id=nowId;
+    b->header.timeframeId=nowId;
     b->header.linkId=linkId;
 
     readyBlocks->push(pendingBlocks[currentLink]);
@@ -223,7 +223,7 @@ Thread::CallbackResult ReadoutEquipmentCruEmulator::prepareBlocks() {
   }
   LHCorbit=nowOrbit;
   LHCbc=nowBc;
-  currentId=1+LHCorbit/cfgTFperiod;  // timeframe ID
+  currentTimeframeId=1+LHCorbit/cfgTFperiod;  // timeframe ID
 
 
 /*

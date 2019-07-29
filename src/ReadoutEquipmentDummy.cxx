@@ -17,7 +17,6 @@ class ReadoutEquipmentDummy : public ReadoutEquipment {
   private:
     Thread::CallbackResult  populateFifoOut(); // iterative callback
 
-    DataBlockId currentId; // current block id
     int eventMaxSize; // maximum data block size
     int eventMinSize; // minimum data block size
     int fillData; // if set, data pages filled with incremental values
@@ -49,9 +48,6 @@ ReadoutEquipmentDummy::ReadoutEquipmentDummy(ConfigFile &cfg, std::string cfgEnt
     theLog.log("memoryPoolPageSize too small, need at least %d bytes", maxElementSize);
     throw __LINE__;
   }
-
-  // init variables
-  currentId=0;  
 }
 
 ReadoutEquipmentDummy::~ReadoutEquipmentDummy() {
@@ -76,11 +72,9 @@ DataBlockContainerReference ReadoutEquipmentDummy::getNextBlock() {
     // no need to check size fits in page, this was done once for all at configure time
 
     // fill header
-    currentId++;  // don't start from 0
     b->header.blockType=DataBlockType::H_BASE;
     b->header.headerSize=sizeof(DataBlockHeaderBase);
     b->header.dataSize=dSize;
-    b->header.id=currentId;
     // say it's contiguous header+data 
     // todo: align begin of data ?
     b->data=&(((char *)b)[sizeof(DataBlock)]);

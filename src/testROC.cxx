@@ -205,17 +205,18 @@ int main(int argc, char**argv) {
   int numaNodeId=-1;
   int runningTime=10;
   int sleepTime=5000;
-  
+
   int argMin=1;
-  if (!strcmp(argv[argMin],"numaNode")) {
+  
+  if ((argMin+1<argc)&&(!strcmp(argv[argMin],"numaNode"))) {
      numaNodeId=atoi(argv[++argMin]);
      argMin++;
   }
-  if (!strcmp(argv[argMin],"runningTime")) {
+  if ((argMin+1<argc)&&(!strcmp(argv[argMin],"runningTime"))) {
      runningTime=atoi(argv[++argMin]);
      argMin++;
   }
-  if (!strcmp(argv[argMin],"sleepTime")) {
+  if ((argMin+1<argc)&&(!strcmp(argv[argMin],"sleepTime"))) {
      sleepTime=atoi(argv[++argMin]);
      argMin++;
   }

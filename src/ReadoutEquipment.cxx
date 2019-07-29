@@ -137,6 +137,7 @@ void ReadoutEquipment::start() {
     equipmentStats[i].reset();
     equipmentStatsLast[i]=0;
   }
+  currentBlockId=0;
   
   readoutThread->start();
   if (readoutRate>0) {
@@ -229,6 +230,17 @@ Thread::CallbackResult  ReadoutEquipment::threadCallback(void *arg) {
       // tag data with equipment Id
       nextBlock->getData()->header.equipmentId=ptr->id;
 
+      // tag data with block id
+      ptr->currentBlockId++;  // don't start from 0
+      nextBlock->getData()->header.blockId=ptr->currentBlockId;
+      
+      // tag data with (dummy) timeframeid, if none set
+      if (nextBlock->getData()->header.timeframeId==undefinedTimeframeId) {
+        nextBlock->getData()->header.timeframeId=nextBlock->getData()->header.blockId;
+	// this should be done by something smarter, e.g. looking into the payload to set timeframeid
+	// the code from ROC equipment extracting timestamps from RDH (and software clock if no RDH) should be moved here and common to all
+      }
+      
       if (!ptr->disableOutput) {
         // push new page to output fifo
         ptr->dataOut->push(nextBlock);

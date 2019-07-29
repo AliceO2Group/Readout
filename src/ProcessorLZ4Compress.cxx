@@ -9,6 +9,8 @@
 #include "lz4.h"
 #include <string.h>
 #include <stdint.h>
+#include <stdlib.h>
+#include <unistd.h>
 
 #define ERR_SUCCESS 0
 #define ERR_ERROR_UNDEFINED -1
@@ -95,6 +97,10 @@ extern "C"
         push(&blockSize,sizeof(blockSize));
         push(ptrOut,sizeOut);
         push(trailer,sizeof(trailer));
+
+	// artifical sleep, to force un-ordering (used for tests)
+	//int ss=rand()*10000.0/RAND_MAX;
+	//usleep(ss);
 
         // looks good, give it back
         output=input;

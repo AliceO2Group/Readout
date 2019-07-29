@@ -141,9 +141,10 @@ int main(int argc, const char *argv[]) {
         printf("\tblockType = 0x%02X\n",hb.blockType);
         printf("\theaderSize = %u\n",hb.headerSize);
         printf("\tdataSize = %u\n",hb.dataSize);
-        printf("\tid = %lu\n",hb.id);
         printf("\tlinkId = %u\n",hb.linkId);
         printf("\tequipmentId = %d\n",(int)hb.equipmentId);
+        printf("\ttimeframeId = %llu\n",hb.timeframeId);
+        printf("\tblockId = %llu\n",hb.blockId);
         printf("\tdata @ %lu\n",fileOffset);
       }      
       dataSize=hb.dataSize;
