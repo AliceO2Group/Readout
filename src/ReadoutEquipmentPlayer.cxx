@@ -18,8 +18,6 @@ class ReadoutEquipmentPlayer : public ReadoutEquipment {
   private:
     Thread::CallbackResult  populateFifoOut(); // iterative callback
 
-    DataBlockId currentId; // current block id
-    
     std::string filePath=""; // path to data file
     size_t fileSize=0; // data file size
     std::unique_ptr<char[]> fileData; // copy of file content
@@ -91,7 +89,6 @@ ReadoutEquipmentPlayer::ReadoutEquipmentPlayer(ConfigFile &cfg, std::string cfgE
   fclose(fp);
 
   // init variables
-  currentId=0;
   if (fillPage) {
     bytesPerPage=(usablePageSize/fileSize)*fileSize;
   } else {
@@ -132,11 +129,9 @@ DataBlockContainerReference ReadoutEquipmentPlayer::getNextBlock() {
     DataBlock *b=nextBlock->getData(); 
 
     // fill header
-    currentId++;  // don't start from 0
     b->header.blockType=DataBlockType::H_BASE;
     b->header.headerSize=sizeof(DataBlockHeaderBase);
     b->header.dataSize=bytesPerPage;
-    b->header.id=currentId;
 
     // say it's contiguous header+data 
     // todo: align begin of data ?

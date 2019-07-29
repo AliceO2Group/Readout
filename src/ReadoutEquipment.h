@@ -51,6 +51,8 @@ class ReadoutEquipment {
   virtual Thread::CallbackResult prepareBlocks() {return Thread::CallbackResult::Idle;};
   virtual DataBlockContainerReference getNextBlock() {return nullptr;};
 
+  DataBlockId currentBlockId; // current block id
+
   protected:
   // data enabled ? controlled by setDataOn/setDataOff
   bool isDataOn=false;

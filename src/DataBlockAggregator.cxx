@@ -228,7 +228,7 @@ DataBlockSlicer::DataBlockSlicer() {
   partialSlices.resize(maxLinks);
   for (unsigned int i=0;i<maxLinks;i++) {
     partialSlices[i].linkId=i;
-    partialSlices[i].tfId=0;
+    partialSlices[i].tfId=undefinedTimeframeId;
     partialSlices[i].currentDataSet=nullptr;
   }
 }
@@ -236,7 +236,7 @@ DataBlockSlicer::~DataBlockSlicer() {
 }
   
 int DataBlockSlicer::appendBlock(DataBlockContainerReference const &block) {
-  uint64_t tfId=block->getData()->header.id;   //1+(block->getData()->header.id-1) / 8;  
+  uint64_t tfId=block->getData()->header.timeframeId;
   uint8_t linkId=block->getData()->header.linkId;
   
   if (linkId>maxLinks) {
@@ -249,7 +249,7 @@ int DataBlockSlicer::appendBlock(DataBlockContainerReference const &block) {
   if (partialSlices[linkId].currentDataSet!=nullptr) {
     //theLog.log("slice size = %d chunks",partialSlices[linkId].currentDataSet->size());
     //if ((partialSlices[linkId].tfId!=tfId)||(partialSlices[linkId].currentDataSet->size()>2)) {
-    if (partialSlices[linkId].tfId!=tfId) {
+    if ((partialSlices[linkId].tfId!=tfId)||(tfId==undefinedTimeframeId)) {
       // the current slice is complete
       //theLog.log("TF %d link %d is complete",tfId,linkId);
       slices.push(partialSlices[linkId].currentDataSet);

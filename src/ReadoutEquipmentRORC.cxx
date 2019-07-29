@@ -60,7 +60,7 @@ class ReadoutEquipmentRORC : public ReadoutEquipment {
     
     
     AliceO2::Common::Timer timeframeClock;	// timeframe id should be increased at each clock cycle
-    int currentTimeframe=0;	                // id of current timeframe
+    uint64_t currentTimeframe=0;	        // id of current timeframe
     bool usingSoftwareClock=false;              // if set, using internal software clock to generate timeframe id
 
     const unsigned int LHCBunches=3564;    // number of bunches in LHC
@@ -435,14 +435,14 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
               }
               statsNumberOfTimeframes++;
               currentTimeframeHbOrbitBegin=hbOrbit-((hbOrbit-firstTimeframeHbOrbitBegin)%timeframePeriodOrbits); // keep it periodic and aligned to 1st timeframe
-              int newTimeframe=1+(currentTimeframeHbOrbitBegin-firstTimeframeHbOrbitBegin)/timeframePeriodOrbits;
+              uint64_t newTimeframe=1+(currentTimeframeHbOrbitBegin-firstTimeframeHbOrbitBegin)/timeframePeriodOrbits;
               if (newTimeframe!=currentTimeframe+1) {
         	if (cfgRdhDumpErrorEnabled) {
-	          theLog.log(InfoLogger::Severity::Warning,"Non-contiguous timeframe IDs %d ... %d",currentTimeframe,newTimeframe);
+	          theLog.log(InfoLogger::Severity::Warning,"Non-contiguous timeframe IDs %llu ... %llu",currentTimeframe,newTimeframe);
 		}
               }
               currentTimeframe=newTimeframe;
-              // printf("Starting timeframe %d @ orbit %d (actual: %d)\n",currentTimeframe,(int)currentTimeframeHbOrbitBegin,(int)hbOrbit);
+              // printf("Starting timeframe %llu @ orbit %d (actual: %d)\n",currentTimeframe,(int)currentTimeframeHbOrbitBegin,(int)hbOrbit);
             } else {
                //printf("HB orbit %d\n",hbOrbit);
             }
@@ -452,7 +452,7 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
 	// fill page metadata
         d->getData()->header.dataSize=superpage.getReceived();
         d->getData()->header.linkId=linkId;
-	d->getData()->header.id=currentTimeframe;       
+	d->getData()->header.timeframeId=currentTimeframe;       
                 
 	// Dump RDH if configured to do so
 	if (cfgRdhDumpEnabled) {
