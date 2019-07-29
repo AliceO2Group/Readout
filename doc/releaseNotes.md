@@ -86,7 +86,8 @@ This file describes the main feature changes for each readout.exe released versi
 - receiverFMQ.exe: moved to multipart for readout decoding mode.
 - Warning on CRU packet dropped.
 
-## next version
+## v1.0.2 - 29/7/2019
 - Added LZ4 file support to readRaw.exe
 - Updated configuration paramters:
 	- equipment-rorc.TFperiod: to configure length of timeframe, in number of orbits.
+- Fixed consumer-processor ensurePageOrder behavior (using page id instead of timeframe id).
