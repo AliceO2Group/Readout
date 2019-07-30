@@ -133,8 +133,11 @@ class ConsumerDataProcessor: public Consumer {
   int cfgEnsurePageOrder=0; // if set, will track incoming pages ID and make sure it goes out in same order
   std::unique_ptr<AliceO2::Common::Fifo<DataBlockId>> idFifo; // fifo to keep track of order of IDs coming in
   
-  //FILE *fpPagesIn=nullptr;
-  //FILE *fpPagesOut=nullptr;
+  DataBlockId currentId=1000000000000ULL; // a global counter to tag pages being processed. We don't start from zero just to make this id a bit more unique.
+  
+  const bool fpPagesLog=false; // if set, this allows to save input/output ids to file for debugging
+  FILE *fpPagesIn=nullptr;
+  FILE *fpPagesOut=nullptr;
   
   public:
   
@@ -179,8 +182,10 @@ class ConsumerDataProcessor: public Consumer {
     if (cfgEnsurePageOrder) {
       idFifo=std::make_unique<AliceO2::Common::Fifo<DataBlockId>>((int)(numberOfThreads*cfgFifoSize*2));
       theLog.log("Page ordering enforced for processing output");
-//       fpPagesIn=fopen("/tmp/pagesIn.txt","w");
-//       fpPagesOut=fopen("/tmp/pagesOut.txt","w");
+    }
+    if (fpPagesLog) {
+      fpPagesIn=fopen("/tmp/pagesIn.txt","w");
+      fpPagesOut=fopen("/tmp/pagesOut.txt","w");
     }
 
     // create a collector thread to collect output blocks from the processing threads
@@ -211,12 +216,12 @@ class ConsumerDataProcessor: public Consumer {
     theLog.log("bytes processed: %lu bytes dropped: %lu acceptance rate: %.2lf%%",processedBytes,dropBytes,processedBlocks*100.0/(processedBlocks+dropBlocks));
     theLog.log("bytes accepted in: %lu bytes out: %lu compression %.4lf",processedBytes,processedBytesOut, processedBytesOut*1.0/processedBytes);
     
-//     if (fpPagesIn!=nullptr) {
-//       fclose(fpPagesIn);
-//     }
-//     if (fpPagesOut!=nullptr) {
-//       fclose(fpPagesOut);
-//     }
+    if (fpPagesIn!=nullptr) {
+      fclose(fpPagesIn);
+    }
+    if (fpPagesOut!=nullptr) {
+      fclose(fpPagesOut);
+    }
   }
   
   // function called when new data available from readout
@@ -260,14 +265,21 @@ class ConsumerDataProcessor: public Consumer {
       processedBlocks++;
     }
     
+    // tag data page with a unique id
+    DataBlockId newId=currentId++;
+
+    // use the general-purpose id in header to store it
+    b->getData()->header.id=newId;      
+
     if (cfgEnsurePageOrder) {
-      if (idFifo->push(b->getData()->header.blockId)!=0) {
+      if (idFifo->push(newId)!=0) {
         theLog.log(InfoLogger::Severity::Warning,"Page ordering FIFO full");
-      }      
+      }
     }
-//     if (fpPagesIn!=nullptr) {
-//       fprintf(fpPagesIn,"%d\n",(int)b->getData()->header.blockId);
-//     }
+
+    if (fpPagesIn!=nullptr) {
+      fprintf(fpPagesIn,"%llu\t%llu\t%d\t%d\t%d\n",b->getData()->header.id,b->getData()->header.blockId,b->getData()->header.linkId,b->getData()->header.equipmentId,b->getData()->header.timeframeId);
+    }
     
     return 0;
   }
@@ -281,7 +293,7 @@ class ConsumerDataProcessor: public Consumer {
     auto pushPage = [&](DataBlockContainerReference bc) {
       isActive=1;
       //if (debug) {printf("output: got %p\n",bc.get());}
-      //printf("output: push %lu\n",bc->getData()->header.blockId);
+      //printf("output: push %lu\n",bc->getData()->header.id);
 
       this->processedBlocksOut++;
       this->processedBytesOut+=bc->getData()->header.dataSize;
@@ -308,14 +320,15 @@ class ConsumerDataProcessor: public Consumer {
            for (int i=0;i<numberOfThreads;i++) {
              int ix=(i+threadIx) % numberOfThreads; // we start from stored index
              if (threadPool[ix]->outputFifo->front(bc)==0) {
-               if (bc->getData()->header.blockId==nextId) {
+               if (bc->getData()->header.id==nextId) {
                  // we found it !
                  idFifo->pop(nextId);
                  threadPool[ix]->outputFifo->pop(bc);
                  pushPage(bc);
-// 		 if (fpPagesOut!=nullptr) {
-//                    fprintf(fpPagesOut,"%d\n",(int)bc->getData()->header.blockId);
-// 		 }
+ 		 if (fpPagesOut!=nullptr) {
+		   fprintf(fpPagesOut,"%llu\t%llu\t%d\t%d\t%d\n",
+		     bc->getData()->header.id,bc->getData()->header.blockId,bc->getData()->header.linkId,bc->getData()->header.equipmentId,bc->getData()->header.timeframeId);
+ 		 }
                  // we increment start index, as it is more likely to have the next page
                  threadIx++;
                  break;
@@ -333,9 +346,10 @@ class ConsumerDataProcessor: public Consumer {
            threadPool[i]->outputFifo->pop(bc);
            if (bc==nullptr) {continue;}
            pushPage(bc);
-//            if (fpPagesOut!=nullptr) {
-//              fprintf(fpPagesOut,"%d\n",(int)bc->getData()->header.blockId);
-//            }
+           if (fpPagesOut!=nullptr) {
+             fprintf(fpPagesOut,"%llu\t%llu\t%d\t%d\t%d\n",
+               bc->getData()->header.id,bc->getData()->header.blockId,bc->getData()->header.linkId,bc->getData()->header.equipmentId,bc->getData()->header.timeframeId);
+           }
          }
        }
                
