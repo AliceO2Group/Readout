@@ -54,7 +54,7 @@ find_package(Numa)
 find_package(FairMQ)
 find_package(ZLIB)
 find_package(RDMA)
-find_package(Occ)
+#find_package(Occ)
 find_package(JiskefetApiCpp)
 
 # extract include directories from targets
