@@ -18,16 +18,18 @@ using namespace o2::monitoring;
 
 int main() {
 
-  std::unique_ptr<Monitoring> monitoringCollector;  
-  monitoringCollector=MonitoringFactory::Get("influxdb-udp://aido2mon-gpn.cern.ch:8088");  
+  std::unique_ptr<Monitoring> monitoringCollector;
+  monitoringCollector =
+      MonitoringFactory::Get("influxdb-udp://aido2mon-gpn.cern.ch:8088");
   monitoringCollector->enableProcessMonitoring(1);
-  
-  uint64_t bytesTotal=0;
 
-  for(;;){
-    bytesTotal+=1000000000;
+  uint64_t bytesTotal = 0;
+
+  for (;;) {
+    bytesTotal += 1000000000;
     monitoringCollector->send({bytesTotal, "readout.BytesTotal"});
-    monitoringCollector->send({bytesTotal, "readout.BytesTotal"}, DerivedMetricMode::RATE);
+    monitoringCollector->send({bytesTotal, "readout.BytesTotal"},
+                              DerivedMetricMode::RATE);
     printf(".");
     fflush(stdout);
     sleep(1);
