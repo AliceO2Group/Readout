@@ -94,7 +94,7 @@ ReadoutEquipmentPlayer::ReadoutEquipmentPlayer(ConfigFile &cfg, std::string cfgE
   } else {
     bytesPerPage=fileSize;
   }
-  theLog.log("Data page size used = %d bytes",bytesPerPage);
+  theLog.log("Data page size used = %zu bytes",bytesPerPage);
   
   // preload data to pages
   if (preLoad) {
@@ -106,7 +106,7 @@ ReadoutEquipmentPlayer::ReadoutEquipmentPlayer(ConfigFile &cfg, std::string cfgE
       copyFileDataToPage(ptr);
       dataPages.push_back(nextBlock);
     }
-    theLog.log("%d pages have been pre-loaded with data from file",dataPages.size());
+    theLog.log("%lu pages have been pre-loaded with data from file",dataPages.size());
     dataPages.clear();
   }
   

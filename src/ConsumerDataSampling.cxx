@@ -20,7 +20,7 @@ class ConsumerDataSampling: public Consumer {
     protected:
 
       void Run() override {
-        while (CheckCurrentState(RUNNING)) {
+        while (!NewStatePending()) {
           usleep(200000);
         }
       }

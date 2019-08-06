@@ -137,7 +137,7 @@ int main(int argc, const char *argv[]) {
       if (hb.headerSize!=sizeof(hb)) {ERR_LOOP;}
 
       if (dumpDataBlockHeader) {
-        printf("Block header %d @ %lu\n",pageCount+1,fileOffset-sizeof(hb));
+        printf("Block header %lu @ %lu\n",pageCount+1,fileOffset-sizeof(hb));
         printf("\tblockType = 0x%02X\n",hb.blockType);
         printf("\theaderSize = %u\n",hb.headerSize);
         printf("\tdataSize = %u\n",hb.dataSize);
@@ -211,7 +211,7 @@ int main(int argc, const char *argv[]) {
       if ((dumpData<max)&&(dumpData>0)) {
         max=dumpData;
       }
-      printf("Data page %d @ %lu",pageCount,fileOffset-dataSize);
+      printf("Data page %lu @ %lu",pageCount,fileOffset-dataSize);
       for (long i=0;i<max;i++) {
         if (i%16==0) {
           printf("\n\t");

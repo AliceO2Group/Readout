@@ -10,7 +10,7 @@ void RdhHandle::dumpRdh(long offset) {
   if (offset==-1) {
     printf("RDH @ 0x%p\n",(void *)rdhPtr);
   } else {
-    printf("RDH @ 0x%08X\n",offset);
+    printf("RDH @ 0x%08lX\n",offset);
   }
   printf("Version       = 0x%02X\n",(int)getHeaderVersion());
   printf("Header size   = %d\n",(int)getHeaderSize());
@@ -62,7 +62,7 @@ RdhBlockHandle::~RdhBlockHandle() {
 
 int RdhBlockHandle::printSummary() {
   printf("\n\n************************\n");
-  printf("Start of page %p (%d bytes)\n\n",blockPtr,blockSize);
+  printf("Start of page %p (%zu bytes)\n\n",blockPtr,blockSize);
   
   // intialize start of block
   uint8_t *ptr=(uint8_t *)(blockPtr);
@@ -74,7 +74,7 @@ int RdhBlockHandle::printSummary() {
  
     // check enough space for RDH
     if (bytesLeft<sizeof(o2::Header::RAWDataHeader)) {
-      printf("page too small, %d bytes left! need at least %d bytes for RDH\n",bytesLeft,(int)sizeof(o2::Header::RAWDataHeader));
+      printf("page too small, %zu bytes left! need at least %d bytes for RDH\n",bytesLeft,(int)sizeof(o2::Header::RAWDataHeader));
       return -1;
     }
 
@@ -101,7 +101,7 @@ int RdhBlockHandle::printSummary() {
     
     // check enough space to go to next offset
     if (bytesLeft<next) {
-      printf("page too small, %d bytes left! need at least %d bytes for next offset\n",bytesLeft,(int)rdh.getOffsetNextPacket());
+      printf("page too small, %zu bytes left! need at least %d bytes for next offset\n",bytesLeft,(int)rdh.getOffsetNextPacket());
       return -1;     
     }
     
@@ -113,7 +113,7 @@ int RdhBlockHandle::printSummary() {
     }
   }
   
-  printf("End of page %p (%d bytes)",blockPtr,blockSize);
+  printf("End of page %p (%zu bytes)",blockPtr,blockSize);
   printf("\n************************\n\n");
     
   return 0;

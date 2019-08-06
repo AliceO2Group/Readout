@@ -105,7 +105,7 @@ class ConsumerStats: public Consumer {
       if (intervalStartTime) {
         double intervalTime=now-intervalStartTime;
 	if (intervalTime>0) {
-          theLog.log("Last interval (%.2fs): blocksRx=%ld, block rate=%.2lf, bytesRx=%ld, rate=%s",
+          theLog.log("Last interval (%.2fs): blocksRx=%llu, block rate=%.2lf, bytesRx=%llu, rate=%s",
 	    intervalTime,counterBlocksDiff,counterBlocksDiff/intervalTime,counterBytesDiff,NumberOfBytesToString(counterBytesDiff*8/intervalTime,"b/s",1000).c_str());
 	}
       }

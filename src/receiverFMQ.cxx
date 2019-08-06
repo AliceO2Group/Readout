@@ -56,7 +56,7 @@ class FMQReceiver : public FairMQDevice
     int msgBytes=0;
 
     void Run() override {
-       while (CheckCurrentState(RUNNING)) {
+       while (!NewStatePending()) {
          SetTransport("zeromq");
           std::unique_ptr<FairMQMessage> msg(fTransportFactory->CreateMessage());
 
@@ -184,7 +184,7 @@ int main(int argc, const char **argv) {
 	  int nPart=msgParts.Size();
 	  //printf("msg: %d parts\n",nPart);
 	  if (nPart<2) {
-	    printf("Error %d : %d parts in message\n",nPart);
+	    printf("Error : %d parts in message\n",nPart);
 	    continue;
 	  }
 	  	  
@@ -192,7 +192,7 @@ int main(int argc, const char **argv) {
 	  
 	  // first part is STF header
 	  if (msgParts[0].GetSize()!=sizeof(SubTimeframe)) {
-	    printf("Error %d : header wrong size %d != %d\n",(int)msgParts[0].GetSize(),(int)sizeof(SubTimeframe));
+	    printf("Error : header wrong size %d != %d\n",(int)msgParts[0].GetSize(),(int)sizeof(SubTimeframe));
 	    continue;
 	  } 	  	  	  
           SubTimeframe *stf=(SubTimeframe *)msgParts[0].GetData();
@@ -228,7 +228,7 @@ int main(int argc, const char **argv) {
 	}
       }
     } else {
-      if (pull.ReceiveAsync(msg)>0) {
+      if (pull.Receive(msg,0)>0) {
 	if (msg->GetSize()==0) {continue;}
 	msgStats.increment(msg->GetSize());
 	nBytes+=msg->GetSize();
@@ -252,7 +252,7 @@ int main(int argc, const char **argv) {
   }
 
   theLog.log("Receiving loop completed");
-  theLog.log("bytes received: %lu  (avg=%.2lf  min=%lu  max=%lu  count=%lu)",msgStats.get(),msgStats.getAverage(),msgStats.getMinimum(),msgStats.getMaximum(),msgStats.getCount());
+  theLog.log("bytes received: %llu  (avg=%.2lf  min=%llu  max=%llu  count=%llu)",msgStats.get(),msgStats.getAverage(),msgStats.getMinimum(),msgStats.getMaximum(),msgStats.getCount());
 
   return 0;
 

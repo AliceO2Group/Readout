@@ -39,7 +39,7 @@ class ConsumerTCP: public Consumer {
     }
     tx.clear();
 
-     theLog.log("TCP client:  %lu blocks sent, %lu blocks dropped", nBlocksSent,nBlocksDropped);
+     theLog.log("TCP client:  %llu blocks sent, %llu blocks dropped", nBlocksSent,nBlocksDropped);
      theLog.log("TCP client:  %s sent,%s dropped",
        NumberOfBytesToString(nBytesSent,"bytes",1024).c_str(),
        NumberOfBytesToString(nBytesDropped,"bytes",1024).c_str()

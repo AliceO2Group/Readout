@@ -19,7 +19,7 @@ class FMQSender : public FairMQDevice
   protected:
 
     void Run() override {
-       while (CheckCurrentState(RUNNING)) {
+       while (!NewStatePending()) {
          //printf("loop Run()\n");
          usleep(200000);
        }

@@ -391,7 +391,7 @@ class ConsumerFileRecorder: public Consumer {
         size=b->getData()->header.headerSize;
         status=fpUsed->write(ptr,size,false,b->getData()->header.dataSize); // header does not count as a page, but we account for the payload size for the next write
       }
-      if ((status==FileHandle::Status::Success)) {
+      if (status==FileHandle::Status::Success) {
         // write payload data     
         ptr=b->getData()->data;
         size=b->getData()->header.dataSize;
