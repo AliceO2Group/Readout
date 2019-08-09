@@ -214,17 +214,18 @@ endif()
 
 # LZ4 compression
 find_library (LZ4_LIB lz4 ${LZ4_DIR}/lib)
-if (LZ4_LIB)
-  message(STATUS "Found lz4 (library: ${LZ4_LIB})")
+find_path (LZ4_INCLUDE_DIR NAMES lz4.h PATHS ${LZ4_DIR}/include)
+if ( LZ4_LIB AND LZ4_INCLUDE_DIR )
+  message(STATUS "Found lz4 (library: ${LZ4_LIB} include: ${LZ4_INCLUDE_DIR})")
   add_library(
     ProcessorLZ4Compress
     SHARED
     ${SOURCE_DIR}/ProcessorLZ4Compress.cxx
   )
-  target_include_directories(ProcessorLZ4Compress PRIVATE ${READOUT_INCLUDE_DIRS} ${LZ4_DIR}/include)
+  target_include_directories(ProcessorLZ4Compress PRIVATE ${READOUT_INCLUDE_DIRS} ${LZ4_INCLUDE_DIR})
   target_link_libraries(ProcessorLZ4Compress ${LZ4_LIB})
   list(APPEND libraries ProcessorLZ4Compress)
-  list(APPEND READOUT_INCLUDE_DIRS ${LZ4_DIR}/include)
+  list(APPEND READOUT_INCLUDE_DIRS ${LZ4_INCLUDE_DIR})
   list(APPEND READOUT_LINK_LIBRARIES ${LZ4_LIB})
   set_property(TARGET ProcessorLZ4Compress PROPERTY POSITION_INDEPENDENT_CODE ON)
 else()
