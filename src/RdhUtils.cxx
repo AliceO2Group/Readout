@@ -45,7 +45,7 @@ int RdhHandle::validateRdh(std::string &err) {
     retCode++;
   }
   // expecting linkId 0-31
-  if (getLinkId() > 31) {
+  if (getLinkId() > RdhMaxLinkId) {
     err += "Wrong link ID\n";
     retCode++;
   }

@@ -60,6 +60,9 @@ private:
   int cfgRdhDumpErrorEnabled = 1; // flag to enable RDH error log at runtime
   int cfgRdhUseFirstInPageEnabled = 0; // flag to enable reading of first RDH in
                                        // page to populate readout headers
+  int cfgRdhCheckPacketCounterContiguous =
+      1; // flag to enable checking if RDH packetCounter value contiguous (done
+         // link-by-link)
 
   int cfgCleanPageBeforeUse =
       0; // flag to enable filling page with zeros before giving for writing
@@ -91,6 +94,9 @@ private:
       0; // HbOrbit of beginning of timeframe
   uint32_t firstTimeframeHbOrbitBegin =
       0; // HbOrbit of beginning of first timeframe
+
+  uint8_t RdhLastPacketCounter[RdhMaxLinkId + 1]; // last value of packetCounter
+                                                  // RDH field for each link id
 
   size_t superPageSize = 0; // usable size of a superpage
 
@@ -326,6 +332,11 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name)
       timeframeClock.reset(1000000 / timeframeRate);
     } else {
       theLog.log("Timeframe IDs generated from RDH trigger counters");
+    }
+
+    // reset packetCounter monitor
+    for (int i = 0; i <= RdhMaxLinkId; i++) {
+      RdhLastPacketCounter[i] = 0;
     }
 
   } catch (const std::exception &e) {
@@ -641,6 +652,24 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
               }
               statsRdhCheckStreamErr++;
               break; // stop checking this page
+            }
+
+            // check packetCounter is contiguous
+            if (cfgRdhCheckPacketCounterContiguous) {
+              uint8_t newCount = h.getPacketCounter();
+              // no boundary check necessary to verify linkId<=RdhMaxLinkId,
+              // this was done in validateRDH()
+              if (newCount != RdhLastPacketCounter[linkId]) {
+                if (newCount != RdhLastPacketCounter[linkId] + 1) {
+                  theLog.log(InfoLogger::Severity::Warning,
+                             "RDH #%d @ 0x%X : possible packets dropped for "
+                             "link %d, packetCounter jump from %d to %d",
+                             rdhIndexInPage, (unsigned int)pageOffset,
+                             (int)linkId, (int)RdhLastPacketCounter[linkId],
+                             (int)newCount);
+                }
+                RdhLastPacketCounter[linkId] = newCount;
+              }
             }
 
             // TODO
