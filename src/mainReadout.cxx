@@ -945,20 +945,29 @@ private:
 
 // the main program loop
 int main(int argc, char *argv[]) {
-  std::unique_ptr<Readout> theReadout = std::make_unique<Readout>();
 
-  int err = 0;
-
-  err = theReadout->init(argc, argv);
-  if (err) {
-    return err;
-  }
-
+  // check environment  
+  // OCC control port. If set, use OCClib to handle Readout states.
   bool occMode = false;
   if (getenv("OCC_CONTROL_PORT") != nullptr) {
     occMode = true;
   }
 
+  // initialize logging
+  InfoLoggerContext theLogContext;
+  theLogContext.setField(InfoLoggerContext::FieldName::Facility,"readout");
+  theLog.setContext(theLogContext);
+
+  // create readout instance
+  std::unique_ptr<Readout> theReadout = std::make_unique<Readout>();
+  int err = 0;
+
+  // parse command line arguments  
+  err = theReadout->init(argc, argv);
+  if (err) {
+    return err;
+  }
+  
   if (occMode) {
 #ifdef WITH_OCC
     theLog.log("Readout entering OCC state machine");
