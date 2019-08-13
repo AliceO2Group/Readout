@@ -81,6 +81,7 @@ using namespace AliceO2::Common;
 
 // global entry point to log system
 InfoLogger theLog;
+InfoLoggerContext theLogContext;
 
 // global signal handler to end program
 static int ShutdownRequest =
@@ -107,6 +108,9 @@ public:
   int iterateCheck();
 
   void loopRunning(); // called in state "running"
+
+  std::string occRole; // OCC role name
+  uint64_t occRunNumber; // OCC run number
 
 private:
   ConfigFile cfg;
@@ -147,7 +151,30 @@ private:
 #ifdef WITH_LOGBOOK
   std::unique_ptr<jiskefet::JiskefetInterface> logbookHandle;
 #endif
+  void publishLogbookStats();
 };
+
+void Readout::publishLogbookStats() {
+#ifdef WITH_LOGBOOK
+  if (logbookHandle != nullptr) {
+    bool isOk = false;
+    try {
+      logbookHandle->flpUpdateCounters(occRunNumber, occRole, 0, 0, 0, 0);
+      isOk = true;
+    } catch (const std::exception &ex) {
+      theLog.log(InfoLogger::Severity::Error, "Failed to update logbook: %s",
+                 ex.what());
+    } catch (...) {
+      theLog.log(InfoLogger::Severity::Error,
+                 "Failed to update logbook: unknown exception");
+    }
+    if (!isOk) {
+      // closing logbook immediately
+      logbookHandle = nullptr;
+    }
+  }
+#endif
+}
 
 int Readout::init(int argc, char *argv[]) {
   if (argc < 2) {
@@ -286,24 +313,6 @@ int Readout::configure() {
     if (logbookHandle == nullptr) {
       theLog.log(InfoLogger::Severity::Error,
                  "Failed to create handle to logbook");
-    } else {
-      const int runNumber = 123;
-      const std::string flpName = "flp-test";
-      bool isOk = false;
-      try {
-        logbookHandle->flpUpdateCounters(runNumber, flpName, 0, 0, 0, 0);
-        isOk = true;
-      } catch (const std::exception &ex) {
-        theLog.log(InfoLogger::Severity::Error, "Failed to update logbook: %s",
-                   ex.what());
-      } catch (...) {
-        theLog.log(InfoLogger::Severity::Error,
-                   "Failed to update logbook: unknown exception");
-      }
-      if (!isOk) {
-        // closing logbook immediately
-        logbookHandle = nullptr;
-      }
     }
 #endif
   }
@@ -625,6 +634,9 @@ int Readout::configure() {
 int Readout::start() {
   theLog.log("Readout executing START");
 
+  // publish initial logbook statistics
+  publishLogbookStats();
+
   // cleanup exit conditions
   ShutdownRequest = 0;
 
@@ -790,6 +802,9 @@ int Readout::stop() {
   }
 
   // ensure output buffers empty ?
+  
+  // publish final logbook statistics
+  publishLogbookStats();
 
   theLog.log("Readout completed STOP");
   return 0;
@@ -864,6 +879,7 @@ public:
   ReadoutOCCStateMachine(std::unique_ptr<Readout> r)
       : RuntimeControlledObject("Readout Process") {
     theReadout = std::move(r);
+    theReadout->occRole=this->getRole();
   }
 
   int executeConfigure(const boost::property_tree::ptree &properties) {
@@ -891,6 +907,10 @@ public:
     if (theReadout == nullptr) {
       return -1;
     }
+    // set run number
+    theReadout->occRunNumber=this->getRunNumber();
+    theLogContext.setField(InfoLoggerContext::FieldName::Run,std::to_string(theReadout->occRunNumber));
+    theLog.setContext(theLogContext);
     return theReadout->start();
   }
 
@@ -898,7 +918,12 @@ public:
     if (theReadout == nullptr) {
       return -1;
     }
-    return theReadout->stop();
+    int ret=theReadout->stop();
+    // unset run number
+    theReadout->occRunNumber=0;
+    theLogContext.setField(InfoLoggerContext::FieldName::Run,"");
+    theLog.setContext(theLogContext);
+    return ret;
   }
 
   int executePause() {
@@ -954,7 +979,6 @@ int main(int argc, char *argv[]) {
   }
 
   // initialize logging
-  InfoLoggerContext theLogContext;
   theLogContext.setField(InfoLoggerContext::FieldName::Facility,"readout");
   theLog.setContext(theLogContext);
 
