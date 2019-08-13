@@ -13,6 +13,9 @@
 #include "RAWDataHeader.h"
 #include <string>
 
+// Some constants
+const unsigned int RdhMaxLinkId = 31; // maximum ID of a linkId in RDH
+
 // Utility class to access RDH fields and check them
 class RdhHandle {
 public:
@@ -38,6 +41,7 @@ public:
   inline uint16_t getBlockLength() { return (uint16_t)rdhPtr->blockLength; }
   inline uint16_t getFeeId() { return (uint16_t)rdhPtr->feeId; }
   inline uint8_t getLinkId() { return (uint8_t)rdhPtr->linkId; }
+  inline uint8_t getPacketCounter() { return (uint8_t)rdhPtr->packetCounter; }
   inline uint8_t getHeaderSize() { return rdhPtr->headerSize; }
   inline uint32_t getHbOrbit() { return (uint32_t)rdhPtr->heartbeatOrbit; }
   inline uint16_t getMemorySize() { return (uint16_t)rdhPtr->memorySize; }

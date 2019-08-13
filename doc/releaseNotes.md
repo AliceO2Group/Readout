@@ -91,3 +91,7 @@ This file describes the main feature changes for each readout.exe released versi
 - Updated configuration paramters:
 	- equipment-rorc.TFperiod: to configure length of timeframe, in number of orbits.
 - Fixed consumer-processor ensurePageOrder behavior (using page id instead of timeframe id).
+
+## v1.0.4 - 13/08/2019
+- Added per-link RDH packetCounter contiguity check (requires rdhCheckEnabled=1).
+- Code cleanup (warnings, clang-format, copyright).
