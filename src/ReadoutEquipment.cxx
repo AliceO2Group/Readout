@@ -9,6 +9,7 @@
 // or submit itself to any jurisdiction.
 
 #include "ReadoutEquipment.h"
+#include "ReadoutStats.h"
 
 #include <InfoLogger/InfoLogger.hxx>
 using namespace AliceO2::InfoLogger;
@@ -341,6 +342,7 @@ Thread::CallbackResult ReadoutEquipment::threadCallback(void *arg) {
       nPushedOut++;
       ptr->equipmentStats[EquipmentStatsIndexes::nBytesOut].increment(
           nextBlock->getData()->header.dataSize);
+      gReadoutStats.bytesReadout += nextBlock->getData()->header.dataSize;
       isActive = true;
     }
     ptr->equipmentStats[EquipmentStatsIndexes::nBlocksOut].increment(

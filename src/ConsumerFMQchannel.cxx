@@ -14,6 +14,7 @@
 #include "MemoryBank.h"
 #include "MemoryBankManager.h"
 #include "MemoryPagesPool.h"
+#include "ReadoutStats.h"
 
 #ifdef WITH_FAIRMQ
 
@@ -70,6 +71,7 @@ private:
 public:
   std::vector<FairMQMessagePtr>
       messagesToSend; // collect HBF messages of each update
+  uint64_t messagesToSendSize; // size (bytes) of messagesToSend payload
 
   ConsumerFMQchannel(ConfigFile &cfg, std::string cfgEntryPoint)
       : Consumer(cfg, cfgEntryPoint) {
@@ -268,6 +270,7 @@ public:
             memoryBuffer, blobPtr, blobSize, hint));
         // printf("send %p = %d bytes hint=%p\n",blobPtr,(int)blobSize,hint);
         sendingChannel->Send(msgBody);
+        gReadoutStats.bytesFairMQ += blobSize;
       }
       return 0;
     }
@@ -352,6 +355,7 @@ public:
     messagesToSend.emplace_back(std::move(
         sendingChannel->NewMessage(memoryBuffer, (void *)stfHeader,
                                    sizeof(SubTimeframe), (void *)(blockRef))));
+    messagesToSendSize = sizeof(SubTimeframe);
     // printf("sent header %d bytes\n",(int)sizeof(SubTimeframe));
 
     // cut: one message per HBf
@@ -407,7 +411,7 @@ public:
         // create and queue a fmq message
         messagesToSend.emplace_back(std::move(sendingChannel->NewMessage(
             memoryBuffer, (void *)(&(b->data[ix])), (size_t)(l), hint)));
-
+        messagesToSendSize += l;
         // printf("sent single HB %d = %d bytes\n",pendingFrames[0].HBid,l);
         // printf("left to FMQ: %p\n",pendingFrames[0].blockRef);
 
@@ -461,7 +465,8 @@ public:
         // create and queue a fmq message
         messagesToSend.emplace_back(std::move(sendingChannel->NewMessage(
             memoryBuffer, (void *)newBlock, totalSize, (void *)(blockRef))));
-
+        messagesToSendSize += totalSize;
+        
         // printf("sent reallocated HB %d (originally %d blocks) = %d
         // bytes\n",pendingFrames[0].HBid,nFrames,totalSize);
       }
@@ -505,10 +510,13 @@ public:
     pendingFramesCollect();
 
     // send all the messages
-    if (sendingChannel->Send(messagesToSend) >= 0)
+    if (sendingChannel->Send(messagesToSend) >= 0) {
       messagesToSend.clear();
-    else
+      gReadoutStats.bytesFairMQ += messagesToSendSize;
+      messagesToSendSize = 0;
+    } else {
       LOG(ERROR) << "Sending failed!";
+    }
 
     /*
 

@@ -95,3 +95,7 @@ This file describes the main feature changes for each readout.exe released versi
 ## v1.0.4 - 13/08/2019
 - Added per-link RDH packetCounter contiguity check (requires rdhCheckEnabled=1).
 - Code cleanup (warnings, clang-format, copyright).
+
+## next version
+- Tagging of log messages (facility = readout).
+- Collect and publish in logbook FLP runtime statistics. See readout.logbook* configuration parameters.

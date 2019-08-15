@@ -251,6 +251,7 @@ endif()
 add_executable(
 	readout.exe
 	${SOURCE_DIR}/mainReadout.cxx
+        ${SOURCE_DIR}/ReadoutStats.cxx
 	$<TARGET_OBJECTS:objReadoutEquipment>
 	$<TARGET_OBJECTS:objReadoutAggregator>
 	$<TARGET_OBJECTS:objReadoutConsumers>

@@ -19,6 +19,7 @@
 
 #include <InfoLogger/InfoLogger.hxx>
 using namespace AliceO2::InfoLogger;
+extern InfoLogger theLog;
 
 class Consumer {
 public:
@@ -38,9 +39,6 @@ public:
     return 0;
   }; // function called just after stopping data taking, after the last call to
      // pushData(). Not called before input FIFO empty.
-
-protected:
-  InfoLogger theLog;
 
 public:
   Consumer *forwardConsumer =

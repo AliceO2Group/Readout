@@ -44,6 +44,7 @@
 #include "MemoryBankManager.h"
 #include "ReadoutEquipment.h"
 #include "ReadoutUtils.h"
+#include "ReadoutStats.h"
 
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -81,6 +82,7 @@ using namespace AliceO2::Common;
 
 // global entry point to log system
 InfoLogger theLog;
+InfoLoggerContext theLogContext;
 
 // global signal handler to end program
 static int ShutdownRequest =
@@ -108,6 +110,9 @@ public:
 
   void loopRunning(); // called in state "running"
 
+  std::string occRole; // OCC role name
+  uint64_t occRunNumber; // OCC run number
+
 private:
   ConfigFile cfg;
   const char *cfgFileURI = "";
@@ -120,6 +125,7 @@ private:
   int cfgLogbookEnabled;
   std::string cfgLogbookUrl;
   std::string cfgLogbookApiToken;
+  int cfgLogbookUpdateInterval;
 
   // runtime entities
   std::vector<std::unique_ptr<Consumer>> dataConsumers;
@@ -145,9 +151,43 @@ private:
   std::mutex mutexErrors; // mutex to guard access to error variables
 
 #ifdef WITH_LOGBOOK
-  std::unique_ptr<jiskefet::JiskefetInterface> logbookHandle;
+  std::unique_ptr<jiskefet::JiskefetInterface> logbookHandle; // handle to logbook
 #endif
+  void publishLogbookStats(); // publish current readout counters to logbook 
+  AliceO2::Common::Timer logbookTimer; // timer to handle readout logbook publish interval
+  uint64_t maxTimeframeId;
 };
+
+void Readout::publishLogbookStats() {
+#ifdef WITH_LOGBOOK
+  if (logbookHandle != nullptr) {
+    bool isOk = false;
+    try {
+      // virtual void runStart(int64_t runNumber, boost::posix_time::ptime o2Start, boost::posix_time::ptime triggerStart, std::string activityId, RunType runType, int64_t nDetectors, int64_t nFlps, int64_t nEpns) override;
+      //logbookHandle->flpAdd(occRunNumber, occRole, "localhost");
+      // virtual void flpUpdateCounters(int64_t runNumber, std::string flpName, int64_t nSubtimeframes, int64_t nEquipmentBytes, int64_t nRecordingBytes, int64_t nFairMqBytes) override;
+      logbookHandle->flpUpdateCounters(occRunNumber, occRole,
+        (int64_t)gReadoutStats.numberOfSubtimeframes,
+        (int64_t)gReadoutStats.bytesReadout,
+        (int64_t)gReadoutStats.bytesRecorded,
+        (int64_t)gReadoutStats.bytesFairMQ);
+      isOk = true;
+    } catch (const std::exception &ex) {
+      theLog.log(InfoLogger::Severity::Error, "Failed to update logbook: %s",
+                 ex.what());
+    } catch (...) {
+      theLog.log(InfoLogger::Severity::Error,
+                 "Failed to update logbook: unknown exception");
+    }
+    if (!isOk) {
+      // closing logbook immediately
+      logbookHandle = nullptr;
+      theLog.log(InfoLogger::Severity::Error, "Logbook now disabled");
+    }
+  }
+  gReadoutStats.print();
+#endif
+}
 
 int Readout::init(int argc, char *argv[]) {
   if (argc < 2) {
@@ -280,30 +320,18 @@ int Readout::configure() {
     // token to be used for the logbook API. |
     cfg.getOptionalValue<std::string>("readout.logbookApiToken",
                                       cfgLogbookApiToken);
+    // configuration parameter: | readout | logbookUpdateInterval | int | 30 |
+    // Amount of time (in seconds) between logbook publish updates. |
+    cfgLogbookUpdateInterval=30;
+    cfg.getOptionalValue<int>("readout.logbookUpdateInterval",
+                                      cfgLogbookUpdateInterval);
 
-    theLog.log("Logbook enabled, using URL = %s", cfgLogbookUrl.c_str());
+
+    theLog.log("Logbook enabled, %ds update interval, using URL = %s", cfgLogbookUpdateInterval, cfgLogbookUrl.c_str());
     logbookHandle = jiskefet::getApiInstance(cfgLogbookUrl, cfgLogbookApiToken);
     if (logbookHandle == nullptr) {
       theLog.log(InfoLogger::Severity::Error,
                  "Failed to create handle to logbook");
-    } else {
-      const int runNumber = 123;
-      const std::string flpName = "flp-test";
-      bool isOk = false;
-      try {
-        logbookHandle->flpUpdateCounters(runNumber, flpName, 0, 0, 0, 0);
-        isOk = true;
-      } catch (const std::exception &ex) {
-        theLog.log(InfoLogger::Severity::Error, "Failed to update logbook: %s",
-                   ex.what());
-      } catch (...) {
-        theLog.log(InfoLogger::Severity::Error,
-                   "Failed to update logbook: unknown exception");
-      }
-      if (!isOk) {
-        // closing logbook immediately
-        logbookHandle = nullptr;
-      }
     }
 #endif
   }
@@ -625,6 +653,12 @@ int Readout::configure() {
 int Readout::start() {
   theLog.log("Readout executing START");
 
+  // publish initial logbook statistics
+  gReadoutStats.reset();
+  publishLogbookStats();
+  logbookTimer.reset(cfgLogbookUpdateInterval*1000000);
+  maxTimeframeId=0;
+  
   // cleanup exit conditions
   ShutdownRequest = 0;
 
@@ -684,6 +718,17 @@ void Readout::loopRunning() {
     agg_output->pop(bc);
 
     if (bc != nullptr) {
+      // count number of subtimeframes
+      if (bc->size()>0) {
+        if (bc->at(0)->getData()!=nullptr) {
+          uint64_t newTimeframeId=bc->at(0)->getData()->header.timeframeId;
+          if (newTimeframeId>maxTimeframeId) {
+            maxTimeframeId=newTimeframeId;
+            gReadoutStats.numberOfSubtimeframes++;
+          }
+        }
+      }
+    
       for (auto &c : dataConsumers) {
         // push only to "prime" consumers, not to those getting data directly
         // forwarded from another consumer
@@ -743,6 +788,11 @@ int Readout::iterateRunning() {
   if (isError) {
     return -1;
   }
+  // regular logbook stats update
+  if (logbookTimer.isTimeout()) {
+    publishLogbookStats();
+    logbookTimer.increment();
+  }
   return 0;
 }
 
@@ -790,6 +840,10 @@ int Readout::stop() {
   }
 
   // ensure output buffers empty ?
+  
+  // publish final logbook statistics
+  publishLogbookStats();
+  gReadoutStats.reset();
 
   theLog.log("Readout completed STOP");
   return 0;
@@ -864,6 +918,7 @@ public:
   ReadoutOCCStateMachine(std::unique_ptr<Readout> r)
       : RuntimeControlledObject("Readout Process") {
     theReadout = std::move(r);
+    theReadout->occRole=this->getRole();
   }
 
   int executeConfigure(const boost::property_tree::ptree &properties) {
@@ -891,6 +946,10 @@ public:
     if (theReadout == nullptr) {
       return -1;
     }
+    // set run number
+    theReadout->occRunNumber=this->getRunNumber();
+    theLogContext.setField(InfoLoggerContext::FieldName::Run,std::to_string(theReadout->occRunNumber));
+    theLog.setContext(theLogContext);
     return theReadout->start();
   }
 
@@ -898,7 +957,12 @@ public:
     if (theReadout == nullptr) {
       return -1;
     }
-    return theReadout->stop();
+    int ret=theReadout->stop();
+    // unset run number
+    theReadout->occRunNumber=0;
+    theLogContext.setField(InfoLoggerContext::FieldName::Run,"");
+    theLog.setContext(theLogContext);
+    return ret;
   }
 
   int executePause() {
@@ -945,20 +1009,28 @@ private:
 
 // the main program loop
 int main(int argc, char *argv[]) {
-  std::unique_ptr<Readout> theReadout = std::make_unique<Readout>();
 
-  int err = 0;
-
-  err = theReadout->init(argc, argv);
-  if (err) {
-    return err;
-  }
-
+  // check environment  
+  // OCC control port. If set, use OCClib to handle Readout states.
   bool occMode = false;
   if (getenv("OCC_CONTROL_PORT") != nullptr) {
     occMode = true;
   }
 
+  // initialize logging
+  theLogContext.setField(InfoLoggerContext::FieldName::Facility,"readout");
+  theLog.setContext(theLogContext);
+
+  // create readout instance
+  std::unique_ptr<Readout> theReadout = std::make_unique<Readout>();
+  int err = 0;
+
+  // parse command line arguments  
+  err = theReadout->init(argc, argv);
+  if (err) {
+    return err;
+  }
+  
   if (occMode) {
 #ifdef WITH_OCC
     theLog.log("Readout entering OCC state machine");
