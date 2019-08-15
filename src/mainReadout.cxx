@@ -44,6 +44,7 @@
 #include "MemoryBankManager.h"
 #include "ReadoutEquipment.h"
 #include "ReadoutUtils.h"
+#include "ReadoutStats.h"
 
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -124,6 +125,7 @@ private:
   int cfgLogbookEnabled;
   std::string cfgLogbookUrl;
   std::string cfgLogbookApiToken;
+  int cfgLogbookUpdateInterval;
 
   // runtime entities
   std::vector<std::unique_ptr<Consumer>> dataConsumers;
@@ -149,9 +151,11 @@ private:
   std::mutex mutexErrors; // mutex to guard access to error variables
 
 #ifdef WITH_LOGBOOK
-  std::unique_ptr<jiskefet::JiskefetInterface> logbookHandle;
+  std::unique_ptr<jiskefet::JiskefetInterface> logbookHandle; // handle to logbook
 #endif
-  void publishLogbookStats();
+  void publishLogbookStats(); // publish current readout counters to logbook 
+  AliceO2::Common::Timer logbookTimer; // timer to handle readout logbook publish interval
+  uint64_t maxTimeframeId;
 };
 
 void Readout::publishLogbookStats() {
@@ -159,7 +163,14 @@ void Readout::publishLogbookStats() {
   if (logbookHandle != nullptr) {
     bool isOk = false;
     try {
-      logbookHandle->flpUpdateCounters(occRunNumber, occRole, 0, 0, 0, 0);
+      // virtual void runStart(int64_t runNumber, boost::posix_time::ptime o2Start, boost::posix_time::ptime triggerStart, std::string activityId, RunType runType, int64_t nDetectors, int64_t nFlps, int64_t nEpns) override;
+      //logbookHandle->flpAdd(occRunNumber, occRole, "localhost");
+      // virtual void flpUpdateCounters(int64_t runNumber, std::string flpName, int64_t nSubtimeframes, int64_t nEquipmentBytes, int64_t nRecordingBytes, int64_t nFairMqBytes) override;
+      logbookHandle->flpUpdateCounters(occRunNumber, occRole,
+        (int64_t)gReadoutStats.numberOfSubtimeframes,
+        (int64_t)gReadoutStats.bytesReadout,
+        (int64_t)gReadoutStats.bytesRecorded,
+        (int64_t)gReadoutStats.bytesFairMQ);
       isOk = true;
     } catch (const std::exception &ex) {
       theLog.log(InfoLogger::Severity::Error, "Failed to update logbook: %s",
@@ -171,8 +182,10 @@ void Readout::publishLogbookStats() {
     if (!isOk) {
       // closing logbook immediately
       logbookHandle = nullptr;
+      theLog.log(InfoLogger::Severity::Error, "Logbook now disabled");
     }
   }
+  gReadoutStats.print();
 #endif
 }
 
@@ -307,8 +320,14 @@ int Readout::configure() {
     // token to be used for the logbook API. |
     cfg.getOptionalValue<std::string>("readout.logbookApiToken",
                                       cfgLogbookApiToken);
+    // configuration parameter: | readout | logbookUpdateInterval | int | 30 |
+    // Amount of time (in seconds) between logbook publish updates. |
+    cfgLogbookUpdateInterval=30;
+    cfg.getOptionalValue<int>("readout.logbookUpdateInterval",
+                                      cfgLogbookUpdateInterval);
 
-    theLog.log("Logbook enabled, using URL = %s", cfgLogbookUrl.c_str());
+
+    theLog.log("Logbook enabled, %ds update interval, using URL = %s", cfgLogbookUpdateInterval, cfgLogbookUrl.c_str());
     logbookHandle = jiskefet::getApiInstance(cfgLogbookUrl, cfgLogbookApiToken);
     if (logbookHandle == nullptr) {
       theLog.log(InfoLogger::Severity::Error,
@@ -635,8 +654,11 @@ int Readout::start() {
   theLog.log("Readout executing START");
 
   // publish initial logbook statistics
+  gReadoutStats.reset();
   publishLogbookStats();
-
+  logbookTimer.reset(cfgLogbookUpdateInterval*1000000);
+  maxTimeframeId=0;
+  
   // cleanup exit conditions
   ShutdownRequest = 0;
 
@@ -696,6 +718,17 @@ void Readout::loopRunning() {
     agg_output->pop(bc);
 
     if (bc != nullptr) {
+      // count number of subtimeframes
+      if (bc->size()>0) {
+        if (bc->at(0)->getData()!=nullptr) {
+          uint64_t newTimeframeId=bc->at(0)->getData()->header.timeframeId;
+          if (newTimeframeId>maxTimeframeId) {
+            maxTimeframeId=newTimeframeId;
+            gReadoutStats.numberOfSubtimeframes++;
+          }
+        }
+      }
+    
       for (auto &c : dataConsumers) {
         // push only to "prime" consumers, not to those getting data directly
         // forwarded from another consumer
@@ -755,6 +788,11 @@ int Readout::iterateRunning() {
   if (isError) {
     return -1;
   }
+  // regular logbook stats update
+  if (logbookTimer.isTimeout()) {
+    publishLogbookStats();
+    logbookTimer.increment();
+  }
   return 0;
 }
 
@@ -805,6 +843,7 @@ int Readout::stop() {
   
   // publish final logbook statistics
   publishLogbookStats();
+  gReadoutStats.reset();
 
   theLog.log("Readout completed STOP");
   return 0;

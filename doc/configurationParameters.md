@@ -44,6 +44,7 @@ The parameters related to 3rd-party libraries are described here for convenience
 | readout | logbookEnabled | int | 0 | When set, the logbook is enabled and populated with readout stats at runtime. |
 | readout | logbookUrl | string | | The address to be used for the logbook API. |
 | readout | logbookApiToken | string | | The token to be used for the logbook API. |
+| readout | logbookUpdateInterval | int | 30 | Amount of time (in seconds) between logbook publish updates. |
 | bank-* | enabled | int | 1 | Enable (value=1) or disable (value=0) the memory bank. |
 | bank-* | size | bytes | | Size of the memory bank, in bytes. |
 | bank-* | type | string| | Support used to allocate memory. Possible values: malloc, MemoryMappedFile. For MemoryMappedFile: 1) the name given to the bank (bank-*) is reused in the filesystem namespace to create the resource, so make sure it is unique on a given machine for all instances of readout 2) the hugePages are split evenly accross NUMA nodes, so make sure that the bank size can be allocated on a single node... if there are 2GB of hugePages on the system, you probably can't have a bank size bigger than 1G on a dual-node system. |

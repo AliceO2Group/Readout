@@ -10,6 +10,7 @@
 
 #include "Consumer.h"
 #include "ReadoutUtils.h"
+#include "ReadoutStats.h"
 #include <errno.h>
 #include <iomanip>
 
@@ -93,6 +94,7 @@ public:
       return Status::Error;
     }
     counterBytesTotal += size;
+    gReadoutStats.bytesRecorded += size;
     if (isPage) {
       counterPages++;
     }
