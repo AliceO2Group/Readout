@@ -23,6 +23,7 @@
 #include <Common/Timer.h>
 #include <InfoLogger/InfoLogger.hxx>
 #include <thread>
+#include <boost/property_tree/ptree.hpp>
 
 #ifdef WITH_CONFIG
 #include <Configuration/ConfigurationFactory.h>
@@ -101,7 +102,7 @@ class Readout {
 
 public:
   int init(int argc, char *argv[]);
-  int configure();
+  int configure(const boost::property_tree::ptree &properties);
   int reset(); // as opposed to configure()
   int start();
   int stop(); // as opposed to start()
@@ -241,7 +242,9 @@ int Readout::init(int argc, char *argv[]) {
   return 0;
 }
 
-int Readout::configure() {
+#include <boost/property_tree/json_parser.hpp>
+
+int Readout::configure(const boost::property_tree::ptree &properties) {
   theLog.log("Readout executing CONFIGURE");
 
   // load configuration file
@@ -272,7 +275,66 @@ int Readout::configure() {
     theLog.log("Error : %s", err.c_str());
     return -1;
   }
-
+  
+  // apply provided occ properties
+  // over loaded configuration
+  // with function to overwrtie configuration tree t1 with (selected) content of t2
+  auto mergeConfig = [&] (boost::property_tree::ptree &t1, const boost::property_tree::ptree &t2) {
+    theLog.log("Merging selected content of OCC configuration");
+    try {
+      // overwrite fairmq channel parameters
+      // get list of channels      
+      if (t2.get_child_optional( "chans" )) {
+        boost::property_tree::ptree &ptchannels=(boost::property_tree::ptree &)t2.get_child("chans");
+        theLog.log("Found OCC FMQ channels configuration");
+        for (auto const & pos : ptchannels) {
+          std::string channelName=boost::lexical_cast<std::string>(pos.first);
+          // check for a consumer with same fairmq channel
+          for (auto kName : ConfigFileBrowser(&cfg, "consumer-")) {
+            std::string cfgType;
+            cfgType = cfg.getValue<std::string>(kName + ".consumerType");
+            if (cfgType=="FairMQChannel") {
+              std::string cfgChannelName;
+              cfg.getOptionalValue<std::string>(kName + ".fmq-name", cfgChannelName);
+              if (cfgChannelName==channelName) {
+                // this is matching, let's overwrite t1 with content of t2           
+                theLog.log("Updating %s - FairMQ channel %s :",kName.c_str(),channelName.c_str());
+                std::string progOptions;
+                for (auto const & pos2 : pos.second.get_child("0")) {
+                  std::string paramName=pos2.first.c_str();
+                  std::string paramValue=pos2.second.data();
+                  if ((paramName=="transport")||(paramName=="type")||(paramName=="address")) {
+                    std::string cfgKey=kName + ".fmq-" + paramName;
+                    theLog.log("%s = %s",cfgKey.c_str(),paramValue.c_str());
+                    t1.put(cfgKey.c_str(),paramValue.c_str());
+                  } else {
+                    // add it as a program option
+                    if (progOptions != "") {
+                      progOptions += ",";
+                    }
+                    progOptions += paramName + "=" + paramValue;
+                  }
+                }
+                // set FMQ program options, if any
+                if (progOptions != "") {
+                  std::string cfgKey=kName + ".fmq-progOptions";
+                  theLog.log("%s = %s",cfgKey.c_str(),progOptions.c_str());
+                  t1.put(cfgKey.c_str(),progOptions.c_str());
+                }
+              }
+            }
+          }
+        }  
+      } else {
+        theLog.log("No OCC FMQ channels configuration found");
+      }
+    }
+    catch (std::exception &e) {
+      theLog.log(InfoLogger::Severity::Error,"%s",e.what());
+    }
+  };
+  mergeConfig(cfg.get(),properties);
+  
   // try to prevent deep sleeps
   theLog.log("Disabling CPU deep sleep for process");
   int maxLatency = 2;
@@ -924,8 +986,8 @@ public:
   int executeConfigure(const boost::property_tree::ptree &properties) {
     if (theReadout == nullptr) {
       return -1;
-    }
-    return theReadout->configure();
+    }    
+    return theReadout->configure(properties);
   }
 
   int executeReset() {
@@ -1044,7 +1106,8 @@ int main(int argc, char *argv[]) {
 #endif
   } else {
     theLog.log("Readout entering standalone state machine");
-    err = theReadout->configure();
+    boost::property_tree::ptree properties; // an empty "extra" config
+    err = theReadout->configure(properties);
     if (err) {
       return err;
     }

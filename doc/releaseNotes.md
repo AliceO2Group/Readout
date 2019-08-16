@@ -99,3 +99,4 @@ This file describes the main feature changes for each readout.exe released versi
 ## next version
 - Tagging of log messages (facility = readout).
 - Collect and publish in logbook FLP runtime statistics. See readout.logbook* configuration parameters.
+- FairMQChannel parameters names updated to match AliECS/OCC naming. The configured values may also be overwritten at runtime by values provided by OCC, for matching FMQ channel names.

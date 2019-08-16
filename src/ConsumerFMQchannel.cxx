@@ -104,31 +104,31 @@ public:
     cfg.getOptionalValue<std::string>(cfgEntryPoint + ".sessionName",
                                       cfgSessionName);
 
-    // configuration parameter: | consumer-FMQchannel-* | transportType | string
+    // configuration parameter: | consumer-FMQchannel-* | fmq-transport | string
     // | shmem | Name of the FMQ transport. Typically: zeromq or shmem. c.f.
     // FairMQ::FairMQChannel.h |
     std::string cfgTransportType = "shmem";
-    cfg.getOptionalValue<std::string>(cfgEntryPoint + ".transportType",
+    cfg.getOptionalValue<std::string>(cfgEntryPoint + ".fmq-transport",
                                       cfgTransportType);
 
-    // configuration parameter: | consumer-FMQchannel-* | channelName | string |
+    // configuration parameter: | consumer-FMQchannel-* | fmq-name | string |
     // readout | Name of the FMQ channel. c.f. FairMQ::FairMQChannel.h |
     std::string cfgChannelName = "readout";
-    cfg.getOptionalValue<std::string>(cfgEntryPoint + ".channelName",
+    cfg.getOptionalValue<std::string>(cfgEntryPoint + ".fmq-name",
                                       cfgChannelName);
 
-    // configuration parameter: | consumer-FMQchannel-* | channelType | string |
+    // configuration parameter: | consumer-FMQchannel-* | fmq-type | string |
     // pair | Type of the FMQ channel. Typically: pair. c.f.
     // FairMQ::FairMQChannel.h |
     std::string cfgChannelType = "pair";
-    cfg.getOptionalValue<std::string>(cfgEntryPoint + ".channelType",
+    cfg.getOptionalValue<std::string>(cfgEntryPoint + ".fmq-type",
                                       cfgChannelType);
 
-    // configuration parameter: | consumer-FMQchannel-* | channelAddress |
+    // configuration parameter: | consumer-FMQchannel-* | fmq-address |
     // string | ipc:///tmp/pipe-readout | Address of the FMQ channel. Depends on
     // transportType. c.f. FairMQ::FairMQChannel.h |
     std::string cfgChannelAddress = "ipc:///tmp/pipe-readout";
-    cfg.getOptionalValue<std::string>(cfgEntryPoint + ".channelAddress",
+    cfg.getOptionalValue<std::string>(cfgEntryPoint + ".fmq-address",
                                       cfgChannelAddress);
 
     theLog.log("Creating FMQ (session %s) TX channel %s type %s:%s @ %s",
@@ -139,11 +139,11 @@ public:
     FairMQProgOptions fmqOptions;
     fmqOptions.SetValue<std::string>("session", cfgSessionName);
 
-    // configuration parameter: | consumer-FMQchannel-* | fmqProgOptions |
+    // configuration parameter: | consumer-FMQchannel-* | fmq-progOptions |
     // string |  | Additional FMQ program options parameters, as a
     // comma-separated list of key=value pairs. |
     std::string cfgFmqOptions = "";
-    cfg.getOptionalValue<std::string>(cfgEntryPoint + ".fmqProgOptions",
+    cfg.getOptionalValue<std::string>(cfgEntryPoint + ".fmq-progOptions",
                                       cfgFmqOptions);
     std::map<std::string, std::string> mapOptions;
     if (getKeyValuePairsFromString(cfgFmqOptions, mapOptions)) {
