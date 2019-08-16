@@ -108,15 +108,15 @@ The parameters related to 3rd-party libraries are described here for convenience
 | consumer-FMQchannel-* | disableSending | int | 0 | If set, no data is output to FMQ channel. Used for performance test to create FMQ shared memory segment without pushing the data. |
 | consumer-FMQchannel-* | enableRawFormat | int | 0 | If set, data is pushed in raw format without additional headers, 1 FMQ message per data page. |
 | consumer-FMQchannel-* | sessionName | string | default | Name of the FMQ session. c.f. FairMQ::FairMQChannel.h |
-| consumer-FMQchannel-* | transportType | string | shmem| Name of the FMQ transport. Typically: zeromq or shmem. c.f. FairMQ::FairMQChannel.h |
-| consumer-FMQchannel-* | channelName | string | readout | Name of the FMQ channel. c.f. FairMQ::FairMQChannel.h |
-| consumer-FMQchannel-* | channelType | string | pair | Type of the FMQ channel. Typically: pair. c.f. FairMQ::FairMQChannel.h |
-| consumer-FMQchannel-* | channelAddress | string | ipc:///tmp/pipe-readout | Address of the FMQ channel. Depends on transportType. c.f. FairMQ::FairMQChannel.h |
+| consumer-FMQchannel-* | fmq-name | string | readout | Name of the FMQ channel. c.f. FairMQ::FairMQChannel.h |
+| consumer-FMQchannel-* | fmq-transport | string | shmem| Name of the FMQ transport. Typically: zeromq or shmem. c.f. FairMQ::FairMQChannel.h |
+| consumer-FMQchannel-* | fmq-type | string | pair | Type of the FMQ channel. Typically: pair. c.f. FairMQ::FairMQChannel.h |
+| consumer-FMQchannel-* | fmq-address | string | ipc:///tmp/pipe-readout | Address of the FMQ channel. Depends on transportType. c.f. FairMQ::FairMQChannel.h |
+| consumer-FMQchannel-* | fmq-progOptions | string |  | Additional FMQ program options parameters, as a comma-separated list of key=value pairs. |
 | consumer-FMQchannel-* | memoryBankName | string |  | Name of the memory bank to crete (if any) and use. This consumer has the special property of being able to provide memory banks to readout, as the ones defined in bank-*. It creates a memory region optimized for selected transport and to be used for readout device DMA. |
 | consumer-FMQchannel-* | unmanagedMemorySize | bytes |  | Size of the memory region to be created. c.f. FairMQ::FairMQUnmanagedRegion.h. If not set, no special FMQ memory region is created. |
 | consumer-FMQchannel-* | memoryPoolPageSize | bytes | 0 | c.f. same parameter in bank-*. |
 | consumer-FMQchannel-* | memoryPoolNumberOfPages | int | 100 | c.f. same parameter in bank-*. |
-| consumer-FMQchannel-* | fmqProgOptions | string |  | Additional FMQ program options parameters, as a comma-separated list of key=value pairs. |
 | consumer-tcp-* | port | int | 10001 | Remote server TCP port number to connect to. |
 | consumer-tcp-* | host | string | localhost | Remote server IP name to connect to. |
 | consumer-tcp-* | ncx | int | 1 | Number of parallel streams (and threads) to use. The port number specified in 'port' parameter will be increased by 1 for each extra connection. |
