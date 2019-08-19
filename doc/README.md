@@ -136,7 +136,15 @@ To setup a new readout configuration starting from the provided file, the basic 
 - define the equipments to be used, and their parameters (in particular, the memory bank they should use.
 If not specified, readout will use the first one available).
 
+A command line utility is provided to generate a configuration file corresponding
+to current detected system configuration (memory, NUMA, CRU):
 
+  ```
+  Usage: readoutAutoConfigure
+  List of options:
+      -o filePath: path to a configuration file to be written.
+                   If none provided, template is printed on console (after system config info).
+  ```    
 
 # Usage
 
