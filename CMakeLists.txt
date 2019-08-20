@@ -347,3 +347,9 @@ endforeach ()
 foreach (lib ${libraries})
 	install(TARGETS ${lib} DESTINATION ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR})
 endforeach ()
+
+install(
+	PROGRAMS src/readoutAutoConfigure.tcl
+	DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
+	RENAME readoutAutoConfigure
+)
