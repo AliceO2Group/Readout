@@ -96,7 +96,8 @@ This file describes the main feature changes for each readout.exe released versi
 - Added per-link RDH packetCounter contiguity check (requires rdhCheckEnabled=1).
 - Code cleanup (warnings, clang-format, copyright).
 
-## v1.0.5 - 19/08/2019
+## v1.0.5 - 20/08/2019
 - Tagging of log messages (facility = readout).
 - Collect and publish in logbook FLP runtime statistics. See readout.logbook* configuration parameters.
 - FairMQChannel parameters names updated to match AliECS/OCC naming. The configured values may also be overwritten at runtime by values provided by OCC, for matching FMQ channel names.
+- Added readoutAutoConfigure utlity to help generating configuration file from local system inventory (auto-detect memory and CRU settings).
