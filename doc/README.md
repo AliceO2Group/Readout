@@ -214,6 +214,33 @@ The following utilities are also available:
   ```
 
 
+# Recorded file format
+
+There is no particular formatting for the files recorded by readout.exe/ConsumerFileRecorder,
+this is a simple binary dump of the data stream received from the CRU(s) or other equipments,
+the memory data pages are saved to disk one by one continuously (without separator).
+
+So by default, for CRU equipments, the file strictly follows the format documented for the RDHv4 (RDH-FLP section)
+available at https://gitlab.cern.ch/AliceO2Group/wp6-doc/blob/master/rdh/RDHV4.md
+
+Pages of the different CRUs might be interleaved in an unspecified order.
+
+The recorded stream may also be compressed with LZ4, if configured to do so
+(by a ConsumerDataProcessor/libProcessorLZ4Compress consumer),
+in which case there is one [LZ4 frame](https://github.com/lz4/lz4/blob/master/doc/lz4_Frame_format.md) per original data page
+and the file can be decompressed with standard lz4 tool (e.g. unlz4) to get back
+to the original format above.
+
+Optionally, the data pages in recorded file might be interleaved with internal readout headers
+(see readout option dataBlockHeaderEnabled and header struct defined in 
+[Common/DataBlock.h](https://github.com/AliceO2Group/Common/blob/master/include/Common/DataBlock.h)),
+but this is used mainly for debugging and not recommended for production, as it's an internal
+format subject to change without notice.
+
+Readout has a special equipment (ReadoutEquipmentPlayer) to replay data from a RAW file,
+but it's quite limited (1 file -> 1 data page, repeated continuously).
+It does not support LZ4 files or files recorded with internal headers.
+
 
 # Contact
 sylvain.chapeland@cern.ch
