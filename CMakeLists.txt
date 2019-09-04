@@ -68,7 +68,7 @@ endif()
 
 # check FairMQ
 # FairMQ::FairMQ target does not provide the transitive dependency on FairLogger and Boost, so we have to add them manually
-find_package(Boost COMPONENTS container thread regex date_time signals )
+find_package(Boost COMPONENTS container thread regex date_time )
 find_package(FairLogger)
 if ((NOT FairMQ_FOUND) OR (NOT FairLogger_FOUND))
   message(STATUS "FairMQ or FairLogger not found, corresponding features disabled")
