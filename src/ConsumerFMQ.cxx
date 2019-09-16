@@ -63,7 +63,7 @@ public:
     channels[0].UpdateAddress("ipc:///tmp/readout-pipe-0");
     channels[0].UpdateRateLogging(0);
     channels[0].UpdateSndBufSize(10);
-    if (!channels[0].ValidateChannel()) {
+    if (!channels[0].Validate()) {
       throw "ConsumerFMQ: channel validation failed";
     }
 

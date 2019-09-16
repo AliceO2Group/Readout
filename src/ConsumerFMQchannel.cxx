@@ -231,7 +231,7 @@ public:
 
     sendingChannel->Bind(cfgChannelAddress);
 
-    if (!sendingChannel->ValidateChannel()) {
+    if (!sendingChannel->Validate()) {
       throw "ConsumerFMQ: channel validation failed";
     }
   }
