@@ -63,13 +63,13 @@ public:
     // ipc:///tmp/readout-pipe-1 | Address of the data sampling. |
     cfg.getOptionalValue<std::string>(cfgEntryPoint + ".address", address,
                                       "ipc:///tmp/readout-pipe-1");
-    channels[0].UpdateChannelName("data-out");
+    channels[0].UpdateName("data-out");
     channels[0].UpdateType("pub"); // pub or push?
     channels[0].UpdateMethod("bind");
     channels[0].UpdateAddress(address);
     channels[0].UpdateRateLogging(0);
     channels[0].UpdateSndBufSize(10);
-    if (!channels[0].ValidateChannel()) {
+    if (!channels[0].Validate()) {
       throw "ConsumerDataSampling: channel validation failed";
     }
 
