@@ -336,18 +336,25 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
   mergeConfig(cfg.get(),properties);
   
   // try to prevent deep sleeps
-  theLog.log("Disabling CPU deep sleep for process");
+  bool deepsleepDisabled=false;
   int maxLatency = 2;
   latencyFd = open("/dev/cpu_dma_latency", O_WRONLY);
   if (latencyFd < 0) {
-    theLog.log("Error opening /dev/cpu_dma_latency");
+    //theLog.log("Can not open /dev/cpu_dma_latency");
   } else {
     if (write(latencyFd, &maxLatency, sizeof(maxLatency)) !=
         sizeof(maxLatency)) {
-      theLog.log("Error writing to /dev/cpu_dma_latency");
+      //theLog.log("Can not write to /dev/cpu_dma_latency");
+    } else {
+      deepsleepDisabled=true;
     }
   }
-
+  if (deepsleepDisabled) {
+    theLog.log("CPU deep sleep disabled for process");
+  } else {
+    theLog.log("CPU deep sleep not disabled for process");
+  }
+  
   // extract optional configuration parameters
   // configuration parameter: | readout | exitTimeout | double | -1 | Time in
   // seconds after which the program exits automatically. -1 for unlimited. |

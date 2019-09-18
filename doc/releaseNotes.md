@@ -101,3 +101,9 @@ This file describes the main feature changes for each readout.exe released versi
 - Collect and publish in logbook FLP runtime statistics. See readout.logbook* configuration parameters.
 - FairMQChannel parameters names updated to match AliECS/OCC naming. The configured values may also be overwritten at runtime by values provided by OCC, for matching FMQ channel names.
 - Added readoutAutoConfigure utlity to help generating configuration file from local system inventory (auto-detect memory and CRU settings).
+
+## v1.0.6 - 04/09/2019
+- Cosmetics release and dependencies update.
+
+## v1.0.7 - 18/09/2019
+- Cosmetics release and dependencies update.
