@@ -52,7 +52,7 @@ This file describes the main feature changes for each readout.exe released versi
 - libProcessorLZ4Compress output formatted in standard LZ4 file format. lz4 command line utility may be used to uncompress recorded data.
 - readRaw.exe utility updated. Provides means to check/display content of data files recorded with readout.
 - This version requires Common > v1.4.2
-- Updated configuration paramters:
+- Updated configuration parameters:
 	- consumer-fileRecorder.fileName : can specify per-link filename with %l. Data from different links will be recorded to different files.
 
 ## v0.26 - 14/05/2019
@@ -60,12 +60,12 @@ This file describes the main feature changes for each readout.exe released versi
         - equipment-rorc.rdhUseFirstInPageEnabled : if set, the first RDH in each data page is used to populate readout headers (e.g. linkId). This avoids to enable a full check of all RDHs just for this purpose.
 
 ## v0.27 - 17/05/2019
-- Updated configuration paramters:
+- Updated configuration parameters:
 	- consumer-fileRecorder.filesMax : to record data in file chunks respecting the defined per-file limits (specify max number of files, or -1 for unlimited number of files). Compatible with LZ4 compression.
 - readRaw.exe utility: added option dataBlockEnabled to select file format, plus various formatting enhancements.
 
 ## v0.28 - 27/05/2019
-- Updated configuration paramters:
+- Updated configuration parameters:
 	- consumer-processor.ensurePageOrder : to keep the same page ordering after multi-threaded processing.
 - Data checks updates:
 	- RDH check: disabled block length check (might not be set)
@@ -74,7 +74,7 @@ This file describes the main feature changes for each readout.exe released versi
 	- Added support for O2 logbook connectivity (not enabled in cmake).
 
 ## v1.0.1 - 13/06/2019
-- Updated configuration paramters:
+- Updated configuration parameters:
 	- equipment-dummy.eventMinSize/eventMaxSize: now accept "bytes" prefix (k,M,...)
 	- consumer-*.stopOnError: when set, readout will stop automatically on data consumer error (file recording, data processing not keeping up, etc).
 	- equipment-*.stopOnError: when set, readout will stop automatically on data equipment error (CRU packet dropped, etc).
@@ -88,7 +88,7 @@ This file describes the main feature changes for each readout.exe released versi
 
 ## v1.0.2 - 29/7/2019
 - Added LZ4 file support to readRaw.exe
-- Updated configuration paramters:
+- Updated configuration parameters:
 	- equipment-rorc.TFperiod: to configure length of timeframe, in number of orbits.
 - Fixed consumer-processor ensurePageOrder behavior (using page id instead of timeframe id).
 
@@ -107,3 +107,7 @@ This file describes the main feature changes for each readout.exe released versi
 
 ## v1.0.7 - 18/09/2019
 - Cosmetics release and dependencies update.
+
+## v1.0.8 - 04/10/2019
+- Updated configuration parameters:
+	- consumer-fileRecorder.dropEmptyPackets : to discard empty HB frames from recorded files (e.g. continuous detectors in triggered mode).

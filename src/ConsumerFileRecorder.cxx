@@ -9,8 +9,9 @@
 // or submit itself to any jurisdiction.
 
 #include "Consumer.h"
-#include "ReadoutUtils.h"
+#include "RdhUtils.h"
 #include "ReadoutStats.h"
+#include "ReadoutUtils.h"
 #include <errno.h>
 #include <iomanip>
 
@@ -219,6 +220,19 @@ public:
       }
     }
 
+    // | consumer-fileRecorder-* | dropEmptyPackets | int | 0 | If 1, memory
+    // pages are scanned and empty packets are discarded, i.e. packets with only
+    // an RDH, when RDH.memorySize==sizeof(RDH). This setting does not change
+    // the content of in-memory data pages, other consumers would still get full
+    // data pages with empty packets. This setting is meant to reduce the amount
+    // of data recorded for continuous detectors in triggered mode.|
+    cfg.getOptionalValue(cfgEntryPoint + ".dropEmptyPackets", dropEmptyPackets,
+                         0);
+    if (dropEmptyPackets) {
+      theLog.log("Packets with RDH-only payload will not be recorded to file, "
+                 "option dropEmptyPackets is enabled");
+    }
+
     // check status
     if (createFile() == 0) {
       recordingEnabled = true;
@@ -240,6 +254,11 @@ public:
       kv.second = nullptr;
     }
     filePerSourceMap.clear();
+
+    if (dropEmptyPackets) {
+      theLog.log("Packets recorded=%lld discarded(empty)=%lld", packetsRecorded,
+                 emptyPacketsDropped);
+    }
   }
 
   // create handle to recording file based on configuration
@@ -461,9 +480,51 @@ public:
       }
       if (status == FileHandle::Status::Success) {
         // write payload data
-        ptr = b->getData()->data;
-        size = b->getData()->header.dataSize;
-        status = fpUsed->write(ptr, size, true); // payload count as a page
+        if (!dropEmptyPackets) {
+          // by default, we write the full payload data
+          ptr = b->getData()->data;
+          size = b->getData()->header.dataSize;
+          status = fpUsed->write(ptr, size, true); // payload count as a page
+        } else {
+          // empty packets should be filtered out before writing,
+          // so we parse RDHs and write packet by packet
+          std::string errorDescription;
+          size_t blockSize = b->getData()->header.dataSize;
+          uint8_t *baseAddress = (uint8_t *)(b->getData()->data);
+          bool isFirstPacket = true;
+          for (size_t pageOffset = 0; pageOffset < blockSize;) {
+            RdhHandle h(baseAddress + pageOffset);
+            if (h.validateRdh(errorDescription)) {
+              invalidRDH++;
+              // stop for this page on first RDH error
+              break;
+            }
+            uint16_t memorySize = h.getMemorySize();
+            uint16_t headerSize = h.getHeaderSize();
+            uint16_t offsetNextPacket = h.getOffsetNextPacket();
+            if (memorySize != headerSize) {
+              // there is something more than the RDH, record this packet
+              ptr = baseAddress + pageOffset;
+              size = offsetNextPacket; // use offsetNextPacket instead of
+                                       // memorySize for file to be consistent
+              status = fpUsed->write(ptr, size,
+                                     isFirstPacket); // payload count as a page
+              isFirstPacket =
+                  false; // we have flagged the first packet in page already
+              packetsRecorded++;
+              if (status != FileHandle::Status::Success) {
+                // stop parsing the page if last packet record failed
+                break;
+              }
+            } else {
+              emptyPacketsDropped++;
+            }
+            if (offsetNextPacket == 0) {
+              break;
+            }
+            pageOffset += offsetNextPacket;
+          }
+        }
       }
       if (status == FileHandle::Status::Success) {
         return 0;
@@ -515,6 +576,12 @@ private:
       0;                // maximum number of bytes to write (in each file)
   int maxFilePages = 0; // maximum number of pages to write (in each file)
   int filesMax = 0;     // maximum number of files to write (for each stream)
+  int dropEmptyPackets =
+      0; // if set, packets with RDH.memorysize=sizeof(RDH) are discarded
+
+  unsigned long long invalidRDH = 0;          // number of invalid RDH found
+  unsigned long long emptyPacketsDropped = 0; // number of packets dropped
+  unsigned long long packetsRecorded = 0;     // number of packets recorded
 };
 
 std::unique_ptr<Consumer>
