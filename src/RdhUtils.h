@@ -51,6 +51,7 @@ public:
   inline bool getStopBit() { return (bool)rdhPtr->stopBit; }
   inline uint32_t getTriggerOrbit() { return (uint32_t)rdhPtr->triggerOrbit; }
   inline uint32_t getTriggerBC() { return (uint32_t)rdhPtr->triggerBC; }
+  inline uint32_t getTriggerType() { return (uint32_t)rdhPtr->triggerType; }
 
 private:
   o2::Header::RAWDataHeader *rdhPtr; // pointer to RDH in memory
