@@ -29,6 +29,7 @@ void RdhHandle::dumpRdh(long offset) {
   printf("Trigger Orbit / BC = %08X : %03X\n", getTriggerOrbit(),
          getTriggerBC());
   printf("Trigger type    = 0x%04X\n", (int)getTriggerType());
+  printf("Stop Bit    = %d\n", (int)getStopBit());
   // printf("%04X %04X %04X
   // %04X\n",rdhPtr->word3,rdhPtr->word2,rdhPtr->word1,rdhPtr->word0);
 }
