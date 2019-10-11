@@ -222,7 +222,8 @@ public:
 
     // | consumer-fileRecorder-* | dropEmptyPackets | int | 0 | If 1, memory
     // pages are scanned and empty packets are discarded, i.e. packets with only
-    // an RDH, when RDH.memorySize==sizeof(RDH). This setting does not change
+    // an RDH, when RDH.memorySize==sizeof(RDH) and RDH.stopBit==0.
+    // This setting does not change
     // the content of in-memory data pages, other consumers would still get full
     // data pages with empty packets. This setting is meant to reduce the amount
     // of data recorded for continuous detectors in triggered mode.|
@@ -502,7 +503,7 @@ public:
             uint16_t memorySize = h.getMemorySize();
             uint16_t headerSize = h.getHeaderSize();
             uint16_t offsetNextPacket = h.getOffsetNextPacket();
-            if (memorySize != headerSize) {
+            if ((memorySize != headerSize) || (h.getStopBit())) {
               // there is something more than the RDH, record this packet
               ptr = baseAddress + pageOffset;
               size = offsetNextPacket; // use offsetNextPacket instead of
