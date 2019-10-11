@@ -89,6 +89,9 @@ public:
 
   Thread::CallbackResult executeCallback();
 
+  bool doFlush = 0; // when set, flush slices including incomplete ones
+                    // the flag is reset automatically when done
+
 private:
   std::vector<
       std::shared_ptr<AliceO2::Common::Fifo<DataBlockContainerReference>>>
@@ -103,4 +106,5 @@ private:
   int nextIndex = 0; // index of input channel to start with at next iteration
                      // to fill output fifo. not starting always from zero to
                      // avoid favorizing low-index channels.
+  unsigned long long totalBlocksIn = 0; // number of blocks received from inputs
 };

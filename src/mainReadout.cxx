@@ -870,10 +870,10 @@ int Readout::stop() {
   theLog.log("Readout executing STOP");
 
   // raise flag
-  isRunning = 0;
   stopTimer.reset(cfgFlushEquipmentTimeout *
                   1000000); // add a delay before stopping aggregator -
                             // continune to empty FIFOs
+  isRunning = 0;
 
   for (auto &&readoutDevice : readoutDevices) {
     if (cfgFlushEquipmentTimeout <= 0) {
@@ -885,7 +885,11 @@ int Readout::stop() {
       readoutDevice->stop();
     }
     readoutDevice->setDataOff();
-    // todo: should flush aggregator content after a while
+  }
+  // wait a bit and start flushing aggregator
+  if (cfgFlushEquipmentTimeout > 0) {
+    usleep(cfgFlushEquipmentTimeout*1000000/2);
+    agg->doFlush=true;
   }
 
   // wait main thread completed

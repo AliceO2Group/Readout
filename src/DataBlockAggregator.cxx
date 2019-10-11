@@ -135,13 +135,18 @@ long)newId,b);
   */
 }
 
-void DataBlockAggregator::start() { aggregateThread->start(); }
+void DataBlockAggregator::start() { 
+  doFlush=0;
+  aggregateThread->start();
+}
 
 void DataBlockAggregator::stop(int waitStop) {
+  doFlush=0;
   aggregateThread->stop();
   if (waitStop) {
     aggregateThread->join();
   }
+  theLog.log("Aggregator processed %llu blocks",totalBlocksIn);
   for (unsigned int i = 0; i < inputs.size(); i++) {
 
     //    printf("aggregator input %d: in=%llu
@@ -186,6 +191,7 @@ Thread::CallbackResult DataBlockAggregator::executeCallback() {
       DataBlockContainerReference b = nullptr;
       inputs[i]->pop(b);
       nBlocksIn++;
+      totalBlocksIn++;
       DataSetReference bcv = nullptr;
       try {
         bcv = std::make_shared<DataSet>();
@@ -205,6 +211,7 @@ Thread::CallbackResult DataBlockAggregator::executeCallback() {
       DataBlockContainerReference b = nullptr;
       inputs[i]->pop(b);
       nBlocksIn++;
+      totalBlocksIn++;
       // printf("Got block %d from dev %d\n",(int)(b->getData()->header.id),i);
       slicers[i].appendBlock(b);
     }
@@ -213,8 +220,11 @@ Thread::CallbackResult DataBlockAggregator::executeCallback() {
       if (output->isFull()) {
         return Thread::CallbackResult::Idle;
       }
-
-      DataSetReference bcv = slicers[i].getSlice();
+      bool includeIncomplete=0;
+      if ((doFlush)&&(inputs[i]->isEmpty())) {
+        includeIncomplete=1;
+      }
+      DataSetReference bcv = slicers[i].getSlice(includeIncomplete);
       if (bcv == nullptr) {
         break;
       }
@@ -226,6 +236,9 @@ Thread::CallbackResult DataBlockAggregator::executeCallback() {
   }
 
   if ((nBlocksIn == 0) && (nSlicesOut == 0)) {
+    if (doFlush) {
+      doFlush=0; // flushing is complete if we are now idle
+    }
     return Thread::CallbackResult::Idle;
   }
 
