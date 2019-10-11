@@ -494,7 +494,7 @@ public:
           size_t blockSize = b->getData()->header.dataSize;
           uint8_t *baseAddress = (uint8_t *)(b->getData()->data);
           bool isFirstPacket = true;
-	  bool previousPacketEmpty = true;
+          bool previousPacketEmpty = true;
           for (size_t pageOffset = 0; pageOffset < blockSize;) {
             RdhHandle h(baseAddress + pageOffset);
             if (h.validateRdh(errorDescription)) {
@@ -505,18 +505,18 @@ public:
             uint16_t memorySize = h.getMemorySize();
             uint16_t headerSize = h.getHeaderSize();
             uint16_t offsetNextPacket = h.getOffsetNextPacket();
-	    
-	    bool keepPacket=false;
-	    if (h.getStopBit() && !previousPacketEmpty) {	    
-	      keepPacket=true;
-	    }
-	    if (memorySize != headerSize) {
+
+            bool keepPacket = false;
+            if (h.getStopBit() && !previousPacketEmpty) {
+              keepPacket = true;
+            }
+            if (memorySize != headerSize) {
               // there is something more than the RDH, record this packet
-	      keepPacket=true;
-	      previousPacketEmpty=false;
-	    } else {
-	      previousPacketEmpty=true;
-	    }
+              keepPacket = true;
+              previousPacketEmpty = false;
+            } else {
+              previousPacketEmpty = true;
+            }
             if (keepPacket) {
               ptr = baseAddress + pageOffset;
               size = offsetNextPacket; // use offsetNextPacket instead of
