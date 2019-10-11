@@ -114,4 +114,4 @@ This file describes the main feature changes for each readout.exe released versi
 
 ## v1.0.9 - 11/10/2019
 - Updated configuration parameters:
-	- consumer-fileRecorder.dropEmptyPackets : logic updated. Packets with stopBit set are not dropped even if payload empty.
+	- consumer-fileRecorder.dropEmptyPackets : logic updated. Packets with stopBit set following a non-empty packet are kept even if payload empty.
