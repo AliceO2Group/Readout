@@ -118,3 +118,7 @@ This file describes the main feature changes for each readout.exe released versi
 
 ## v1.0.10 - 14/10/2019
 - Improved collection of incomplete timeframes at end of run when disableAggregatorSlicing=0 and flushEquipmentTimeout>0.
+
+## v1.0.11 - 14/10/2019
+- Updated configuration parameters:
+	- Following changes in the ReadoutCard library, equipment-rorc-*.generator* parameters have been removed. They have been replaced by a single equipment-rorc-*.dataSource parameter to select the data source of the readoutCard devices (both CRU and CRORC).

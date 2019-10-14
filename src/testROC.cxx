@@ -62,11 +62,7 @@ private:
   int cfgChannelNumber = 0;
   std::string cfgLinkMask = "0";
 
-  int cfgGeneratorEnabled = 1;
-  int cfgGeneratorDataSize = 8192;
-  std::string cfgGeneratorLoopback = "INTERNAL";
-  std::string cfgGeneratorPattern = "INCREMENTAL";
-  int cfgGeneratorRandomSizeEnabled = 0;
+  std::string cfgDataSource = "Internal";
   std::string cfgResetLevel = "INTERNAL";
   size_t superPageSize;
 
@@ -93,15 +89,8 @@ ROCdevice::ROCdevice(std::string id) {
   cardId = id;
   params.setCardId(AliceO2::roc::Parameters::cardIdFromString(cardId));
   params.setChannelNumber(cfgChannelNumber);
-  params.setGeneratorEnabled(cfgGeneratorEnabled);
-  if (cfgGeneratorEnabled) {
-    params.setGeneratorDataSize(cfgGeneratorDataSize);
-    params.setGeneratorLoopback(
-        AliceO2::roc::LoopbackMode::fromString(cfgGeneratorLoopback));
-    params.setGeneratorPattern(
-        AliceO2::roc::GeneratorPattern::fromString(cfgGeneratorPattern));
-    params.setGeneratorRandomSizeEnabled(cfgGeneratorRandomSizeEnabled);
-  }
+  params.setDataSource(
+        AliceO2::roc::DataSource::fromString(cfgDataSource));
 
   params.setBufferParameters(AliceO2::roc::buffer_parameters::Memory{
       mp->getBaseBlockAddress(), mp->getBaseBlockSize()});
