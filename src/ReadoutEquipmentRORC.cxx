@@ -129,41 +129,13 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name)
     int cfgChannelNumber = 0;
     cfg.getOptionalValue<int>(name + ".channelNumber", cfgChannelNumber);
 
-    // configuration parameter: | equipment-rorc-* | generatorEnabled | int | 0
-    // | If non-zero, enable card internal generator. c.f.
-    // AliceO2::roc::Parameters. |
-    int cfgGeneratorEnabled = 0;
-    cfg.getOptionalValue<int>(name + ".generatorEnabled", cfgGeneratorEnabled);
-
-    // configuration parameter: | equipment-rorc-* | generatorDataSize | int |
-    // 8192 | If generatorEnabled, defines size of data generated. c.f.
-    // AliceO2::roc::Parameters. |
-    int cfgGeneratorDataSize = 8192;
-    cfg.getOptionalValue<int>(name + ".generatorDataSize",
-                              cfgGeneratorDataSize);
-
-    // configuration parameter: | equipment-rorc-* | generatorLoopback | string
-    // | INTERNAL | If generatorEnabled, defines loopback mode. Otherwise,
-    // parameter automatically set to NONE. Possible values: NONE, DIU, SIU,
-    // INTERNAL. c.f. AliceO2::roc::Parameters. |
-    std::string cfgGeneratorLoopback = "INTERNAL";
-    cfg.getOptionalValue<std::string>(name + ".generatorLoopback",
-                                      cfgGeneratorLoopback);
-
-    // configuration parameter: | equipment-rorc-* | generatorPattern | string |
-    // INCREMENTAL | If generatorEnabled, defines pattern of data generated.
-    // Possible values: ALTERNATING,CONSTANT,DECREMENTAL, FLYING_0, FLYING_1,
-    // INCREMENTAL, RANDOM, UNKNOWN. c.f. AliceO2::roc::Parameters. |
-    std::string cfgGeneratorPattern = "INCREMENTAL";
-    cfg.getOptionalValue<std::string>(name + ".generatorPattern",
-                                      cfgGeneratorPattern);
-
-    // configuration parameter: | equipment-rorc-* | generatorRandomSizeEnabled
-    // | int | 0 | Enable (value=1) or disable (value=0) random size when using
-    // internal data generator. c.f. AliceO2::roc::Parameters. |
-    int cfgGeneratorRandomSizeEnabled = 0;
-    cfg.getOptionalValue<int>(name + ".generatorRandomSizeEnabled",
-                              cfgGeneratorRandomSizeEnabled);
+    // configuration parameter: | equipment-rorc-* | dataSource | string |
+    //  Internal | This parameter selects the data source used by ReadoutCard,
+    // c.f. AliceO2::roc::Parameters. It can be for CRU one of Fee, Ddg, 
+    // Internal and for CRORC one of Fee, SIU, DIU, Internal. |
+    std::string cfgDataSource = "Internal";
+    cfg.getOptionalValue<std::string>(name + ".dataSource",
+                                      cfgDataSource);
 
     // configuration parameter: | equipment-rorc-* | linkMask | string | 0-31 |
     // List of links to be enabled. For CRU, in the 0-31 range. Can be a single
@@ -256,20 +228,9 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name)
 
     // setDmaPageSize() : seems deprecated, let's not configure it
 
-    // generator related parameters
-    params.setGeneratorEnabled(cfgGeneratorEnabled);
-    if (cfgGeneratorEnabled) {
-      params.setGeneratorDataSize(cfgGeneratorDataSize);
-      params.setGeneratorLoopback(
-          AliceO2::roc::LoopbackMode::fromString(cfgGeneratorLoopback));
-      params.setGeneratorPattern(
-          AliceO2::roc::GeneratorPattern::fromString(cfgGeneratorPattern));
-      params.setGeneratorRandomSizeEnabled(cfgGeneratorRandomSizeEnabled);
-    } else {
-      // for some unknown reason, one has to explicitely disable the loopback
-      // when not using the generator
-      params.setGeneratorLoopback(AliceO2::roc::LoopbackMode::None);
-    }
+    // card data source
+    params.setDataSource(
+        AliceO2::roc::DataSource::fromString(cfgDataSource));
 
     // card readout mode : experimental, not needed
     // params.setReadoutMode(AliceO2::roc::ReadoutMode::fromString(cfgReadoutMode));

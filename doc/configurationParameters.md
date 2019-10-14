@@ -78,11 +78,7 @@ The parameters related to 3rd-party libraries are described here for convenience
 | equipment-player-* | fillPage | int | 1 | If 1, content of data file is copied multiple time in each data page until page is full (or almost full: on the last iteration, there is no partial copy if remaining space is smaller than full file size). If 0, data file is copied exactly once in each data page. |
 | equipment-rorc-* | cardId | string | | ID of the board to be used. Typically, a PCI bus device id. c.f. AliceO2::roc::Parameters. |
 | equipment-rorc-* | channelNumber | int | 0 | Channel number of the board to be used. Typically 0 for CRU, or 1-6 for CRORC. c.f. AliceO2::roc::Parameters. |
-| equipment-rorc-* | generatorEnabled | int | 0 | If non-zero, enable card internal generator. c.f. AliceO2::roc::Parameters. |
-| equipment-rorc-* | generatorDataSize | int | 8192 | If generatorEnabled, defines size of data generated. c.f. AliceO2::roc::Parameters. |
-| equipment-rorc-* | generatorLoopback | string | INTERNAL | If generatorEnabled, defines loopback mode. Otherwise, parameter automatically set to NONE. Possible values: NONE, DIU, SIU, INTERNAL. c.f. AliceO2::roc::Parameters. |
-| equipment-rorc-* | generatorPattern | string | INCREMENTAL | If generatorEnabled, defines pattern of data generated. Possible values: ALTERNATING,CONSTANT,DECREMENTAL, FLYING_0, FLYING_1, INCREMENTAL, RANDOM, UNKNOWN. c.f. AliceO2::roc::Parameters. |
-| equipment-rorc-* | generatorRandomSizeEnabled | int | 0 | Enable (value=1) or disable (value=0) random size when using internal data generator. c.f. AliceO2::roc::Parameters. |
+| equipment-rorc-* | dataSource | string | Internal | This parameter selects the data source used by ReadoutCard, c.f. AliceO2::roc::Parameters. It can be for CRU one of Fee, Ddg, Internal and for CRORC one of Fee, SIU, DIU, Internal. |
 | equipment-rorc-* | linkMask | string | 0-31 | List of links to be enabled. For CRU, in the 0-31 range. Can be a single value, a comma-separated list, a range or comma-separated list of ranges. c.f. AliceO2::roc::Parameters. |
 | equipment-rorc-* | resetLevel | string | INTERNAL | Reset level of the device. Can be one of NOTHING, INTERNAL, INTERNAL_DIU, INTERNAL_DIU_SIU. c.f. AliceO2::roc::Parameters. |
 | equipment-rorc-* | rdhCheckEnabled | int | 0 | If set, data pages are parsed and RDH headers checked. Errors are reported in logs. |
