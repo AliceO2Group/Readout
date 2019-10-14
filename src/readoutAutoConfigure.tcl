@@ -32,7 +32,7 @@ if {[catch {set rocOutput [exec roc-list-cards]} err]} {
 }
 set rocOutputLines [split $rocOutput "\n"]
 if {[catch {
-  set rocHeader "#   Type   PCI Addr   Endpoint ID   Vendor ID   Device ID   NUMA  Serial   FW Version                Card ID"
+  set rocHeader "#   Type   PCI Addr   Serial   Endpoint ID   NUMA  Vendor ID   Device ID   FW Version                Card ID"
   if {[string trim [lindex $rocOutputLines 1]]!=$rocHeader} {
     # throw only in tcl 8.7... but if not it generates an error anyway, which is what we want
     throw
@@ -41,9 +41,10 @@ if {[catch {
     set l [lindex $rocOutputLines $i]
     set type [string trim [string range $l 6 12]]
     set pci [string trim [string range $l 13 23]]
-    set endpoint [string trim [string range $l 24 32]]
-    set numa [string trim [string range $l 62 67]]
-    set serial [string trim [string range $l 68 76]]
+    set serial [string trim [string range $l 24 32]]
+    set endpoint [string trim [string range $l 33 46]]
+    set numa [string trim [string range $l 47 52]]
+
     lappend ldev "$type" "$pci" "$endpoint" "$numa" "$serial"
   }
 } err]} {
@@ -240,8 +241,7 @@ numaNode=${numa}
 \[equipment-cru-${cruN}\]
 equipmentType=rorc
 cardId=${pci}
-generatorEnabled=1
-generatorLoopback=INTERNAL
+dataSource=Internal
 memoryBankName=bank-${cruN}
 memoryPoolNumberOfPages=${readoutNPages}
 memoryPoolPageSize=${readoutPageSize}
