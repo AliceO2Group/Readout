@@ -888,8 +888,8 @@ int Readout::stop() {
   }
   // wait a bit and start flushing aggregator
   if (cfgFlushEquipmentTimeout > 0) {
-    usleep(cfgFlushEquipmentTimeout*1000000/2);
-    agg->doFlush=true;
+    usleep(cfgFlushEquipmentTimeout * 1000000 / 2);
+    agg->doFlush = true;
   }
 
   // wait main thread completed

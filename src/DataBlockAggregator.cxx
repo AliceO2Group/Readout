@@ -135,18 +135,18 @@ long)newId,b);
   */
 }
 
-void DataBlockAggregator::start() { 
-  doFlush=0;
+void DataBlockAggregator::start() {
+  doFlush = 0;
   aggregateThread->start();
 }
 
 void DataBlockAggregator::stop(int waitStop) {
-  doFlush=0;
+  doFlush = 0;
   aggregateThread->stop();
   if (waitStop) {
     aggregateThread->join();
   }
-  theLog.log("Aggregator processed %llu blocks",totalBlocksIn);
+  theLog.log("Aggregator processed %llu blocks", totalBlocksIn);
   for (unsigned int i = 0; i < inputs.size(); i++) {
 
     //    printf("aggregator input %d: in=%llu
@@ -220,9 +220,9 @@ Thread::CallbackResult DataBlockAggregator::executeCallback() {
       if (output->isFull()) {
         return Thread::CallbackResult::Idle;
       }
-      bool includeIncomplete=0;
-      if ((doFlush)&&(inputs[i]->isEmpty())) {
-        includeIncomplete=1;
+      bool includeIncomplete = 0;
+      if ((doFlush) && (inputs[i]->isEmpty())) {
+        includeIncomplete = 1;
       }
       DataSetReference bcv = slicers[i].getSlice(includeIncomplete);
       if (bcv == nullptr) {
@@ -237,7 +237,7 @@ Thread::CallbackResult DataBlockAggregator::executeCallback() {
 
   if ((nBlocksIn == 0) && (nSlicesOut == 0)) {
     if (doFlush) {
-      doFlush=0; // flushing is complete if we are now idle
+      doFlush = 0; // flushing is complete if we are now idle
     }
     return Thread::CallbackResult::Idle;
   }
