@@ -28,8 +28,9 @@ void RdhHandle::dumpRdh(long offset) {
   printf("Next block    = %d\n", (int)getOffsetNextPacket());
   printf("Trigger Orbit / BC = %08X : %03X\n", getTriggerOrbit(),
          getTriggerBC());
-  printf("Trigger type    = 0x%04X\n", (int)getTriggerType());
-  printf("Stop Bit    = %d\n", (int)getStopBit());
+  printf("Trigger type       = 0x%04X\n", (int)getTriggerType());
+  printf("Stop Bit      = %d\n", (int)getStopBit());
+  printf("Pages Counter = %d\n", (int)getPagesCounter());
   // printf("%04X %04X %04X
   // %04X\n",rdhPtr->word3,rdhPtr->word2,rdhPtr->word1,rdhPtr->word0);
 }
