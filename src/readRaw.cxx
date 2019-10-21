@@ -105,10 +105,9 @@ int main(int argc, const char *argv[]) {
   ERRLOG("Using data file %s\n", filePath.c_str());
   ERRLOG("dataBlockHeaderEnabled=%d dumpRDH=%d validateRDH=%d "
          "checkContinuousTriggerOrder=%d "
-	 "dumpDataBlockHeader=%d dumpData=%d\n",
+         "dumpDataBlockHeader=%d dumpData=%d\n",
          (int)dataBlockHeaderEnabled, (int)dumpRDH, (int)validateRDH,
-         (int)checkContinuousTriggerOrder,
-	 (int)dumpDataBlockHeader, dumpData);
+         (int)checkContinuousTriggerOrder, (int)dumpDataBlockHeader, dumpData);
 
   // open raw data file
   FILE *fp = fopen(filePath.c_str(), "rb");
@@ -316,7 +315,7 @@ int main(int argc, const char *argv[]) {
         }
 
         if (checkContinuousTriggerOrder) {
-	  bool isTriggerOrderOk = true;
+          bool isTriggerOrderOk = true;
           if (isFirstTrigger) {
             isFirstTrigger = false;
           } else {
@@ -324,7 +323,7 @@ int main(int argc, const char *argv[]) {
               isTriggerOrderOk = 0;
             } else if (h.getTriggerOrbit() == latestTriggerOrbit) {
               if (h.getTriggerBC() < latestTriggerBC) {
-        	isTriggerOrderOk = 0;
+                isTriggerOrderOk = 0;
               }
             } else if (checkOrbitContiguous &&
                        (h.getTriggerOrbit() != latestTriggerOrbit + 1)) {
@@ -332,16 +331,17 @@ int main(int argc, const char *argv[]) {
             }
           }
           if (!isTriggerOrderOk) {
-            ERRLOG("Trigger order mismatch@ file offset 0x%08lX + %ld : new %08X "
-                   ": %03X > previous: %08X : %03X \n",
-                   blockOffset, pageOffset, h.getTriggerOrbit(), h.getTriggerBC(),
-                   latestTriggerOrbit, latestTriggerBC);
+            ERRLOG(
+                "Trigger order mismatch@ file offset 0x%08lX + %ld : new %08X "
+                ": %03X > previous: %08X : %03X \n",
+                blockOffset, pageOffset, h.getTriggerOrbit(), h.getTriggerBC(),
+                latestTriggerOrbit, latestTriggerBC);
           }
           latestTriggerBC = h.getTriggerBC();
           latestTriggerOrbit = h.getTriggerOrbit();
           // printf("%08X : %03X\n", h.getTriggerOrbit(), h.getTriggerBC());
         }
-	
+
         // go to next RDH
         uint16_t offsetNextPacket = h.getOffsetNextPacket();
         if (offsetNextPacket == 0) {

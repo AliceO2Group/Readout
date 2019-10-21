@@ -107,10 +107,10 @@ public:
   }
 
   bool isFileOk() { return isOk; }
-  
+
   // a function to undo last write
-  int undoLastWrite() {  
-    if ((!isOk)||(fp == NULL)) {
+  int undoLastWrite() {
+    if ((!isOk) || (fp == NULL)) {
       return -1; // file is not ok
     }
     if (!lastWriteBytes) {
@@ -118,31 +118,30 @@ public:
     }
     // try to truncate file
     try {
-      long offset=ftell(fp);
+      long offset = ftell(fp);
       if (lastWriteBytes > offset) {
-	throw __LINE__;
+        throw __LINE__;
       }
       offset -= lastWriteBytes;
       counterBytesTotal -= lastWriteBytes;
-      gReadoutStats.bytesRecorded -= lastWriteBytes;      
+      gReadoutStats.bytesRecorded -= lastWriteBytes;
       lastWriteBytes = 0;
-      if (ftruncate(fileno(fp), offset)!=0) {
-	throw __LINE__;
+      if (ftruncate(fileno(fp), offset) != 0) {
+        throw __LINE__;
       }
-      if (fseek(fp, 0, SEEK_END)!=0) {
-	throw __LINE__;
+      if (fseek(fp, 0, SEEK_END) != 0) {
+        throw __LINE__;
       }
-    }
-    catch (...) {
+    } catch (...) {
       close();
-      return -1;      
+      return -1;
     }
-    return 0;    
+    return 0;
   }
-  
+
   // a flag used to keep track of last packet drop decision at page boundaries
   bool previousPacketIsEmptyHBstart = false;
-  
+
 private:
   std::string path =
       ""; // path to the file (final, after variables substitution)
@@ -156,7 +155,7 @@ private:
   bool isFull = false;          // flag set when maximum file size reached
   bool isOk = false;            // flag set when file ready for writing
   size_t lastWriteBytes = 0;    // number of bytes last written with success
-  
+
 public:
   int fileId = 0; // a placeholder for an incremental counter to identify
                   // current file Id (when file splitting enabled)
@@ -258,16 +257,26 @@ public:
       }
     }
 
-    //  configuration parameter: | consumer-fileRecorder-* | dropEmptyHBFrames | int | 0 | If 1, memory pages are scanned and empty HBframes are discarded, i.e. couples of packets which contain only RDH, the first one with pagesCounter=0 and the second with stop bit set. This setting does not change the content of in-memory data pages, other consumers would still get full data pages with empty packets. This setting is meant to reduce the amount of data recorded for continuous detectors in triggered mode.|
-    cfg.getOptionalValue(cfgEntryPoint + ".dropEmptyHBFrames", dropEmptyHBFrames,
-                         0);
+    //  configuration parameter: | consumer-fileRecorder-* | dropEmptyHBFrames |
+    //  int | 0 | If 1, memory pages are scanned and empty HBframes are
+    //  discarded, i.e. couples of packets which contain only RDH, the first one
+    //  with pagesCounter=0 and the second with stop bit set. This setting does
+    //  not change the content of in-memory data pages, other consumers would
+    //  still get full data pages with empty packets. This setting is meant to
+    //  reduce the amount of data recorded for continuous detectors in triggered
+    //  mode.|
+    cfg.getOptionalValue(cfgEntryPoint + ".dropEmptyHBFrames",
+                         dropEmptyHBFrames, 0);
     if (dropEmptyHBFrames) {
       if (recordWithDataBlockHeader) {
-        theLog.log(InfoLogger::Severity::Error, "Incompatible options dropEmptyHBFrames and dataBlockHeaderEnabled");
-	throw __LINE__;
+        theLog.log(InfoLogger::Severity::Error,
+                   "Incompatible options dropEmptyHBFrames and "
+                   "dataBlockHeaderEnabled");
+        throw __LINE__;
       }
-      theLog.log("Some packets with RDH-only payload will not be recorded to file, "
-                 "option dropEmptyHBFrames is enabled");
+      theLog.log(
+          "Some packets with RDH-only payload will not be recorded to file, "
+          "option dropEmptyHBFrames is enabled");
     }
 
     // check status
@@ -490,25 +499,25 @@ public:
 
     // make sure we can store the full page in current file ?
 
+    bool countPage =
+        true; // the first write will increment the page counter for this file
 
-    bool countPage = true; // the first write will increment the page counter for this file
-    
     auto writeToFile = [&](void *ptr, size_t size, size_t remainingBlockSize) {
-      
       // two attempts, in case file needs to be incremented
       for (int i = 0; i < 2; i++) {
-        
-	// no good file handle, abort recording
-	if (fpUsed == nullptr) {
-	  theLog.logError("No valid file available: will stop recording now");
+
+        // no good file handle, abort recording
+        if (fpUsed == nullptr) {
+          theLog.logError("No valid file available: will stop recording now");
           throw __LINE__;
         }
-	
-	// try to write
-	FileHandle::Status status = fpUsed->write(ptr, size, countPage, remainingBlockSize);
-	
-	// check if need to move to next file
-	if (status == FileHandle::Status::FileLimitsReached) {
+
+        // try to write
+        FileHandle::Status status =
+            fpUsed->write(ptr, size, countPage, remainingBlockSize);
+
+        // check if need to move to next file
+        if (status == FileHandle::Status::FileLimitsReached) {
           if (filesMax != 1) {
             // let's move to next file chunk
             int fileId = fpUsed->fileId;
@@ -518,13 +527,13 @@ public:
             }
           }
         }
-	
-	if (status == FileHandle::Status::Success) {
-	  countPage = false;
-	  return;
-	}
+
+        if (status == FileHandle::Status::Success) {
+          countPage = false;
+          return;
+        }
       }
-      
+
       theLog.logError("File write error: will stop recording now");
       fpUsed->close();
       throw __LINE__;
@@ -548,130 +557,134 @@ public:
     };
 
     auto isEmptyHBstart = [&](RdhHandle &h) {
-      if ((h.getPagesCounter() == 0) && (h.getHeaderSize() == h.getMemorySize())) {
+      if ((h.getPagesCounter() == 0) &&
+          (h.getHeaderSize() == h.getMemorySize())) {
         return true;
       }
       return false;
     };
 
-    
     try {
       // check we have a valid file handle
       if (fpUsed == nullptr) {
         throw __LINE__;
       }
-      
+
       // was there a pending decision at end of previous page ?
       if (dropEmptyHBFrames) {
         if (fpUsed->previousPacketIsEmptyHBstart) {
-	  // yes... let's see first RDH in this page
-	  try {
+          // yes... let's see first RDH in this page
+          try {
             RdhHandle h(b->getData()->data);
             checkRdh(h);
-	    if (isEmptyHBstop(h)) {
-	      // this is an empty frame... drop previous packet written
-	      // need to do it here because we may write some header
-	      // before beginning of this new page
-	      fpUsed->undoLastWrite();
-	      emptyPacketsDropped++;
-	      packetsRecorded--;
-	    }
-	  }
-	  catch (...) {
-	    // no action taken, will be triggered again in payload write
-	  }
-	}
+            if (isEmptyHBstop(h)) {
+              // this is an empty frame... drop previous packet written
+              // need to do it here because we may write some header
+              // before beginning of this new page
+              fpUsed->undoLastWrite();
+              emptyPacketsDropped++;
+              packetsRecorded--;
+            }
+          } catch (...) {
+            // no action taken, will be triggered again in payload write
+          }
+        }
       }
-    
+
       // write datablock header, if wanted
-      if (recordWithDataBlockHeader) {        
+      if (recordWithDataBlockHeader) {
         // as-is, some fields like data pointer will not be meaningful in file
         // unless corrected. todo: correct them, e.g. replace data pointer by
         // file offset.
-	// In particular, incompatible with dropEmptyHBFrames as size changes.
-        writeToFile(&b->getData()->header, (size_t) b->getData()->header.headerSize, 
-	  (size_t) b->getData()->header.dataSize);
+        // In particular, incompatible with dropEmptyHBFrames as size changes.
+        writeToFile(&b->getData()->header,
+                    (size_t)b->getData()->header.headerSize,
+                    (size_t)b->getData()->header.dataSize);
         // datablock header does not count as a page,
-        // but we account for the payload size for the next write (possibly one full
-	// page)
+        // but we account for the payload size for the next write (possibly one
+        // full page)
       }
-    
+
       // write payload data
       if (!dropEmptyHBFrames) {
         // by default, we write the full payload data
-        writeToFile(b->getData()->data, (size_t) b->getData()->header.dataSize, 0);
+        writeToFile(b->getData()->data, (size_t)b->getData()->header.dataSize,
+                    0);
       } else {
-        // we have to check packet by packet and discard empty HBstart/HBstop pairs
-	size_t blockSize = b->getData()->header.dataSize;
-	uint8_t *baseAddress = (uint8_t *)(b->getData()->data);
-	for (size_t pageOffset = 0; pageOffset < blockSize;) {         
+        // we have to check packet by packet and discard empty HBstart/HBstop
+        // pairs
+        size_t blockSize = b->getData()->header.dataSize;
+        uint8_t *baseAddress = (uint8_t *)(b->getData()->data);
+        for (size_t pageOffset = 0; pageOffset < blockSize;) {
           // validate RDH
           RdhHandle h(baseAddress + pageOffset);
-	  try {
-	    checkRdh(h);
-	  }
-	  catch (...) {
+          try {
+            checkRdh(h);
+          } catch (...) {
             // stop for this page on first RDH error
             fpUsed->previousPacketIsEmptyHBstart = false;
-	    break;	  
-	  }
+            break;
+          }
 
           // check we still have a valid file handle
           if (fpUsed == nullptr) {
             throw __LINE__;
           }
 
-          // is this an empty HBstop following a empty HBstart from previous page ?
-	  if (fpUsed->previousPacketIsEmptyHBstart && isEmptyHBstop(h)) {
-	    // yes, let's skip it
+          // is this an empty HBstop following a empty HBstart from previous
+          // page ?
+          if (fpUsed->previousPacketIsEmptyHBstart && isEmptyHBstop(h)) {
+            // yes, let's skip it
             fpUsed->previousPacketIsEmptyHBstart = false;
-	    pageOffset += h.getOffsetNextPacket();
-	    emptyPacketsDropped++;
-	    continue;
-	  }
+            pageOffset += h.getOffsetNextPacket();
+            emptyPacketsDropped++;
+            continue;
+          }
           fpUsed->previousPacketIsEmptyHBstart = false;
 
-	  // is this an empty HBstart ?
-	  if (isEmptyHBstart(h)) {
-   	    // is it followed by an empty HBstop ?
+          // is this an empty HBstart ?
+          if (isEmptyHBstart(h)) {
+            // is it followed by an empty HBstop ?
             if (pageOffset + h.getOffsetNextPacket() < blockSize) {
-	      RdhHandle hnext(baseAddress + pageOffset + h.getOffsetNextPacket());
-	      try {
-	        checkRdh(hnext);
-	      }
-              catch (...) {
+              RdhHandle hnext(baseAddress + pageOffset +
+                              h.getOffsetNextPacket());
+              try {
+                checkRdh(hnext);
+              } catch (...) {
                 // stop for this page on first RDH error
-                break;	  
-	      }
-	      if (isEmptyHBstop(hnext)) {
-		// empty HBstart+HBstop pair: drop both packets
-		pageOffset += h.getOffsetNextPacket() + hnext.getOffsetNextPacket();
-		emptyPacketsDropped+=2;
-		continue;
-	      }
-	    } else {
-	      // we are at the end of the page, we don't have next packet yet
-	      // write it but keep a trace to check when we get next page
-	      fpUsed->previousPacketIsEmptyHBstart = true;
-	    }
-	  }
+                break;
+              }
+              if (isEmptyHBstop(hnext)) {
+                // empty HBstart+HBstop pair: drop both packets
+                pageOffset +=
+                    h.getOffsetNextPacket() + hnext.getOffsetNextPacket();
+                emptyPacketsDropped += 2;
+                continue;
+              }
+            } else {
+              // we are at the end of the page, we don't have next packet yet
+              // write it but keep a trace to check when we get next page
+              fpUsed->previousPacketIsEmptyHBstart = true;
+            }
+          }
 
-	  // write packet
-	  // use offsetNextPacket instead of memorySize for file to be consistent
-	  writeToFile(baseAddress + pageOffset, (size_t) h.getOffsetNextPacket(), 0);
-	  packetsRecorded++;
-	  pageOffset += h.getOffsetNextPacket();
-	  
-	  // infinite loop protection, just in case
-	  if (h.getOffsetNextPacket() == 0) {
+          // write packet
+          // use offsetNextPacket instead of memorySize for file to be
+          // consistent
+          writeToFile(baseAddress + pageOffset, (size_t)h.getOffsetNextPacket(),
+                      0);
+          packetsRecorded++;
+          pageOffset += h.getOffsetNextPacket();
+
+          // infinite loop protection, just in case
+          if (h.getOffsetNextPacket() == 0) {
             break;
           }
-	}
-      }    
-    }
-    catch (...) {  
+        }
+      }
+    } catch (...) {
       recordingEnabled = false;
-      return -1;    
+      return -1;
     }
 
     return 0;

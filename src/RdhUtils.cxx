@@ -18,8 +18,10 @@ bool RdhHeaderPrinted = false;
 void RdhHandle::dumpRdh(long offset, bool singleLine) {
   if (singleLine) {
     if (!RdhHeaderPrinted) {
-      printf ("Offset     Version   Header   Length   Length   Offset    FEE  Link           Trigger   Trigger  Pages Stop\n");
-      printf ("               RDH     size     link   memory     next     id    id         orbit:BC       type  count  bit\n");
+      printf("Offset     Version   Header   Length   Length   Offset    FEE  "
+             "Link           Trigger   Trigger  Pages Stop\n");
+      printf("               RDH     size     link   memory     next     id    "
+             "id         orbit:BC       type  count  bit\n");
       RdhHeaderPrinted = true;
     }
     if (offset == -1) {
@@ -27,20 +29,12 @@ void RdhHandle::dumpRdh(long offset, bool singleLine) {
     } else {
       printf("0x%08lX", offset);
     }
-    printf("      %02d       %02d %8d %8d     %d   %4d  %4d    0x%08X:%03X    0x%04X      %d    %d\n",
-      (int)getHeaderVersion(),
-      (int)getHeaderSize(),
-      (int)getBlockLength(),
-      (int)getMemorySize(),
-      (int)getOffsetNextPacket(),
-      (int)getFeeId(),
-      (int)getLinkId(),
-      getTriggerOrbit(),
-      getTriggerBC(),
-      (int)getTriggerType(),
-      (int)getPagesCounter(),
-      (int)getStopBit()
-    );
+    printf("      %02d       %02d %8d %8d     %d   %4d  %4d    0x%08X:%03X    "
+           "0x%04X      %d    %d\n",
+           (int)getHeaderVersion(), (int)getHeaderSize(), (int)getBlockLength(),
+           (int)getMemorySize(), (int)getOffsetNextPacket(), (int)getFeeId(),
+           (int)getLinkId(), getTriggerOrbit(), getTriggerBC(),
+           (int)getTriggerType(), (int)getPagesCounter(), (int)getStopBit());
 
   } else {
     if (offset == -1) {

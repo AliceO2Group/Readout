@@ -33,7 +33,8 @@ public:
   // print RDH content
   // offset is a value to be displayed as address. if -1, memory address is
   // used.
-  // singleLine: when set, RDH content printed in single line with top header printed once
+  // singleLine: when set, RDH content printed in single line with top header
+  // printed once
   void dumpRdh(long offset = -1, bool singleLine = false);
 
   // access RDH fields
