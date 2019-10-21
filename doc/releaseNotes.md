@@ -118,3 +118,8 @@ This file describes the main feature changes for each readout.exe released versi
 
 ## v1.0.10 - 14/10/2019
 - Improved collection of incomplete timeframes at end of run when disableAggregatorSlicing=0 and flushEquipmentTimeout>0.
+
+## v1.0.10.1 - 21/10/2019
+- Updated configuration parameters:
+	- consumer-fileRecorder.dropEmptyPackets : replaced by consumer-fileRecorder.dropEmptyHBFrames. Logic updated, only empty HBstart/HBstop packet pairs are dropped. Also works when happening at page boundary.
+- readRaw.exe utility updated: compact tabulated format when dumpRDH=1. Added option checkContinuousTriggerOrder.
