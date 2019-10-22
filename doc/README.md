@@ -187,6 +187,7 @@ The following utilities are also available:
        dataBlockEnabled=0|1: specify if file is with/without internal readout data block headers
        dumpRDH=0|1 : dump the RDH headers
        validateRDH=0|1 : check the RDH headers
+       checkContinuousTriggerOrder=0|1 : check trigger order     
        dumpDataBlockHeader=0|1 : dump the data block headers (internal readout headers)
        dumpData=(int) : dump the data pages. If -1, all bytes. Otherwise, the first bytes only, as specified.
   ```

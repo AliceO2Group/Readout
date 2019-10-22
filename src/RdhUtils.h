@@ -33,7 +33,9 @@ public:
   // print RDH content
   // offset is a value to be displayed as address. if -1, memory address is
   // used.
-  void dumpRdh(long offset = -1);
+  // singleLine: when set, RDH content printed in single line with top header
+  // printed once
+  void dumpRdh(long offset = -1, bool singleLine = false);
 
   // access RDH fields
   // functions defined inline here
@@ -49,6 +51,7 @@ public:
     return (uint16_t)rdhPtr->offsetNextPacket;
   }
   inline bool getStopBit() { return (bool)rdhPtr->stopBit; }
+  inline uint16_t getPagesCounter() { return (uint16_t)rdhPtr->pagesCounter; }
   inline uint32_t getTriggerOrbit() { return (uint32_t)rdhPtr->triggerOrbit; }
   inline uint32_t getTriggerBC() { return (uint32_t)rdhPtr->triggerBC; }
   inline uint32_t getTriggerType() { return (uint32_t)rdhPtr->triggerType; }

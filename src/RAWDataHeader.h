@@ -213,7 +213,7 @@ typedef struct _RAWDataHeaderV3 {
     uint32_t word14 = 0x0;
     struct {
       uint32_t stopBit : 8;       /// bit 0 to 7: stop bit
-      uint32_t pagesCoutner : 16; /// bit 8 to 23: pages counter
+      uint32_t pagesCounter : 16; /// bit 8 to 23: pages counter
       uint32_t zero14 : 8;        /// bit 24 to 31: reserved
     };
   };
@@ -349,7 +349,7 @@ typedef struct _RAWDataHeaderV4 {
     uint32_t word14 = 0x0;
     struct {
       uint32_t stopBit : 8;       /// bit 0 to 7: stop bit
-      uint32_t pagesCoutner : 16; /// bit 8 to 23: pages counter
+      uint32_t pagesCounter : 16; /// bit 8 to 23: pages counter
       uint32_t zero14 : 8;        /// bit 24 to 31: reserved
     };
   };
