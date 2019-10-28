@@ -272,7 +272,7 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
 #endif
     }
   } catch (std::string err) {
-    theLog.log("Error : %s", err.c_str());
+    theLog.log(InfoLogger::Severity::Error,"%s", err.c_str());
     return -1;
   }
   
