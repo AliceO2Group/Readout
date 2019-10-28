@@ -436,7 +436,7 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
   if ((channel->getReadyQueueSize() > 0)) {
     auto superpage = channel->getSuperpage(); // this is the first superpage in
                                               // FIFO ... let's check its state
-    if (superpage.isFilled()) {
+    if (superpage.isReady()) {
       std::shared_ptr<DataBlockContainer> d = nullptr;
       //      printf ("received a page with %d bytes - isFilled=%d
       //      isREady=%d\n",(int)superpage.getReceived(),(int)superpage.isFilled(),(int)superpage.isReady());
