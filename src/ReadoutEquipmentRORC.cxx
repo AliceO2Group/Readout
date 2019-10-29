@@ -131,11 +131,10 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name)
 
     // configuration parameter: | equipment-rorc-* | dataSource | string |
     //  Internal | This parameter selects the data source used by ReadoutCard,
-    // c.f. AliceO2::roc::Parameters. It can be for CRU one of Fee, Ddg, 
+    // c.f. AliceO2::roc::Parameters. It can be for CRU one of Fee, Ddg,
     // Internal and for CRORC one of Fee, SIU, DIU, Internal. |
     std::string cfgDataSource = "Internal";
-    cfg.getOptionalValue<std::string>(name + ".dataSource",
-                                      cfgDataSource);
+    cfg.getOptionalValue<std::string>(name + ".dataSource", cfgDataSource);
 
     // configuration parameter: | equipment-rorc-* | linkMask | string | 0-31 |
     // List of links to be enabled. For CRU, in the 0-31 range. Can be a single
@@ -229,8 +228,7 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name)
     // setDmaPageSize() : seems deprecated, let's not configure it
 
     // card data source
-    params.setDataSource(
-        AliceO2::roc::DataSource::fromString(cfgDataSource));
+    params.setDataSource(AliceO2::roc::DataSource::fromString(cfgDataSource));
 
     // card readout mode : experimental, not needed
     // params.setReadoutMode(AliceO2::roc::ReadoutMode::fromString(cfgReadoutMode));
@@ -436,10 +434,10 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
   if ((channel->getReadyQueueSize() > 0)) {
     auto superpage = channel->getSuperpage(); // this is the first superpage in
                                               // FIFO ... let's check its state
-    if (superpage.isFilled()) {
+    if (superpage.isReady()) {
       std::shared_ptr<DataBlockContainer> d = nullptr;
-      //      printf ("received a page with %d bytes - isFilled=%d
-      //      isREady=%d\n",(int)superpage.getReceived(),(int)superpage.isFilled(),(int)superpage.isReady());
+      // printf ("received a page with %d bytes - isFilled=%d isREady=%d\n",
+      // (int)superpage.getReceived(),(int)superpage.isFilled(),(int)superpage.isReady());
       try {
         if (pageSpaceReserved >= sizeof(DataBlock)) {
           d = mp->getNewDataBlockContainer((void *)(superpage.getUserData()));

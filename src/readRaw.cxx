@@ -34,6 +34,7 @@ int main(int argc, const char *argv[]) {
   bool dumpDataBlockHeader = false;
   int dumpData = 0; // if set, number of bytes to dump in each data page
   bool dataBlockHeaderEnabled = false;
+  bool checkContinuousTriggerOrder = false;
 
   // parse input arguments
   // format is a list of key=value pairs
@@ -44,6 +45,7 @@ int main(int argc, const char *argv[]) {
     dataBlockEnabled=0|1: specify if file is with/without internal readout data block headers\n \
     dumpRDH=0|1 : dump the RDH headers\n \
     validateRDH=0|1 : check the RDH headers\n \
+    checkContinuousTriggerOrder=0|1 : check trigger order\n \
     dumpDataBlockHeader=0|1 : dump the data block headers (internal readout headers)\n \
     dumpData=(int) : dump the data pages. If -1, all bytes. Otherwise, the first bytes only, as specified.\n",
            argv[0]);
@@ -88,6 +90,8 @@ int main(int argc, const char *argv[]) {
       dumpDataBlockHeader = std::stoi(value);
     } else if (key == "dumpData") {
       dumpData = std::stoi(value);
+    } else if (key == "checkContinuousTriggerOrder") {
+      checkContinuousTriggerOrder = std::stoi(value);
     } else {
       ERRLOG("unknown option %s\n", key.c_str());
     }
@@ -100,9 +104,10 @@ int main(int argc, const char *argv[]) {
 
   ERRLOG("Using data file %s\n", filePath.c_str());
   ERRLOG("dataBlockHeaderEnabled=%d dumpRDH=%d validateRDH=%d "
+         "checkContinuousTriggerOrder=%d "
          "dumpDataBlockHeader=%d dumpData=%d\n",
          (int)dataBlockHeaderEnabled, (int)dumpRDH, (int)validateRDH,
-         (int)dumpDataBlockHeader, dumpData);
+         (int)checkContinuousTriggerOrder, (int)dumpDataBlockHeader, dumpData);
 
   // open raw data file
   FILE *fp = fopen(filePath.c_str(), "rb");
@@ -293,16 +298,14 @@ int main(int argc, const char *argv[]) {
         RdhHandle h(((uint8_t *)data) + pageOffset);
 
         if (dumpRDH) {
-          printf("***\n");
-          h.dumpRdh(pageOffset);
+          h.dumpRdh(pageOffset, 1);
         }
 
         int nErr = h.validateRdh(errorDescription);
         if (nErr) {
           if (!dumpRDH) {
             // dump RDH if not done already
-            printf("***\n");
-            h.dumpRdh(pageOffset);
+            h.dumpRdh(pageOffset, 1);
           }
           ERRLOG("File offset 0x%08lX + %ld\n%s", blockOffset, pageOffset,
                  errorDescription.c_str());
@@ -311,30 +314,33 @@ int main(int argc, const char *argv[]) {
                  // if we can jump to the next ... or should we used fixed 8kB ?
         }
 
-        bool isTriggerOrderOk = true;
-        if (isFirstTrigger) {
-          isFirstTrigger = false;
-        } else {
-          if (h.getTriggerOrbit() < latestTriggerOrbit) {
-            isTriggerOrderOk = 0;
-          } else if (h.getTriggerOrbit() == latestTriggerOrbit) {
-            if (h.getTriggerBC() < latestTriggerBC) {
+        if (checkContinuousTriggerOrder) {
+          bool isTriggerOrderOk = true;
+          if (isFirstTrigger) {
+            isFirstTrigger = false;
+          } else {
+            if (h.getTriggerOrbit() < latestTriggerOrbit) {
+              isTriggerOrderOk = 0;
+            } else if (h.getTriggerOrbit() == latestTriggerOrbit) {
+              if (h.getTriggerBC() < latestTriggerBC) {
+                isTriggerOrderOk = 0;
+              }
+            } else if (checkOrbitContiguous &&
+                       (h.getTriggerOrbit() != latestTriggerOrbit + 1)) {
               isTriggerOrderOk = 0;
             }
-          } else if (checkOrbitContiguous &&
-                     (h.getTriggerOrbit() != latestTriggerOrbit + 1)) {
-            isTriggerOrderOk = 0;
           }
+          if (!isTriggerOrderOk) {
+            ERRLOG(
+                "Trigger order mismatch@ file offset 0x%08lX + %ld : new %08X "
+                ": %03X > previous: %08X : %03X \n",
+                blockOffset, pageOffset, h.getTriggerOrbit(), h.getTriggerBC(),
+                latestTriggerOrbit, latestTriggerBC);
+          }
+          latestTriggerBC = h.getTriggerBC();
+          latestTriggerOrbit = h.getTriggerOrbit();
+          // printf("%08X : %03X\n", h.getTriggerOrbit(), h.getTriggerBC());
         }
-        if (!isTriggerOrderOk) {
-          ERRLOG("Trigger order mismatch@ file offset 0x%08lX + %ld : new %08X "
-                 ": %03X > previous: %08X : %03X \n",
-                 blockOffset, pageOffset, h.getTriggerOrbit(), h.getTriggerBC(),
-                 latestTriggerOrbit, latestTriggerBC);
-        }
-        latestTriggerBC = h.getTriggerBC();
-        latestTriggerOrbit = h.getTriggerOrbit();
-        // printf("%08X : %03X\n", h.getTriggerOrbit(), h.getTriggerBC());
 
         // go to next RDH
         uint16_t offsetNextPacket = h.getOffsetNextPacket();
