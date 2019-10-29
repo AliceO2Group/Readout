@@ -128,3 +128,9 @@ This file describes the main feature changes for each readout.exe released versi
 - Updated configuration parameters:
 	- Following changes in the ReadoutCard library, equipment-rorc-*.generator* parameters have been removed. They have been replaced by a single equipment-rorc-*.dataSource parameter to select the data source of the readoutCard devices (both CRU and CRORC).
 
+## v1.1.0 - 29/10/2019
+- Merging v1.0.10.1 in master.
+- Update for the CRU firmware v3.4.0 (non-filled superpages).
+- RDH content displayed in a compact view.
+- readRaw.exe utility updated. checkContinuousTriggerOrder option.
+- Cosmetic fixes.

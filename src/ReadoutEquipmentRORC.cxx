@@ -378,6 +378,7 @@ Thread::CallbackResult ReadoutEquipmentRORC::prepareBlocks() {
       superpage.setOffset((char *)newPage - (char *)mp->getBaseBlockAddress() +
                           pageSpaceReserved);
       superpage.setSize(superPageSize);
+      //printf("pushed page %d\n",(int)superPageSize);
       superpage.setUserData(newPage);
       channel->pushSuperpage(superpage);
       isActive = 1;
@@ -436,8 +437,8 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
                                               // FIFO ... let's check its state
     if (superpage.isReady()) {
       std::shared_ptr<DataBlockContainer> d = nullptr;
-      // printf ("received a page with %d bytes - isFilled=%d isREady=%d\n",
-      // (int)superpage.getReceived(),(int)superpage.isFilled(),(int)superpage.isReady());
+       //printf ("received a page with %d bytes - isFilled=%d isREady=%d\n",
+       //(int)superpage.getReceived(),(int)superpage.isFilled(),(int)superpage.isReady());
       try {
         if (pageSpaceReserved >= sizeof(DataBlock)) {
           d = mp->getNewDataBlockContainer((void *)(superpage.getUserData()));
