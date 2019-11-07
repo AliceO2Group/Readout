@@ -134,3 +134,6 @@ This file describes the main feature changes for each readout.exe released versi
 - RDH content displayed in a compact view.
 - readRaw.exe utility updated. checkContinuousTriggerOrder option.
 - Cosmetic fixes.
+
+## next
+- readoutAutoConfigure: improved error reporting when no device found.
