@@ -25,7 +25,7 @@ while {[set opt [lindex $argv $x]] != ""} {
 
 
 # get list of CRUs
-
+set ldev {}
 if {[catch {set rocOutput [exec roc-list-cards]} err]} {
   puts "roc-list-cards failed: $err"
   exit 1
@@ -50,7 +50,10 @@ if {[catch {
 } err]} {
   puts "Failed to parse roc-list-cards output: $err"
 }
-
+if {[llength $ldev]==0} {
+  puts "No ROC device found, exiting"
+  exit 1
+}
 
 # get memory configuration
 
@@ -155,6 +158,7 @@ foreach {type pci endpoint numa serial} $ldev {
      incr nCruNuma($numa)
   }
 }
+puts "$nCRU CRUs"
 
 set maxPerNuma 0
 for {set i 0} {$i<$numaNodes} {incr i} {
