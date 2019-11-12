@@ -100,13 +100,13 @@ ReadoutEquipmentCruEmulator::ReadoutEquipmentCruEmulator(
   // numberOfLinks>1, ids will range from linkId to linkId+numberOfLinks-1. |
   // configuration parameter: | equipment-cruemulator-* | TFperiod | int | 256 |
   // Duration of a timeframe, in number of LHC orbits. | configuration
-  // parameter: | equipment-cruemulator-* | HBperiod | int | 1 | Interval
-  // between 2 HeartBeat triggers, in number of LHC orbits. |
-  // parameter: | equipment-cruemulator-* | EmptyHbRatio | double | 0 | Fraction
-  // of empty HBframes, to simulate triggered detectors. |
-  // parameter: | equipment-cruemulator-* | PayloadSize | int | 64k | Maximum
-  // payload size for each trigger. Actual size is randomized, and then split in
-  // a number of (cruBlockSize) packets. |
+  // configuration parameter: | equipment-cruemulator-* | HBperiod | int | 1 |
+  // Interval between 2 HeartBeat triggers, in number of LHC orbits. |
+  // configuration parameter: | equipment-cruemulator-* | EmptyHbRatio | double
+  // | 0 | Fraction of empty HBframes, to simulate triggered detectors. |
+  // configuration parameter: | equipment-cruemulator-* | PayloadSize | int |
+  // 64k | Maximum payload size for each trigger. Actual size is randomized, and
+  // then split in a number of (cruBlockSize) packets. |
 
   cfg.getOptionalValue<int>(cfgEntryPoint + ".maxBlocksPerPage",
                             cfgMaxBlocksPerPage, (int)0);
