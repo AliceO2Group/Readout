@@ -150,7 +150,7 @@ int main(int argc, const char *argv[]) {
   uint32_t latestTriggerBC = 0;
 
   const int maxBlockSize =
-      1280 * 1024L *
+      128 * 1024L *
       1024L; // maximum memory allocated for page reading (or decompressing)
   bool checkOrbitContiguous =
       true; // if set, verify that they are no holes in orbit number
