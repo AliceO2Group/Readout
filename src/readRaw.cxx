@@ -193,7 +193,7 @@ int main(int argc, const char *argv[]) {
       }
       dataSize = hb.dataSize;
     } else {
-      dataSize = fileSize;
+      dataSize = fileSize - fileOffset;
 
       if (dataSize > maxBlockSize) {
         dataSize = maxBlockSize;
