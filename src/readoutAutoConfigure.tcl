@@ -24,7 +24,7 @@ while {[set opt [lindex $argv $x]] != ""} {
 }
 
 
-# get list of CRUs
+# get list of ROCs
 set ldev {}
 if {[catch {set rocOutput [exec roc-list-cards]} err]} {
   puts "roc-list-cards failed: $err"
@@ -143,30 +143,30 @@ if {$nHuge1G==0} {
 }
 
 puts "Devices found:"
-set nCRU 0
+set nROC 0
 for {set i 0} {$i<$numaNodes} {incr i} {
-    set nCruNuma($i) 0
+    set nRocNuma($i) 0
 }
 foreach {type pci endpoint numa serial} $ldev {
-  if {"$type"=="CRU"} {
-     puts "  CRU @ $pci endpoint $endpoint numa $numa serial $serial"
-     incr nCRU
+  if {("$type"=="CRU")||("$type"=="CRORC")} {
+     puts "  $type @ $pci endpoint $endpoint numa $numa serial $serial"
+     incr nROC
      if {"$numa">=$numaNodes} {
        puts "Inconsistent NUMA id!"
        incr err
      }
-     incr nCruNuma($numa)
+     incr nRocNuma($numa)
   }
 }
-puts "$nCRU CRUs"
+puts "$nROC ROCs"
 
 set maxPerNuma 0
 for {set i 0} {$i<$numaNodes} {incr i} {
-  if ($nCruNuma($i)>$maxPerNuma) {
-    set maxPerNuma $nCruNuma($i)
+  if ($nRocNuma($i)>$maxPerNuma) {
+    set maxPerNuma $nRocNuma($i)
   }
 }
-puts "Maximum $maxPerNuma CRU(s) per NUMA node"
+puts "Maximum $maxPerNuma ROC(s) per NUMA node"
 if ($maxPerNuma==0) {
   puts "Should not be zero"
   incr err  
@@ -177,16 +177,22 @@ if {$err>0} {
   exit 1  
 }
 puts "Available [expr ($nHuge1G/$numaNodes)] page(s) per NUMA node"
-set pagesPerCru [expr ($nHuge1G/$numaNodes) / $maxPerNuma]
-puts "Using $pagesPerCru x 1G page per CRU"
+set pagesPerRoc [expr ($nHuge1G/$numaNodes) / $maxPerNuma]
+
+if {($pagesPerRoc<1)} {
+  puts "Not enough 1G HugePages allocated, need at least 1 per ROC"
+  exit 1  
+}
+
+puts "Using $pagesPerRoc x 1G page per ROC"
 set readoutPageSize [expr 1024*1024]
-set readoutNPages [expr int($pagesPerCru * (1024.0*1024.0*1024.0) / $readoutPageSize)]
+set readoutNPages [expr int($pagesPerRoc * (1024.0*1024.0*1024.0) / $readoutPageSize)]
 if {0} {
   # enforce a minimum number of pages
   # this could be needed if aggregator slicing with many links / many pages per STF
   if {$readoutNPages<1} {
     set readoutNPages 2048
-    set readoutPageSize [expr int($pagesPerCru * (1024.0*1024.0*1024.0) / $readoutNPages)]
+    set readoutPageSize [expr int($pagesPerRoc * (1024.0*1024.0*1024.0) / $readoutNPages)]
     set readoutPageSize [expr $readoutPageSize - ($readoutPageSize % (8*1024))]
   }
 }
@@ -215,7 +221,7 @@ consoleUpdate=1
 # membanks - one per numa node
 if {0} {
   for {set i 0} {$i<$numaNodes} {incr i} {
-    set sz [expr $nCruNuma($i) * $pagesPerCru]
+    set sz [expr $nRocNuma($i) * $pagesPerRoc]
     if {$sz==0} {continue}
     lappend config "
 \[bank-${i}\]
@@ -226,27 +232,27 @@ numaNode=${i}
   }
 }
 
-# CRUs
-set cruN 0
+# ROCs
+set rocN 0
 foreach {type pci endpoint numa serial} $ldev {
-  if {"$type"=="CRU"} {
-    incr cruN
+  if {("$type"=="CRU")||("$type"=="CRORC")} {
+    incr rocN
 
 if {1} {
   # one bank per equipment
   lappend config "
-\[bank-${cruN}\]
+\[bank-${rocN}\]
 type=MemoryMappedFile
-size=${pagesPerCru}G
+size=${pagesPerRoc}G
 numaNode=${numa}
 "
 }
     lappend config "
-\[equipment-cru-${cruN}\]
+\[equipment-roc-${rocN}\]
 equipmentType=rorc
 cardId=${pci}
 dataSource=Internal
-memoryBankName=bank-${cruN}
+memoryBankName=bank-${rocN}
 memoryPoolNumberOfPages=${readoutNPages}
 memoryPoolPageSize=${readoutPageSize}
 "
