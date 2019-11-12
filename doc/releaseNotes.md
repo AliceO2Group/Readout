@@ -134,3 +134,13 @@ This file describes the main feature changes for each readout.exe released versi
 - RDH content displayed in a compact view.
 - readRaw.exe utility updated. checkContinuousTriggerOrder option.
 - Cosmetic fixes.
+
+## v1.1.1 - 12/11/2019
+- readoutAutoConfigure:
+  - improved error reporting when no device found.
+  - added support for CRORC.
+- consumer-fileRecorder.dropEmptyHBFrames: new algorithm for multi-link readout.
+- readRaw.exe: fix for large files reading.
+- equipment-cruemulator: new algorithm for packet generator, allowing to simulate detectors in triggered mode (empty HB frames).
+- Updated configuration parameters:
+  - added equipment-cruemulator-*.EmptyHbRatio and equipment-cruemulator-*.PayloadSize to fake triggered mode.

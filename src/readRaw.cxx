@@ -35,6 +35,7 @@ int main(int argc, const char *argv[]) {
   int dumpData = 0; // if set, number of bytes to dump in each data page
   bool dataBlockHeaderEnabled = false;
   bool checkContinuousTriggerOrder = false;
+  bool isAutoPageSize = false; // flag set when no known page size in file
 
   // parse input arguments
   // format is a list of key=value pairs
@@ -193,7 +194,7 @@ int main(int argc, const char *argv[]) {
       }
       dataSize = hb.dataSize;
     } else {
-      dataSize = fileSize;
+      dataSize = fileSize - fileOffset;
 
       if (dataSize > maxBlockSize) {
         dataSize = maxBlockSize;
@@ -222,11 +223,15 @@ int main(int argc, const char *argv[]) {
         blockSize = *((uint32_t *)&buffer[sizeof(header)]);
         // use given LZ4 frame size
         dataSize = blockSize;
+      } else {
+        isAutoPageSize = true;
       }
     }
 
     // printf("Reading page %lu @ 0x%08lX
     // (%.1fGB)\n",pageCount+1,fileOffset,fileOffset/(1024.0*1024.0*1024.0));
+    printf("Reading chunk %lu : %lu bytes @ 0x%08lX - 0x%08lX\n", pageCount + 1,
+           dataSize, fileOffset, fileOffset + dataSize - 1);
 
     if (dataSize == 0) {
       ERR_LOOP;
@@ -294,6 +299,25 @@ int main(int argc, const char *argv[]) {
     if ((validateRDH) || (dumpRDH)) {
       std::string errorDescription;
       for (size_t pageOffset = 0; pageOffset < dataSize;) {
+
+        // check we are not at page boundary
+        if (pageOffset + sizeof(o2::Header::RAWDataHeader) > dataSize) {
+          if (isAutoPageSize) {
+            // the (virtual) page boundary is in the middle of packet... try to
+            // realign
+            int delta = dataSize - pageOffset;
+            fileOffset -= delta;
+            dataSize -= delta;
+            if (fseek(fp, fileOffset, SEEK_SET)) {
+              ERRLOG("Failed to seek in file");
+              return -1;
+            }
+            printf("Realign chunk boundary (header misaligned)\n");
+            break;
+          }
+          ERRLOG("RDH/page header misaligned\n");
+        }
+
         RDHBlockCount++;
         RdhHandle h(((uint8_t *)data) + pageOffset);
 
@@ -347,6 +371,24 @@ int main(int argc, const char *argv[]) {
         if (offsetNextPacket == 0) {
           break;
         }
+
+        if (pageOffset + offsetNextPacket > dataSize) {
+          if (isAutoPageSize) {
+            // the (virtual) page boundary is in the middle of packet... try to
+            // realign
+            int delta = pageOffset + offsetNextPacket - dataSize;
+            fileOffset += delta;
+            dataSize += delta;
+            if (fseek(fp, fileOffset, SEEK_SET)) {
+              ERRLOG("Failed to seek in file");
+              return -1;
+            }
+            printf("Realign chunk boundary (payload misaligned)\n");
+            break;
+          }
+          ERRLOG("RDH/page payload misaligned\n");
+        }
+
         pageOffset += offsetNextPacket;
       }
     }

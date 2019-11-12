@@ -18,6 +18,7 @@ extern InfoLogger theLog;
 #include "RAWDataHeader.h"
 #include <Common/Fifo.h>
 #include <Common/Timer.h>
+#include <stdlib.h>
 
 class ReadoutEquipmentCruEmulator : public ReadoutEquipment {
 
@@ -59,6 +60,17 @@ private:
   int cfgMaxBlocksPerPage; // max number of CRU blocks per page (0 => fill the
                            // page)
 
+  double cfgEmptyHbRatio = 0.0;   // amount of empty HB frames
+  int cfgPayloadSize = 64 * 1024; // maximum payload size, randomized
+
+  class linkState {
+  public:
+    int HBpagecount = 0;
+    int isEmpty = 0;
+    int payloadBytesLeft = -1;
+  };
+  std::map<int, linkState> perLinkState;
+
   uint32_t LHCorbit = 0; // current LHC orbit
   uint32_t LHCbc = 0;    // current LHC bunch crossing
 
@@ -88,8 +100,14 @@ ReadoutEquipmentCruEmulator::ReadoutEquipmentCruEmulator(
   // numberOfLinks>1, ids will range from linkId to linkId+numberOfLinks-1. |
   // configuration parameter: | equipment-cruemulator-* | TFperiod | int | 256 |
   // Duration of a timeframe, in number of LHC orbits. | configuration
-  // parameter: | equipment-cruemulator-* | HBperiod | int | 1 | Interval
-  // between 2 HeartBeat triggers, in number of LHC orbits. |
+  // configuration parameter: | equipment-cruemulator-* | HBperiod | int | 1 |
+  // Interval between 2 HeartBeat triggers, in number of LHC orbits. |
+  // configuration parameter: | equipment-cruemulator-* | EmptyHbRatio | double
+  // | 0 | Fraction of empty HBframes, to simulate triggered detectors. |
+  // configuration parameter: | equipment-cruemulator-* | PayloadSize | int |
+  // 64k | Maximum payload size for each trigger. Actual size is randomized, and
+  // then split in a number of (cruBlockSize) packets. |
+
   cfg.getOptionalValue<int>(cfgEntryPoint + ".maxBlocksPerPage",
                             cfgMaxBlocksPerPage, (int)0);
   cfg.getOptionalValue<int>(cfgEntryPoint + ".cruBlockSize", cruBlockSize,
@@ -100,12 +118,17 @@ ReadoutEquipmentCruEmulator::ReadoutEquipmentCruEmulator(
   cfg.getOptionalValue<int>(cfgEntryPoint + ".linkId", cfgLinkId, (int)0);
   cfg.getOptionalValue<int>(cfgEntryPoint + ".TFperiod", cfgTFperiod);
   cfg.getOptionalValue<int>(cfgEntryPoint + ".HBperiod", cfgHBperiod);
+  cfg.getOptionalValue<double>(cfgEntryPoint + ".EmptyHbRatio",
+                               cfgEmptyHbRatio);
+  cfg.getOptionalValue<int>(cfgEntryPoint + ".PayloadSize", cfgPayloadSize);
 
   // log config summary
   theLog.log("Equipment %s: maxBlocksPerPage=%d cruBlockSize=%d "
-             "numberOfLinks=%d feeId=%d linkId=%d TFperiod=%d HBperiod=%d",
+             "numberOfLinks=%d feeId=%d linkId=%d TFperiod=%d HBperiod=%d "
+             "EmptyHbRatio=%f PayloadSize=%d",
              name.c_str(), cfgMaxBlocksPerPage, cruBlockSize, cfgNumberOfLinks,
-             cfgFeeId, cfgLinkId, cfgTFperiod, cfgHBperiod);
+             cfgFeeId, cfgLinkId, cfgTFperiod, cfgHBperiod, cfgEmptyHbRatio,
+             cfgPayloadSize);
 
   // init variables
   currentTimeframeId = 1; // TFid starts on 1
@@ -201,28 +224,51 @@ Thread::CallbackResult ReadoutEquipmentCruEmulator::prepareBlocks() {
         b->header.dataSize; // a bit less than memoryPoolPageSize;
     // printf("bytes available: %d bytes\n",bytesAvailableInPage);
 
+    linkState &ls = perLinkState[linkId];
+    // printf("link %d: %d\n",linkId,ls.payloadBytesLeft);
+
     for (offset = 0; offset + cruBlockSize <= bytesAvailableInPage;
          offset += cruBlockSize) {
 
-      unsigned int nextBc = nowBc + bcStep;
-      unsigned int nextOrbit = nowOrbit;
-      if (nextBc >= LHCBunches) {
-        nextOrbit += nextBc / LHCBunches;
-        nextBc = nextBc % LHCBunches;
-        unsigned int nextId = 1 + nextOrbit / cfgTFperiod; // timeframe ID
-        if (nextId != nowId) {
-          if (offset) {
-            // force page change on timeframe boundary
-            // printf("TF boundary : %d != %d\n",nextId,nowId);
-            break;
-          } else {
-            // ok to change TFid when it's the first clock step
-            nowId = nextId;
+      if ((ls.payloadBytesLeft < 0)) {
+        // this is a new HB frame
+
+        unsigned int nextBc = nowBc + bcStep;
+        unsigned int nextOrbit = nowOrbit;
+        if (nextBc >= LHCBunches) {
+          nextOrbit += nextBc / LHCBunches;
+          nextBc = nextBc % LHCBunches;
+          unsigned int nextId = 1 + nextOrbit / cfgTFperiod; // timeframe ID
+          if (nextId != nowId) {
+            if (offset) {
+              // force page change on timeframe boundary
+              // printf("TF boundary : %d != %d\n",nextId,nowId);
+              break;
+            } else {
+              // ok to change TFid when it's the first clock step
+              nowId = nextId;
+            }
           }
         }
+        nowBc = nextBc;
+        nowOrbit = nextOrbit;
+
+        ls.HBpagecount = 0;
+
+        // create empty HB?
+        if (rand() < cfgEmptyHbRatio * RAND_MAX) {
+          ls.isEmpty = 1;
+          ls.payloadBytesLeft = 0;
+        } else {
+          // HB with random payload size
+          ls.isEmpty = 0;
+          ls.payloadBytesLeft = cfgPayloadSize * (rand() * 1.0 / RAND_MAX);
+        }
+
+      } else {
+        // continue with current HB
+        ls.HBpagecount++;
       }
-      nowBc = nextBc;
-      nowOrbit = nextOrbit;
 
       int nowHb = nowOrbit / cfgHBperiod;
       // printf("orbit=%d bc=%d HB=%d\n",nowOrbit,nowBc,nowHb);
@@ -243,6 +289,27 @@ Thread::CallbackResult ReadoutEquipmentCruEmulator::prepareBlocks() {
       rdh->feeId = cfgFeeId;
       rdh->linkId = linkId;
       rdh->offsetNextPacket = cruBlockSize;
+
+      rdh->pagesCounter = ls.HBpagecount;
+      if (ls.payloadBytesLeft > 0) {
+        int bytesNow = ls.payloadBytesLeft;
+        if (bytesNow + sizeof(o2::Header::RAWDataHeader) > cruBlockSize) {
+          bytesNow = cruBlockSize - sizeof(o2::Header::RAWDataHeader);
+        }
+        ls.payloadBytesLeft -= bytesNow;
+        rdh->memorySize = sizeof(o2::Header::RAWDataHeader) + bytesNow;
+        if (ls.payloadBytesLeft <= 0) {
+          ls.payloadBytesLeft = 0;
+          rdh->stopBit = 1;
+          ls.payloadBytesLeft = -1;
+        }
+      } else {
+        rdh->memorySize = sizeof(o2::Header::RAWDataHeader);
+        if (!((ls.isEmpty) && (ls.HBpagecount == 0))) {
+          rdh->stopBit = 1;
+          ls.payloadBytesLeft = -1;
+        }
+      }
 
       // printf("block %p offset %d / %d, link %d @ %p
       // data=%p\n",b,offset,memPoolElementSize,linkId,rdh,b->data);
