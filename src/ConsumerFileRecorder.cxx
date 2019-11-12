@@ -108,40 +108,6 @@ public:
 
   bool isFileOk() { return isOk; }
 
-  // a function to undo last write
-  int undoLastWrite() {
-    if ((!isOk) || (fp == NULL)) {
-      return -1; // file is not ok
-    }
-    if (!lastWriteBytes) {
-      return 0; // no bytes to remove
-    }
-    // try to truncate file
-    try {
-      long offset = ftell(fp);
-      if (lastWriteBytes > offset) {
-        throw __LINE__;
-      }
-      offset -= lastWriteBytes;
-      counterBytesTotal -= lastWriteBytes;
-      gReadoutStats.bytesRecorded -= lastWriteBytes;
-      lastWriteBytes = 0;
-      if (ftruncate(fileno(fp), offset) != 0) {
-        throw __LINE__;
-      }
-      if (fseek(fp, 0, SEEK_END) != 0) {
-        throw __LINE__;
-      }
-    } catch (...) {
-      close();
-      return -1;
-    }
-    return 0;
-  }
-
-  // a flag used to keep track of last packet drop decision at page boundaries
-  bool previousPacketIsEmptyHBstart = false;
-
 private:
   std::string path =
       ""; // path to the file (final, after variables substitution)
@@ -570,26 +536,9 @@ public:
         throw __LINE__;
       }
 
-      // was there a pending decision at end of previous page ?
-      if (dropEmptyHBFrames) {
-        if (fpUsed->previousPacketIsEmptyHBstart) {
-          // yes... let's see first RDH in this page
-          try {
-            RdhHandle h(b->getData()->data);
-            checkRdh(h);
-            if (isEmptyHBstop(h)) {
-              // this is an empty frame... drop previous packet written
-              // need to do it here because we may write some header
-              // before beginning of this new page
-              fpUsed->undoLastWrite();
-              emptyPacketsDropped++;
-              packetsRecorded--;
-            }
-          } catch (...) {
-            // no action taken, will be triggered again in payload write
-          }
-        }
-      }
+      // get handle to stored state for this link
+      int linkId = b->getData()->header.linkId;
+      Packet &previousPacket = perLinkPreviousPacket[linkId];
 
       // write datablock header, if wanted
       if (recordWithDataBlockHeader) {
@@ -622,7 +571,9 @@ public:
             checkRdh(h);
           } catch (...) {
             // stop for this page on first RDH error
-            fpUsed->previousPacketIsEmptyHBstart = false;
+            // cleanup stored previous packet
+            previousPacket.clear();
+            // write previous
             break;
           }
 
@@ -631,49 +582,51 @@ public:
             throw __LINE__;
           }
 
-          // is this an empty HBstop following a empty HBstart from previous
-          // page ?
-          if (fpUsed->previousPacketIsEmptyHBstart && isEmptyHBstop(h)) {
+          // is this an empty HBstop following an empty HBstart ?
+          if (previousPacket.isEmptyHBStart && isEmptyHBstop(h)) {
             // yes, let's skip it
-            fpUsed->previousPacketIsEmptyHBstart = false;
+            previousPacket.clear();
             pageOffset += h.getOffsetNextPacket();
-            emptyPacketsDropped++;
+            emptyPacketsDropped += 2;
             continue;
           }
-          fpUsed->previousPacketIsEmptyHBstart = false;
+
+          // write previous packet
+          if (previousPacket.address != nullptr) {
+            writeToFile(previousPacket.address, previousPacket.size, 0);
+            packetsRecorded++;
+            previousPacket.clear();
+          }
 
           // is this an empty HBstart ?
           if (isEmptyHBstart(h)) {
-            // is it followed by an empty HBstop ?
+            // keep it aside for later
+            previousPacket.size = h.getOffsetNextPacket();
             if (pageOffset + h.getOffsetNextPacket() < blockSize) {
-              RdhHandle hnext(baseAddress + pageOffset +
-                              h.getOffsetNextPacket());
-              try {
-                checkRdh(hnext);
-              } catch (...) {
-                // stop for this page on first RDH error
-                break;
-              }
-              if (isEmptyHBstop(hnext)) {
-                // empty HBstart+HBstop pair: drop both packets
-                pageOffset +=
-                    h.getOffsetNextPacket() + hnext.getOffsetNextPacket();
-                emptyPacketsDropped += 2;
-                continue;
-              }
+              // not end of page, keep a simple reference
+              previousPacket.address = baseAddress + pageOffset;
+              previousPacket.isCopy = false;
             } else {
-              // we are at the end of the page, we don't have next packet yet
-              // write it but keep a trace to check when we get next page
-              fpUsed->previousPacketIsEmptyHBstart = true;
+              // end of page, keep a copy
+              previousPacket.address = malloc(previousPacket.size);
+              if (previousPacket.address == nullptr) {
+                throw __LINE__;
+              }
+              memcpy(previousPacket.address, baseAddress + pageOffset,
+                     previousPacket.size);
+              previousPacket.isCopy = true;
             }
+            previousPacket.isEmptyHBStart = true;
+          } else {
+
+            // write packet
+            // use offsetNextPacket instead of memorySize for file to be
+            // consistent
+            writeToFile(baseAddress + pageOffset,
+                        (size_t)h.getOffsetNextPacket(), 0);
+            packetsRecorded++;
           }
 
-          // write packet
-          // use offsetNextPacket instead of memorySize for file to be
-          // consistent
-          writeToFile(baseAddress + pageOffset, (size_t)h.getOffsetNextPacket(),
-                      0);
-          packetsRecorded++;
           pageOffset += h.getOffsetNextPacket();
 
           // infinite loop protection, just in case
@@ -721,6 +674,26 @@ private:
   int filesMax = 0;     // maximum number of files to write (for each stream)
   int dropEmptyHBFrames =
       0; // if set, some empty packets are discarded (see logic in code)
+
+  class Packet {
+  public:
+    bool isEmptyHBStart = false;
+    void *address = nullptr;
+    size_t size = 0;
+    bool isCopy = false;
+    void clear() {
+      isEmptyHBStart = false;
+      if ((address != nullptr) && (isCopy)) {
+        free(address);
+      }
+      address = nullptr;
+      size = 0;
+      isCopy = false;
+    }
+    Packet() {}
+    ~Packet() { clear(); }
+  };
+  std::map<int, Packet> perLinkPreviousPacket; // store last packet per link
 
   unsigned long long invalidRDH = 0;          // number of invalid RDH found
   unsigned long long emptyPacketsDropped = 0; // number of packets dropped
