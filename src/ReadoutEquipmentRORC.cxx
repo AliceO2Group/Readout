@@ -620,7 +620,7 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
               // no boundary check necessary to verify linkId<=RdhMaxLinkId,
               // this was done in validateRDH()
               if (newCount != RdhLastPacketCounter[linkId]) {
-                if (newCount != RdhLastPacketCounter[linkId] + 1) {
+                if (newCount != (uint8_t) (RdhLastPacketCounter[linkId] + (uint8_t) 1)) {
                   theLog.log(InfoLogger::Severity::Warning,
                              "RDH #%d @ 0x%X : possible packets dropped for "
                              "link %d, packetCounter jump from %d to %d",
