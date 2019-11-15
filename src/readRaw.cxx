@@ -322,7 +322,7 @@ int main(int argc, const char *argv[]) {
         RdhHandle h(((uint8_t *)data) + pageOffset);
 
         if (dumpRDH) {
-          h.dumpRdh(pageOffset, 1);
+          h.dumpRdh(pageOffset + blockOffset, 1);
         }
 
         int nErr = h.validateRdh(errorDescription);
@@ -372,7 +372,8 @@ int main(int argc, const char *argv[]) {
           break;
         }
 
-        if (pageOffset + offsetNextPacket > dataSize) {
+        if ((pageOffset + offsetNextPacket > dataSize) &&
+            (pageOffset + offsetNextPacket + fileOffset < fileSize)) {
           if (isAutoPageSize) {
             // the (virtual) page boundary is in the middle of packet... try to
             // realign
