@@ -353,3 +353,9 @@ install(
 	DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
 	RENAME readoutAutoConfigure
 )
+
+install(
+	PROGRAMS src/readoutConfigEditor.tcl
+	DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
+	RENAME readoutConfigEditor
+)
