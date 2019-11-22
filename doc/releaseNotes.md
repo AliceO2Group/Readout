@@ -144,3 +144,6 @@ This file describes the main feature changes for each readout.exe released versi
 - equipment-cruemulator: new algorithm for packet generator, allowing to simulate detectors in triggered mode (empty HB frames).
 - Updated configuration parameters:
   - added equipment-cruemulator-*.EmptyHbRatio and equipment-cruemulator-*.PayloadSize to fake triggered mode.
+
+## next release
+- Added readoutConfigEditor utlity to view and edit readout configuration files. Right-click on a parameter value shows corresponding documentation.
