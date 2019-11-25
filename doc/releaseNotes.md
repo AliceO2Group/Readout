@@ -5,7 +5,7 @@ This file describes the main feature changes for each readout.exe released versi
 ## v0.18 - 27/02/2019
 - Addition of release notes.
 - New configuration parameters:
-	- consumer-FMQchannel: enableRawFormat, fmqProgOptions.
+	- consumer-FairMQchannel: enableRawFormat, fmqProgOptions.
 - Added consumer-tcp:
 	- It allows to send data by tcp/ip sockets, for testing purposes.
 

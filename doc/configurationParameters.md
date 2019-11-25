@@ -33,7 +33,7 @@ Some parameters may be set for all instances of a given section [sectionName-\*]
 The parameters related to 3rd-party libraries are described here for convenience, but should be further checked in the corresponding source documentation. In particular, please refer to:
 - the ReadoutCard library documentation for some of the equipment-rorc devices parameters: https://github.com/AliceO2Group/ReadoutCard
 - the Monitoring library documentation for some of the consumer-stats device parameters: https://github.com/AliceO2Group/Monitoring
-- the FairMQ library documentation for some of the consumer-FMQchannel device parameters: https://github.com/FairRootGroup/FairMQ
+- the FairMQ library documentation for some of the consumer-FairMQChannel device parameters: https://github.com/FairRootGroup/FairMQ
 
 | Section | Parameter name  | Type | Default value | Description |
 |--|--|--|--|--|
@@ -104,18 +104,18 @@ The parameters related to 3rd-party libraries are described here for convenience
 | consumer-fileRecorder-* | dataBlockHeaderEnabled | int | 0 | Enable (1) or disable (0) the writing to file of the internal readout header (Common::DataBlockHeaderBase struct) between the data pages, to easily navigate through the file without RDH decoding. If disabled, the raw data pages received from CRU are written without further formatting. |
 | consumer-fileRecorder-* | filesMax | int | 1 | If 1 (default), file splitting is disabled: file is closed whenever a limit is reached on a given recording stream. Otherwise, file splitting is enabled: whenever the current file reaches a limit, it is closed an new one is created (with an incremental name). If <=0, an unlimited number of incremental chunks can be created. If non-zero, it defines the maximum number of chunks. The file name is suffixed with chunk number (by default, ".001, .002, ..." at the end of the file name. One may use "%c" in the file name to define where this incremental file counter is printed. |
 | consumer-fileRecorder-* | dropEmptyHBFrames | int | 0 | If 1, memory pages are scanned and empty HBframes are discarded, i.e. couples of packets which contain only RDH, the first one with pagesCounter=0 and the second with stop bit set. This setting does not change the content of in-memory data pages, other consumers would still get full data pages with empty packets. This setting is meant to reduce the amount of data recorded for continuous detectors in triggered mode. This setting is not compatible with dataBlockHeaderEnabled=1.|
-| consumer-FMQchannel-* | disableSending | int | 0 | If set, no data is output to FMQ channel. Used for performance test to create FMQ shared memory segment without pushing the data. |
-| consumer-FMQchannel-* | enableRawFormat | int | 0 | If set, data is pushed in raw format without additional headers, 1 FMQ message per data page. |
-| consumer-FMQchannel-* | sessionName | string | default | Name of the FMQ session. c.f. FairMQ::FairMQChannel.h |
-| consumer-FMQchannel-* | fmq-name | string | readout | Name of the FMQ channel. c.f. FairMQ::FairMQChannel.h |
-| consumer-FMQchannel-* | fmq-transport | string | shmem| Name of the FMQ transport. Typically: zeromq or shmem. c.f. FairMQ::FairMQChannel.h |
-| consumer-FMQchannel-* | fmq-type | string | pair | Type of the FMQ channel. Typically: pair. c.f. FairMQ::FairMQChannel.h |
-| consumer-FMQchannel-* | fmq-address | string | ipc:///tmp/pipe-readout | Address of the FMQ channel. Depends on transportType. c.f. FairMQ::FairMQChannel.h |
-| consumer-FMQchannel-* | fmq-progOptions | string |  | Additional FMQ program options parameters, as a comma-separated list of key=value pairs. |
-| consumer-FMQchannel-* | memoryBankName | string |  | Name of the memory bank to crete (if any) and use. This consumer has the special property of being able to provide memory banks to readout, as the ones defined in bank-*. It creates a memory region optimized for selected transport and to be used for readout device DMA. |
-| consumer-FMQchannel-* | unmanagedMemorySize | bytes |  | Size of the memory region to be created. c.f. FairMQ::FairMQUnmanagedRegion.h. If not set, no special FMQ memory region is created. |
-| consumer-FMQchannel-* | memoryPoolPageSize | bytes | 0 | c.f. same parameter in bank-*. |
-| consumer-FMQchannel-* | memoryPoolNumberOfPages | int | 100 | c.f. same parameter in bank-*. |
+| consumer-FairMQChannel-* | disableSending | int | 0 | If set, no data is output to FMQ channel. Used for performance test to create FMQ shared memory segment without pushing the data. |
+| consumer-FairMQChannel-* | enableRawFormat | int | 0 | If set, data is pushed in raw format without additional headers, 1 FMQ message per data page. |
+| consumer-FairMQChannel-* | sessionName | string | default | Name of the FMQ session. c.f. FairMQ::FairMQChannel.h |
+| consumer-FairMQChannel-* | fmq-name | string | readout | Name of the FMQ channel. c.f. FairMQ::FairMQChannel.h |
+| consumer-FairMQChannel-* | fmq-transport | string | shmem| Name of the FMQ transport. Typically: zeromq or shmem. c.f. FairMQ::FairMQChannel.h |
+| consumer-FairMQChannel-* | fmq-type | string | pair | Type of the FMQ channel. Typically: pair. c.f. FairMQ::FairMQChannel.h |
+| consumer-FairMQChannel-* | fmq-address | string | ipc:///tmp/pipe-readout | Address of the FMQ channel. Depends on transportType. c.f. FairMQ::FairMQChannel.h |
+| consumer-FairMQChannel-* | fmq-progOptions | string |  | Additional FMQ program options parameters, as a comma-separated list of key=value pairs. |
+| consumer-FairMQChannel-* | memoryBankName | string |  | Name of the memory bank to crete (if any) and use. This consumer has the special property of being able to provide memory banks to readout, as the ones defined in bank-*. It creates a memory region optimized for selected transport and to be used for readout device DMA. |
+| consumer-FairMQChannel-* | unmanagedMemorySize | bytes |  | Size of the memory region to be created. c.f. FairMQ::FairMQUnmanagedRegion.h. If not set, no special FMQ memory region is created. |
+| consumer-FairMQChannel-* | memoryPoolPageSize | bytes | 0 | c.f. same parameter in bank-*. |
+| consumer-FairMQChannel-* | memoryPoolNumberOfPages | int | 100 | c.f. same parameter in bank-*. |
 | consumer-tcp-* | port | int | 10001 | Remote server TCP port number to connect to. |
 | consumer-tcp-* | host | string | localhost | Remote server IP name to connect to. |
 | consumer-tcp-* | ncx | int | 1 | Number of parallel streams (and threads) to use. The port number specified in 'port' parameter will be increased by 1 for each extra connection. |
@@ -126,9 +126,9 @@ The parameters related to 3rd-party libraries are described here for convenience
 | consumer-processor-* | ensurePageOrder | int | 0 | If set, ensures that data pages goes out of the processing pool in same order as input (which is not guaranteed with multithreading otherwise). This option adds latency. |
 | consumer-rdma-* | port | int | 10001 | Remote server TCP port number to connect to. |
 | consumer-rdma-* | host | string | localhost | Remote server IP name to connect to. |
-| receiverFMQ | transportType | string | shmem | c.f. parameter with same name in consumer-FMQchannel-* |
-| receiverFMQ | channelName | string | readout | c.f. parameter with same name in consumer-FMQchannel-* |
-| receiverFMQ | channelType | string | pair | c.f. parameter with same name in consumer-FMQchannel-* |
-| receiverFMQ | channelAddress | string | ipc:///tmp/pipe-readout | c.f. parameter with same name in consumer-FMQchannel-* |
+| receiverFMQ | transportType | string | shmem | c.f. parameter with same name in consumer-FairMQChannel-* |
+| receiverFMQ | channelName | string | readout | c.f. parameter with same name in consumer-FairMQChannel-* |
+| receiverFMQ | channelType | string | pair | c.f. parameter with same name in consumer-FairMQChannel-* |
+| receiverFMQ | channelAddress | string | ipc:///tmp/pipe-readout | c.f. parameter with same name in consumer-FairMQChannel-* |
 | receiverFMQ | decodingMode | string | none | Decoding mode of the readout FMQ output stream. Possible values: none (no decoding), readout (wp5 protocol) |
 | consumer-data-sampling-* | address | string | ipc:///tmp/readout-pipe-1 | Address of the data sampling. |

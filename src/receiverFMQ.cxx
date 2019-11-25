@@ -110,26 +110,26 @@ int main(int argc, const char **argv) {
   }
 
   // configuration parameter: | receiverFMQ | transportType | string | shmem |
-  // c.f. parameter with same name in consumer-FMQchannel-* |
+  // c.f. parameter with same name in consumer-FairMQchannel-* |
   std::string cfgTransportType = "shmem";
   cfg.getOptionalValue<std::string>(cfgEntryPoint + ".transportType",
                                     cfgTransportType);
 
   // configuration parameter: | receiverFMQ | channelName | string | readout |
-  // c.f. parameter with same name in consumer-FMQchannel-* |
+  // c.f. parameter with same name in consumer-FairMQchannel-* |
   std::string cfgChannelName = "readout";
   cfg.getOptionalValue<std::string>(cfgEntryPoint + ".channelName",
                                     cfgChannelName);
 
   // configuration parameter: | receiverFMQ | channelType | string | pair | c.f.
-  // parameter with same name in consumer-FMQchannel-* |
+  // parameter with same name in consumer-FairMQchannel-* |
   std::string cfgChannelType = "pair";
   cfg.getOptionalValue<std::string>(cfgEntryPoint + ".channelType",
                                     cfgChannelType);
 
   // configuration parameter: | receiverFMQ | channelAddress | string |
   // ipc:///tmp/pipe-readout | c.f. parameter with same name in
-  // consumer-FMQchannel-* |
+  // consumer-FairMQchannel-* |
   std::string cfgChannelAddress = "ipc:///tmp/pipe-readout";
   cfg.getOptionalValue<std::string>(cfgEntryPoint + ".channelAddress",
                                     cfgChannelAddress);

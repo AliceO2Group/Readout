@@ -76,7 +76,7 @@ public:
   ConsumerFMQchannel(ConfigFile &cfg, std::string cfgEntryPoint)
       : Consumer(cfg, cfgEntryPoint) {
 
-    // configuration parameter: | consumer-FMQchannel-* | disableSending | int |
+    // configuration parameter: | consumer-FairMQchannel-* | disableSending | int |
     // 0 | If set, no data is output to FMQ channel. Used for performance test
     // to create FMQ shared memory segment without pushing the data. |
     int cfgDisableSending = 0;
@@ -87,7 +87,7 @@ public:
       disableSending = true;
     }
 
-    // configuration parameter: | consumer-FMQchannel-* | enableRawFormat | int
+    // configuration parameter: | consumer-FairMQchannel-* | enableRawFormat | int
     // | 0 | If set, data is pushed in raw format without additional headers, 1
     // FMQ message per data page. |
     int cfgEnableRawFormat = 0;
@@ -98,33 +98,33 @@ public:
       enableRawFormat = true;
     }
 
-    // configuration parameter: | consumer-FMQchannel-* | sessionName | string |
+    // configuration parameter: | consumer-FairMQchannel-* | sessionName | string |
     // default | Name of the FMQ session. c.f. FairMQ::FairMQChannel.h |
     std::string cfgSessionName = "default";
     cfg.getOptionalValue<std::string>(cfgEntryPoint + ".sessionName",
                                       cfgSessionName);
 
-    // configuration parameter: | consumer-FMQchannel-* | fmq-transport | string
+    // configuration parameter: | consumer-FairMQchannel-* | fmq-transport | string
     // | shmem | Name of the FMQ transport. Typically: zeromq or shmem. c.f.
     // FairMQ::FairMQChannel.h |
     std::string cfgTransportType = "shmem";
     cfg.getOptionalValue<std::string>(cfgEntryPoint + ".fmq-transport",
                                       cfgTransportType);
 
-    // configuration parameter: | consumer-FMQchannel-* | fmq-name | string |
+    // configuration parameter: | consumer-FairMQchannel-* | fmq-name | string |
     // readout | Name of the FMQ channel. c.f. FairMQ::FairMQChannel.h |
     std::string cfgChannelName = "readout";
     cfg.getOptionalValue<std::string>(cfgEntryPoint + ".fmq-name",
                                       cfgChannelName);
 
-    // configuration parameter: | consumer-FMQchannel-* | fmq-type | string |
+    // configuration parameter: | consumer-FairMQchannel-* | fmq-type | string |
     // pair | Type of the FMQ channel. Typically: pair. c.f.
     // FairMQ::FairMQChannel.h |
     std::string cfgChannelType = "pair";
     cfg.getOptionalValue<std::string>(cfgEntryPoint + ".fmq-type",
                                       cfgChannelType);
 
-    // configuration parameter: | consumer-FMQchannel-* | fmq-address |
+    // configuration parameter: | consumer-FairMQchannel-* | fmq-address |
     // string | ipc:///tmp/pipe-readout | Address of the FMQ channel. Depends on
     // transportType. c.f. FairMQ::FairMQChannel.h |
     std::string cfgChannelAddress = "ipc:///tmp/pipe-readout";
@@ -139,7 +139,7 @@ public:
     FairMQProgOptions fmqOptions;
     fmqOptions.SetValue<std::string>("session", cfgSessionName);
 
-    // configuration parameter: | consumer-FMQchannel-* | fmq-progOptions |
+    // configuration parameter: | consumer-FairMQchannel-* | fmq-progOptions |
     // string |  | Additional FMQ program options parameters, as a
     // comma-separated list of key=value pairs. |
     std::string cfgFmqOptions = "";
@@ -160,7 +160,7 @@ public:
     sendingChannel = std::make_unique<FairMQChannel>(
         cfgChannelName, cfgChannelType, transportFactory);
 
-    // configuration parameter: | consumer-FMQchannel-* | memoryBankName |
+    // configuration parameter: | consumer-FairMQchannel-* | memoryBankName |
     // string |  | Name of the memory bank to crete (if any) and use. This
     // consumer has the special property of being able to provide memory banks
     // to readout, as the ones defined in bank-*. It creates a memory region
@@ -170,7 +170,7 @@ public:
     cfg.getOptionalValue<std::string>(cfgEntryPoint + ".memoryBankName",
                                       memoryBankName);
 
-    // configuration parameter: | consumer-FMQchannel-* | unmanagedMemorySize |
+    // configuration parameter: | consumer-FairMQchannel-* | unmanagedMemorySize |
     // bytes |  | Size of the memory region to be created. c.f.
     // FairMQ::FairMQUnmanagedRegion.h. If not set, no special FMQ memory region
     // is created. |
@@ -206,9 +206,9 @@ public:
     }
 
     // allocate a pool of pages for headers and data frame copies
-    // configuration parameter: | consumer-FMQchannel-* | memoryPoolPageSize |
+    // configuration parameter: | consumer-FairMQchannel-* | memoryPoolPageSize |
     // bytes | 128k | c.f. same parameter in bank-*. | configuration parameter:
-    // | consumer-FMQchannel-* | memoryPoolNumberOfPages | int | 100 | c.f. same
+    // | consumer-FairMQchannel-* | memoryPoolNumberOfPages | int | 100 | c.f. same
     // parameter in bank-*. |
     memoryPoolPageSize = 0;
     memoryPoolNumberOfPages = 100;
