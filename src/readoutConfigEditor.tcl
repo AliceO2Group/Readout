@@ -467,6 +467,18 @@ proc handle_update {gname name op} {
     } else {
       set kvsection($currentSection) [lreplace $kvsection($currentSection) $ixk $ixk $item]
     }
+    if {[string first "Type" $name]>=0} {
+      # the subtype may have changed, update
+      global currentSection
+      global editwidgets
+      set cmd "
+      after 50 {
+        display_instance $currentSection
+	focus $editwidgets($name)
+      }
+      "
+      eval $cmd
+    }
     if {"$err"!=""} {
       puts "handle_update error: $err"
     }
@@ -615,17 +627,23 @@ proc getMatchingSectionParams {section} {
 	  set xt ""
 	}
 	# add all base params for this type
-	foreach { name type default descr } $sectionParams(${t}${xt}) {
-	  set sp [concat $sp [list "$name" "$type" "$default" "$descr"]]
+	catch {	
+          foreach { name type default descr } $sectionParams(${t}${xt}) {
+            set sp [concat $sp [list "$name" "$type" "$default" "$descr"]]
+          }
 	}
 	
 	# add all params for corresponding sub-type
 	# check if matching subparam type exists
 	set ixk [lsearch -index 0 $kvsection($s) "${t}Type"]
-	if {$ixk>0} {
-	  set subtype [lindex [lindex $kvsection($s) $ixk] 1]	  
-          foreach { name type default descr } $sectionParams(${t}-${subtype}${xt}) {
-            set sp [concat $sp [list "$name" "$type" "$default" "$descr"]]
+	if {$ixk>=0} {
+	  set vsubtype [lindex [lindex $kvsection($s) $ixk] 1]
+	  # is this a valid subtype?
+	  global subtype
+	  if {[lsearch $subtype($t) $vsubtype]>=0} {
+            foreach { name type default descr } $sectionParams(${t}-${vsubtype}${xt}) {
+              set sp [concat $sp [list "$name" "$type" "$default" "$descr"]]
+	    }
 	  }
 	}
 		
