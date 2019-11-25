@@ -216,6 +216,12 @@ enabled=1
 monitoringEnabled=0
 monitoringUpdatePeriod=1
 consoleUpdate=1
+
+# recording to file
+[consumer-rec]
+consumerType=fileRecorder
+enabled=0
+fileName=/tmp/data.raw
 "
 
 # membanks - one per numa node
@@ -249,12 +255,15 @@ numaNode=${numa}
 }
     lappend config "
 \[equipment-roc-${rocN}\]
+enabled=1
 equipmentType=rorc
 cardId=${pci}
+#channel=0
 dataSource=Internal
 memoryBankName=bank-${rocN}
 memoryPoolNumberOfPages=${readoutNPages}
 memoryPoolPageSize=${readoutPageSize}
+#linkMask=0
 "
   }
 }

@@ -146,6 +146,15 @@ to current detected system configuration (memory, NUMA, CRU):
                    If none provided, template is printed on console (after system config info).
   ```    
 
+A graphical configuration editor is provided to view and edit readout configuration files.
+Documentation of the parameters is available by right-clicking in any value field.
+
+  ```
+  Usage: readoutConfigEditor myConfigFile.cfg
+  ```    
+
+
+
 # Usage
 
 Readout can be launched from a terminal. It takes as argument the name of the configuration file to be used:
