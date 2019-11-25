@@ -145,5 +145,5 @@ This file describes the main feature changes for each readout.exe released versi
 - Updated configuration parameters:
   - added equipment-cruemulator-*.EmptyHbRatio and equipment-cruemulator-*.PayloadSize to fake triggered mode.
 
-## next release
+## v1.2.0 - 25/11/2019
 - Added readoutConfigEditor utlity to view and edit readout configuration files. Right-click on a parameter value shows corresponding documentation.
