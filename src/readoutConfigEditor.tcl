@@ -56,6 +56,8 @@ set configurationParametersDescriptor {
 | equipment-player-* | filePath | string | | Path of file containing data to be injected in readout. |
 | equipment-player-* | preLoad | int | 1 | If 1, data pages preloaded with file content on startup. If 0, data is copied at runtime. |
 | equipment-player-* | fillPage | int | 1 | If 1, content of data file is copied multiple time in each data page until page is full (or almost full: on the last iteration, there is no partial copy if remaining space is smaller than full file size). If 0, data file is copied exactly once in each data page. |
+| equipment-player-* | autoChunk | int | 0 | When set, the file is replayed once, and cut automatically in data pages compatible with memory bank settings and RDH information. In this mode the preLoad and fillPage options have no effect. |
+| equipment-player-* | TFperiod | int | 256 | Duration of a timeframe, in number of LHC orbits. |
 | equipment-rorc-* | cardId | string | | ID of the board to be used. Typically, a PCI bus device id. c.f. AliceO2::roc::Parameters. |
 | equipment-rorc-* | channelNumber | int | 0 | Channel number of the board to be used. Typically 0 for CRU, or 1-6 for CRORC. c.f. AliceO2::roc::Parameters. |
 | equipment-rorc-* | dataSource | string | Internal | This parameter selects the data source used by ReadoutCard, c.f. AliceO2::roc::Parameters. It can be for CRU one of Fee, Ddg, Internal and for CRORC one of Fee, SIU, DIU, Internal. |

@@ -9,6 +9,7 @@
 // or submit itself to any jurisdiction.
 
 #include "MemoryBankManager.h"
+#include "RdhUtils.h"
 #include "ReadoutEquipment.h"
 #include "ReadoutUtils.h"
 #include <string>
@@ -31,10 +32,24 @@ private:
   size_t fileSize = 0;              // data file size
   std::unique_ptr<char[]> fileData; // copy of file content
 
-  int preLoad;  // if set, data preloaded in the memory pool
-  int fillPage; // if set, page is filled multiple time
+  int preLoad;   // if set, data preloaded in the memory pool
+  int fillPage;  // if set, page is filled multiple time
+  int autoChunk; // if set, page boundary extracted from RDH info
 
-  size_t bytesPerPage = 0; // number of bytes per data page
+  size_t bytesPerPage = 0;      // number of bytes per data page
+  FILE *fp = nullptr;           // file handle
+  unsigned long fileOffset = 0; // current file offset
+
+  struct PacketHeader {
+    uint64_t timeframeId = 0;
+    int linkId = undefinedLinkId;
+  };
+  PacketHeader lastPacketHeader; // keep track of last packet header
+
+  uint32_t timeframePeriodOrbits =
+      256; // timeframe interval duration in number of LHC orbits
+  uint32_t firstTimeframeHbOrbitBegin =
+      0; // HbOrbit of beginning of first timeframe
 
   void copyFileDataToPage(void *page); // fill given page with file data
                                        // according to current settings
@@ -76,13 +91,25 @@ ReadoutEquipmentPlayer::ReadoutEquipmentPlayer(ConfigFile &cfg,
   // remaining space is smaller than full file size). If 0, data file is copied
   // exactly once in each data page. |
   cfg.getOptionalValue<int>(cfgEntryPoint + ".fillPage", fillPage, 1);
+  // configuration parameter: | equipment-player-* | autoChunk | int | 0 | When
+  // set, the file is replayed once, and cut automatically in data pages
+  // compatible with memory bank settings and RDH information.
+  // In this mode the preLoad and fillPage options have no effect. |
+  cfg.getOptionalValue<int>(cfgEntryPoint + ".autoChunk", autoChunk, 0);
+  // configuration parameter: | equipment-player-* | TFperiod | int | 256 |
+  // Duration of a timeframe, in number of LHC orbits. |
+  int cfgTFperiod = 256;
+  cfg.getOptionalValue<int>(name + ".TFperiod", cfgTFperiod);
+  timeframePeriodOrbits = cfgTFperiod;
 
   // log config summary
-  theLog.log("Equipment %s: using data source file=%s preLoad=%d fillPage=%d",
-             name.c_str(), filePath.c_str(), preLoad, fillPage);
+  theLog.log("Equipment %s: using data source file=%s preLoad=%d fillPage=%d "
+             "autoChunk=%d TFperiod=%d",
+             name.c_str(), filePath.c_str(), preLoad, fillPage, autoChunk,
+             timeframePeriodOrbits);
 
   // open data file
-  FILE *fp = fopen(filePath.c_str(), "rb");
+  fp = fopen(filePath.c_str(), "rb");
   if (fp == nullptr) {
     throw(std::string("open failed: ") + strerror(errno));
   }
@@ -91,6 +118,14 @@ ReadoutEquipmentPlayer::ReadoutEquipmentPlayer(ConfigFile &cfg,
   fseek(fp, 0L, SEEK_END);
   fileSize = ftell(fp);
   rewind(fp);
+
+  if (autoChunk) {
+    bytesPerPage = memoryPoolPageSize - sizeof(DataBlock);
+    theLog.log("Will load file = %lu bytes in chunks of maximum %d bytes",
+               (unsigned long)fileSize, bytesPerPage);
+    return;
+  }
+
   theLog.log("Loading file = %lu bytes", (unsigned long)fileSize);
 
   // check memory pool data pages large enough
@@ -111,6 +146,7 @@ ReadoutEquipmentPlayer::ReadoutEquipmentPlayer(ConfigFile &cfg,
     throw(std::string("Failed to load file"));
   };
   fclose(fp);
+  fp = nullptr;
 
   // init variables
   if (fillPage) {
@@ -138,7 +174,11 @@ ReadoutEquipmentPlayer::ReadoutEquipmentPlayer(ConfigFile &cfg,
   }
 }
 
-ReadoutEquipmentPlayer::~ReadoutEquipmentPlayer() {}
+ReadoutEquipmentPlayer::~ReadoutEquipmentPlayer() {
+  if (fp != nullptr) {
+    fclose(fp);
+  }
+}
 
 DataBlockContainerReference ReadoutEquipmentPlayer::getNextBlock() {
   // query memory pool for a free block
@@ -155,15 +195,122 @@ DataBlockContainerReference ReadoutEquipmentPlayer::getNextBlock() {
     // fill header
     b->header.blockType = DataBlockType::H_BASE;
     b->header.headerSize = sizeof(DataBlockHeaderBase);
-    b->header.dataSize = bytesPerPage;
+    b->header.dataSize = 0;
 
     // say it's contiguous header+data
     // todo: align begin of data ?
     b->data = &(((char *)b)[sizeof(DataBlock)]);
 
-    // copy file data to page, if not done already
-    if (!preLoad) {
-      copyFileDataToPage(b->data);
+    if (autoChunk) {
+      bool isOk = 1;
+      // read from file
+      if (fp != nullptr) {
+        size_t nBytes = fread(b->data, 1, bytesPerPage, fp);
+        if (nBytes == 0) {
+          if (ferror(fp)) {
+            theLog.log(InfoLogger::Severity::Error,
+                       "File %s read error, aborting replay", name.c_str());
+          }
+          if (feof(fp)) {
+            theLog.log("File %s replay completed", name.c_str());
+          }
+          isOk = 0;
+        } else {
+          // printf ("read %d bytes\n",nBytes);
+          // scan the data to find a page boundary
+          size_t pageOffset = 0;
+          for (; pageOffset < nBytes;) {
+            if (pageOffset + sizeof(o2::Header::RAWDataHeader) > nBytes) {
+              break;
+            }
+            RdhHandle h(((uint8_t *)b->data) + pageOffset);
+            std::string errorDescription;
+            int nErr = h.validateRdh(errorDescription);
+            if (nErr) {
+              theLog.log(
+                  InfoLogger::Severity::Error,
+                  "File %s RDH error, aborting replay @ 0x%X: ", name.c_str(),
+                  errorDescription.c_str(), fileOffset + pageOffset);
+              isOk = 0;
+              break;
+            }
+            // printf ("RDH @ %lu+ %d\n",fileOffset,pageOffset);
+            PacketHeader currentPacketHeader;
+            currentPacketHeader.linkId = (int)h.getLinkId();
+            bool isFirst = (fileOffset == 0) && (pageOffset == 0);
+
+            int hbOrbit = h.getHbOrbit();
+            ;
+            if (isFirst) {
+              firstTimeframeHbOrbitBegin = hbOrbit;
+            }
+            currentPacketHeader.timeframeId =
+                1 +
+                (hbOrbit - firstTimeframeHbOrbitBegin) / timeframePeriodOrbits;
+
+            // changing link or TF -> change page
+            bool changePage = 0;
+            if (!isFirst) {
+              if ((currentPacketHeader.linkId != lastPacketHeader.linkId) ||
+                  (currentPacketHeader.timeframeId !=
+                   lastPacketHeader.timeframeId)) {
+                // printf("%d : %d -> %d :
+                // %d\n",currentPacketHeader.linkId,currentPacketHeader.timeframeId,lastPacketHeader.linkId,lastPacketHeader.timeframeId);
+                changePage = 1;
+              }
+            }
+            lastPacketHeader = currentPacketHeader;
+            if (changePage) {
+              // printf("force new page\n");
+              break;
+            }
+
+            uint16_t offsetNextPacket = h.getOffsetNextPacket();
+            if (offsetNextPacket == 0) {
+              break;
+            }
+            if (pageOffset + offsetNextPacket > nBytes) {
+              break;
+            }
+            pageOffset += offsetNextPacket;
+          }
+
+          if (pageOffset == 0) {
+            theLog.log(InfoLogger::Severity::Error,
+                       "File %s stopping replay @ 0x%X, last packet invalid",
+                       name.c_str(), fileOffset + pageOffset);
+            isOk = 0;
+          }
+          int delta = nBytes - pageOffset;
+          nBytes = pageOffset;
+          b->header.dataSize = nBytes;
+          fileOffset += nBytes;
+          // printf ("bytes = %d    delta = %d    new file Offset = %lu\n",
+          // nBytes, delta, fileOffset);
+          if (delta > 0) {
+            // rewind if necessary
+            if (fseek(fp, fileOffset, SEEK_SET)) {
+              theLog.log(InfoLogger::Severity::Error,
+                         "Failed to seek in file, aborting replay");
+              isOk = 0;
+            }
+          }
+        }
+      } else {
+        isOk = 0;
+      }
+      if (!isOk) {
+        if (fp != nullptr) {
+          fclose(fp);
+        }
+        fp = nullptr;
+        return nullptr;
+      }
+    } else {
+      // copy file data to page, if not done already
+      if (!preLoad) {
+        copyFileDataToPage(b->data);
+      }
     }
   }
 
