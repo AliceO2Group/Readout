@@ -121,8 +121,8 @@ ReadoutEquipmentPlayer::ReadoutEquipmentPlayer(ConfigFile &cfg,
 
   if (autoChunk) {
     bytesPerPage = memoryPoolPageSize - sizeof(DataBlock);
-    theLog.log("Will load file = %lu bytes in chunks of maximum %d bytes",
-               (unsigned long)fileSize, bytesPerPage);
+    theLog.log("Will load file = %lu bytes in chunks of maximum %lu bytes",
+               (unsigned long) fileSize, (unsigned long) bytesPerPage);
     return;
   }
 
@@ -229,8 +229,8 @@ DataBlockContainerReference ReadoutEquipmentPlayer::getNextBlock() {
             if (nErr) {
               theLog.log(
                   InfoLogger::Severity::Error,
-                  "File %s RDH error, aborting replay @ 0x%X: ", name.c_str(),
-                  errorDescription.c_str(), fileOffset + pageOffset);
+                  "File %s RDH error, aborting replay @ 0x%lX: %s", name.c_str(),
+                  ((unsigned long)) (fileOffset + pageOffset), errorDescription.c_str());
               isOk = 0;
               break;
             }
@@ -277,8 +277,8 @@ DataBlockContainerReference ReadoutEquipmentPlayer::getNextBlock() {
 
           if (pageOffset == 0) {
             theLog.log(InfoLogger::Severity::Error,
-                       "File %s stopping replay @ 0x%X, last packet invalid",
-                       name.c_str(), fileOffset + pageOffset);
+                       "File %s stopping replay @ 0x%lX, last packet invalid",
+                       name.c_str(), (unsigned long) (fileOffset + pageOffset));
             isOk = 0;
           }
           int delta = nBytes - pageOffset;
