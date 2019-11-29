@@ -230,7 +230,7 @@ DataBlockContainerReference ReadoutEquipmentPlayer::getNextBlock() {
               theLog.log(
                   InfoLogger::Severity::Error,
                   "File %s RDH error, aborting replay @ 0x%lX: %s", name.c_str(),
-                  ((unsigned long)) (fileOffset + pageOffset), errorDescription.c_str());
+                  (unsigned long) (fileOffset + pageOffset), errorDescription.c_str());
               isOk = 0;
               break;
             }

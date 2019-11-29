@@ -152,3 +152,6 @@ This file describes the main feature changes for each readout.exe released versi
 - Updated configuration parameters:
   - added equipment-player-*.autoChunk: to replay a large data file once. It is automatically cut in data pages of appropriate size, matching memory page settings and RDH info. It complies with CRU behavior of having a new page on timeframe or link id change.
   - added equipment-player-*.TFperiod.
+
+## v1.2.2 - 29/11/2019
+- Cosmetics fix release.
