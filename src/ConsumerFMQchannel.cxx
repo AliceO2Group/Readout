@@ -21,6 +21,7 @@
 #include <fairmq/FairMQDevice.h>
 #include <fairmq/FairMQMessage.h>
 #include <fairmq/FairMQTransportFactory.h>
+#include <fairmq/tools/Unique.h>
 
 #include "RAWDataHeader.h"
 #include "SubTimeframe.h"
