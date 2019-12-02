@@ -158,3 +158,6 @@ This file describes the main feature changes for each readout.exe released versi
 
 ## v1.2.3 - 29/11/2019
 - Compatibility fix for FMQ v1.4.9
+
+## v1.2.4 - 2/12/2019
+- readoutAutoConfigure fix.
