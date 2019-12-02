@@ -218,7 +218,7 @@ monitoringUpdatePeriod=1
 consoleUpdate=1
 
 # recording to file
-[consumer-rec]
+\[consumer-rec\]
 consumerType=fileRecorder
 enabled=0
 fileName=/tmp/data.raw
