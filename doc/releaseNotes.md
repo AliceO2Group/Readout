@@ -161,3 +161,8 @@ This file describes the main feature changes for each readout.exe released versi
 
 ## v1.2.4 - 2/12/2019
 - readoutAutoConfigure fix.
+
+## v1.2.5 - 16/12/2019
+- Updated configuration parameters:
+  - default value for flushEquipmentTimeout changed to 1s.
+- equipment-player-*.autoChunk: fix metadata for FMQ-STF interface.
