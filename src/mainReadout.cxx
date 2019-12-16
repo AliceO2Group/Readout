@@ -360,10 +360,10 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
   // seconds after which the program exits automatically. -1 for unlimited. |
   cfgExitTimeout = -1;
   cfg.getOptionalValue<double>("readout.exitTimeout", cfgExitTimeout);
-  // configuration parameter: | readout | flushEquipmentTimeout | double | 0 |
+  // configuration parameter: | readout | flushEquipmentTimeout | double | 1 |
   // Time in seconds to wait for data once the equipments are stopped. 0 means
   // stop immediately. |
-  cfgFlushEquipmentTimeout = 0;
+  cfgFlushEquipmentTimeout = 1;
   cfg.getOptionalValue<double>("readout.flushEquipmentTimeout",
                                cfgFlushEquipmentTimeout);
   // configuration parameter: | readout | disableAggregatorSlicing | int | 0 |
