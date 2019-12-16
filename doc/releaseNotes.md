@@ -166,3 +166,4 @@ This file describes the main feature changes for each readout.exe released versi
 - Updated configuration parameters:
   - default value for flushEquipmentTimeout changed to 1s.
 - equipment-player-*.autoChunk: fix metadata for FMQ-STF interface.
+- consumer-FairMQChannel-*: handling of RDH dynamic offset.
