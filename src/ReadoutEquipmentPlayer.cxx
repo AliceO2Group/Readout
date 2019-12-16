@@ -122,7 +122,7 @@ ReadoutEquipmentPlayer::ReadoutEquipmentPlayer(ConfigFile &cfg,
   if (autoChunk) {
     bytesPerPage = memoryPoolPageSize - sizeof(DataBlock);
     theLog.log("Will load file = %lu bytes in chunks of maximum %lu bytes",
-               (unsigned long) fileSize, (unsigned long) bytesPerPage);
+               (unsigned long)fileSize, (unsigned long)bytesPerPage);
     return;
   }
 
@@ -227,10 +227,10 @@ DataBlockContainerReference ReadoutEquipmentPlayer::getNextBlock() {
             std::string errorDescription;
             int nErr = h.validateRdh(errorDescription);
             if (nErr) {
-              theLog.log(
-                  InfoLogger::Severity::Error,
-                  "File %s RDH error, aborting replay @ 0x%lX: %s", name.c_str(),
-                  (unsigned long) (fileOffset + pageOffset), errorDescription.c_str());
+              theLog.log(InfoLogger::Severity::Error,
+                         "File %s RDH error, aborting replay @ 0x%lX: %s",
+                         name.c_str(), (unsigned long)(fileOffset + pageOffset),
+                         errorDescription.c_str());
               isOk = 0;
               break;
             }
@@ -247,6 +247,14 @@ DataBlockContainerReference ReadoutEquipmentPlayer::getNextBlock() {
             currentPacketHeader.timeframeId =
                 1 +
                 (hbOrbit - firstTimeframeHbOrbitBegin) / timeframePeriodOrbits;
+
+            // fill page metadata
+            if (pageOffset == 0) {
+              // printf("link %d TF
+              // %d\n",(int)currentPacketHeader.linkId,(int)currentPacketHeader.timeframeId);
+              b->header.linkId = currentPacketHeader.linkId;
+              b->header.timeframeId = currentPacketHeader.timeframeId;
+            }
 
             // changing link or TF -> change page
             bool changePage = 0;
@@ -278,7 +286,7 @@ DataBlockContainerReference ReadoutEquipmentPlayer::getNextBlock() {
           if (pageOffset == 0) {
             theLog.log(InfoLogger::Severity::Error,
                        "File %s stopping replay @ 0x%lX, last packet invalid",
-                       name.c_str(), (unsigned long) (fileOffset + pageOffset));
+                       name.c_str(), (unsigned long)(fileOffset + pageOffset));
             isOk = 0;
           }
           int delta = nBytes - pageOffset;
