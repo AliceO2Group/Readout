@@ -1316,7 +1316,7 @@ int main(int argc, char *argv[]) {
       }
 
       if (newState != States::Undefined) {
-        printf("State: %s\n", getStateName(theState));
+        printf("State: %s\n", getStateName(newState));
         theState = newState;
       }
       if ((theCommand != Commands::Undefined) && (!isCommandValid)) {
