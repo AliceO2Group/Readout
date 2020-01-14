@@ -294,12 +294,12 @@ Thread::CallbackResult ReadoutEquipment::threadCallback(void *arg) {
     // check status of output FIFO
     ptr->equipmentStats[EquipmentStatsIndexes::fifoOccupancyOutBlocks].set(
         ptr->dataOut->getNumberOfUsedSlots());
-	
+
     // check status of memory pool
     {
-      size_t nPagesTotal=0, nPagesFree=0, nPagesUsed=0;
-      if (ptr->getMemoryUsage(nPagesFree, nPagesTotal)==0) {
-	nPagesUsed = nPagesTotal-nPagesFree;
+      size_t nPagesTotal = 0, nPagesFree = 0, nPagesUsed = 0;
+      if (ptr->getMemoryUsage(nPagesFree, nPagesTotal) == 0) {
+        nPagesUsed = nPagesTotal - nPagesFree;
       }
       ptr->equipmentStats[EquipmentStatsIndexes::nPagesUsed].set(nPagesUsed);
       ptr->equipmentStats[EquipmentStatsIndexes::nPagesFree].set(nPagesFree);
@@ -318,7 +318,7 @@ Thread::CallbackResult ReadoutEquipment::threadCallback(void *arg) {
 
       // get next block
       DataBlockContainerReference nextBlock = ptr->getNextBlock();
-      //printf("getNextBlock=%p\n",nextBlock);
+      // printf("getNextBlock=%p\n",nextBlock);
       if (nextBlock == nullptr) {
         break;
       }
@@ -412,10 +412,11 @@ void ReadoutEquipment::setDataOn() { isDataOn = true; }
 
 void ReadoutEquipment::setDataOff() { isDataOn = false; }
 
-int ReadoutEquipment::getMemoryUsage(size_t &numberOfPagesAvailable, size_t &numberOfPagesInPool) {
-  numberOfPagesAvailable=0;
-  numberOfPagesInPool=0;
-  if (mp==nullptr) {
+int ReadoutEquipment::getMemoryUsage(size_t &numberOfPagesAvailable,
+                                     size_t &numberOfPagesInPool) {
+  numberOfPagesAvailable = 0;
+  numberOfPagesInPool = 0;
+  if (mp == nullptr) {
     return -1;
   }
   numberOfPagesInPool = mp->getTotalNumberOfPages();

@@ -51,8 +51,9 @@ public:
   std::shared_ptr<AliceO2::Common::Fifo<DataBlockContainerReference>> dataOut;
 
   // get current memory pool usage (available and total)
-  int getMemoryUsage(size_t &numberOfPagesAvailable, size_t &numberOfPagesInPool);
-  
+  int getMemoryUsage(size_t &numberOfPagesAvailable,
+                     size_t &numberOfPagesInPool);
+
 private:
   std::unique_ptr<Thread> readoutThread;
   static Thread::CallbackResult threadCallback(void *arg);
@@ -96,7 +97,7 @@ protected:
     fifoOccupancyOutBlocks = 12,
     nPagesUsed = 13, // number of used pages in memory pool
     nPagesFree = 14, // number of free pages in memory pool
-    maxIndex = 15 // not a counter, used to know number of elements in enum
+    maxIndex = 15    // not a counter, used to know number of elements in enum
   };
 
   // Display names of the performance counters.
@@ -116,8 +117,7 @@ protected:
       "fifoOccupancyReadyBlocks",
       "fifoOccupancyOutBlocks",
       "nPagesUsed",
-      "nPagesFree"
-  };
+      "nPagesFree"};
 
   // check consistency (size) of EquipmentStatsNames with EquipmentStatsIndexes
   static_assert((sizeof(EquipmentStatsNames) /

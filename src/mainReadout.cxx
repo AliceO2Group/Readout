@@ -84,29 +84,29 @@ using namespace AliceO2::Common;
 
 // set log environment before theLog is initialized
 class TtyChecker {
-  private:
-    bool isInteractive = false;
-    struct termios initial_settings;
-    
-  public:
+private:
+  bool isInteractive = false;
+  struct termios initial_settings;
+
+public:
   TtyChecker() {
     // if launched from terminal, force logs to terminal
     if (isatty(fileno(stdin))) {
-      if (getenv("INFOLOGGER_MODE")==nullptr) {
+      if (getenv("INFOLOGGER_MODE") == nullptr) {
         printf("Launching from terminal, logging here\n");
-        setenv("INFOLOGGER_MODE","stdout",1);
-      }	
+        setenv("INFOLOGGER_MODE", "stdout", 1);
+      }
       isInteractive = true;
     }
     if (isInteractive) {
       // set non-blocking input
       struct termios new_settings;
-      tcgetattr(0,&initial_settings);
+      tcgetattr(0, &initial_settings);
       new_settings = initial_settings;
       new_settings.c_lflag &= ~ICANON;
       new_settings.c_lflag &= ~ECHO;
       // do not disable ctrl+c signal
-      //new_settings.c_lflag &= ~ISIG;
+      // new_settings.c_lflag &= ~ISIG;
       new_settings.c_cc[VMIN] = 0;
       new_settings.c_cc[VTIME] = 0;
       tcsetattr(0, TCSANOW, &new_settings);
@@ -117,7 +117,7 @@ class TtyChecker {
       // restore term settings
       tcsetattr(0, TCSANOW, &initial_settings);
     }
-  };  
+  };
 };
 TtyChecker theTtyChecker;
 
@@ -953,16 +953,18 @@ int Readout::stop() {
   }
 
   // ensure output buffers empty ?
-  
+
   // check status of memory pools
   for (auto &&readoutDevice : readoutDevices) {
-    size_t nPagesTotal=0, nPagesFree=0, nPagesUsed=0;
-    if (readoutDevice->getMemoryUsage(nPagesFree, nPagesTotal)==0) {
-      nPagesUsed = nPagesTotal-nPagesFree;
-      theLog.log("Equipment %s : %d/%d pages (%.2f%%) still in use", readoutDevice->getName().c_str(), nPagesUsed, nPagesTotal, nPagesUsed*100.0/nPagesTotal);
+    size_t nPagesTotal = 0, nPagesFree = 0, nPagesUsed = 0;
+    if (readoutDevice->getMemoryUsage(nPagesFree, nPagesTotal) == 0) {
+      nPagesUsed = nPagesTotal - nPagesFree;
+      theLog.log("Equipment %s : %d/%d pages (%.2f%%) still in use",
+                 readoutDevice->getName().c_str(), nPagesUsed, nPagesTotal,
+                 nPagesUsed * 100.0 / nPagesTotal);
     }
   }
-  
+
   // publish final logbook statistics
   publishLogbookStats();
   gReadoutStats.reset();
@@ -1173,143 +1175,152 @@ int main(int argc, char *argv[]) {
 #endif
   } else if (interactiveMode) {
     theLog.log("Readout entering interactive state machine");
-    theLog.log("(c) configure (s) start (t) stop (r) reset (r) recover (x) quit");
-       
-    enum class States {Undefined, Standby, Configured, Running, Error};
-    enum class Commands {Undefined, Configure, Reset, Start, Stop, Recover, Exit};
-    
-    auto getStateName = [] (States s) {
-      switch(s) {
-        case States::Standby:
-	  return "standby";
-	case States::Configured:
-	  return "configured";
-	case States::Running:
-	  return "running";
-	case States::Error:
-	  return "error";	
+    theLog.log(
+        "(c) configure (s) start (t) stop (r) reset (r) recover (x) quit");
+
+    enum class States { Undefined, Standby, Configured, Running, Error };
+    enum class Commands {
+      Undefined,
+      Configure,
+      Reset,
+      Start,
+      Stop,
+      Recover,
+      Exit
+    };
+
+    auto getStateName = [](States s) {
+      switch (s) {
+      case States::Standby:
+        return "standby";
+      case States::Configured:
+        return "configured";
+      case States::Running:
+        return "running";
+      case States::Error:
+        return "error";
       }
       return "undefined";
     };
-    
-    auto getCommandName = [] (Commands c) {
-      switch(c) {
-        case Commands::Configure:
-	  return "configure";
-        case Commands::Start:
-	  return "start";
-        case Commands::Stop:
-	  return "stop";
-        case Commands::Reset:
-	  return "reset";
-        case Commands::Recover:
-	  return "recover";
-        case Commands::Exit:
-	  return "exit";
+
+    auto getCommandName = [](Commands c) {
+      switch (c) {
+      case Commands::Configure:
+        return "configure";
+      case Commands::Start:
+        return "start";
+      case Commands::Stop:
+        return "stop";
+      case Commands::Reset:
+        return "reset";
+      case Commands::Recover:
+        return "recover";
+      case Commands::Exit:
+        return "exit";
       }
       return "undefined";
     };
-    
+
     States theState = States::Standby;
     Commands theCommand = Commands::Undefined;
-    printf("State: %s\n",getStateName(theState));
-    for(;;) {
+    printf("State: %s\n", getStateName(theState));
+    for (;;) {
       if (theCommand == Commands::Undefined) {
-        int c=getchar();
-	if (c>0) {        
-	  switch(c) {
-	    case 'c':
-	      theCommand = Commands::Configure;
-	      break;
-	    case 's':
-	      theCommand = Commands::Start;
-	      break;
-	    case 't':
-	      theCommand = Commands::Stop;
-	      break;
-	    case 'r':
-	      theCommand = Commands::Reset;
-	      break;
-	    case 'v':
-	      theCommand = Commands::Recover;
-	      break;
-	    case 'x':
-	      theCommand = Commands::Exit;
-	      break;
-	  }
-	}
-      }	
+        int c = getchar();
+        if (c > 0) {
+          switch (c) {
+          case 'c':
+            theCommand = Commands::Configure;
+            break;
+          case 's':
+            theCommand = Commands::Start;
+            break;
+          case 't':
+            theCommand = Commands::Stop;
+            break;
+          case 'r':
+            theCommand = Commands::Reset;
+            break;
+          case 'v':
+            theCommand = Commands::Recover;
+            break;
+          case 'x':
+            theCommand = Commands::Exit;
+            break;
+          }
+        }
+      }
 
       if (theCommand != Commands::Undefined) {
-	printf("Executing %s\n",getCommandName(theCommand));
+        printf("Executing %s\n", getCommandName(theCommand));
       }
-	
-      States newState = States::Undefined;	
+
+      States newState = States::Undefined;
       bool isCommandValid = true;
       if (theState == States::Standby) {
-	if (theCommand == Commands::Configure) {	  
+        if (theCommand == Commands::Configure) {
           boost::property_tree::ptree properties; // an empty "extra" config
           err = theReadout->configure(properties);
           if (err) {
             newState = States::Error;
           } else {
-	    newState = States::Configured;
-	  }
-	} else {
-          isCommandValid = false;
-	}
-      } else if (theState == States::Configured) {
-	if (theCommand == Commands::Start) {
-	  err = theReadout->start();
-	  if (err) {
-            newState = States::Error;
-	  } else {
-            newState = States::Running;
-	  }
-	} else if (theCommand == Commands::Reset) {
-	  err = theReadout->reset();
-	  if (err) {
-	    newState = States::Error;
-	  } else {
-	    newState = States::Standby;
-	  }
-	} else {
-          isCommandValid = false;
-	}
-      } else if (theState == States::Running) {
-	if (theCommand == Commands::Stop) {
-	  err = theReadout->stop();
-	  if (err) {
-            newState = States::Error;
-	  } else {
             newState = States::Configured;
-	  }
-	} else {
+          }
+        } else {
           isCommandValid = false;
-	}
-      } else if (theState == States::Error) {
-	if (theCommand == Commands::Reset) {
-	  err = theReadout->reset();
-	  if (err) {
+        }
+      } else if (theState == States::Configured) {
+        if (theCommand == Commands::Start) {
+          err = theReadout->start();
+          if (err) {
             newState = States::Error;
-	  } else {
+          } else {
+            newState = States::Running;
+          }
+        } else if (theCommand == Commands::Reset) {
+          err = theReadout->reset();
+          if (err) {
+            newState = States::Error;
+          } else {
             newState = States::Standby;
-	  }
-	} else {
+          }
+        } else {
           isCommandValid = false;
-	}
+        }
+      } else if (theState == States::Running) {
+        if (theCommand == Commands::Stop) {
+          err = theReadout->stop();
+          if (err) {
+            newState = States::Error;
+          } else {
+            newState = States::Configured;
+          }
+        } else {
+          isCommandValid = false;
+        }
+      } else if (theState == States::Error) {
+        if (theCommand == Commands::Reset) {
+          err = theReadout->reset();
+          if (err) {
+            newState = States::Error;
+          } else {
+            newState = States::Standby;
+          }
+        } else {
+          isCommandValid = false;
+        }
       }
 
       if (theCommand == Commands::Exit) {
-	break;
+        break;
       }
-      
+
       if (newState != States::Undefined) {
-        printf("State: %s\n",getStateName(theState));
-	theState = newState;
+        printf("State: %s\n", getStateName(theState));
+        theState = newState;
       }
       if ((theCommand != Commands::Undefined) && (!isCommandValid)) {
-	printf("This command is invalid in current state\n");
+        printf("This command is invalid in current state\n");
       }
 
       theCommand = Commands::Undefined;
@@ -1331,9 +1342,9 @@ int main(int argc, char *argv[]) {
         }
       } else {
         usleep(100000);
-      }          
+      }
     }
-    
+
   } else {
     theLog.log("Readout entering standalone state machine");
     boost::property_tree::ptree properties; // an empty "extra" config
