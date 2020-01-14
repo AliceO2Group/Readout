@@ -378,9 +378,10 @@ Thread::CallbackResult ReadoutEquipmentRORC::prepareBlocks() {
       superpage.setOffset((char *)newPage - (char *)mp->getBaseBlockAddress() +
                           pageSpaceReserved);
       superpage.setSize(superPageSize);
-      //printf("pushed page %d\n",(int)superPageSize);
+      // printf("pushed page %d\n",(int)superPageSize);
       superpage.setUserData(newPage);
       channel->pushSuperpage(superpage);
+      // todo: break if push fails ( & release page to mp)
       isActive = 1;
       nPushed++;
     } else {
@@ -435,13 +436,14 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
   if ((channel->getReadyQueueSize() > 0)) {
     auto superpage = channel->getSuperpage(); // this is the first superpage in
                                               // FIFO ... let's check its state
+    void *mpPageAddress = (void *)(superpage.getUserData());
     if (superpage.isReady()) {
       std::shared_ptr<DataBlockContainer> d = nullptr;
-       //printf ("received a page with %d bytes - isFilled=%d isREady=%d\n",
-       //(int)superpage.getReceived(),(int)superpage.isFilled(),(int)superpage.isReady());
+      // printf ("received a page with %d bytes - isFilled=%d isREady=%d\n",
+      //(int)superpage.getReceived(),(int)superpage.isFilled(),(int)superpage.isReady());
       try {
         if (pageSpaceReserved >= sizeof(DataBlock)) {
-          d = mp->getNewDataBlockContainer((void *)(superpage.getUserData()));
+          d = mp->getNewDataBlockContainer(mpPageAddress);
         } else {
           // todo: allocate data block container elsewhere than beginning of
           // page
@@ -620,7 +622,8 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
               // no boundary check necessary to verify linkId<=RdhMaxLinkId,
               // this was done in validateRDH()
               if (newCount != RdhLastPacketCounter[linkId]) {
-                if (newCount != (uint8_t) (RdhLastPacketCounter[linkId] + (uint8_t) 1)) {
+                if (newCount !=
+                    (uint8_t)(RdhLastPacketCounter[linkId] + (uint8_t)1)) {
                   theLog.log(InfoLogger::Severity::Warning,
                              "RDH #%d @ 0x%X : possible packets dropped for "
                              "link %d, packetCounter jump from %d to %d",
@@ -647,6 +650,13 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
       } else {
         // no data block container... what to do???
       }
+    } else {
+      // these are leftover pages not ready, discard them
+      // todo: keep stats count
+      // todo: check description of fifo workflow in rorc manual
+      channel->popSuperpage();
+      mp->releasePage(mpPageAddress);
+      // printf("discard\n");
     }
   }
   return nextBlock;
@@ -674,9 +684,16 @@ void ReadoutEquipmentRORC::setDataOn() {
 }
 
 void ReadoutEquipmentRORC::setDataOff() {
+  ReadoutEquipment::setDataOff(); // ensure we don't push pages any more
+  sleep(1); // todo: driver should disable input fifo on stopdma()
+
   if (isInitialized) {
     theLog.log("Stopping DMA for ROC %s", getName().c_str());
-    channel->stopDma();
+    try {
+      channel->stopDma();
+    } catch (const std::exception &e) {
+      theLog.log(InfoLogger::Severity::Error, "Exception : %s", e.what());
+      theLog.log("%s", boost::diagnostic_information(e).c_str());
+    }
   }
-  ReadoutEquipment::setDataOff();
 }
