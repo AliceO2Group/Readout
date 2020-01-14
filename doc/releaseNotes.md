@@ -167,3 +167,8 @@ This file describes the main feature changes for each readout.exe released versi
   - default value for flushEquipmentTimeout changed to 1s.
 - equipment-player-*.autoChunk: fix metadata for FMQ-STF interface.
 - consumer-FairMQChannel-*: handling of RDH dynamic offset.
+
+## next version
+- Updated the stopDma procedure for RORC device (new page reclaim mechanism).
+- Readout logs directed to stdout/stderr by default, when started from a console.
+- Added optional mode for interactive state machine (keyboard driven).
