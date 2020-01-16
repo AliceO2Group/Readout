@@ -75,6 +75,10 @@ private:
       0; // number of inconsistencies in RDH stream (e.g. ids/timing compared to
          // previous RDH)
   unsigned long long statsNumberOfPages = 0; // number of pages read out
+  unsigned long long statsNumberOfPagesEmpty =
+      0; // number of empty pages read out
+  unsigned long long statsNumberOfPagesLost =
+      0; // number of pages read out but lost
   unsigned long long statsNumberOfTimeframes =
       0; // number of timeframes read out
 
@@ -308,12 +312,16 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name)
 
 ReadoutEquipmentRORC::~ReadoutEquipmentRORC() {
   if (cfgRdhCheckEnabled) {
-    theLog.log(
-        "Equipment %s : %llu timeframes, %llu pages, RDH checks %llu ok, %llu "
-        "errors, %llu stream inconsistencies %d packets dropped by CRU",
-        name.c_str(), statsNumberOfTimeframes, statsNumberOfPages,
-        statsRdhCheckOk, statsRdhCheckErr, statsRdhCheckStreamErr,
-        lastPacketDropped);
+    theLog.log("Equipment %s : %llu timeframes, %llu pages (+ %llu lost + %llu "
+               "empty), RDH checks %llu ok, %llu "
+               "errors, %llu stream inconsistencies %d packets dropped by CRU",
+               name.c_str(), statsNumberOfTimeframes, statsNumberOfPages,
+               statsNumberOfPagesLost, statsNumberOfPagesEmpty, statsRdhCheckOk,
+               statsRdhCheckErr, statsRdhCheckStreamErr, lastPacketDropped);
+  } else {
+    theLog.log("Equipment %s : %llu pages (+ %llu lost + %llu empty)",
+               name.c_str(), statsNumberOfPages, statsNumberOfPagesLost,
+               statsNumberOfPagesEmpty);
   }
 }
 
@@ -434,29 +442,19 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
 
   // check for completed page
   if ((channel->getReadyQueueSize() > 0)) {
-    auto superpage = channel->getSuperpage(); // this is the first superpage in
-                                              // FIFO ... let's check its state
+    // get next page from FIFO
+    auto superpage = channel->popSuperpage();
     void *mpPageAddress = (void *)(superpage.getUserData());
     if (superpage.isReady()) {
       std::shared_ptr<DataBlockContainer> d = nullptr;
       // printf ("received a page with %d bytes - isFilled=%d isREady=%d\n",
       //(int)superpage.getReceived(),(int)superpage.isFilled(),(int)superpage.isReady());
       try {
-        if (pageSpaceReserved >= sizeof(DataBlock)) {
-          d = mp->getNewDataBlockContainer(mpPageAddress);
-        } else {
-          // todo: allocate data block container elsewhere than beginning of
-          // page
-          // d=mp->getNewDataBlockContainer(nullptr);
-          // d=mp->getNewDataBlockContainer((void *)(superpage.userData));
-          // d=std::make_shared<DataBlockContainer>(nullptr);
-        }
+        // there is some space reserved at beginning of page for a DataBlock
+        d = mp->getNewDataBlockContainer(mpPageAddress);
       } catch (...) {
-        // todo: increment a stats counter?
-        theLog.log("make_shared<DataBlock> failed");
       }
       if (d != nullptr) {
-        channel->popSuperpage();
         statsNumberOfPages++;
         nextBlock = d;
 
@@ -646,17 +644,18 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
             pageOffset += offsetNextPacket;
           }
         }
-
       } else {
-        // no data block container... what to do???
+        // there is a ready superpage, but we are not able to keep it
+        statsNumberOfPagesLost++;
       }
     } else {
-      // these are leftover pages not ready, discard them
-      // todo: keep stats count
-      // todo: check description of fifo workflow in rorc manual
-      channel->popSuperpage();
+      // these are leftover pages not ready, simply discard them
+      statsNumberOfPagesEmpty++;
+    }
+
+    if (nextBlock == nullptr) {
+      // the superpage is not used, release it
       mp->releasePage(mpPageAddress);
-      // printf("discard\n");
     }
   }
   return nextBlock;
