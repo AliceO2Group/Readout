@@ -455,10 +455,15 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
       std::shared_ptr<DataBlockContainer> d = nullptr;
       // printf ("received a page with %d bytes - isFilled=%d isREady=%d\n",
       //(int)superpage.getReceived(),(int)superpage.isFilled(),(int)superpage.isReady());
-      try {
-        // there is some space reserved at beginning of page for a DataBlock
-        d = mp->getNewDataBlockContainer(mpPageAddress);
-      } catch (...) {
+      if (!mp->isPageValid(mpPageAddress)) {
+        theLog.log(InfoLogger::Severity::Warning,
+                       "Got an invalid page from RORC : %p", mpPageAddress);
+      } else {
+	try {
+          // there is some space reserved at beginning of page for a DataBlock
+          d = mp->getNewDataBlockContainer(mpPageAddress);
+	} catch (...) {
+	}
       }
       if (d != nullptr) {
         statsNumberOfPages++;

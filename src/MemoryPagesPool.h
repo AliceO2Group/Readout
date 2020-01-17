@@ -71,6 +71,8 @@ public:
                              // getPage(), or new page if null) from the pool.
                              // Page will be put back in pool after use.
 
+  bool isPageValid(void *page); // check to see if a page address is valid
+
 private:
   std::unique_ptr<AliceO2::Common::Fifo<void *>>
       pagesAvailable; // a buffer to keep track of individual pages
@@ -80,6 +82,8 @@ private:
 
   void *baseBlockAddress; // address of block containing all pages
   size_t baseBlockSize;   // size of block containing all pages
+  void *firstPageAddress; // address of first page
+  void *lastPageAddress;  // address of last page
 
   ReleaseCallback
       releaseBaseBlockCallback; // the user function called in destructor,
