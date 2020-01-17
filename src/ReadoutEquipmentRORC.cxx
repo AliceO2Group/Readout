@@ -388,10 +388,16 @@ Thread::CallbackResult ReadoutEquipmentRORC::prepareBlocks() {
       superpage.setSize(superPageSize);
       // printf("pushed page %d\n",(int)superPageSize);
       superpage.setUserData(newPage);
-      channel->pushSuperpage(superpage);
-      // todo: break if push fails ( & release page to mp)
-      isActive = 1;
-      nPushed++;
+      if (channel->pushSuperpage(superpage)) {
+        isActive = 1;
+        nPushed++;
+      } else {
+        // push failed (typically, stopDma() has been called in the mean time)
+        // release allocated page to memory pool
+        mp->releasePage(newPage);
+        isActive = 0;
+	break;
+      }
     } else {
       equipmentStats[EquipmentStatsIndexes::nMemoryLow].increment();
       isActive = 0;
@@ -684,7 +690,8 @@ void ReadoutEquipmentRORC::setDataOn() {
 
 void ReadoutEquipmentRORC::setDataOff() {
   ReadoutEquipment::setDataOff(); // ensure we don't push pages any more
-  sleep(1); // todo: driver should disable input fifo on stopdma()
+  // no need to wait, stopDma() immediately disables push()
+  // if there would be one pending in device thread loop
 
   if (isInitialized) {
     theLog.log("Stopping DMA for ROC %s", getName().c_str());
