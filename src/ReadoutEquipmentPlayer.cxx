@@ -21,11 +21,14 @@ extern InfoLogger theLog;
 class ReadoutEquipmentPlayer : public ReadoutEquipment {
 
 public:
-  ReadoutEquipmentPlayer(ConfigFile &cfg, std::string name = "dummyReadout");
+  ReadoutEquipmentPlayer(ConfigFile &cfg, std::string name = "filePlayerReadout");
   ~ReadoutEquipmentPlayer();
   DataBlockContainerReference getNextBlock();
 
 private:
+
+  void initCounters();
+
   Thread::CallbackResult populateFifoOut(); // iterative callback
 
   std::string filePath = "";        // path to data file
@@ -38,6 +41,7 @@ private:
 
   size_t bytesPerPage = 0;      // number of bytes per data page
   FILE *fp = nullptr;           // file handle
+  bool fpOk = false;            // flag to say if fp can be used
   unsigned long fileOffset = 0; // current file offset
 
   struct PacketHeader {
@@ -77,6 +81,13 @@ ReadoutEquipmentPlayer::ReadoutEquipmentPlayer(ConfigFile &cfg,
                                                std::string cfgEntryPoint)
     : ReadoutEquipment(cfg, cfgEntryPoint) {
 
+  auto errorHandler = [&] (const std::string &err) {
+    if (fp != nullptr) {
+      fclose(fp);
+    }
+    throw err;
+  };
+
   // get configuration values
   // configuration parameter: | equipment-player-* | filePath | string | | Path
   // of file containing data to be injected in readout. |
@@ -111,13 +122,25 @@ ReadoutEquipmentPlayer::ReadoutEquipmentPlayer(ConfigFile &cfg,
   // open data file
   fp = fopen(filePath.c_str(), "rb");
   if (fp == nullptr) {
-    throw(std::string("open failed: ") + strerror(errno));
+    errorHandler(std::string("open failed: ") + strerror(errno));
   }
+  fpOk = true;
 
   // get file size
-  fseek(fp, 0L, SEEK_END);
-  fileSize = ftell(fp);
-  rewind(fp);
+  if ( fseek(fp, 0L, SEEK_END) < 0) {
+    errorHandler(std::string("seek failed: ") + strerror(errno));
+  }
+  long fs = ftell(fp);
+  if (fs < 0) {
+    errorHandler(std::string("ftell failed: ") + strerror(errno));
+  }
+  if (fs == 0) {
+    errorHandler(std::string("file is empty"));
+  }
+  fileSize = (size_t)fs;
+      
+  // reset counters
+  initCounters();
 
   if (autoChunk) {
     bytesPerPage = memoryPoolPageSize - sizeof(DataBlock);
@@ -131,22 +154,23 @@ ReadoutEquipmentPlayer::ReadoutEquipmentPlayer(ConfigFile &cfg,
   // check memory pool data pages large enough
   size_t usablePageSize = memoryPoolPageSize - sizeof(DataBlock);
   if (usablePageSize < fileSize) {
-    throw(std::string("memoryPoolPageSize too small, need at least ") +
+    errorHandler(std::string("memoryPoolPageSize too small, need at least ") +
           std::to_string(fileSize + sizeof(DataBlock)) + std::string(" bytes"));
   }
 
   // allocate a buffer
   fileData = std::make_unique<char[]>(fileSize);
   if (fileData == nullptr) {
-    throw(std::string("memory allocation failure"));
+    errorHandler(std::string("memory allocation failure"));
   }
 
   // load file
   if (fread(fileData.get(), fileSize, 1, fp) != 1) {
-    throw(std::string("Failed to load file"));
+    errorHandler(std::string("Failed to load file"));
   };
   fclose(fp);
   fp = nullptr;
+  fpOk = false;
 
   // init variables
   if (fillPage) {
@@ -204,7 +228,7 @@ DataBlockContainerReference ReadoutEquipmentPlayer::getNextBlock() {
     if (autoChunk) {
       bool isOk = 1;
       // read from file
-      if (fp != nullptr) {
+      if ((fp != nullptr) && (fpOk)) {
         size_t nBytes = fread(b->data, 1, bytesPerPage, fp);
         if (nBytes == 0) {
           if (ferror(fp)) {
@@ -308,10 +332,7 @@ DataBlockContainerReference ReadoutEquipmentPlayer::getNextBlock() {
         isOk = 0;
       }
       if (!isOk) {
-        if (fp != nullptr) {
-          fclose(fp);
-        }
-        fp = nullptr;
+        fpOk = false;
         return nullptr;
       }
     } else {
@@ -323,6 +344,22 @@ DataBlockContainerReference ReadoutEquipmentPlayer::getNextBlock() {
   }
 
   return nextBlock;
+}
+
+void ReadoutEquipmentPlayer::initCounters() {
+  fpOk = false;
+  if (fp != nullptr) {
+    if (fseek(fp, 0L, SEEK_SET) != 0) {
+      theLog.log(InfoLogger::Severity::Error,
+                         "Failed to rewind file, aborting replay");
+    } else {
+      fpOk = true;
+    }
+  }
+  fileOffset = 0;
+  lastPacketHeader.timeframeId = 0;
+  lastPacketHeader.linkId = undefinedLinkId;
+  firstTimeframeHbOrbitBegin = 0;
 }
 
 std::unique_ptr<ReadoutEquipment>

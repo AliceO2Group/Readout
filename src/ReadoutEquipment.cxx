@@ -200,9 +200,14 @@ void ReadoutEquipment::start() {
     equipmentStats[i].reset();
     equipmentStatsLast[i] = 0;
   }
+  isError = 0;
   currentBlockId = 0;
+  isDataOn = false;
 
-  readoutThread->start();
+  // reset equipment counters
+  initCounters();
+
+  // reset block rate clock
   if (readoutRate > 0) {
     clk.reset(1000000.0 / readoutRate);
   }
@@ -210,15 +215,22 @@ void ReadoutEquipment::start() {
 
   // reset stats timer
   consoleStatsTimer.reset(cfgConsoleStatsUpdateTime * 1000000);
+
+  readoutThread->start();  
 }
 
 void ReadoutEquipment::stop() {
+
+  // just in case this was not done yet
+  isDataOn = false;
 
   double runningTime = clk0.getTime();
   readoutThread->stop();
   // printf("%llu blocks in %.3lf seconds => %.1lf
   // block/s\n",nBlocksOut,clk0.getTimer(),nBlocksOut/clk0.getTime());
   readoutThread->join();
+
+  finalCounters();
 
   for (int i = 0; i < (int)EquipmentStatsIndexes::maxIndex; i++) {
     if (equipmentStats[i].getCount()) {
@@ -317,7 +329,14 @@ Thread::CallbackResult ReadoutEquipment::threadCallback(void *arg) {
       }
 
       // get next block
-      DataBlockContainerReference nextBlock = ptr->getNextBlock();
+      DataBlockContainerReference nextBlock = nullptr;
+      try {
+        nextBlock = ptr->getNextBlock();
+      }
+      catch (...) {
+        theLog.log(InfoLogger::Severity::Warning, "getNextBlock() exception");
+        break;
+      }
       // printf("getNextBlock=%p\n",nextBlock);
       if (nextBlock == nullptr) {
         break;
@@ -361,16 +380,18 @@ Thread::CallbackResult ReadoutEquipment::threadCallback(void *arg) {
         nPushedOut);
 
     // prepare next blocks
-    Thread::CallbackResult statusPrepare = ptr->prepareBlocks();
-    switch (statusPrepare) {
-    case (Thread::CallbackResult::Ok):
-      isActive = true;
-      break;
-    case (Thread::CallbackResult::Idle):
-      break;
-    default:
-      // this is an abnormal situation, return corresponding status
-      return statusPrepare;
+    if (ptr->isDataOn) {
+      Thread::CallbackResult statusPrepare = ptr->prepareBlocks();
+      switch (statusPrepare) {
+      case (Thread::CallbackResult::Ok):
+	isActive = true;
+	break;
+      case (Thread::CallbackResult::Idle):
+	break;
+      default:
+	// this is an abnormal situation, return corresponding status
+	return statusPrepare;
+      }
     }
 
     // consider inactive if we have not pushed much compared to free space in
@@ -423,3 +444,9 @@ int ReadoutEquipment::getMemoryUsage(size_t &numberOfPagesAvailable,
   numberOfPagesAvailable = mp->getNumberOfPagesAvailable();
   return 0;
 }
+
+void ReadoutEquipment::initCounters() {
+};
+
+void ReadoutEquipment::finalCounters() {
+};

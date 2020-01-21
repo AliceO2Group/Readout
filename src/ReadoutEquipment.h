@@ -41,6 +41,10 @@ public:
   virtual void setDataOn();
   virtual void setDataOff();
 
+  // initialize / finalize counters (called before 1st loop and after last loop)
+  virtual void initCounters();
+  virtual void finalCounters();
+
   bool stopOnError = false; // if set, readout will stop when this equipment
                             // reports an error (isError flag)
   int isError = 0; // flag which might be used to count number of errors
