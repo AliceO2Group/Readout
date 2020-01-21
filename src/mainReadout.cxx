@@ -915,17 +915,11 @@ int Readout::stop() {
                             // continune to empty FIFOs
   isRunning = 0;
 
+  // disable data producers
   for (auto &&readoutDevice : readoutDevices) {
-    if (cfgFlushEquipmentTimeout <= 0) {
-      theLog.log(
-          "Stopping immediately readout equipments, last pages might be lost");
-      // stop readout loop before stopping data (and loose the last pages)
-      // otherwise we get incomplete pages of unkown size (driver bug),
-      // impossible to parse
-      readoutDevice->stop();
-    }
     readoutDevice->setDataOff();
   }
+
   // wait a bit and start flushing aggregator
   if (cfgFlushEquipmentTimeout > 0) {
     usleep(cfgFlushEquipmentTimeout * 1000000 / 2);
@@ -995,9 +989,11 @@ int Readout::reset() {
   dataConsumers.clear();
 
   theLog.log("Releasing aggregator");
-  agg_output->clear();
-  agg = nullptr; // destroy aggregator, and release blocks it may still own.
-
+  if (agg != nullptr) {
+    agg_output->clear();
+    agg = nullptr; // destroy aggregator, and release blocks it may still own.
+  }
+  
   // todo: check nothing in the input pipeline
   // flush & stop equipments
   for (auto &&readoutDevice : readoutDevices) {
