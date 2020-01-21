@@ -72,6 +72,11 @@ ReadoutEquipmentDummy::ReadoutEquipmentDummy(ConfigFile &cfg,
 ReadoutEquipmentDummy::~ReadoutEquipmentDummy() {}
 
 DataBlockContainerReference ReadoutEquipmentDummy::getNextBlock() {
+  
+  if (!isDataOn) {
+    return nullptr;
+  }
+  
   // query memory pool for a free block
   DataBlockContainerReference nextBlock = nullptr;
   try {
