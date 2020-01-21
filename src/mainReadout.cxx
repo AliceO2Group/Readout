@@ -251,6 +251,11 @@ int Readout::init(int argc, char *argv[]) {
   // log startup and options
   theLog.log("Readout process starting, pid %d", getpid());
   theLog.log("Optional built features enabled:");
+#ifdef WITH_CONFIG
+  theLog.log("CONFIG : yes");
+#else
+  theLog.log("CONFIG : no");
+#endif
 #ifdef WITH_FAIRMQ
   theLog.log("FAIRMQ : yes");
   // redirect FMQ logs to infologger
