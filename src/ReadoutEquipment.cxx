@@ -216,7 +216,7 @@ void ReadoutEquipment::start() {
   // reset stats timer
   consoleStatsTimer.reset(cfgConsoleStatsUpdateTime * 1000000);
 
-  readoutThread->start();  
+  readoutThread->start();
 }
 
 void ReadoutEquipment::stop() {
@@ -332,8 +332,7 @@ Thread::CallbackResult ReadoutEquipment::threadCallback(void *arg) {
       DataBlockContainerReference nextBlock = nullptr;
       try {
         nextBlock = ptr->getNextBlock();
-      }
-      catch (...) {
+      } catch (...) {
         theLog.log(InfoLogger::Severity::Warning, "getNextBlock() exception");
         break;
       }
@@ -384,13 +383,13 @@ Thread::CallbackResult ReadoutEquipment::threadCallback(void *arg) {
       Thread::CallbackResult statusPrepare = ptr->prepareBlocks();
       switch (statusPrepare) {
       case (Thread::CallbackResult::Ok):
-	isActive = true;
-	break;
+        isActive = true;
+        break;
       case (Thread::CallbackResult::Idle):
-	break;
+        break;
       default:
-	// this is an abnormal situation, return corresponding status
-	return statusPrepare;
+        // this is an abnormal situation, return corresponding status
+        return statusPrepare;
       }
     }
 
@@ -445,8 +444,6 @@ int ReadoutEquipment::getMemoryUsage(size_t &numberOfPagesAvailable,
   return 0;
 }
 
-void ReadoutEquipment::initCounters() {
-};
+void ReadoutEquipment::initCounters(){};
 
-void ReadoutEquipment::finalCounters() {
-};
+void ReadoutEquipment::finalCounters(){};

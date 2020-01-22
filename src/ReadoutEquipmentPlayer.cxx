@@ -21,12 +21,12 @@ extern InfoLogger theLog;
 class ReadoutEquipmentPlayer : public ReadoutEquipment {
 
 public:
-  ReadoutEquipmentPlayer(ConfigFile &cfg, std::string name = "filePlayerReadout");
+  ReadoutEquipmentPlayer(ConfigFile &cfg,
+                         std::string name = "filePlayerReadout");
   ~ReadoutEquipmentPlayer();
   DataBlockContainerReference getNextBlock();
 
 private:
-
   void initCounters();
 
   Thread::CallbackResult populateFifoOut(); // iterative callback
@@ -81,7 +81,7 @@ ReadoutEquipmentPlayer::ReadoutEquipmentPlayer(ConfigFile &cfg,
                                                std::string cfgEntryPoint)
     : ReadoutEquipment(cfg, cfgEntryPoint) {
 
-  auto errorHandler = [&] (const std::string &err) {
+  auto errorHandler = [&](const std::string &err) {
     if (fp != nullptr) {
       fclose(fp);
     }
@@ -127,7 +127,7 @@ ReadoutEquipmentPlayer::ReadoutEquipmentPlayer(ConfigFile &cfg,
   fpOk = true;
 
   // get file size
-  if ( fseek(fp, 0L, SEEK_END) < 0) {
+  if (fseek(fp, 0L, SEEK_END) < 0) {
     errorHandler(std::string("seek failed: ") + strerror(errno));
   }
   long fs = ftell(fp);
@@ -138,7 +138,7 @@ ReadoutEquipmentPlayer::ReadoutEquipmentPlayer(ConfigFile &cfg,
     errorHandler(std::string("file is empty"));
   }
   fileSize = (size_t)fs;
-      
+
   // reset counters
   initCounters();
 
@@ -155,7 +155,8 @@ ReadoutEquipmentPlayer::ReadoutEquipmentPlayer(ConfigFile &cfg,
   size_t usablePageSize = memoryPoolPageSize - sizeof(DataBlock);
   if (usablePageSize < fileSize) {
     errorHandler(std::string("memoryPoolPageSize too small, need at least ") +
-          std::to_string(fileSize + sizeof(DataBlock)) + std::string(" bytes"));
+                 std::to_string(fileSize + sizeof(DataBlock)) +
+                 std::string(" bytes"));
   }
 
   // allocate a buffer
@@ -351,7 +352,7 @@ void ReadoutEquipmentPlayer::initCounters() {
   if (fp != nullptr) {
     if (fseek(fp, 0L, SEEK_SET) != 0) {
       theLog.log(InfoLogger::Severity::Error,
-                         "Failed to rewind file, aborting replay");
+                 "Failed to rewind file, aborting replay");
     } else {
       fpOk = true;
     }

@@ -22,8 +22,8 @@
 #include <Common/Thread.h>
 #include <Common/Timer.h>
 #include <InfoLogger/InfoLogger.hxx>
-#include <thread>
 #include <boost/property_tree/ptree.hpp>
+#include <thread>
 
 #ifdef WITH_CONFIG
 #include <Configuration/ConfigurationFactory.h>
@@ -44,8 +44,8 @@
 #include "DataBlockAggregator.h"
 #include "MemoryBankManager.h"
 #include "ReadoutEquipment.h"
-#include "ReadoutUtils.h"
 #include "ReadoutStats.h"
+#include "ReadoutUtils.h"
 
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -151,7 +151,7 @@ public:
 
   void loopRunning(); // called in state "running"
 
-  std::string occRole; // OCC role name
+  std::string occRole;   // OCC role name
   uint64_t occRunNumber; // OCC run number
 
 private:
@@ -192,10 +192,12 @@ private:
   std::mutex mutexErrors; // mutex to guard access to error variables
 
 #ifdef WITH_LOGBOOK
-  std::unique_ptr<jiskefet::JiskefetInterface> logbookHandle; // handle to logbook
+  std::unique_ptr<jiskefet::JiskefetInterface>
+      logbookHandle; // handle to logbook
 #endif
-  void publishLogbookStats(); // publish current readout counters to logbook 
-  AliceO2::Common::Timer logbookTimer; // timer to handle readout logbook publish interval
+  void publishLogbookStats(); // publish current readout counters to logbook
+  AliceO2::Common::Timer
+      logbookTimer; // timer to handle readout logbook publish interval
   uint64_t maxTimeframeId;
 };
 
@@ -204,14 +206,19 @@ void Readout::publishLogbookStats() {
   if (logbookHandle != nullptr) {
     bool isOk = false;
     try {
-      // virtual void runStart(int64_t runNumber, boost::posix_time::ptime o2Start, boost::posix_time::ptime triggerStart, std::string activityId, RunType runType, int64_t nDetectors, int64_t nFlps, int64_t nEpns) override;
-      //logbookHandle->flpAdd(occRunNumber, occRole, "localhost");
-      // virtual void flpUpdateCounters(int64_t runNumber, std::string flpName, int64_t nSubtimeframes, int64_t nEquipmentBytes, int64_t nRecordingBytes, int64_t nFairMqBytes) override;
-      logbookHandle->flpUpdateCounters(occRunNumber, occRole,
-        (int64_t)gReadoutStats.numberOfSubtimeframes,
-        (int64_t)gReadoutStats.bytesReadout,
-        (int64_t)gReadoutStats.bytesRecorded,
-        (int64_t)gReadoutStats.bytesFairMQ);
+      // virtual void runStart(int64_t runNumber, boost::posix_time::ptime
+      // o2Start, boost::posix_time::ptime triggerStart, std::string activityId,
+      // RunType runType, int64_t nDetectors, int64_t nFlps, int64_t nEpns)
+      // override;
+      // logbookHandle->flpAdd(occRunNumber, occRole, "localhost");
+      // virtual void flpUpdateCounters(int64_t runNumber, std::string flpName,
+      // int64_t nSubtimeframes, int64_t nEquipmentBytes, int64_t
+      // nRecordingBytes, int64_t nFairMqBytes) override;
+      logbookHandle->flpUpdateCounters(
+          occRunNumber, occRole, (int64_t)gReadoutStats.numberOfSubtimeframes,
+          (int64_t)gReadoutStats.bytesReadout,
+          (int64_t)gReadoutStats.bytesRecorded,
+          (int64_t)gReadoutStats.bytesFairMQ);
       isOk = true;
     } catch (const std::exception &ex) {
       theLog.log(InfoLogger::Severity::Error, "Failed to update logbook: %s",
@@ -317,41 +324,47 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
 #endif
     }
   } catch (std::string err) {
-    theLog.log(InfoLogger::Severity::Error,"%s", err.c_str());
+    theLog.log(InfoLogger::Severity::Error, "%s", err.c_str());
     return -1;
   }
-  
+
   // apply provided occ properties
   // over loaded configuration
-  // with function to overwrtie configuration tree t1 with (selected) content of t2
-  auto mergeConfig = [&] (boost::property_tree::ptree &t1, const boost::property_tree::ptree &t2) {
+  // with function to overwrtie configuration tree t1 with (selected) content of
+  // t2
+  auto mergeConfig = [&](boost::property_tree::ptree &t1,
+                         const boost::property_tree::ptree &t2) {
     theLog.log("Merging selected content of OCC configuration");
     try {
       // overwrite fairmq channel parameters
-      // get list of channels      
-      if (t2.get_child_optional( "chans" )) {
-        boost::property_tree::ptree &ptchannels=(boost::property_tree::ptree &)t2.get_child("chans");
+      // get list of channels
+      if (t2.get_child_optional("chans")) {
+        boost::property_tree::ptree &ptchannels =
+            (boost::property_tree::ptree &)t2.get_child("chans");
         theLog.log("Found OCC FMQ channels configuration");
-        for (auto const & pos : ptchannels) {
-          std::string channelName=boost::lexical_cast<std::string>(pos.first);
+        for (auto const &pos : ptchannels) {
+          std::string channelName = boost::lexical_cast<std::string>(pos.first);
           // check for a consumer with same fairmq channel
           for (auto kName : ConfigFileBrowser(&cfg, "consumer-")) {
             std::string cfgType;
             cfgType = cfg.getValue<std::string>(kName + ".consumerType");
-            if (cfgType=="FairMQChannel") {
+            if (cfgType == "FairMQChannel") {
               std::string cfgChannelName;
-              cfg.getOptionalValue<std::string>(kName + ".fmq-name", cfgChannelName);
-              if (cfgChannelName==channelName) {
-                // this is matching, let's overwrite t1 with content of t2           
-                theLog.log("Updating %s - FairMQ channel %s :",kName.c_str(),channelName.c_str());
+              cfg.getOptionalValue<std::string>(kName + ".fmq-name",
+                                                cfgChannelName);
+              if (cfgChannelName == channelName) {
+                // this is matching, let's overwrite t1 with content of t2
+                theLog.log("Updating %s - FairMQ channel %s :", kName.c_str(),
+                           channelName.c_str());
                 std::string progOptions;
-                for (auto const & pos2 : pos.second.get_child("0")) {
-                  std::string paramName=pos2.first.c_str();
-                  std::string paramValue=pos2.second.data();
-                  if ((paramName=="transport")||(paramName=="type")||(paramName=="address")) {
-                    std::string cfgKey=kName + ".fmq-" + paramName;
-                    theLog.log("%s = %s",cfgKey.c_str(),paramValue.c_str());
-                    t1.put(cfgKey.c_str(),paramValue.c_str());
+                for (auto const &pos2 : pos.second.get_child("0")) {
+                  std::string paramName = pos2.first.c_str();
+                  std::string paramValue = pos2.second.data();
+                  if ((paramName == "transport") || (paramName == "type") ||
+                      (paramName == "address")) {
+                    std::string cfgKey = kName + ".fmq-" + paramName;
+                    theLog.log("%s = %s", cfgKey.c_str(), paramValue.c_str());
+                    t1.put(cfgKey.c_str(), paramValue.c_str());
                   } else {
                     // add it as a program option
                     if (progOptions != "") {
@@ -362,36 +375,35 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
                 }
                 // set FMQ program options, if any
                 if (progOptions != "") {
-                  std::string cfgKey=kName + ".fmq-progOptions";
-                  theLog.log("%s = %s",cfgKey.c_str(),progOptions.c_str());
-                  t1.put(cfgKey.c_str(),progOptions.c_str());
+                  std::string cfgKey = kName + ".fmq-progOptions";
+                  theLog.log("%s = %s", cfgKey.c_str(), progOptions.c_str());
+                  t1.put(cfgKey.c_str(), progOptions.c_str());
                 }
               }
             }
           }
-        }  
+        }
       } else {
         theLog.log("No OCC FMQ channels configuration found");
       }
-    }
-    catch (std::exception &e) {
-      theLog.log(InfoLogger::Severity::Error,"%s",e.what());
+    } catch (std::exception &e) {
+      theLog.log(InfoLogger::Severity::Error, "%s", e.what());
     }
   };
-  mergeConfig(cfg.get(),properties);
-  
+  mergeConfig(cfg.get(), properties);
+
   // try to prevent deep sleeps
-  bool deepsleepDisabled=false;
+  bool deepsleepDisabled = false;
   int maxLatency = 2;
   latencyFd = open("/dev/cpu_dma_latency", O_WRONLY);
   if (latencyFd < 0) {
-    //theLog.log("Can not open /dev/cpu_dma_latency");
+    // theLog.log("Can not open /dev/cpu_dma_latency");
   } else {
     if (write(latencyFd, &maxLatency, sizeof(maxLatency)) !=
         sizeof(maxLatency)) {
-      //theLog.log("Can not write to /dev/cpu_dma_latency");
+      // theLog.log("Can not write to /dev/cpu_dma_latency");
     } else {
-      deepsleepDisabled=true;
+      deepsleepDisabled = true;
     }
   }
   if (deepsleepDisabled) {
@@ -399,7 +411,7 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
   } else {
     theLog.log("CPU deep sleep not disabled for process");
   }
-  
+
   // extract optional configuration parameters
   // configuration parameter: | readout | exitTimeout | double | -1 | Time in
   // seconds after which the program exits automatically. -1 for unlimited. |
@@ -436,12 +448,12 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
                                       cfgLogbookApiToken);
     // configuration parameter: | readout | logbookUpdateInterval | int | 30 |
     // Amount of time (in seconds) between logbook publish updates. |
-    cfgLogbookUpdateInterval=30;
+    cfgLogbookUpdateInterval = 30;
     cfg.getOptionalValue<int>("readout.logbookUpdateInterval",
-                                      cfgLogbookUpdateInterval);
+                              cfgLogbookUpdateInterval);
 
-
-    theLog.log("Logbook enabled, %ds update interval, using URL = %s", cfgLogbookUpdateInterval, cfgLogbookUrl.c_str());
+    theLog.log("Logbook enabled, %ds update interval, using URL = %s",
+               cfgLogbookUpdateInterval, cfgLogbookUrl.c_str());
     logbookHandle = jiskefet::getApiInstance(cfgLogbookUrl, cfgLogbookApiToken);
     if (logbookHandle == nullptr) {
       theLog.log(InfoLogger::Severity::Error,
@@ -770,9 +782,9 @@ int Readout::start() {
   // publish initial logbook statistics
   gReadoutStats.reset();
   publishLogbookStats();
-  logbookTimer.reset(cfgLogbookUpdateInterval*1000000);
-  maxTimeframeId=0;
-  
+  logbookTimer.reset(cfgLogbookUpdateInterval * 1000000);
+  maxTimeframeId = 0;
+
   // cleanup exit conditions
   ShutdownRequest = 0;
 
@@ -833,16 +845,16 @@ void Readout::loopRunning() {
 
     if (bc != nullptr) {
       // count number of subtimeframes
-      if (bc->size()>0) {
-        if (bc->at(0)->getData()!=nullptr) {
-          uint64_t newTimeframeId=bc->at(0)->getData()->header.timeframeId;
-          if (newTimeframeId>maxTimeframeId) {
-            maxTimeframeId=newTimeframeId;
+      if (bc->size() > 0) {
+        if (bc->at(0)->getData() != nullptr) {
+          uint64_t newTimeframeId = bc->at(0)->getData()->header.timeframeId;
+          if (newTimeframeId > maxTimeframeId) {
+            maxTimeframeId = newTimeframeId;
             gReadoutStats.numberOfSubtimeframes++;
           }
         }
       }
-    
+
       for (auto &c : dataConsumers) {
         // push only to "prime" consumers, not to those getting data directly
         // forwarded from another consumer
@@ -998,7 +1010,7 @@ int Readout::reset() {
     agg_output->clear();
     agg = nullptr; // destroy aggregator, and release blocks it may still own.
   }
-  
+
   // todo: check nothing in the input pipeline
   // flush & stop equipments
   for (auto &&readoutDevice : readoutDevices) {
@@ -1043,13 +1055,13 @@ public:
   ReadoutOCCStateMachine(std::unique_ptr<Readout> r)
       : RuntimeControlledObject("Readout Process") {
     theReadout = std::move(r);
-    theReadout->occRole=this->getRole();
+    theReadout->occRole = this->getRole();
   }
 
   int executeConfigure(const boost::property_tree::ptree &properties) {
     if (theReadout == nullptr) {
       return -1;
-    }    
+    }
     return theReadout->configure(properties);
   }
 
@@ -1072,8 +1084,9 @@ public:
       return -1;
     }
     // set run number
-    theReadout->occRunNumber=this->getRunNumber();
-    theLogContext.setField(InfoLoggerContext::FieldName::Run,std::to_string(theReadout->occRunNumber));
+    theReadout->occRunNumber = this->getRunNumber();
+    theLogContext.setField(InfoLoggerContext::FieldName::Run,
+                           std::to_string(theReadout->occRunNumber));
     theLog.setContext(theLogContext);
     return theReadout->start();
   }
@@ -1082,10 +1095,10 @@ public:
     if (theReadout == nullptr) {
       return -1;
     }
-    int ret=theReadout->stop();
+    int ret = theReadout->stop();
     // unset run number
-    theReadout->occRunNumber=0;
-    theLogContext.setField(InfoLoggerContext::FieldName::Run,"");
+    theReadout->occRunNumber = 0;
+    theLogContext.setField(InfoLoggerContext::FieldName::Run, "");
     theLog.setContext(theLogContext);
     return ret;
   }
@@ -1135,7 +1148,7 @@ private:
 // the main program loop
 int main(int argc, char *argv[]) {
 
-  // check environment  
+  // check environment
   // OCC control port. If set, use OCClib to handle Readout states.
   bool occMode = false;
   if (getenv("OCC_CONTROL_PORT") != nullptr) {
@@ -1150,19 +1163,19 @@ int main(int argc, char *argv[]) {
   }
 
   // initialize logging
-  theLogContext.setField(InfoLoggerContext::FieldName::Facility,"readout");
+  theLogContext.setField(InfoLoggerContext::FieldName::Facility, "readout");
   theLog.setContext(theLogContext);
 
   // create readout instance
   std::unique_ptr<Readout> theReadout = std::make_unique<Readout>();
   int err = 0;
 
-  // parse command line arguments  
+  // parse command line arguments
   err = theReadout->init(argc, argv);
   if (err) {
     return err;
   }
-  
+
   if (occMode) {
 #ifdef WITH_OCC
     theLog.log("Readout entering OCC state machine");

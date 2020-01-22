@@ -439,11 +439,11 @@ void ReadoutEquipmentCruEmulator::initCounters() {
 
   elapsedTime.reset();
   t0 = 0;
-  
+
   LHCorbit = 0;
   LHCbc = 0;
-  
-  for (auto &ls: perLinkState) {
+
+  for (auto &ls : perLinkState) {
     ls.second.HBpagecount = 0;
     ls.second.isEmpty = 0;
     ls.second.payloadBytesLeft = -1;
@@ -454,10 +454,11 @@ void ReadoutEquipmentCruEmulator::finalCounters() {
   // flush queue of prepared blocks
   DataBlockContainerReference nextBlock = nullptr;
   for (;;) {
-    if (readyBlocks->pop(nextBlock)) {break;}
+    if (readyBlocks->pop(nextBlock)) {
+      break;
+    }
   }
 }
-
 
 std::unique_ptr<ReadoutEquipment>
 getReadoutEquipmentCruEmulator(ConfigFile &cfg, std::string cfgEntryPoint) {
