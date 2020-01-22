@@ -15,7 +15,6 @@
 
 // This defines a class to keep trakc of some readout counters,
 
-
 #include <atomic>
 
 class ReadoutStats {

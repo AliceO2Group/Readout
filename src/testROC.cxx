@@ -89,8 +89,7 @@ ROCdevice::ROCdevice(std::string id) {
   cardId = id;
   params.setCardId(AliceO2::roc::Parameters::cardIdFromString(cardId));
   params.setChannelNumber(cfgChannelNumber);
-  params.setDataSource(
-        AliceO2::roc::DataSource::fromString(cfgDataSource));
+  params.setDataSource(AliceO2::roc::DataSource::fromString(cfgDataSource));
 
   params.setBufferParameters(AliceO2::roc::buffer_parameters::Memory{
       mp->getBaseBlockAddress(), mp->getBaseBlockSize()});

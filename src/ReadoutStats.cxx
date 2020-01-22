@@ -26,25 +26,20 @@ extern InfoLogger theLog;
 // the global stats instance
 ReadoutStats gReadoutStats;
 
-ReadoutStats::ReadoutStats() {
-  reset();
-}
+ReadoutStats::ReadoutStats() { reset(); }
 
-ReadoutStats::~ReadoutStats() {
-}
+ReadoutStats::~ReadoutStats() {}
 
 void ReadoutStats::reset() {
-  numberOfSubtimeframes=0;
-  bytesReadout=0;
-  bytesRecorded=0;
-  bytesFairMQ=0;
+  numberOfSubtimeframes = 0;
+  bytesReadout = 0;
+  bytesRecorded = 0;
+  bytesFairMQ = 0;
 }
 
 void ReadoutStats::print() {
-  theLog.log("Readout global stats: numberOfSubtimeframes=%llu  bytesReadout=%llu bytesRecorded=%llu bytesFairMQ=%llu",
-    numberOfSubtimeframes.load(),
-    bytesReadout.load(),
-    bytesRecorded.load(),
-    bytesFairMQ.load()
-  );
+  theLog.log("Readout global stats: numberOfSubtimeframes=%llu  "
+             "bytesReadout=%llu bytesRecorded=%llu bytesFairMQ=%llu",
+             numberOfSubtimeframes.load(), bytesReadout.load(),
+             bytesRecorded.load(), bytesFairMQ.load());
 }

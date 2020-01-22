@@ -30,6 +30,9 @@ public:
   Thread::CallbackResult prepareBlocks();
 
 private:
+  void initCounters();
+  void finalCounters();
+
   Thread::CallbackResult populateFifoOut(); // iterative callback
 
   uint64_t currentTimeframeId; // current timeframe id
@@ -130,14 +133,8 @@ ReadoutEquipmentCruEmulator::ReadoutEquipmentCruEmulator(
              cfgFeeId, cfgLinkId, cfgTFperiod, cfgHBperiod, cfgEmptyHbRatio,
              cfgPayloadSize);
 
-  // init variables
-  currentTimeframeId = 1; // TFid starts on 1
-
   // initialize array of pending blocks (to be filled with data)
   pendingBlocks.resize(cfgNumberOfLinks);
-  for (auto &b : pendingBlocks) {
-    b = nullptr;
-  }
 
   // output queue: 1 block per link
   readyBlocks =
@@ -428,6 +425,39 @@ DataBlockContainerReference ReadoutEquipmentCruEmulator::getNextBlock() {
   DataBlockContainerReference nextBlock = nullptr;
   readyBlocks->pop(nextBlock);
   return nextBlock;
+}
+
+void ReadoutEquipmentCruEmulator::initCounters() {
+  // init variables
+  currentTimeframeId = 1; // TFid starts on 1
+
+  for (auto &b : pendingBlocks) {
+    b = nullptr;
+  }
+
+  readyBlocks->clear();
+
+  elapsedTime.reset();
+  t0 = 0;
+
+  LHCorbit = 0;
+  LHCbc = 0;
+
+  for (auto &ls : perLinkState) {
+    ls.second.HBpagecount = 0;
+    ls.second.isEmpty = 0;
+    ls.second.payloadBytesLeft = -1;
+  }
+}
+
+void ReadoutEquipmentCruEmulator::finalCounters() {
+  // flush queue of prepared blocks
+  DataBlockContainerReference nextBlock = nullptr;
+  for (;;) {
+    if (readyBlocks->pop(nextBlock)) {
+      break;
+    }
+  }
 }
 
 std::unique_ptr<ReadoutEquipment>

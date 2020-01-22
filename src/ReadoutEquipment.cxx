@@ -200,9 +200,14 @@ void ReadoutEquipment::start() {
     equipmentStats[i].reset();
     equipmentStatsLast[i] = 0;
   }
+  isError = 0;
   currentBlockId = 0;
+  isDataOn = false;
 
-  readoutThread->start();
+  // reset equipment counters
+  initCounters();
+
+  // reset block rate clock
   if (readoutRate > 0) {
     clk.reset(1000000.0 / readoutRate);
   }
@@ -210,15 +215,22 @@ void ReadoutEquipment::start() {
 
   // reset stats timer
   consoleStatsTimer.reset(cfgConsoleStatsUpdateTime * 1000000);
+
+  readoutThread->start();
 }
 
 void ReadoutEquipment::stop() {
+
+  // just in case this was not done yet
+  isDataOn = false;
 
   double runningTime = clk0.getTime();
   readoutThread->stop();
   // printf("%llu blocks in %.3lf seconds => %.1lf
   // block/s\n",nBlocksOut,clk0.getTimer(),nBlocksOut/clk0.getTime());
   readoutThread->join();
+
+  finalCounters();
 
   for (int i = 0; i < (int)EquipmentStatsIndexes::maxIndex; i++) {
     if (equipmentStats[i].getCount()) {
@@ -295,6 +307,16 @@ Thread::CallbackResult ReadoutEquipment::threadCallback(void *arg) {
     ptr->equipmentStats[EquipmentStatsIndexes::fifoOccupancyOutBlocks].set(
         ptr->dataOut->getNumberOfUsedSlots());
 
+    // check status of memory pool
+    {
+      size_t nPagesTotal = 0, nPagesFree = 0, nPagesUsed = 0;
+      if (ptr->getMemoryUsage(nPagesFree, nPagesTotal) == 0) {
+        nPagesUsed = nPagesTotal - nPagesFree;
+      }
+      ptr->equipmentStats[EquipmentStatsIndexes::nPagesUsed].set(nPagesUsed);
+      ptr->equipmentStats[EquipmentStatsIndexes::nPagesFree].set(nPagesFree);
+    }
+
     // try to get new blocks
     int nPushedOut = 0;
     for (int i = 0; i < maxBlocksToRead; i++) {
@@ -307,10 +329,18 @@ Thread::CallbackResult ReadoutEquipment::threadCallback(void *arg) {
       }
 
       // get next block
-      DataBlockContainerReference nextBlock = ptr->getNextBlock();
+      DataBlockContainerReference nextBlock = nullptr;
+      try {
+        nextBlock = ptr->getNextBlock();
+      } catch (...) {
+        theLog.log(InfoLogger::Severity::Warning, "getNextBlock() exception");
+        break;
+      }
+      // printf("getNextBlock=%p\n",nextBlock);
       if (nextBlock == nullptr) {
         break;
       }
+
       // tag data with equipment Id
       nextBlock->getData()->header.equipmentId = ptr->id;
 
@@ -349,16 +379,18 @@ Thread::CallbackResult ReadoutEquipment::threadCallback(void *arg) {
         nPushedOut);
 
     // prepare next blocks
-    Thread::CallbackResult statusPrepare = ptr->prepareBlocks();
-    switch (statusPrepare) {
-    case (Thread::CallbackResult::Ok):
-      isActive = true;
-      break;
-    case (Thread::CallbackResult::Idle):
-      break;
-    default:
-      // this is an abnormal situation, return corresponding status
-      return statusPrepare;
+    if (ptr->isDataOn) {
+      Thread::CallbackResult statusPrepare = ptr->prepareBlocks();
+      switch (statusPrepare) {
+      case (Thread::CallbackResult::Ok):
+        isActive = true;
+        break;
+      case (Thread::CallbackResult::Idle):
+        break;
+      default:
+        // this is an abnormal situation, return corresponding status
+        return statusPrepare;
+      }
     }
 
     // consider inactive if we have not pushed much compared to free space in
@@ -399,3 +431,19 @@ Thread::CallbackResult ReadoutEquipment::threadCallback(void *arg) {
 void ReadoutEquipment::setDataOn() { isDataOn = true; }
 
 void ReadoutEquipment::setDataOff() { isDataOn = false; }
+
+int ReadoutEquipment::getMemoryUsage(size_t &numberOfPagesAvailable,
+                                     size_t &numberOfPagesInPool) {
+  numberOfPagesAvailable = 0;
+  numberOfPagesInPool = 0;
+  if (mp == nullptr) {
+    return -1;
+  }
+  numberOfPagesInPool = mp->getTotalNumberOfPages();
+  numberOfPagesAvailable = mp->getNumberOfPagesAvailable();
+  return 0;
+}
+
+void ReadoutEquipment::initCounters(){};
+
+void ReadoutEquipment::finalCounters(){};

@@ -42,10 +42,15 @@ MemoryPagesPool::MemoryPagesPool(size_t vPageSize, size_t vNumberOfPages,
   // create a fifo and store list of pages available
   pagesAvailable =
       std::make_unique<AliceO2::Common::Fifo<void *>>(numberOfPages);
+  void *ptr = nullptr;
   for (size_t i = 0; i < numberOfPages; i++) {
-    void *ptr = &((char *)baseBlockAddress)[firstPageOffset + i * pageSize];
+    ptr = &((char *)baseBlockAddress)[firstPageOffset + i * pageSize];
     pagesAvailable->push(ptr);
+    if (i == 0) {
+      firstPageAddress = ptr;
+    }
   }
+  lastPageAddress = ptr;
 }
 
 MemoryPagesPool::~MemoryPagesPool() {
@@ -63,6 +68,11 @@ void *MemoryPagesPool::getPage() {
 }
 
 void MemoryPagesPool::releasePage(void *address) {
+  // safety check on address provided
+  if (!isPageValid(address)) {
+    throw __LINE__;
+  }
+
   // put back page in list of available pages
   pagesAvailable->push(address);
 }
@@ -86,6 +96,11 @@ MemoryPagesPool::getNewDataBlockContainer(void *newPage) {
     newPage = getPage();
     if (newPage == nullptr) {
       return nullptr;
+    }
+  } else {
+    // safety check on address provided
+    if (!isPageValid(newPage)) {
+      throw __LINE__;
     }
   }
 
@@ -118,4 +133,17 @@ MemoryPagesPool::getNewDataBlockContainer(void *newPage) {
   // printf("create dbc %p with data=%p stored=%p\n",bc,newPage,bc->getData());
 
   return bc;
+}
+
+bool MemoryPagesPool::isPageValid(void *pagePtr) {
+  if (pagePtr < firstPageAddress) {
+    return false;
+  }
+  if (pagePtr > lastPageAddress) {
+    return false;
+  }
+  if ((((char *)pagePtr - (char *)firstPageAddress) % pageSize) != 0) {
+    return false;
+  }
+  return true;
 }

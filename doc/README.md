@@ -180,6 +180,12 @@ To launch Readout in this mode, simply set the variable, e.g.
   `export OCC_CONTROL_PORT=47100`
 For testing this mode, one can use the [peanut](https://github.com/AliceO2Group/Control/tree/master/occ#the-occ-state-machine) utility to send commands.
 
+It is also possible to run directly the readout state machine interactively (with keyboard commands to request state transitions).
+To do so, set environment variable O2_READOUT_INTERACTIVE before starting the process. When defined, this supersedes the OCC mode.
+
+Readout logs are written to the InfoLogger system. When Readout is started from a terminal, the logs are printed to the console 
+(unless INFOLOGGER_MODE environment variable already specifies a log output).
+
 
 # Utilities
 
