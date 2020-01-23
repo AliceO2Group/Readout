@@ -971,7 +971,7 @@ int Readout::stop() {
     if (readoutDevice->getMemoryUsage(nPagesFree, nPagesTotal) == 0) {
       nPagesUsed = nPagesTotal - nPagesFree;
       theLog.log("Equipment %s : %d/%d pages (%.2f%%) still in use",
-                 readoutDevice->getName().c_str(), nPagesUsed, nPagesTotal,
+                 readoutDevice->getName().c_str(), (int)nPagesUsed, (int)nPagesTotal,
                  nPagesUsed * 100.0 / nPagesTotal);
     }
   }
@@ -1205,6 +1205,8 @@ int main(int argc, char *argv[]) {
 
     auto getStateName = [](States s) {
       switch (s) {
+      case States::Undefined:
+        return "undefined";
       case States::Standby:
         return "standby";
       case States::Configured:
@@ -1213,6 +1215,8 @@ int main(int argc, char *argv[]) {
         return "running";
       case States::Error:
         return "error";
+      default:
+        break;
       }
       return "undefined";
     };
