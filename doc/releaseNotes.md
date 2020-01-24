@@ -176,3 +176,6 @@ This file describes the main feature changes for each readout.exe released versi
 
 ## v1.3.1 - 23/01/2020
 - Cosmetics fix release.
+
+## v1.3.2 - 24/01/2020
+- Cosmetics fix release.
