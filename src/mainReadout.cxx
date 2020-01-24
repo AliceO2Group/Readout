@@ -1223,6 +1223,8 @@ int main(int argc, char *argv[]) {
 
     auto getCommandName = [](Commands c) {
       switch (c) {
+      case Commands::Undefined:
+        return "undefined";
       case Commands::Configure:
         return "configure";
       case Commands::Start:
@@ -1235,6 +1237,8 @@ int main(int argc, char *argv[]) {
         return "recover";
       case Commands::Exit:
         return "exit";
+      default:
+        break;
       }
       return "undefined";
     };
@@ -1264,6 +1268,8 @@ int main(int argc, char *argv[]) {
             break;
           case 'x':
             theCommand = Commands::Exit;
+            break;
+          default:
             break;
           }
         }
