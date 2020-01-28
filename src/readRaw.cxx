@@ -373,7 +373,7 @@ int main(int argc, const char *argv[]) {
         }
 
         if ((pageOffset + offsetNextPacket > dataSize) &&
-            (pageOffset + offsetNextPacket + fileOffset < fileSize)) {
+            (pageOffset + offsetNextPacket + fileOffset - dataSize < fileSize)) {
           if (isAutoPageSize) {
             // the (virtual) page boundary is in the middle of packet... try to
             // realign
