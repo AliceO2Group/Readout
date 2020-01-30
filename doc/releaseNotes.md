@@ -180,7 +180,7 @@ This file describes the main feature changes for each readout.exe released versi
 ## v1.3.2 - 24/01/2020
 - Cosmetics fix release.
 
-## next
+## v1.3.3 - 30/01/2020
 - Updated configuration parameters:
   - added parameters for receiverFMQ: dumpRDH, dumpTF
   - added readout.aggregatorSliceTimeout
