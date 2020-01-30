@@ -179,3 +179,6 @@ This file describes the main feature changes for each readout.exe released versi
 
 ## v1.3.2 - 24/01/2020
 - Cosmetics fix release.
+
+## next
+- readRaw.exe: fix reading large files, realign was not done for last page.
