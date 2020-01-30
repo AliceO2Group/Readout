@@ -54,6 +54,8 @@ public:
   // iterated, returned in order of creation, older first
   DataSetReference getSlice(bool includeIncomplete = false);
 
+  int slicerId = -1;
+
 private:
   /*
      uint64_t currentId; // common id of the blocks in current data set being

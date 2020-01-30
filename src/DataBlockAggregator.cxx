@@ -136,6 +136,9 @@ long)newId,b);
 }
 
 void DataBlockAggregator::start() {
+  for (unsigned int ix = 0; ix < inputs.size(); ix++) {
+    slicers[ix].slicerId = ix;
+  }
   doFlush = 0;
   aggregateThread->start();
 }
@@ -212,7 +215,11 @@ Thread::CallbackResult DataBlockAggregator::executeCallback() {
       inputs[i]->pop(b);
       nBlocksIn++;
       totalBlocksIn++;
-      // printf("Got block %d from dev %d\n",(int)(b->getData()->header.id),i);
+      // printf("Got block %d from dev %d eq %d link %d tf
+      // %d\n",(int)(b->getData()->header.blockId),
+      // i,(int)(b->getData()->header.equipmentId),
+      // (int)(b->getData()->header.linkId),
+      // (int)(b->getData()->header.timeframeId));
       slicers[i].appendBlock(b);
     }
 
@@ -264,8 +271,8 @@ int DataBlockSlicer::appendBlock(DataBlockContainerReference const &block) {
     return -1;
   }
 
-  // theLog.log("slicer %p append block link %d for tf
-  // %d",this,(int)linkId,(int)tfId);
+  // theLog.log("slicer %p append block link %d for tf %d",
+  //   this,(int)linkId,(int)tfId);
 
   if (partialSlices[linkId].currentDataSet != nullptr) {
     // theLog.log("slice size = %d
@@ -275,7 +282,8 @@ int DataBlockSlicer::appendBlock(DataBlockContainerReference const &block) {
     if ((partialSlices[linkId].tfId != tfId) ||
         (tfId == undefinedTimeframeId)) {
       // the current slice is complete
-      // theLog.log("TF %d link %d is complete",tfId,linkId);
+      // theLog.log("slicer %d TF %d link %d is complete (%d blocks)",slicerId,
+      // partialSlices[linkId].tfId,linkId,partialSlices[linkId].currentDataSet->size());
       slices.push(partialSlices[linkId].currentDataSet);
       partialSlices[linkId].currentDataSet = nullptr;
     }
