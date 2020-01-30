@@ -41,6 +41,7 @@ The parameters related to 3rd-party libraries are described here for convenience
 | readout | exitTimeout | double | -1 | Time in seconds after which the program exits automatically. -1 for unlimited. |
 | readout | flushEquipmentTimeout | double | 1 | Time in seconds to wait for data once the equipments are stopped. 0 means stop immediately. |
 | readout | disableAggregatorSlicing | int | 0 | When set, the aggregator slicing is disabled, data pages are passed through without grouping/slicing. |
+| readout | aggregatorSliceTimeout | double | 0 |When set, slices (groups) of pages are flushed if not updated after given timeout (otherwise closed only on beginning of next TF, or on stop). |
 | readout | logbookEnabled | int | 0 | When set, the logbook is enabled and populated with readout stats at runtime. |
 | readout | logbookUrl | string | | The address to be used for the logbook API. |
 | readout | logbookApiToken | string | | The token to be used for the logbook API. |
@@ -133,4 +134,6 @@ The parameters related to 3rd-party libraries are described here for convenience
 | receiverFMQ | channelType | string | pair | c.f. parameter with same name in consumer-FairMQChannel-* |
 | receiverFMQ | channelAddress | string | ipc:///tmp/pipe-readout | c.f. parameter with same name in consumer-FairMQChannel-* |
 | receiverFMQ | decodingMode | string | none | Decoding mode of the readout FMQ output stream. Possible values: none (no decoding), readout (wp5 protocol) |
+| receiverFMQ | dumpRDH | int | 0 | When set, the RDH of data received are printed (needs decodingMode=readout).|
+| receiverFMQ | dumpTF | int | 0 | When set, a message is printed when a new timeframe is received. If the value is bigger than one, this specifies a periodic interval between TF print after the first one. (e.g. 100 would print TF 1, 100, 200, etc). |
 | consumer-data-sampling-* | address | string | ipc:///tmp/readout-pipe-1 | Address of the data sampling. |

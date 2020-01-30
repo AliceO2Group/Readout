@@ -163,6 +163,7 @@ private:
   double cfgExitTimeout;
   double cfgFlushEquipmentTimeout;
   int cfgDisableAggregatorSlicing;
+  double cfgAggregatorSliceTimeout;
   int cfgLogbookEnabled;
   std::string cfgLogbookUrl;
   std::string cfgLogbookApiToken;
@@ -429,6 +430,12 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
   cfgDisableAggregatorSlicing = 0;
   cfg.getOptionalValue<int>("readout.disableAggregatorSlicing",
                             cfgDisableAggregatorSlicing);
+  // configuration parameter: | readout | aggregatorSliceTimeout | double | 0 |
+  // When set, slices (groups) of pages are flushed if not updated after given
+  // timeout (otherwise closed only on beginning of next TF, or on stop). |
+  cfgAggregatorSliceTimeout = 0;
+  cfg.getOptionalValue<double>("readout.aggregatorSliceTimeout",
+                            cfgAggregatorSliceTimeout);
   // configuration parameter: | readout | logbookEnabled | int | 0 | When set,
   // the logbook is enabled and populated with readout stats at runtime. |
   cfgLogbookEnabled = 0;
@@ -793,6 +800,11 @@ int Readout::start() {
     theLog.log("Aggregator slicing disabled");
     agg->disableSlicing = 1;
   }
+  if (cfgAggregatorSliceTimeout > 0) {
+    theLog.log("Aggregator slice timeout = %.2lf seconds", cfgAggregatorSliceTimeout);
+    agg->cfgSliceTimeout = cfgAggregatorSliceTimeout;
+  }
+  
   agg->start();
 
   // notify consumers of imminent data flow start

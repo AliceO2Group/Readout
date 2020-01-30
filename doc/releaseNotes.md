@@ -179,3 +179,9 @@ This file describes the main feature changes for each readout.exe released versi
 
 ## v1.3.2 - 24/01/2020
 - Cosmetics fix release.
+
+## v1.3.3 - 30/01/2020
+- Updated configuration parameters:
+  - added parameters for receiverFMQ: dumpRDH, dumpTF
+  - added readout.aggregatorSliceTimeout
+- readRaw.exe: fix reading large files, realign was not done for last page.
