@@ -181,4 +181,6 @@ This file describes the main feature changes for each readout.exe released versi
 - Cosmetics fix release.
 
 ## next
+- Updated configuration parameters:
+  - added parameters for receiverFMQ: dumpRDH, dumpTF
 - readRaw.exe: fix reading large files, realign was not done for last page.
