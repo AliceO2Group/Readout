@@ -18,7 +18,7 @@ DataBlockAggregator::DataBlockAggregator(
     AliceO2::Common::Fifo<DataSetReference> *v_output, std::string name) {
   output = v_output;
   aggregateThread = std::make_unique<Thread>(
-      DataBlockAggregator::threadCallback, this, name, 100);
+      DataBlockAggregator::threadCallback, this, name, 1000);
   isIncompletePending = 0;
 }
 
@@ -45,94 +45,6 @@ Thread::CallbackResult DataBlockAggregator::threadCallback(void *arg) {
   }
 
   return dPtr->executeCallback();
-
-  /*
-  // old implementation
-
-  int someEmpty=0;
-  int allEmpty=1;
-  int allSame=1;
-  DataBlockId minId=0;
-  DataBlockId lastId=0;
-  // todo: add invalidId instead of 0 for undefined value
-
-  for (unsigned int i=0; i<dPtr->inputs.size(); i++) {
-    if (!dPtr->inputs[i]->isEmpty()) {
-      allEmpty=0;
-      DataBlockContainerReference bc=nullptr;
-      dPtr->inputs[i]->front(bc);
-      DataBlock *b=bc->getData();
-      DataBlockId newId=b->header.id;
-      if ((minId==0)||(newId<minId)) {
-        minId=newId;
-      }
-      if ((lastId!=0)&&(newId!=lastId)) {
-        allSame=0;
-      }
-      lastId=newId;
-    } else {
-      someEmpty=1;
-      allSame=0;
-    }
-  }
-
-  if (allEmpty) {
-    return Thread::CallbackResult::Idle;
-  }
-
-  if (someEmpty) {
-    if (!dPtr->isIncompletePending) {
-      dPtr->incompletePendingTimer.reset(500000);
-      dPtr->isIncompletePending=1;
-    }
-
-    if (dPtr->isIncompletePending &&
-(!dPtr->incompletePendingTimer.isTimeout())) { return
-Thread::CallbackResult::Idle;
-    }
-  }
-
-  if (allSame) {
-    dPtr->isIncompletePending=0;
-  }
-
-  DataSetReference bcv=nullptr;
-  try {
-    bcv=std::make_shared<DataSet>();
-  }
-  catch(...) {
-    return Thread::CallbackResult::Error;
-  }
-
-
-  for (unsigned int i=0; i<dPtr->inputs.size(); i++) {
-    if (!dPtr->inputs[i]->isEmpty()) {
-      DataBlockContainerReference b=nullptr;
-      dPtr->inputs[i]->front(b);
-      DataBlockId newId=b->getData()->header.id;
-      if (newId==minId) {
-        bcv->push_back(b);
-        dPtr->inputs[i]->pop(b);
-        //printf("1 block for event %llu from input %d @ %p\n",(unsigned long
-long)newId,b);
-        //printf("aggregating %p into dataSet
-%p\n",b->getData()->data,bcv.get());
-      }
-    }
-  }
-
-  //if (!allSame) {printf("!incomplete block pushed\n");}
-  // todo: add error check
-  dPtr->output->push(bcv);
-
-//  printf("readout output: pushed %llu\n",dPtr->output->getNumberIn());
-  // todo: add timeout for standalone pieces - or wait if some FIFOs empty
-  // add flag in output data to say it is incomplete
-  //printf("agg: new block\n");
-  return Thread::CallbackResult::Ok;
-
-  // end of old implementation
-  */
 }
 
 void DataBlockAggregator::start() {
@@ -140,6 +52,7 @@ void DataBlockAggregator::start() {
     slicers[ix].slicerId = ix;
   }
   doFlush = 0;
+  timeNow.reset();
   aggregateThread->start();
 }
 
@@ -180,6 +93,9 @@ Thread::CallbackResult DataBlockAggregator::executeCallback() {
   unsigned int nBlocksIn = 0;
   unsigned int nSlicesOut = 0;
 
+  // get time once per iteration
+  double now = timeNow.getTime();
+
   for (unsigned int ix = 0; ix < nInputs; ix++) {
     int i = (ix + nextIndex) % nInputs;
 
@@ -207,7 +123,10 @@ Thread::CallbackResult DataBlockAggregator::executeCallback() {
       continue;
     }
 
-    for (int j = 0; j < 1024; j++) {
+    const int maxLoop = 1024;
+
+    // populate slices
+    for (int j = 0; j < maxLoop; j++) {
       if (inputs[i]->isEmpty()) {
         break;
       }
@@ -220,10 +139,16 @@ Thread::CallbackResult DataBlockAggregator::executeCallback() {
       // i,(int)(b->getData()->header.equipmentId),
       // (int)(b->getData()->header.linkId),
       // (int)(b->getData()->header.timeframeId));
-      slicers[i].appendBlock(b);
+      slicers[i].appendBlock(b, now);
     }
 
-    for (int j = 0; j < 1024; j++) {
+    // close incomplete slices on timeout
+    if (cfgSliceTimeout) {
+      slicers[i].completeSliceOnTimeout(now - cfgSliceTimeout);
+    }
+
+    // retrieve completed slices
+    for (int j = 0; j < maxLoop; j++) {
       if (output->isFull()) {
         return Thread::CallbackResult::Idle;
       }
@@ -262,7 +187,8 @@ DataBlockSlicer::DataBlockSlicer() {
 }
 DataBlockSlicer::~DataBlockSlicer() {}
 
-int DataBlockSlicer::appendBlock(DataBlockContainerReference const &block) {
+int DataBlockSlicer::appendBlock(DataBlockContainerReference const &block,
+                                 double timestamp) {
   uint64_t tfId = block->getData()->header.timeframeId;
   uint8_t linkId = block->getData()->header.linkId;
 
@@ -298,6 +224,7 @@ int DataBlockSlicer::appendBlock(DataBlockContainerReference const &block) {
   }
   partialSlices[linkId].currentDataSet->push_back(block);
   partialSlices[linkId].tfId = tfId;
+  partialSlices[linkId].lastUpdateTime = timestamp;
   return partialSlices[linkId].currentDataSet->size();
 }
 
@@ -322,4 +249,19 @@ DataSetReference DataBlockSlicer::getSlice(bool includeIncomplete) {
     slices.pop();
   }
   return bcv;
+}
+
+int DataBlockSlicer::completeSliceOnTimeout(double timestamp) {
+  int nFlushed = 0;
+  for (unsigned int i = 0; i < maxLinks; i++) {
+    // check if current data set needs to be flushed
+    if (partialSlices[i].currentDataSet != nullptr) {
+      if (partialSlices[i].lastUpdateTime <= timestamp) {
+        slices.push(partialSlices[i].currentDataSet);
+        partialSlices[i].currentDataSet = nullptr;
+        nFlushed++;
+      }
+    }
+  }
+  return nFlushed;
 }
