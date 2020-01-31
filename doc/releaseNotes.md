@@ -185,3 +185,6 @@ This file describes the main feature changes for each readout.exe released versi
   - added parameters for receiverFMQ: dumpRDH, dumpTF
   - added readout.aggregatorSliceTimeout
 - readRaw.exe: fix reading large files, realign was not done for last page.
+
+## next
+- RDH printing: added CRU id.
