@@ -188,3 +188,4 @@ This file describes the main feature changes for each readout.exe released versi
 
 ## next
 - RDH printing: added CRU id.
+- Use CRU id from data as equipment id for file replay.

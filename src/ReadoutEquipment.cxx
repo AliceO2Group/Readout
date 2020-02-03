@@ -341,8 +341,11 @@ Thread::CallbackResult ReadoutEquipment::threadCallback(void *arg) {
         break;
       }
 
-      // tag data with equipment Id
-      nextBlock->getData()->header.equipmentId = ptr->id;
+      // tag data with equipment Id, if set
+      // (will overwrite field if was already set by equipment)
+      if (ptr->id != undefinedEquipmentId) {
+        nextBlock->getData()->header.equipmentId = ptr->id;
+      }
 
       // tag data with block id
       ptr->currentBlockId++; // don't start from 0

@@ -47,6 +47,7 @@ private:
   struct PacketHeader {
     uint64_t timeframeId = 0;
     int linkId = undefinedLinkId;
+    int equipmentId = undefinedEquipmentId; // used to store CRU id
   };
   PacketHeader lastPacketHeader; // keep track of last packet header
 
@@ -262,6 +263,8 @@ DataBlockContainerReference ReadoutEquipmentPlayer::getNextBlock() {
             // printf ("RDH @ %lu+ %d\n",fileOffset,pageOffset);
             PacketHeader currentPacketHeader;
             currentPacketHeader.linkId = (int)h.getLinkId();
+            currentPacketHeader.equipmentId = (int)h.getCruId();
+
             bool isFirst = (fileOffset == 0) && (pageOffset == 0);
 
             int hbOrbit = h.getHbOrbit();
@@ -278,13 +281,16 @@ DataBlockContainerReference ReadoutEquipmentPlayer::getNextBlock() {
               // printf("link %d TF
               // %d\n",(int)currentPacketHeader.linkId,(int)currentPacketHeader.timeframeId);
               b->header.linkId = currentPacketHeader.linkId;
+              b->header.equipmentId = currentPacketHeader.equipmentId;
               b->header.timeframeId = currentPacketHeader.timeframeId;
             }
 
-            // changing link or TF -> change page
+            // changing link/cruid or TF -> change page
             bool changePage = 0;
             if (!isFirst) {
               if ((currentPacketHeader.linkId != lastPacketHeader.linkId) ||
+                  (currentPacketHeader.equipmentId !=
+                   lastPacketHeader.equipmentId) ||
                   (currentPacketHeader.timeframeId !=
                    lastPacketHeader.timeframeId)) {
                 // printf("%d : %d -> %d :
