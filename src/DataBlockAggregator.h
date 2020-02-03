@@ -17,6 +17,7 @@
 #include <Common/DataBlockContainer.h>
 #include <Common/DataSet.h>
 
+#include <map>
 #include <memory>
 #include <queue>
 
@@ -25,18 +26,9 @@ using namespace AliceO2::Common;
 /*
   DataBlockAggregator
 
-  One "slicer" per equipment: data blocks are grouped in a "slice" of blocks
-  having the same TF id.
-
-  TODO: should be done per data source.
+  One "slicer" per equipment: data blocks with same sourceId are grouped in a
+  "slice" of blocks having the same TF id.
 */
-
-struct PartialSlice {
-  uint8_t linkId;
-  uint64_t tfId;
-  double lastUpdateTime; // timestamp of last block pushed
-  DataSetReference currentDataSet;
-};
 
 // a class to group blocks with same ID in slices
 class DataBlockSlicer {
@@ -65,17 +57,36 @@ public:
   int slicerId = -1;
 
 private:
-  /*
-     uint64_t currentId; // common id of the blocks in current data set being
-     built DataSetReference currentDataSet; // current data set being built
-  */
-  const unsigned int maxLinks = 32;        // maximum number of links
-  std::vector<PartialSlice> partialSlices; // slices being built (one per link)
+  // data source id used to group data
+  struct DataSourceId {
+    uint16_t equipmentId = undefinedEquipmentId;
+    uint8_t linkId = undefinedLinkId;
+  };
+
+  struct PartialSlice {
+    uint64_t tfId;                   // timeframeId of this slice
+    double lastUpdateTime = 0;       // timestamp of last block pushed
+    DataSetReference currentDataSet; // currently associated data
+  };
+
+  struct CompareDataSourceId {
+    inline bool operator()(const DataSourceId &id1, const DataSourceId &id2) {
+      if (id1.equipmentId != id2.equipmentId) {
+        return id1.equipmentId < id2.equipmentId;
+      } else {
+        return id1.linkId < id2.linkId;
+      }
+    }
+  };
+
+  using PartialSliceMap =
+      std::map<DataSourceId, PartialSlice, CompareDataSourceId>;
+
+  const unsigned int maxLinks = 32; // maximum number of links
+  PartialSliceMap partialSlices;    // slices being built (one per link)
 
   std::queue<DataSetReference>
       slices; // data sets which have been built and are complete
-
-  // todo: add a timeout
 };
 
 class DataBlockAggregator {

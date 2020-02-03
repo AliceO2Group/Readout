@@ -139,7 +139,9 @@ Thread::CallbackResult DataBlockAggregator::executeCallback() {
       // i,(int)(b->getData()->header.equipmentId),
       // (int)(b->getData()->header.linkId),
       // (int)(b->getData()->header.timeframeId));
-      slicers[i].appendBlock(b, now);
+      if (slicers[i].appendBlock(b, now) <= 0) {
+        return Thread::CallbackResult::Error;
+      }
     }
 
     // close incomplete slices on timeout
@@ -177,65 +179,56 @@ Thread::CallbackResult DataBlockAggregator::executeCallback() {
   return Thread::CallbackResult::Ok;
 }
 
-DataBlockSlicer::DataBlockSlicer() {
-  partialSlices.resize(maxLinks + 1);
-  for (unsigned int i = 0; i <= maxLinks; i++) {
-    if (i < maxLinks) {
-      partialSlices[i].linkId = i;
-    } else {
-      partialSlices[i].linkId = undefinedLinkId;
-    }
-    partialSlices[i].tfId = undefinedTimeframeId;
-    partialSlices[i].currentDataSet = nullptr;
-  }
-}
+DataBlockSlicer::DataBlockSlicer() {}
+
 DataBlockSlicer::~DataBlockSlicer() {}
 
 int DataBlockSlicer::appendBlock(DataBlockContainerReference const &block,
                                  double timestamp) {
   uint64_t tfId = block->getData()->header.timeframeId;
-  uint8_t linkId = block->getData()->header.linkId;
+  DataSourceId sourceId;
+  sourceId.linkId = block->getData()->header.linkId;
+  sourceId.equipmentId = block->getData()->header.equipmentId;
 
-  if (linkId != undefinedLinkId) {  
-    if (linkId >= maxLinks) {
-      theLog.log("wrong link id %d > %d", linkId, maxLinks - 1); 
+  if (sourceId.linkId != undefinedLinkId) {
+    if (sourceId.linkId >= maxLinks) {
+      theLog.log(InfoLogger::Severity::Error, "wrong link id %d > %d",
+                 sourceId.linkId, maxLinks - 1);
       return -1;
     }
-  } else {
-    linkId = maxLinks;
   }
-  
-  
 
-  // theLog.log("slicer %p append block link %d for tf %d",
-  //   this,(int)linkId,(int)tfId);
+  // theLog.log("slicer %p append block eq %d link %d for tf %d",
+  //   this,(int)sourceId.equipmentId,(int)sourceId.linkId,(int)tfId);
+  PartialSlice &s = partialSlices[sourceId];
 
-  if (partialSlices[linkId].currentDataSet != nullptr) {
+  if (s.currentDataSet != nullptr) {
     // theLog.log("slice size = %d
     // chunks",partialSlices[linkId].currentDataSet->size()); if
     // ((partialSlices[linkId].tfId!=tfId)||(partialSlices[linkId].currentDataSet->size()>2))
     // {
-    if ((partialSlices[linkId].tfId != tfId) ||
-        (tfId == undefinedTimeframeId)) {
+    if ((s.tfId != tfId) || (tfId == undefinedTimeframeId)) {
       // the current slice is complete
-      // theLog.log("slicer %d TF %d link %d is complete (%d blocks)",slicerId,
-      // partialSlices[linkId].tfId,linkId,partialSlices[linkId].currentDataSet->size());
-      slices.push(partialSlices[linkId].currentDataSet);
-      partialSlices[linkId].currentDataSet = nullptr;
+      // theLog.log("slicer %p TF %d eq %d link %d is complete (%d
+      // blocks)",this,
+      // (int)s.tfId,(int)sourceId.equipmentId,(int)sourceId.linkId,s.currentDataSet->size());
+      slices.push(s.currentDataSet);
+      s.currentDataSet = nullptr;
     }
   }
-  if (partialSlices[linkId].currentDataSet == nullptr) {
-    // printf("creating STF %d\n",(int)stfid);
+  if (s.currentDataSet == nullptr) {
     try {
-      partialSlices[linkId].currentDataSet = std::make_shared<DataSet>();
+      s.currentDataSet = std::make_shared<DataSet>();
     } catch (...) {
       return -1;
     }
   }
-  partialSlices[linkId].currentDataSet->push_back(block);
-  partialSlices[linkId].tfId = tfId;
-  partialSlices[linkId].lastUpdateTime = timestamp;
-  return partialSlices[linkId].currentDataSet->size();
+  s.currentDataSet->push_back(block);
+  s.tfId = tfId;
+  s.lastUpdateTime = timestamp;
+  // printf(" %d,%d -> %d
+  // blocks\n",s.sourceId.equipmentId,s.sourceId.linkId,s.currentDataSet->size());
+  return s.currentDataSet->size();
 }
 
 DataSetReference DataBlockSlicer::getSlice(bool includeIncomplete) {
@@ -244,10 +237,10 @@ DataSetReference DataBlockSlicer::getSlice(bool includeIncomplete) {
   DataSetReference bcv = nullptr;
   if (slices.empty()) {
     if (includeIncomplete) {
-      for (auto &c : partialSlices) {
-        bcv = c.currentDataSet;
+      for (auto &s : partialSlices) {
+        bcv = s.second.currentDataSet;
         if (bcv != nullptr) {
-          c.currentDataSet = nullptr;
+          s.second.currentDataSet = nullptr;
           break;
         }
       }
@@ -263,12 +256,12 @@ DataSetReference DataBlockSlicer::getSlice(bool includeIncomplete) {
 
 int DataBlockSlicer::completeSliceOnTimeout(double timestamp) {
   int nFlushed = 0;
-  for (unsigned int i = 0; i <= maxLinks; i++) {
+  for (auto &s : partialSlices) {
     // check if current data set needs to be flushed
-    if (partialSlices[i].currentDataSet != nullptr) {
-      if (partialSlices[i].lastUpdateTime <= timestamp) {
-        slices.push(partialSlices[i].currentDataSet);
-        partialSlices[i].currentDataSet = nullptr;
+    if (s.second.currentDataSet != nullptr) {
+      if (s.second.lastUpdateTime <= timestamp) {
+        slices.push(s.second.currentDataSet);
+        s.second.currentDataSet = nullptr;
         nFlushed++;
       }
     }

@@ -188,5 +188,6 @@ This file describes the main feature changes for each readout.exe released versi
 
 ## v1.3.4 - 03/02/2020
 - RDH printing: added CRU id.
-- Use CRU id from data as equipment id for file replay.
+- Use CRU id from data as equipment id for file replay and RORC equipment.
 - Fixed slicer handling of undefinedLinkId (bug in v1.3.3).
+- New slicing based on equipmentId + linkId indexing, to allow proper STF formatting when replaying data from single file with multiple CRUids.
