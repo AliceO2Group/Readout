@@ -103,7 +103,8 @@ int RdhBlockHandle::printSummary() {
   size_t bytesLeft = blockSize;
 
   int rdhcount = 0;
-
+  RdhHeaderPrinted = false; // re-print header for each page
+    
   for (;;) {
 
     // check enough space for RDH
@@ -115,22 +116,25 @@ int RdhBlockHandle::printSummary() {
 
     rdhcount++;
     int offset = ptr - (uint8_t *)blockPtr;
-    printf("*** RDH #%d @ 0x%04X = %d\n", rdhcount, offset, offset);
+    
+    const bool dumpRaw = false;
+    if (dumpRaw) {
+      printf("*** RDH #%d @ 0x%04X = %d\n", rdhcount, offset, offset);
 
-    // print raw bytes
-    // printf("Raw bytes dump (32-bit words):\n");
-    for (int i = 0; i < sizeof(o2::Header::RAWDataHeader) / sizeof(int32_t);
-         i++) {
-      if (i % 8 == 0) {
-        printf("\n");
+      // print raw bytes
+      // printf("Raw bytes dump (32-bit words):\n");
+      for (int i = 0; i < sizeof(o2::Header::RAWDataHeader) / sizeof(int32_t);
+           i++) {
+	if (i % 8 == 0) {
+          printf("\n");
+	}
+	printf("%08X ", (int)(((uint32_t *)ptr)[i]));
       }
-      printf("%08X ", (int)(((uint32_t *)ptr)[i]));
+      printf("\n\n");
     }
-    printf("\n\n");
 
     RdhHandle rdh(ptr);
-    rdh.dumpRdh();
-    printf("\n");
+    rdh.dumpRdh(offset, 1);
 
     int next = rdh.getOffsetNextPacket(); // next RDH
     if (next == 0) {
