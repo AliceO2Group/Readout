@@ -186,6 +186,7 @@ This file describes the main feature changes for each readout.exe released versi
   - added readout.aggregatorSliceTimeout
 - readRaw.exe: fix reading large files, realign was not done for last page.
 
-## next
+## v1.3.4 - 03/02/2020
 - RDH printing: added CRU id.
 - Use CRU id from data as equipment id for file replay.
+- Fixed slicer handling of undefinedLinkId (bug in v1.3.3).
