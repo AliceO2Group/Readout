@@ -178,9 +178,13 @@ Thread::CallbackResult DataBlockAggregator::executeCallback() {
 }
 
 DataBlockSlicer::DataBlockSlicer() {
-  partialSlices.resize(maxLinks);
-  for (unsigned int i = 0; i < maxLinks; i++) {
-    partialSlices[i].linkId = i;
+  partialSlices.resize(maxLinks + 1);
+  for (unsigned int i = 0; i <= maxLinks; i++) {
+    if (i < maxLinks) {
+      partialSlices[i].linkId = i;
+    } else {
+      partialSlices[i].linkId = undefinedLinkId;
+    }
     partialSlices[i].tfId = undefinedTimeframeId;
     partialSlices[i].currentDataSet = nullptr;
   }
@@ -192,10 +196,16 @@ int DataBlockSlicer::appendBlock(DataBlockContainerReference const &block,
   uint64_t tfId = block->getData()->header.timeframeId;
   uint8_t linkId = block->getData()->header.linkId;
 
-  if (linkId > maxLinks) {
-    theLog.log("wrong link id %d > %d", linkId, maxLinks);
-    return -1;
+  if (linkId != undefinedLinkId) {  
+    if (linkId >= maxLinks) {
+      theLog.log("wrong link id %d > %d", linkId, maxLinks - 1); 
+      return -1;
+    }
+  } else {
+    linkId = maxLinks;
   }
+  
+  
 
   // theLog.log("slicer %p append block link %d for tf %d",
   //   this,(int)linkId,(int)tfId);
@@ -253,7 +263,7 @@ DataSetReference DataBlockSlicer::getSlice(bool includeIncomplete) {
 
 int DataBlockSlicer::completeSliceOnTimeout(double timestamp) {
   int nFlushed = 0;
-  for (unsigned int i = 0; i < maxLinks; i++) {
+  for (unsigned int i = 0; i <= maxLinks; i++) {
     // check if current data set needs to be flushed
     if (partialSlices[i].currentDataSet != nullptr) {
       if (partialSlices[i].lastUpdateTime <= timestamp) {
