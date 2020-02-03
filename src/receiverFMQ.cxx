@@ -187,6 +187,8 @@ int main(int argc, const char **argv) {
           // first part is STF header
 
           int i = 0;
+	  bool dumpNext = false;
+	  SubTimeframe *stf = nullptr;
           for (auto const &mm : msgParts) {
             if (i == 0) {
               if (mm->GetSize() != sizeof(SubTimeframe)) {
@@ -195,7 +197,7 @@ int main(int argc, const char **argv) {
                            (int)sizeof(SubTimeframe));
                 break;
               }
-              SubTimeframe *stf = (SubTimeframe *)mm->GetData();
+              stf = (SubTimeframe *)mm->GetData();
               if (stf->numberOfHBF != nPart - 1) {
                 theLog.log(
                     InfoLogger::Severity::Error,
@@ -206,10 +208,8 @@ int main(int argc, const char **argv) {
               // number of message parts matches number of HBFs in header ?
               if (cfgDumpTF) {
                 if ((stf->timeframeId == 1) ||
-                    (stf->timeframeId % cfgDumpTF == 0)) {
-                  printf("Receiving TF %d link %d : %d HBf\n",
-                         (int)stf->timeframeId, (int)stf->linkId,
-                         (int)stf->numberOfHBF);
+                    (stf->timeframeId % cfgDumpTF == 0)) {                  
+	          dumpNext = true;
                 }
               }
             } else {
@@ -224,7 +224,14 @@ int main(int argc, const char **argv) {
                 }
                 RdhHandle h(((uint8_t *)data) + pageOffset);
 
-                if (cfgDumpRDH) {
+                if (dumpNext) {
+                  printf("Receiving TF %d CRU %d link %d : %d HBf\n",
+                         (int)stf->timeframeId, (int)h.getCruId(), (int)stf->linkId,
+                         (int)stf->numberOfHBF);
+		  dumpNext = false;
+		}
+		
+		if (cfgDumpRDH) {
                   h.dumpRdh(pageOffset, 1);
                 }
 

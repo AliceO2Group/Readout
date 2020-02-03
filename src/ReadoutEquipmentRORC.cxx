@@ -460,6 +460,7 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
         }
 
         // default values for metadata
+        int equipmentId = undefinedEquipmentId;
         int linkId = undefinedLinkId;
         int hbOrbit = -1;
 
@@ -474,6 +475,13 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
                        "First RDH in page is wrong: %s",
                        errorDescription.c_str());
           } else {
+
+            // equipmentId
+            equipmentId = h.getCruId();
+	    // discard value from CRU if this is the default one
+	    if (equipmentId == 0) {
+	      equipmentId = undefinedEquipmentId;
+	    }
 
             // linkId
             linkId = h.getLinkId();
@@ -515,6 +523,7 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
 
         // fill page metadata
         d->getData()->header.dataSize = superpage.getReceived();
+        d->getData()->header.equipmentId = equipmentId;
         d->getData()->header.linkId = linkId;
         d->getData()->header.timeframeId = currentTimeframe;
 
@@ -557,7 +566,7 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
                 printf("\n");
                 printf("Page 0x%p + %ld\n%s", (void *)baseAddress, pageOffset,
                        errorDescription.c_str());
-                h.dumpRdh();
+                h.dumpRdh(pageOffset, 1);
                 errorDescription.clear();
               }
               statsRdhCheckErr++;
@@ -568,7 +577,7 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
               statsRdhCheckOk++;
 
               if (cfgRdhDumpEnabled) {
-                h.dumpRdh();
+                h.dumpRdh(pageOffset, 1);
                 for (int i = 0; i < 16; i++) {
                   printf("%08X ",
                          (int)(((uint32_t *)baseAddress + pageOffset)[i]));
