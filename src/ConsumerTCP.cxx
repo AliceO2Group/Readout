@@ -57,7 +57,8 @@ public:
     tx.clear();
 
     theLog.log("TCP client:  %llu blocks sent, %llu blocks dropped",
-               nBlocksSent, nBlocksDropped);
+               (unsigned long long)nBlocksSent,
+               (unsigned long long)nBlocksDropped);
     theLog.log("TCP client:  %s sent,%s dropped",
                NumberOfBytesToString(nBytesSent, "bytes", 1024).c_str(),
                NumberOfBytesToString(nBytesDropped, "bytes", 1024).c_str());

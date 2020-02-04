@@ -126,8 +126,9 @@ private:
         if (intervalTime > 0) {
           theLog.log("Last interval (%.2fs): blocksRx=%llu, block rate=%.2lf, "
                      "bytesRx=%llu, rate=%s",
-                     intervalTime, counterBlocksDiff,
-                     counterBlocksDiff / intervalTime, counterBytesDiff,
+                     intervalTime, (unsigned long long)counterBlocksDiff,
+                     counterBlocksDiff / intervalTime,
+                     (unsigned long long)counterBytesDiff,
                      NumberOfBytesToString(counterBytesDiff * 8 / intervalTime,
                                            "b/s", 1000)
                          .c_str());

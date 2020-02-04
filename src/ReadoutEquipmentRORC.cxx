@@ -478,10 +478,10 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
 
             // equipmentId
             equipmentId = h.getCruId();
-	    // discard value from CRU if this is the default one
-	    if (equipmentId == 0) {
-	      equipmentId = undefinedEquipmentId;
-	    }
+            // discard value from CRU if this is the default one
+            if (equipmentId == 0) {
+              equipmentId = undefinedEquipmentId;
+            }
 
             // linkId
             linkId = h.getLinkId();
@@ -509,7 +509,8 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
                 if (cfgRdhDumpErrorEnabled) {
                   theLog.log(InfoLogger::Severity::Warning,
                              "Non-contiguous timeframe IDs %llu ... %llu",
-                             currentTimeframe, newTimeframe);
+                             (unsigned long long)currentTimeframe,
+                             (unsigned long long)newTimeframe);
                 }
               }
               currentTimeframe = newTimeframe;
@@ -719,7 +720,7 @@ void ReadoutEquipmentRORC::initCounters() {
   }
 
   // reset packetCounter monitor
-  for (int i = 0; i <= RdhMaxLinkId; i++) {
+  for (unsigned int i = 0; i <= RdhMaxLinkId; i++) {
     RdhLastPacketCounter[i] = 0;
   }
 }

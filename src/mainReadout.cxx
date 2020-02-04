@@ -435,7 +435,7 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
   // timeout (otherwise closed only on beginning of next TF, or on stop). |
   cfgAggregatorSliceTimeout = 0;
   cfg.getOptionalValue<double>("readout.aggregatorSliceTimeout",
-                            cfgAggregatorSliceTimeout);
+                               cfgAggregatorSliceTimeout);
   // configuration parameter: | readout | logbookEnabled | int | 0 | When set,
   // the logbook is enabled and populated with readout stats at runtime. |
   cfgLogbookEnabled = 0;
@@ -801,10 +801,11 @@ int Readout::start() {
     agg->disableSlicing = 1;
   }
   if (cfgAggregatorSliceTimeout > 0) {
-    theLog.log("Aggregator slice timeout = %.2lf seconds", cfgAggregatorSliceTimeout);
+    theLog.log("Aggregator slice timeout = %.2lf seconds",
+               cfgAggregatorSliceTimeout);
     agg->cfgSliceTimeout = cfgAggregatorSliceTimeout;
   }
-  
+
   agg->start();
 
   // notify consumers of imminent data flow start
@@ -983,8 +984,8 @@ int Readout::stop() {
     if (readoutDevice->getMemoryUsage(nPagesFree, nPagesTotal) == 0) {
       nPagesUsed = nPagesTotal - nPagesFree;
       theLog.log("Equipment %s : %d/%d pages (%.2f%%) still in use",
-                 readoutDevice->getName().c_str(), (int)nPagesUsed, (int)nPagesTotal,
-                 nPagesUsed * 100.0 / nPagesTotal);
+                 readoutDevice->getName().c_str(), (int)nPagesUsed,
+                 (int)nPagesTotal, nPagesUsed * 100.0 / nPagesTotal);
     }
   }
 
@@ -1002,14 +1003,14 @@ int Readout::reset() {
 
   // close consumers before closing readout equipments (owner of data blocks)
   theLog.log("Releasing primary consumers");
-  for (int i = 0; i < dataConsumers.size(); i++) {
+  for (unsigned int i = 0; i < dataConsumers.size(); i++) {
     if (!dataConsumers[i]->isForwardConsumer) {
       theLog.log("Releasing consumer %s", dataConsumers[i]->name.c_str());
       dataConsumers[i] = nullptr;
     }
   }
   theLog.log("Releasing secondary consumers");
-  for (int i = 0; i < dataConsumers.size(); i++) {
+  for (unsigned int i = 0; i < dataConsumers.size(); i++) {
     if (dataConsumers[i] != nullptr) {
       theLog.log("Releasing consumer %s", dataConsumers[i]->name.c_str());
       dataConsumers[i] = nullptr;

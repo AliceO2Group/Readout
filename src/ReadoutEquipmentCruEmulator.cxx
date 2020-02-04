@@ -290,7 +290,7 @@ Thread::CallbackResult ReadoutEquipmentCruEmulator::prepareBlocks() {
       rdh->pagesCounter = ls.HBpagecount;
       if (ls.payloadBytesLeft > 0) {
         int bytesNow = ls.payloadBytesLeft;
-        if (bytesNow + sizeof(o2::Header::RAWDataHeader) > cruBlockSize) {
+        if (bytesNow + (int)sizeof(o2::Header::RAWDataHeader) > cruBlockSize) {
           bytesNow = cruBlockSize - sizeof(o2::Header::RAWDataHeader);
         }
         ls.payloadBytesLeft -= bytesNow;
