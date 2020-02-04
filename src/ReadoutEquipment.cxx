@@ -235,12 +235,15 @@ void ReadoutEquipment::stop() {
   for (int i = 0; i < (int)EquipmentStatsIndexes::maxIndex; i++) {
     if (equipmentStats[i].getCount()) {
       theLog.log("%s.%s = %llu  (avg=%.2lf  min=%llu  max=%llu  count=%llu)",
-                 name.c_str(), EquipmentStatsNames[i], equipmentStats[i].get(),
-                 equipmentStats[i].getAverage(), equipmentStats[i].getMinimum(),
-                 equipmentStats[i].getMaximum(), equipmentStats[i].getCount());
+                 name.c_str(), EquipmentStatsNames[i],
+                 (unsigned long long)equipmentStats[i].get(),
+                 equipmentStats[i].getAverage(),
+                 (unsigned long long)equipmentStats[i].getMinimum(),
+                 (unsigned long long)equipmentStats[i].getMaximum(),
+                 (unsigned long long)equipmentStats[i].getCount());
     } else {
       theLog.log("%s.%s = %llu", name.c_str(), EquipmentStatsNames[i],
-                 equipmentStats[i].get());
+                 (unsigned long long)equipmentStats[i].get());
     }
   }
 
@@ -415,7 +418,8 @@ Thread::CallbackResult ReadoutEquipment::threadCallback(void *arg) {
           CounterValue vDiff = vNew - ptr->equipmentStatsLast[i];
           ptr->equipmentStatsLast[i] = vNew;
           theLog.log("%s.%s : diff=%llu total=%llu", ptr->name.c_str(),
-                     ptr->EquipmentStatsNames[i], vDiff, vNew);
+                     ptr->EquipmentStatsNames[i], (unsigned long long)vDiff,
+                     (unsigned long long)vNew);
         }
         ptr->consoleStatsTimer.increment();
       }

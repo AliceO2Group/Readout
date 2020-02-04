@@ -112,7 +112,7 @@ DataBlockContainerReference ReadoutEquipmentDummy::getNextBlock() {
     } else if (fillData == 2) {
       // incremental word pattern, with one random word out of 5
       int *pi = (int *)b->data;
-      for (int k = 0; k < dSize / sizeof(int); k++) {
+      for (unsigned int k = 0; k < dSize / sizeof(int); k++) {
         pi[k] = k;
         if (k % 5 == 0)
           pi[k] = rand();

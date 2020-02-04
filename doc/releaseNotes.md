@@ -191,3 +191,6 @@ This file describes the main feature changes for each readout.exe released versi
 - Use CRU id from data as equipment id for file replay and RORC equipment.
 - Fixed slicer handling of undefinedLinkId (bug in v1.3.3).
 - New slicing based on equipmentId + linkId indexing, to allow proper STF formatting when replaying data from single file with multiple CRUids.
+
+## v1.3.5 - 04/02/2020
+- Cosmetics fix release.

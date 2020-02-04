@@ -46,7 +46,7 @@ int processBlock(DataBlockContainerReference &input,
   // https://github.com/lz4/lz4/blob/master/doc/lz4_Frame_format.md
 
   // maximum size of (uncompressed) block is 4MB max.
-  const int blockMaximumSize = 4 * 1024 * 1024;
+  // const int blockMaximumSize = 4 * 1024 * 1024;
 
   // LZ4 frame
   // here we use simplest format with no options:

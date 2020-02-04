@@ -40,6 +40,8 @@ void ReadoutStats::reset() {
 void ReadoutStats::print() {
   theLog.log("Readout global stats: numberOfSubtimeframes=%llu  "
              "bytesReadout=%llu bytesRecorded=%llu bytesFairMQ=%llu",
-             numberOfSubtimeframes.load(), bytesReadout.load(),
-             bytesRecorded.load(), bytesFairMQ.load());
+             (unsigned long long)numberOfSubtimeframes.load(),
+             (unsigned long long)bytesReadout.load(),
+             (unsigned long long)bytesRecorded.load(),
+             (unsigned long long)bytesFairMQ.load());
 }

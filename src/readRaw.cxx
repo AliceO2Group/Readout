@@ -155,7 +155,7 @@ int main(int argc, const char *argv[]) {
   bool checkOrbitContiguous =
       true; // if set, verify that they are no holes in orbit number
 
-  for (fileOffset = 0; fileOffset < fileSize;) {
+  for (fileOffset = 0; fileOffset < (unsigned long)fileSize;) {
 
 #define ERR_LOOP                                                               \
   {                                                                            \
@@ -188,8 +188,8 @@ int main(int argc, const char *argv[]) {
         printf("\tdataSize = %u\n", hb.dataSize);
         printf("\tlinkId = %u\n", hb.linkId);
         printf("\tequipmentId = %d\n", (int)hb.equipmentId);
-        printf("\ttimeframeId = %llu\n", hb.timeframeId);
-        printf("\tblockId = %llu\n", hb.blockId);
+        printf("\ttimeframeId = %llu\n", (unsigned long long)hb.timeframeId);
+        printf("\tblockId = %llu\n", (unsigned long long)hb.blockId);
         printf("\tdata @ %lu\n", fileOffset);
       }
       dataSize = hb.dataSize;
@@ -211,7 +211,7 @@ int main(int argc, const char *argv[]) {
 
         // check header correct
         bool isHeaderOk = true;
-        for (int i = 0; i < sizeof(header); i++) {
+        for (unsigned int i = 0; i < sizeof(header); i++) {
           if (header[i] != buffer[i]) {
             isHeaderOk = false;
             break;
@@ -256,7 +256,7 @@ int main(int argc, const char *argv[]) {
 
       // check trailer correct
       bool istrailerOk = true;
-      for (int i = 0; i < sizeof(trailer); i++) {
+      for (unsigned int i = 0; i < sizeof(trailer); i++) {
         if (trailer[i] != buffer[i]) {
           istrailerOk = false;
           break;
@@ -298,10 +298,11 @@ int main(int argc, const char *argv[]) {
 
     if ((validateRDH) || (dumpRDH)) {
       std::string errorDescription;
-      for (size_t pageOffset = 0; pageOffset < dataSize;) {
+      for (size_t pageOffset = 0; pageOffset < (unsigned long)dataSize;) {
 
         // check we are not at page boundary
-        if (pageOffset + sizeof(o2::Header::RAWDataHeader) > dataSize) {
+        if (pageOffset + sizeof(o2::Header::RAWDataHeader) >
+            (unsigned long)dataSize) {
           if (isAutoPageSize) {
             // the (virtual) page boundary is in the middle of packet... try to
             // realign
@@ -372,8 +373,9 @@ int main(int argc, const char *argv[]) {
           break;
         }
 
-        if ((pageOffset + offsetNextPacket > dataSize) &&
-            (pageOffset + offsetNextPacket + fileOffset - dataSize < fileSize)) {
+        if ((pageOffset + offsetNextPacket > (unsigned long)dataSize) &&
+            (pageOffset + offsetNextPacket + fileOffset - dataSize <
+             (unsigned long)fileSize)) {
           if (isAutoPageSize) {
             // the (virtual) page boundary is in the middle of packet... try to
             // realign

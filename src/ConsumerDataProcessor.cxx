@@ -275,10 +275,11 @@ public:
     idFifo = nullptr;
     theLog.log(
         "bytes processed: %llu bytes dropped: %llu acceptance rate: %.2lf%%",
-        processedBytes, dropBytes,
+        (unsigned long long)processedBytes, (unsigned long long)dropBytes,
         processedBlocks * 100.0 / (processedBlocks + dropBlocks));
     theLog.log("bytes accepted in: %llu bytes out: %llu compression %.4lf",
-               processedBytes, processedBytesOut,
+               (unsigned long long)processedBytes,
+               (unsigned long long)processedBytesOut,
                processedBytesOut * 1.0 / processedBytes);
 
     if (fpPagesIn != nullptr) {
@@ -349,10 +350,11 @@ public:
     }
 
     if (fpPagesIn != nullptr) {
-      fprintf(fpPagesIn, "%llu\t%llu\t%d\t%d\t%llu\n", b->getData()->header.id,
-              b->getData()->header.blockId, b->getData()->header.linkId,
-              b->getData()->header.equipmentId,
-              b->getData()->header.timeframeId);
+      fprintf(fpPagesIn, "%llu\t%llu\t%d\t%d\t%llu\n",
+              (unsigned long long)b->getData()->header.id,
+              (unsigned long long)b->getData()->header.blockId,
+              b->getData()->header.linkId, b->getData()->header.equipmentId,
+              (unsigned long long)b->getData()->header.timeframeId);
     }
 
     return 0;
@@ -401,12 +403,13 @@ public:
                 threadPool[ix]->outputFifo->pop(bc);
                 pushPage(bc);
                 if (fpPagesOut != nullptr) {
-                  fprintf(fpPagesOut, "%llu\t%llu\t%d\t%d\t%llu\n",
-                          bc->getData()->header.id,
-                          bc->getData()->header.blockId,
-                          bc->getData()->header.linkId,
-                          bc->getData()->header.equipmentId,
-                          bc->getData()->header.timeframeId);
+                  fprintf(
+                      fpPagesOut, "%llu\t%llu\t%d\t%d\t%llu\n",
+                      (unsigned long long)bc->getData()->header.id,
+                      (unsigned long long)bc->getData()->header.blockId,
+                      bc->getData()->header.linkId,
+                      bc->getData()->header.equipmentId,
+                      (unsigned long long)bc->getData()->header.timeframeId);
                 }
                 // we increment start index, as it is more likely to have the
                 // next page
@@ -430,10 +433,11 @@ public:
           pushPage(bc);
           if (fpPagesOut != nullptr) {
             fprintf(fpPagesOut, "%llu\t%llu\t%d\t%d\t%llu\n",
-                    bc->getData()->header.id, bc->getData()->header.blockId,
+                    (unsigned long long)bc->getData()->header.id,
+                    (unsigned long long)bc->getData()->header.blockId,
                     bc->getData()->header.linkId,
                     bc->getData()->header.equipmentId,
-                    bc->getData()->header.timeframeId);
+                    (unsigned long long)bc->getData()->header.timeframeId);
           }
         }
       }

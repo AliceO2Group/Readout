@@ -70,7 +70,7 @@ private:
   };
 
   struct CompareDataSourceId {
-    inline bool operator()(const DataSourceId &id1, const DataSourceId &id2) {
+    inline bool operator()(const DataSourceId &id1, const DataSourceId &id2) const {
       if (id1.equipmentId != id2.equipmentId) {
         return id1.equipmentId < id2.equipmentId;
       } else {
