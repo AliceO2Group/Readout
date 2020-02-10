@@ -141,11 +141,11 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name)
     std::string cfgDataSource = "Internal";
     cfg.getOptionalValue<std::string>(name + ".dataSource", cfgDataSource);
 
-    // configuration parameter: | equipment-rorc-* | linkMask | string | 0-31 |
-    // List of links to be enabled. For CRU, in the 0-31 range. Can be a single
+    // configuration parameter: | equipment-rorc-* | linkMask | string | 0-11 |
+    // List of links to be enabled. For CRU, in the 0-11 range. Can be a single
     // value, a comma-separated list, a range or comma-separated list of ranges.
     // c.f. AliceO2::roc::Parameters. |
-    std::string cfgLinkMask = "0-31";
+    std::string cfgLinkMask = "0-11";
     cfg.getOptionalValue<std::string>(name + ".linkMask", cfgLinkMask);
 
     // std::string cfgReadoutMode="CONTINUOUS";

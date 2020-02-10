@@ -319,8 +319,8 @@ Thread::CallbackResult ReadoutEquipmentCruEmulator::prepareBlocks() {
 
     // printf("wrote %d bytes\n",dSize);
 
-    b->header.blockType = DataBlockType::H_BASE;
-    b->header.headerSize = sizeof(DataBlockHeaderBase);
+    // no need to fill header defaults, this is done by getNewDataBlockContainer()
+    // only adjust payload size
     b->header.dataSize = dSize;
     b->header.timeframeId = nowId;
     b->header.linkId = linkId;
@@ -332,91 +332,6 @@ Thread::CallbackResult ReadoutEquipmentCruEmulator::prepareBlocks() {
   LHCbc = nowBc;
   currentTimeframeId = 1 + LHCorbit / cfgTFperiod; // timeframe ID
 
-  /*
-      // this block is a superpage.
-      // let's fill it with data
-      if (currentLink==0) {
-        // starting new iteration over data link
-        // update current trigger ID
-        double t=elapsedTime.getTime();
-        if (currentId==0) {
-          t0=t;
-        }
-        LHCorbit=(uint32_t)((t-t0)*11000); // LHC orbit 11KHz
-        LHCbc=((uint16_t)((t-t0)*40018000)) & 0xFFF; // LHC BC 40MHz (multiple
-  of LHC orbit rate to make sure BC 0 on each new orbit) if
-  ((HBid==0)||(LHCorbit>HBid+HBperiod)) { HBid=LHCorbit;
-        }
-  /
-        LHCbc+=1000;
-        if (LHCbc>=4096) {
-          LHCorbit++;
-          LHCbc=0;
-        }
-  /
-        currentLink++;
-        pagesToGoForCurrentLink=0;
-      }
-
-      if (pagesToGoForCurrentLink==0) {
-        pagesToGoForCurrentLink=2; // TODO: random number of pages per trigger
-      }
-
-      o2::Header::RAWDataHeader defaultRDH; // a default RDH
-      // fill the new data page
-      int offset; // number of bytes used in page
-      int nBlocksInPage=0;
-      for
-  (offset=0;offset+cruBlockSize<=memPoolElementSize;offset+=cruBlockSize) {
-
-        // should we continue to fill the page, or limit reached?
-        nBlocksInPage++;
-        if (cfgMaxBlocksPerPage) {
-          if (nBlocksInPage>cfgMaxBlocksPerPage) {
-            break;
-          }
-        }
-
-        // rdh as defined in:
-        //
-  https://docs.google.com/document/d/1KUoLnEw5PndVcj4FKR5cjV-MBN3Bqfx_B0e6wQOIuVE/edit#heading=h.5q65he8hp62c
-
-        o2::Header::RAWDataHeader *rdh=(o2::Header::RAWDataHeader
-  *)&b->data[offset]; *rdh=defaultRDH; // reset fields to defaults
-        rdh->blockLength=(uint16_t)cruBlockSize;
-        rdh->triggerOrbit=LHCorbit;
-        rdh->triggerBC=LHCbc;
-        rdh->heartbeatOrbit=HBid;
-        rdh->feeId=cfgFeeId;
-        rdh->linkId=currentLink;
-
-        printf("RDH @ %d / %d\n",offset,memPoolElementSize);
-        dumpRDH(rdh);
-      }
-
-      // size used (bytes) in page is last offset
-      int dSize=offset;
-
-      // fill header
-      currentId++;  // don't start from 0
-      b->header.blockType=DataBlockType::H_BASE;
-      b->header.headerSize=sizeof(DataBlockHeaderBase);
-      b->header.dataSize=dSize;
-      b->header.id=currentId;
-
-      // b->data is set when creating block
-
-      // have pushed one more page
-      pagesToGoForCurrentLink--;
-      if (pagesToGoForCurrentLink==0) {
-        currentLink++;
-        if (currentLink>cfgNumberOfLinks) {
-          currentLink=0;
-        }
-      }
-
-    }
-  */
   return Thread::CallbackResult::Ok;
 }
 

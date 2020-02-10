@@ -84,7 +84,7 @@ The parameters related to 3rd-party libraries are described here for convenience
 | equipment-rorc-* | cardId | string | | ID of the board to be used. Typically, a PCI bus device id. c.f. AliceO2::roc::Parameters. |
 | equipment-rorc-* | channelNumber | int | 0 | Channel number of the board to be used. Typically 0 for CRU, or 1-6 for CRORC. c.f. AliceO2::roc::Parameters. |
 | equipment-rorc-* | dataSource | string | Internal | This parameter selects the data source used by ReadoutCard, c.f. AliceO2::roc::Parameters. It can be for CRU one of Fee, Ddg, Internal and for CRORC one of Fee, SIU, DIU, Internal. |
-| equipment-rorc-* | linkMask | string | 0-31 | List of links to be enabled. For CRU, in the 0-31 range. Can be a single value, a comma-separated list, a range or comma-separated list of ranges. c.f. AliceO2::roc::Parameters. |
+| equipment-rorc-* | linkMask | string | 0-11 | List of links to be enabled. For CRU, in the 0-11 range. Can be a single value, a comma-separated list, a range or comma-separated list of ranges. c.f. AliceO2::roc::Parameters. |
 | equipment-rorc-* | resetLevel | string | INTERNAL | Reset level of the device. Can be one of NOTHING, INTERNAL, INTERNAL_DIU, INTERNAL_DIU_SIU. c.f. AliceO2::roc::Parameters. |
 | equipment-rorc-* | rdhCheckEnabled | int | 0 | If set, data pages are parsed and RDH headers checked. Errors are reported in logs. |
 | equipment-rorc-* | rdhDumpEnabled | int | 0 | If set, data pages are parsed and RDH headers summary printed. Setting a negative number will print only the first N RDH.|

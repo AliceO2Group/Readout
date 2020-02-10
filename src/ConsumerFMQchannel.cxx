@@ -286,10 +286,10 @@ public:
         isFirst = false;
       } else {
         if (stfHeader->timeframeId != b->header.timeframeId) {
-          printf("mismatch tfId\n");
+          theLog.log(InfoLogger::Severity::Warning,"mismatch tfId");
         }
         if (stfHeader->linkId != b->header.linkId) {
-          printf("mismatch linkId\n");
+          theLog.log(InfoLogger::Severity::Warning,"mismatch linkId");
         }
       }
       // printf("block %d tf %d link
@@ -307,7 +307,7 @@ public:
           // HBid=%d\n",offset,stfHeader->numberOfHBF,lastHBid);
         }
         if (stfHeader->linkId != rdh->linkId) {
-          printf("Warning: TF%d link Id mismatch %d != %d @ page offset %d\n",
+          theLog.log(InfoLogger::Severity::Warning,"TF%d link Id mismatch %d != %d @ page offset %d",
                  (int)stfHeader->timeframeId, (int)stfHeader->linkId,
                  (int)rdh->linkId, (int)offset);
           // dumpRDH(rdh);
@@ -404,9 +404,9 @@ public:
         // todo: same code as for header -> create func/lambda
         // todo: send empty message if no page left in buffer
         if (memoryPoolPageSize < totalSize) {
-          printf("error page size too small %d < %d\n", memoryPoolPageSize,
+          theLog.log(InfoLogger::Severity::Warning,"page size too small %d < %d", memoryPoolPageSize,
                  totalSize);
-          return;
+          throw __LINE__;
         }
         DataBlockContainerReference copyBlock = nullptr;
         try {
@@ -414,8 +414,8 @@ public:
         } catch (...) {
         }
         if (copyBlock == nullptr) {
-          printf("error: no page left\n");
-          return;
+          theLog.log(InfoLogger::Severity::Warning,"no page left");
+          throw __LINE__;
         }
         auto blockRef = new DataBlockContainerReference(copyBlock);
         char *newBlock = (char *)copyBlock->getData()->data;
@@ -450,56 +450,71 @@ public:
       pendingFrames.clear();
     };
 
-    for (auto &br : *bc) {
-      DataBlock *b = br->getData();
-      unsigned int HBstart = 0;
-      for (int offset = 0;
-           offset + sizeof(o2::Header::RAWDataHeader) <= b->header.dataSize;) {
-        o2::Header::RAWDataHeader *rdh =
-            (o2::Header::RAWDataHeader *)&b->data[offset];
-        // printf("CRU block %p = HB %d link %d @
-        // %d\n",b,(int)rdh->heartbeatOrbit,(int)rdh->linkId,offset);
-        if (rdh->heartbeatOrbit != lastHBid) {
-          // printf("new HBf detected\n");
-          int HBlength = offset - HBstart;
+    try {
+      for (auto &br : *bc) {
+	DataBlock *b = br->getData();
+	unsigned int HBstart = 0;
+	for (int offset = 0;
+             offset + sizeof(o2::Header::RAWDataHeader) <= b->header.dataSize;) {
+          o2::Header::RAWDataHeader *rdh =
+              (o2::Header::RAWDataHeader *)&b->data[offset];
+          // printf("CRU block %p = HB %d link %d @
+          // %d\n",b,(int)rdh->heartbeatOrbit,(int)rdh->linkId,offset);
+          if (rdh->heartbeatOrbit != lastHBid) {
+            // printf("new HBf detected\n");
+            int HBlength = offset - HBstart;
 
-          if (HBlength) {
-            // add previous block to pending frames
-            pendingFramesAppend(HBstart, HBlength, lastHBid, br);
+            if (HBlength) {
+              // add previous block to pending frames
+              pendingFramesAppend(HBstart, HBlength, lastHBid, br);
+            }
+            // send pending frames, if any
+            pendingFramesCollect();
+
+            // update new HB frame
+            HBstart = offset;
+            lastHBid = rdh->heartbeatOrbit;
           }
-          // send pending frames, if any
-          pendingFramesCollect();
+          uint16_t offsetNextPacket = rdh->offsetNextPacket;
+          if (offsetNextPacket == 0) {
+            break;
+          }
+          offset += offsetNextPacket;
+	}
 
-          // update new HB frame
-          HBstart = offset;
-          lastHBid = rdh->heartbeatOrbit;
-        }
-        uint16_t offsetNextPacket = rdh->offsetNextPacket;
-        if (offsetNextPacket == 0) {
-          break;
-        }
-        offset += offsetNextPacket;
+	// keep last piece for later, HBframe may continue in next block(s)
+	if (HBstart < b->header.dataSize) {
+          pendingFramesAppend(HBstart, b->header.dataSize - HBstart, lastHBid,
+                              br);
+	}
       }
 
-      // keep last piece for later, HBframe may continue in next block(s)
-      if (HBstart < b->header.dataSize) {
-        pendingFramesAppend(HBstart, b->header.dataSize - HBstart, lastHBid,
-                            br);
+      // purge pendingFrames
+      pendingFramesCollect();
+
+      // send all the messages
+      if (sendingChannel->Send(messagesToSend) >= 0) {
+	messagesToSend.clear();
+	gReadoutStats.bytesFairMQ += messagesToSendSize;
+	messagesToSendSize = 0;
+      } else {
+	LOG(ERROR) << "Sending failed!";
       }
     }
-
-    // purge pendingFrames
-    pendingFramesCollect();
-
-    // send all the messages
-    if (sendingChannel->Send(messagesToSend) >= 0) {
-      messagesToSend.clear();
-      gReadoutStats.bytesFairMQ += messagesToSendSize;
-      messagesToSendSize = 0;
-    } else {
-      LOG(ERROR) << "Sending failed!";
+    catch(int err) {
+      // cleanup pending frames
+      for (auto &f : pendingFrames) {
+        if (f.blockRef != nullptr) {
+	  delete f.blockRef;
+          f.blockRef = nullptr;
+	}
+      }
+      pendingFrames.clear();
+	  
+      theLog.log(InfoLogger::Severity::Error,"ConsumerFMQ : error %d",err);
+      return -1;
     }
-
+    
     /*
 
       std::unique_ptr<FairMQMessage>
