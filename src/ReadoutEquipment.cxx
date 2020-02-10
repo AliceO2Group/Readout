@@ -175,6 +175,8 @@ ReadoutEquipment::ReadoutEquipment(ConfigFile &cfg, std::string cfgEntryPoint) {
                "Failed to create pool of memory pages");
     throw __LINE__;
   }
+  // todo: move page align to MemoryPool class
+  assert(pageSpaceReserved == mp->getPageSize() - mp->getDataBlockMaxSize());
 
   // create output fifo
   dataOut =

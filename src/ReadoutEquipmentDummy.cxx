@@ -61,10 +61,9 @@ ReadoutEquipmentDummy::ReadoutEquipmentDummy(ConfigFile &cfg,
              eventMinSize, eventMaxSize, fillData);
 
   // ensure generated events will fit in blocks allocated from memory pool
-  int maxElementSize = eventMaxSize + sizeof(DataBlockHeaderBase);
-  if (maxElementSize > memoryPoolPageSize) {
-    theLog.log("memoryPoolPageSize too small, need at least %d bytes",
-               maxElementSize);
+  if (eventMaxSize > mp->getDataBlockMaxSize()) {
+    theLog.log("memoryPoolPageSize too small, need at least %ld bytes",
+               (long)(eventMaxSize + mp->getPageSize() - mp->getDataBlockMaxSize()));
     throw __LINE__;
   }
 }
@@ -92,16 +91,9 @@ DataBlockContainerReference ReadoutEquipmentDummy::getNextBlock() {
     int dSize = (int)(eventMinSize + (int)((eventMaxSize - eventMinSize) *
                                            (rand() * 1.0 / RAND_MAX)));
 
-    // no need to check size fits in page, this was done once for all at
-    // configure time
-
-    // fill header
-    b->header.blockType = DataBlockType::H_BASE;
-    b->header.headerSize = sizeof(DataBlockHeaderBase);
+    // no need to fill header defaults, this is done by getNewDataBlockContainer()
+    // only adjust payload size
     b->header.dataSize = dSize;
-    // say it's contiguous header+data
-    // todo: align begin of data ?
-    b->data = &(((char *)b)[sizeof(DataBlock)]);
 
     // optionaly fill data range
     if (fillData == 1) {

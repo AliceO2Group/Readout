@@ -9,6 +9,7 @@
 // or submit itself to any jurisdiction.
 
 #include "MemoryPagesPool.h"
+#include <assert.h>
 
 MemoryPagesPool::MemoryPagesPool(size_t vPageSize, size_t vNumberOfPages,
                                  void *vBaseAddress, size_t vBaseSize,
@@ -20,6 +21,10 @@ MemoryPagesPool::MemoryPagesPool(size_t vPageSize, size_t vNumberOfPages,
   baseBlockAddress = vBaseAddress;
   baseBlockSize = vBaseSize;
   releaseBaseBlockCallback = vCallback;
+
+  // check page / header sizes
+  assert(headerReservedSpace >= sizeof(DataBlock));
+  assert(headerReservedSpace <= pageSize);
 
   // if not specified, assuming base block size big enough to fit number of
   // pages * page size
@@ -109,12 +114,12 @@ MemoryPagesPool::getNewDataBlockContainer(void *newPage) {
   DataBlock *b = (DataBlock *)newPage;
   b->header.blockType = DataBlockType::H_BASE;
   b->header.headerSize = sizeof(DataBlockHeaderBase);
-  b->header.dataSize = pageSize - sizeof(DataBlock);
+  b->header.dataSize = getDataBlockMaxSize();
   b->header.blockId = undefinedBlockId;
   b->header.linkId = undefinedLinkId;
   b->header.equipmentId = undefinedEquipmentId;
   b->header.timeframeId = undefinedTimeframeId;
-  b->data = &(((char *)b)[sizeof(DataBlock)]);
+  b->data = &(((char *)b)[headerReservedSpace]);
 
   // define a function to put it back in pool after use
   auto releaseCallback = [this, newPage](void) -> void {
@@ -146,4 +151,8 @@ bool MemoryPagesPool::isPageValid(void *pagePtr) {
     return false;
   }
   return true;
+}
+
+size_t MemoryPagesPool::getDataBlockMaxSize() {
+  return pageSize - headerReservedSpace;
 }

@@ -144,7 +144,7 @@ ReadoutEquipmentPlayer::ReadoutEquipmentPlayer(ConfigFile &cfg,
   initCounters();
 
   if (autoChunk) {
-    bytesPerPage = memoryPoolPageSize - sizeof(DataBlock);
+    bytesPerPage = mp->getDataBlockMaxSize();
     theLog.log("Will load file = %lu bytes in chunks of maximum %lu bytes",
                (unsigned long)fileSize, (unsigned long)bytesPerPage);
     return;
@@ -153,10 +153,10 @@ ReadoutEquipmentPlayer::ReadoutEquipmentPlayer(ConfigFile &cfg,
   theLog.log("Loading file = %lu bytes", (unsigned long)fileSize);
 
   // check memory pool data pages large enough
-  size_t usablePageSize = memoryPoolPageSize - sizeof(DataBlock);
+  size_t usablePageSize = mp->getDataBlockMaxSize();
   if (usablePageSize < fileSize) {
     errorHandler(std::string("memoryPoolPageSize too small, need at least ") +
-                 std::to_string(fileSize + sizeof(DataBlock)) +
+                 std::to_string(fileSize + mp->getPageSize() - mp->getDataBlockMaxSize()) +
                  std::string(" bytes"));
   }
 
@@ -190,7 +190,7 @@ ReadoutEquipmentPlayer::ReadoutEquipmentPlayer(ConfigFile &cfg,
       if (nextBlock == nullptr) {
         break;
       }
-      char *ptr = &(((char *)nextBlock->getData())[sizeof(DataBlock)]);
+      char *ptr = nextBlock->getData()->data;
       copyFileDataToPage(ptr);
       dataPages.push_back(nextBlock);
     }
@@ -218,14 +218,9 @@ DataBlockContainerReference ReadoutEquipmentPlayer::getNextBlock() {
   if (nextBlock != nullptr) {
     DataBlock *b = nextBlock->getData();
 
-    // fill header
-    b->header.blockType = DataBlockType::H_BASE;
-    b->header.headerSize = sizeof(DataBlockHeaderBase);
+    // no need to fill header defaults, this is done by getNewDataBlockContainer()
+    // only adjust payload size
     b->header.dataSize = 0;
-
-    // say it's contiguous header+data
-    // todo: align begin of data ?
-    b->data = &(((char *)b)[sizeof(DataBlock)]);
 
     if (autoChunk) {
       bool isOk = 1;
@@ -347,6 +342,8 @@ DataBlockContainerReference ReadoutEquipmentPlayer::getNextBlock() {
       if (!preLoad) {
         copyFileDataToPage(b->data);
       }
+      // update header metadata
+      b->header.dataSize = bytesPerPage;
     }
   }
 

@@ -70,6 +70,12 @@ public:
                              // = a given page, retrieved previously by
                              // getPage(), or new page if null) from the pool.
                              // Page will be put back in pool after use.
+			     // The base header is filled, in particular
+			     // block->header.dataSize has usable page size and
+			     // block->data points to it.
+
+  size_t getDataBlockMaxSize(); // returns usable payload size of blocks
+                                // returned by getNewDataBlockContainer()
 
   bool isPageValid(void *page); // check to see if a page address is valid
 
@@ -79,7 +85,9 @@ private:
 
   size_t numberOfPages; // number of pages
   size_t pageSize;      // size of each page, in bytes
-
+  size_t headerReservedSpace = sizeof(DataBlock); // number of bytes reserved at
+                                                  // top of each page for header
+  
   void *baseBlockAddress; // address of block containing all pages
   size_t baseBlockSize;   // size of block containing all pages
   void *firstPageAddress; // address of first page
