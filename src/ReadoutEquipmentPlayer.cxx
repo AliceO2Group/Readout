@@ -345,6 +345,7 @@ DataBlockContainerReference ReadoutEquipmentPlayer::getNextBlock() {
     } else {
       // copy file data to page, if not done already
       if (!preLoad) {
+    	b->header.dataSize = bytesPerPage;
         copyFileDataToPage(b->data);
       }
     }
