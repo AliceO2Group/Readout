@@ -33,6 +33,10 @@ int main(int argc, const char *argv[]) {
   bool validateRDH = true;
   bool dumpDataBlockHeader = false;
   int dumpData = 0; // if set, number of bytes to dump in each data page
+  int dumpDataInline =
+      0; // if set, number of bytes to dump in each data page, after RDH dump
+  bool fileReadVerbose =
+      false; // flag to print more info (chunk size, etc) when reading file
   bool dataBlockHeaderEnabled = false;
   bool checkContinuousTriggerOrder = false;
   bool isAutoPageSize = false; // flag set when no known page size in file
@@ -42,13 +46,16 @@ int main(int argc, const char *argv[]) {
 
   if (argc < 2) {
     ERRLOG("Usage: %s [rawFilePath] [options]\nList of options:\n \
-    filePath=(string) : path to file\n \
-    dataBlockEnabled=0|1: specify if file is with/without internal readout data block headers\n \
-    dumpRDH=0|1 : dump the RDH headers\n \
-    validateRDH=0|1 : check the RDH headers\n \
-    checkContinuousTriggerOrder=0|1 : check trigger order\n \
-    dumpDataBlockHeader=0|1 : dump the data block headers (internal readout headers)\n \
-    dumpData=(int) : dump the data pages. If -1, all bytes. Otherwise, the first bytes only, as specified.\n",
+    filePath=(string) : path to file.\n \
+    dataBlockEnabled=0|1: specify if file is with/without internal readout data block headers.\n \
+    dumpRDH=0|1 : dump the RDH headers.\n \
+    validateRDH=0|1 : check the RDH headers.\n \
+    checkContinuousTriggerOrder=0|1 : check trigger order.\n \
+    dumpDataBlockHeader=0|1 : dump the data block headers (internal readout headers).\n \
+    dumpData=(int) : dump the data pages. If -1, all bytes. Otherwise, the first bytes only, as specified.\n \
+    dumpDataInline=(int) : if set, each packet raw content is printed (hex dump style). \
+    fileReadVerbose=(int) : if set, more information is printed when reading/decoding file. \
+    \n",
            argv[0]);
     return -1;
   }
@@ -91,6 +98,10 @@ int main(int argc, const char *argv[]) {
       dumpDataBlockHeader = std::stoi(value);
     } else if (key == "dumpData") {
       dumpData = std::stoi(value);
+    } else if (key == "dumpDataInline") {
+      dumpDataInline = std::stoi(value);
+    } else if (key == "fileReadVerbose") {
+      fileReadVerbose = std::stoi(value);
     } else if (key == "checkContinuousTriggerOrder") {
       checkContinuousTriggerOrder = std::stoi(value);
     } else {
@@ -106,9 +117,13 @@ int main(int argc, const char *argv[]) {
   ERRLOG("Using data file %s\n", filePath.c_str());
   ERRLOG("dataBlockHeaderEnabled=%d dumpRDH=%d validateRDH=%d "
          "checkContinuousTriggerOrder=%d "
-         "dumpDataBlockHeader=%d dumpData=%d\n",
+         "dumpDataBlockHeader=%d dumpData=%d "
+	 "dumpDataInline=%d fileReadVerbose=%d "
+	 "\n",
          (int)dataBlockHeaderEnabled, (int)dumpRDH, (int)validateRDH,
-         (int)checkContinuousTriggerOrder, (int)dumpDataBlockHeader, dumpData);
+         (int)checkContinuousTriggerOrder, (int)dumpDataBlockHeader, dumpData,
+	 (int)dumpDataInline,(int)fileReadVerbose
+	 );
 
   // open raw data file
   FILE *fp = fopen(filePath.c_str(), "rb");
@@ -133,7 +148,9 @@ int main(int argc, const char *argv[]) {
     ERRLOG("Failed to rewing file");
     return -1;
   }
-  printf("File size: %ld bytes\n", fileSize);
+  if (fileReadVerbose) {
+    printf("File size: %ld bytes\n", fileSize);
+  }
 
   // read file
   unsigned long pageCount = 0;
@@ -163,7 +180,7 @@ int main(int argc, const char *argv[]) {
     break;                                                                     \
   }
 
-    unsigned long blockOffset = fileOffset;
+    unsigned long blockOffset = dataOffset;
     long dataSize;
 
     if (dataBlockHeaderEnabled) {
@@ -230,8 +247,10 @@ int main(int argc, const char *argv[]) {
 
     // printf("Reading page %lu @ 0x%08lX
     // (%.1fGB)\n",pageCount+1,fileOffset,fileOffset/(1024.0*1024.0*1024.0));
-    printf("Reading chunk %lu : %lu bytes @ 0x%08lX - 0x%08lX\n", pageCount + 1,
-           dataSize, fileOffset, fileOffset + dataSize - 1);
+    if (fileReadVerbose) {
+      printf("Reading chunk %lu : %lu bytes @ 0x%08lX - 0x%08lX\n",
+             pageCount + 1, dataSize, fileOffset, fileOffset + dataSize - 1);
+    }
 
     if (dataSize == 0) {
       ERR_LOOP;
@@ -279,6 +298,9 @@ int main(int argc, const char *argv[]) {
       free(data);
       data = dataUncompressed;
       dataSize = res;
+      if (fileReadVerbose) {
+        printf("uncompressed = %ld bytes\n", dataSize);
+      }
     }
 
     if (dumpData) {
@@ -286,7 +308,8 @@ int main(int argc, const char *argv[]) {
       if ((dumpData < max) && (dumpData > 0)) {
         max = dumpData;
       }
-      printf("Data page %lu @ %lu", pageCount, fileOffset - dataSize);
+      printf("Data page %lu @ %lu (%ld bytes)", pageCount, blockOffset,
+             dataSize);
       for (long i = 0; i < max; i++) {
         if (i % 16 == 0) {
           printf("\n\t");
@@ -313,7 +336,9 @@ int main(int argc, const char *argv[]) {
               ERRLOG("Failed to seek in file");
               return -1;
             }
-            printf("Realign chunk boundary (header misaligned)\n");
+            if (fileReadVerbose) {
+              printf("Realign chunk boundary (header misaligned)\n");
+            }
             break;
           }
           ERRLOG("RDH/page header misaligned\n");
@@ -335,6 +360,19 @@ int main(int argc, const char *argv[]) {
           ERRLOG("File offset 0x%08lX + %ld\n%s", blockOffset, pageOffset,
                  errorDescription.c_str());
           errorDescription.clear();
+
+          if (dumpDataInline) {
+            // dump remaining of page
+            long nBytes = dataSize - pageOffset;
+            for (long ix = 0; ix < nBytes; ix++) {
+              if (ix % 16 == 0) {
+                printf("\n\t0x%04x\t", (int)ix);
+              }
+              printf("%02X ", (int)(((unsigned char *)data)[pageOffset + ix]));
+            }
+            printf("\n\n");
+          }
+
           break; // we can not continue decoding if RDH wrong, we are not sure
                  // if we can jump to the next ... or should we used fixed 8kB ?
         }
@@ -367,6 +405,17 @@ int main(int argc, const char *argv[]) {
           // printf("%08X : %03X\n", h.getTriggerOrbit(), h.getTriggerBC());
         }
 
+        if (dumpDataInline) {
+          long nBytes = h.getOffsetNextPacket();
+          for (long ix = 0; ix < nBytes; ix++) {
+            if (ix % 16 == 0) {
+              printf("\n\t0x%04x\t", (int)ix);
+            }
+            printf("%02X ", (int)(((unsigned char *)data)[pageOffset + ix]));
+          }
+          printf("\n\n");
+        }
+
         // go to next RDH
         uint16_t offsetNextPacket = h.getOffsetNextPacket();
         if (offsetNextPacket == 0) {
@@ -386,7 +435,9 @@ int main(int argc, const char *argv[]) {
               ERRLOG("Failed to seek in file");
               return -1;
             }
-            printf("Realign chunk boundary (payload misaligned)\n");
+            if (fileReadVerbose) {
+              printf("Realign chunk boundary (payload misaligned)\n");
+            }
             break;
           }
           ERRLOG("RDH/page payload misaligned\n");
