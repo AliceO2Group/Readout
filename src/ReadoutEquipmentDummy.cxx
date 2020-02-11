@@ -61,7 +61,7 @@ ReadoutEquipmentDummy::ReadoutEquipmentDummy(ConfigFile &cfg,
              eventMinSize, eventMaxSize, fillData);
 
   // ensure generated events will fit in blocks allocated from memory pool
-  if (eventMaxSize > mp->getDataBlockMaxSize()) {
+  if ((size_t)eventMaxSize > mp->getDataBlockMaxSize()) {
     theLog.log("memoryPoolPageSize too small, need at least %ld bytes",
                (long)(eventMaxSize + mp->getPageSize() - mp->getDataBlockMaxSize()));
     throw __LINE__;

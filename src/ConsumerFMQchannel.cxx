@@ -156,7 +156,7 @@ public:
     if (mMemorySize > 0) {
       memoryBuffer = sendingChannel->Transport()->CreateUnmanagedRegion(
           mMemorySize,
-          [this](void *data, size_t size, void *hint) { // cleanup callback
+          [this](void * /*data*/, size_t /*size*/, void *hint) { // cleanup callback
             // printf("ack %p (size %d) hint=%p\n",data,(int)size,hint);
 
             if (hint != nullptr) {
