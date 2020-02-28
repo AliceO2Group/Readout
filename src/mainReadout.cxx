@@ -424,6 +424,14 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
   cfgFlushEquipmentTimeout = 1;
   cfg.getOptionalValue<double>("readout.flushEquipmentTimeout",
                                cfgFlushEquipmentTimeout);
+  // configuration parameter: | readout | memoryPoolStatsEnabled | int | 0 |
+  // Global debugging flag to enable statistics on memory pool usage (printed
+  // to stdout when pool released). |
+  int cfgMemoryPoolStatsEnabled = 0;
+  cfg.getOptionalValue<int>("readout.memoryPoolStatsEnabled",
+                            cfgMemoryPoolStatsEnabled);
+  extern int MemoryPagesPoolStatsEnabled;
+  MemoryPagesPoolStatsEnabled = cfgMemoryPoolStatsEnabled;
   // configuration parameter: | readout | disableAggregatorSlicing | int | 0 |
   // When set, the aggregator slicing is disabled, data pages are passed through
   // without grouping/slicing. |

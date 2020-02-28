@@ -11,7 +11,7 @@
 #include "MemoryPagesPool.h"
 #include <assert.h>
 
-static int MemoryPagesPoolStatsEnabled = 0; // flag to control memory stats
+int MemoryPagesPoolStatsEnabled = 0; // flag to control memory stats
 
 MemoryPagesPool::MemoryPagesPool(size_t vPageSize, size_t vNumberOfPages,
                                  void *vBaseAddress, size_t vBaseSize,
