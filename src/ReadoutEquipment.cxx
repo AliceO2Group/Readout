@@ -390,7 +390,7 @@ Thread::CallbackResult ReadoutEquipment::threadCallback(void *arg) {
       // print block debug info
       if (ptr->debugFirstPages > 0) {
         DataBlockHeaderBase *h = &(nextBlock->getData()->header);
-        theLog.log(InfoLogger::Severity::Debug,"Equipment %s (%d) page %d link %d tf %d size %d",
+        theLog.log(InfoLogger::Severity::Debug,"Equipment %s (%d) page %lu link %d tf %lu size %d",
                    ptr->name.c_str(), h->equipmentId, h->blockId, h->linkId,
                    h->timeframeId, h->dataSize);
         ptr->debugFirstPages--;

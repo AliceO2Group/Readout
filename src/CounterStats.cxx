@@ -41,7 +41,7 @@ void CounterStats::set(CounterValue newValue) {
       histoCounts[histoNbin - 1]++;
     } else {
       int n = (int)floor(histoNbin - 1 - (log(newValue * histoK1) * histoK2));
-      if ((n >= 0) && (n < histoNbin)) {
+      if ((n >= 0) && (n < (int) histoNbin)) {
         histoCounts[n]++;
       }
     }
@@ -109,7 +109,7 @@ void CounterStats::getHisto(std::vector<double> &x,
   if (histoNbin) {
     x.resize(histoNbin);
     count.resize(histoNbin);
-    for (int i = 0; i < histoNbin; i++) {
+    for (unsigned int i = 0; i < histoNbin; i++) {
       x[i] = histoVmax * pow(histoStep, histoNbin - 1 - i);
       count[i] = histoCounts[i];
     }

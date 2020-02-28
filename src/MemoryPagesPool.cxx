@@ -112,13 +112,13 @@ MemoryPagesPool::~MemoryPagesPool() {
     t4.getHisto(tx, tv4);
 
     CounterValue ts1 = 0, ts2 = 0, ts3 = 0, ts4 = 0;
-    for (int i = 0; i < tx.size(); i++) {
+    for (unsigned int i = 0; i < tx.size(); i++) {
       ts1 += tv1[i];
       ts2 += tv2[i];
       ts3 += tv3[i];
       ts4 += tv4[i];
     }
-    for (int i = 0; i < tx.size(); i++) {
+    for (unsigned int i = 0; i < tx.size(); i++) {
       double t = tx[i] / 1000000.0;
       double tr1 = 0.0, tr2 = 0.0, tr3 = 0.0, tr4 = 0.0;
       if (ts1 != 0) {
