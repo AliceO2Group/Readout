@@ -8,13 +8,18 @@
 // granted to it by virtue of its status as an Intergovernmental Organization
 // or submit itself to any jurisdiction.
 
+#ifndef _COUNTERSTATS_H
+#define _COUNTERSTATS_H
+
 #include <stdint.h>
+#include <vector>
 
 typedef uint64_t CounterValue;
 
 class CounterStats {
 public:
   CounterStats();
+  ~CounterStats();
 
   // do not mix set() and increment()
 
@@ -29,6 +34,10 @@ public:
   CounterValue getMaximum();
   CounterValue getCount();
 
+  void enableHistogram(unsigned int nbins, CounterValue vmin,
+                       CounterValue vmax);
+  void getHisto(std::vector<double> &x, std::vector<CounterValue> &count);
+
 private:
   CounterValue value; // last value set
 
@@ -39,4 +48,14 @@ private:
   CounterValue max;     // maximum value set
 
   void updateStats(); // update statistics from latest value
+
+  std::vector<CounterValue> histoCounts; // store record of registered values
+  CounterValue histoVmin;                // min value in histogram
+  CounterValue histoVmax;                // max value in histogram
+  unsigned int histoNbin;                // number of steps in histo
+  double histoStep;                      // step size (as a fraction of vmax)
+  double histoK1;
+  double histoK2;
 };
+
+#endif // #ifndef _COUNTERSTATS_H
