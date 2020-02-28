@@ -208,4 +208,5 @@ This file describes the main feature changes for each readout.exe released versi
     - dumpDataInline: if set, each packet raw content is printed (hex dump style).
     - fileReadVerbose: if set, more information is printed when reading/decoding file. By default, file size/chunking printouts are now off.
 - Updated configuration parameters:
-  - added readout.memoryPoolStatsEnabled
+  - added readout.memoryPoolStatsEnabled, to print debug information on memory pages usage.
+  - added equipment-*.debugFirstPages, to print debug information for first (given number of) data pages readout.
