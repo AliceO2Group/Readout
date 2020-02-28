@@ -161,7 +161,7 @@ add_library(
 )
 target_include_directories(objReadoutAggregator PRIVATE ${READOUT_INCLUDE_DIRS})
 
-# utilities
+# utilities, including memory handling
 add_library(
         objReadoutUtils OBJECT
         ${SOURCE_DIR}/ReadoutUtils.cxx
@@ -169,17 +169,11 @@ add_library(
         ${SOURCE_DIR}/CounterStats.cxx
         ${SOURCE_DIR}/MemoryHandler.cxx
 	${SOURCE_DIR}/SocketTx.cxx
-)
-target_include_directories(objReadoutUtils PRIVATE ${READOUT_INCLUDE_DIRS})
-
-# memory handling
-add_library(
-        objMemUtils OBJECT
         ${SOURCE_DIR}/MemoryBank.cxx
         ${SOURCE_DIR}/MemoryBankManager.cxx
         ${SOURCE_DIR}/MemoryPagesPool.cxx
 )
-target_include_directories(objMemUtils PRIVATE ${READOUT_INCLUDE_DIRS})
+target_include_directories(objReadoutUtils PRIVATE ${READOUT_INCLUDE_DIRS})
 
 # consumers
 add_library(
@@ -259,7 +253,6 @@ add_executable(
 	$<TARGET_OBJECTS:objReadoutAggregator>
 	$<TARGET_OBJECTS:objReadoutConsumers>
 	$<TARGET_OBJECTS:objReadoutUtils>
-	$<TARGET_OBJECTS:objMemUtils>
 )
 
 # a test FMQ device receiver
@@ -287,7 +280,7 @@ add_executable(
 add_executable(
         testMemoryBanks.exe
         ${SOURCE_DIR}/testMemoryBanks.cxx
-	$<TARGET_OBJECTS:objMemUtils>
+	$<TARGET_OBJECTS:objReadoutUtils>
 )
 
 # a RAW data file reader/checker
@@ -301,7 +294,7 @@ add_executable(
 add_executable(
 	testROC.exe
         ${SOURCE_DIR}/testROC.cxx
-	$<TARGET_OBJECTS:objMemUtils>
+	$<TARGET_OBJECTS:objReadoutUtils>
 )
 
 # a minimal test program to check Monitoring library
