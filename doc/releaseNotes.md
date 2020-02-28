@@ -201,7 +201,7 @@ This file describes the main feature changes for each readout.exe released versi
 - Improved error reporting when FairMQChannel consumer memory settings cause runtime issues (eg pages too small).
 - Fix issue in file replay, data size was zero (readout>=v1.2, autochunk=off).
 
-## next version
+## v1.3.7 - 28/02/2020
 - readRaw.exe:
   - fixed printing offset in lz4 files.
   - added options:
