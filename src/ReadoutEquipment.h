@@ -162,6 +162,8 @@ protected:
   size_t pageSpaceReserved =
       0; // amount of space reserved (in bytes) at beginning of each data page,
          // possibly to store header
+
+  int debugFirstPages = 0; // print debug info on first number of pages read
 };
 
 std::unique_ptr<ReadoutEquipment>

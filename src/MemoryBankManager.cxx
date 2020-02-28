@@ -90,7 +90,7 @@ MemoryBankManager::getPagedPool(size_t pageSize, size_t pageNumber,
     // reserve space from big block
     baseAddress = banks[ix].bank->getBaseAddress();
     offset = 0;
-    blockSize = pageSize * pageNumber; // this is the maximum space to use...
+    blockSize = pageSize * (pageNumber + 1); // this is the maximum space to use...
                                        // may loose some pages for alignment
 
     // alloc new block after existing ranges already in use

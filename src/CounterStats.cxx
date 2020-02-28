@@ -9,8 +9,10 @@
 // or submit itself to any jurisdiction.
 
 #include "CounterStats.h"
+#include <math.h>
 
 CounterStats::CounterStats() { reset(); }
+CounterStats::~CounterStats() {}
 
 void CounterStats::reset() {
   value = 0;
@@ -18,6 +20,8 @@ void CounterStats::reset() {
   nValues = 0;
   min = UINT64_MAX;
   max = 0;
+  histoNbin = 0;
+  histoCounts.clear();
 }
 
 void CounterStats::set(CounterValue newValue) {
@@ -30,6 +34,18 @@ void CounterStats::set(CounterValue newValue) {
     max = value;
   }
   nValues++;
+  if (histoNbin) {
+    if (newValue <= histoVmin) {
+      histoCounts[0]++;
+    } else if (newValue >= histoVmax) {
+      histoCounts[histoNbin - 1]++;
+    } else {
+      int n = (int)floor(histoNbin - 1 - (log(newValue * histoK1) * histoK2));
+      if ((n >= 0) && (n < (int) histoNbin)) {
+        histoCounts[n]++;
+      }
+    }
+  }
 }
 
 void CounterStats::increment(CounterValue increment) {
@@ -71,3 +87,34 @@ CounterValue CounterStats::getMaximum() {
 }
 
 CounterValue CounterStats::getCount() { return nValues; }
+
+void CounterStats::enableHistogram(unsigned int nbin, CounterValue vmin,
+                                   CounterValue vmax) {
+  histoCounts.clear();
+  histoVmin = vmin;
+  histoVmax = vmax;
+  histoNbin = nbin;
+  if (nbin == 0) {
+    histoStep = 0;
+    return;
+  }
+  histoStep = exp(log(vmin * 1.0 / vmax) / (nbin - 1));
+  histoK1 = 1.0 / vmax;
+  histoK2 = 1.0 / (log(vmin * 1.0 / vmax) / (nbin - 1));
+  histoCounts.resize(nbin, 0);
+}
+
+void CounterStats::getHisto(std::vector<double> &x,
+                            std::vector<CounterValue> &count) {
+  if (histoNbin) {
+    x.resize(histoNbin);
+    count.resize(histoNbin);
+    for (unsigned int i = 0; i < histoNbin; i++) {
+      x[i] = histoVmax * pow(histoStep, histoNbin - 1 - i);
+      count[i] = histoCounts[i];
+    }
+  } else {
+    x.clear();
+    count.clear();
+  }
+}

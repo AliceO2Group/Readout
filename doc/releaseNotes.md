@@ -200,3 +200,13 @@ This file describes the main feature changes for each readout.exe released versi
   - equipment-rorc-*.linkMask : default value changed to 0-11 (instead of 0-31). There was a change in ReadoutCard, which now uses numbering of links 0-11 for each CRU end-point, and creates an exception when outside of this range.
 - Improved error reporting when FairMQChannel consumer memory settings cause runtime issues (eg pages too small).
 - Fix issue in file replay, data size was zero (readout>=v1.2, autochunk=off).
+
+## v1.3.7 - 28/02/2020
+- readRaw.exe:
+  - fixed printing offset in lz4 files.
+  - added options:
+    - dumpDataInline: if set, each packet raw content is printed (hex dump style).
+    - fileReadVerbose: if set, more information is printed when reading/decoding file. By default, file size/chunking printouts are now off.
+- Updated configuration parameters:
+  - added readout.memoryPoolStatsEnabled, to print debug information on memory pages usage.
+  - added equipment-*.debugFirstPages, to print debug information for first (given number of) data pages readout.

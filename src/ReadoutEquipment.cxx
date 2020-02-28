@@ -122,6 +122,15 @@ ReadoutEquipment::ReadoutEquipment(ConfigFile &cfg, std::string cfgEntryPoint) {
   if (cfgStopOnError) {
     this->stopOnError = 1;
   }
+  // configuration parameter: | equipment-* | debugFirstPages | int | 0 |
+  // If set, print debug information for first (given number of) data pages
+  // readout. |
+  int cfgDebugFirstPages = 0;
+  cfg.getOptionalValue<int>(cfgEntryPoint + ".debugFirstPages",
+                            cfgDebugFirstPages);
+  if (cfgDebugFirstPages >= 0) {
+    this->debugFirstPages = cfgDebugFirstPages;
+  }
 
   // log config summary
   theLog.log("Equipment %s: from config [%s], max rate=%lf Hz, "
@@ -366,11 +375,6 @@ Thread::CallbackResult ReadoutEquipment::threadCallback(void *arg) {
         // here and common to all
       }
 
-      if (!ptr->disableOutput) {
-        // push new page to output fifo
-        ptr->dataOut->push(nextBlock);
-      }
-
       // update rate-limit clock
       if (ptr->readoutRate > 0) {
         ptr->clk.increment();
@@ -382,6 +386,20 @@ Thread::CallbackResult ReadoutEquipment::threadCallback(void *arg) {
           nextBlock->getData()->header.dataSize);
       gReadoutStats.bytesReadout += nextBlock->getData()->header.dataSize;
       isActive = true;
+
+      // print block debug info
+      if (ptr->debugFirstPages > 0) {
+        DataBlockHeaderBase *h = &(nextBlock->getData()->header);
+        theLog.log(InfoLogger::Severity::Debug,"Equipment %s (%d) page %lu link %d tf %lu size %d",
+                   ptr->name.c_str(), h->equipmentId, h->blockId, h->linkId,
+                   h->timeframeId, h->dataSize);
+        ptr->debugFirstPages--;
+      }
+
+      if (!ptr->disableOutput) {
+        // push new page to output fifo
+        ptr->dataOut->push(nextBlock);
+      }
     }
     ptr->equipmentStats[EquipmentStatsIndexes::nBlocksOut].increment(
         nPushedOut);

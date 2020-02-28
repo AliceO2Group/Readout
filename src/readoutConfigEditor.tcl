@@ -18,6 +18,7 @@ set configurationParametersDescriptor {
 | readout | rate | double | -1 | Data rate limit, per equipment, in Hertz. -1 for unlimited. |
 | readout | exitTimeout | double | -1 | Time in seconds after which the program exits automatically. -1 for unlimited. |
 | readout | flushEquipmentTimeout | double | 1 | Time in seconds to wait for data once the equipments are stopped. 0 means stop immediately. |
+| readout | memoryPoolStatsEnabled | int | 0 | Global debugging flag to enable statistics on memory pool usage (printed to stdout when pool released). |
 | readout | disableAggregatorSlicing | int | 0 | When set, the aggregator slicing is disabled, data pages are passed through without grouping/slicing. |
 | readout | logbookEnabled | int | 0 | When set, the logbook is enabled and populated with readout stats at runtime. |
 | readout | logbookUrl | string | | The address to be used for the logbook API. |
@@ -41,6 +42,7 @@ set configurationParametersDescriptor {
 | equipment-* | blockAlign | bytes | 2M | Alignment of the beginning of the big memory block from which the pool is created. Pool will start at a multiple of this value. Each page will then begin at a multiple of memoryPoolPageSize from the beginning of big block. |
 | equipment-* | consoleStatsUpdateTime | double | 0 | If set, number of seconds between printing statistics on console. |
 | equipment-* | stopOnError | int | 0 | If 1, readout will stop automatically on equipment error. |
+| equipment-* | debugFirstPages | int | 0 | If set, print debug information for first (given number of) data pages readout. |
 | equipment-dummy-* | eventMaxSize | bytes | 128k | Maximum size of randomly generated event. |
 | equipment-dummy-* | eventMinSize | bytes | 128k | Minimum size of randomly generated event. |
 | equipment-dummy-* | fillData | int | 0 | Pattern used to fill data page: (0) no pattern used, data page is left untouched, with whatever values were in memory (1) incremental byte pattern (2) incremental word pattern, with one random word out of 5. |
