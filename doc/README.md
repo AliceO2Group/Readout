@@ -253,9 +253,25 @@ Optionally, the data pages in recorded file might be interleaved with internal r
 but this is used mainly for debugging and not recommended for production, as it's an internal
 format subject to change without notice.
 
-Readout has a special equipment (ReadoutEquipmentPlayer) to replay data from a RAW file,
-but it's quite limited (1 file -> 1 data page, repeated continuously).
-It does not support LZ4 files or files recorded with internal headers.
+
+# File replay
+
+Readout has a special equipment (ReadoutEquipmentPlayer) to replay data from a RAW file.
+There are two modes of operation:
+1) continuous replay (default): the data from the file is copied to each memory data page (once per page, or multiple times to fill the page,
+see 'fillPage' option). This creates an infinite stream of all-identical datapages: 1 file -> 1 data page, repeated continuously.
+There is a 'preload' option to load memory with file content on startup, in order to maximize runtime throughput (no data copy).
+The data page size is limited to ~2GB in readout (32-bit signed int value, minus some space reserved for metadata at top of page),
+so this mode can not be used to replay files larger than ~2GB.
+This mode is typically used for data stream performance tests.
+
+2) one-time replay (use 'autoChunk' option): the data of the file is replayed once only, and fitted in data pages of given (maximum) size,
+respecting the same constraints as if they would be generated from CRU (new page when changing CRU, link or timeframe ID).
+The input file must have a valid RDH formatting to access these fields. The data is copied from file to memory at runtime.
+This mode is typically used to test data processing downstream of readout.
+An example configuration file is given in 'readout-player.cfg'.
+
+In both modes, ReadoutEquipmentPlayer does not support LZ4 files or files recorded with internal headers.
 
 
 # Contact
