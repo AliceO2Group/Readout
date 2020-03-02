@@ -257,7 +257,7 @@ format subject to change without notice.
 # File replay
 
 Readout has a special equipment (ReadoutEquipmentPlayer) to replay data from a RAW file.
-There are two modes of operations:
+There are two modes of operation:
 1) continuous replay (default): the data from the file is copied to each memory data page (once per page, or multiple times to fill the page,
 see 'fillPage' option). This creates an infinite stream of all-identical datapages: 1 file -> 1 data page, repeated continuously.
 There is a 'preload' option to load memory with file content on startup, in order to maximize runtime throughput (no data copy).
@@ -267,7 +267,7 @@ This mode is typically used for data stream performance tests.
 
 2) one-time replay (use 'autoChunk' option): the data of the file is replayed once only, and fitted in data pages of given (maximum) size,
 respecting the same constraints as if they would be generated from CRU (new page when changing CRU, link or timeframe ID).
-The input file must have a valid RDH formatting, to access these fields. The data is copied from file to memory at runtime.
+The input file must have a valid RDH formatting to access these fields. The data is copied from file to memory at runtime.
 This mode is typically used to test data processing downstream of readout.
 An example configuration file is given in 'readout-player.cfg'.
 
