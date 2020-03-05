@@ -20,6 +20,7 @@ set configurationParametersDescriptor {
 | readout | flushEquipmentTimeout | double | 1 | Time in seconds to wait for data once the equipments are stopped. 0 means stop immediately. |
 | readout | memoryPoolStatsEnabled | int | 0 | Global debugging flag to enable statistics on memory pool usage (printed to stdout when pool released). |
 | readout | disableAggregatorSlicing | int | 0 | When set, the aggregator slicing is disabled, data pages are passed through without grouping/slicing. |
+| readout | aggregatorSliceTimeout | double | 0 |When set, slices (groups) of pages are flushed if not updated after given timeout (otherwise closed only on beginning of next TF, or on stop). |
 | readout | logbookEnabled | int | 0 | When set, the logbook is enabled and populated with readout stats at runtime. |
 | readout | logbookUrl | string | | The address to be used for the logbook API. |
 | readout | logbookApiToken | string | | The token to be used for the logbook API. |
@@ -63,14 +64,15 @@ set configurationParametersDescriptor {
 | equipment-rorc-* | cardId | string | | ID of the board to be used. Typically, a PCI bus device id. c.f. AliceO2::roc::Parameters. |
 | equipment-rorc-* | channelNumber | int | 0 | Channel number of the board to be used. Typically 0 for CRU, or 1-6 for CRORC. c.f. AliceO2::roc::Parameters. |
 | equipment-rorc-* | dataSource | string | Internal | This parameter selects the data source used by ReadoutCard, c.f. AliceO2::roc::Parameters. It can be for CRU one of Fee, Ddg, Internal and for CRORC one of Fee, SIU, DIU, Internal. |
-| equipment-rorc-* | linkMask | string | 0-11 | List of links to be enabled. For CRU, in the 0-11 range. Can be a single value, a comma-separated list, a range or comma-separated list of ranges. c.f. AliceO2::roc::Parameters. |
 | equipment-rorc-* | resetLevel | string | INTERNAL | Reset level of the device. Can be one of NOTHING, INTERNAL, INTERNAL_DIU, INTERNAL_DIU_SIU. c.f. AliceO2::roc::Parameters. |
 | equipment-rorc-* | rdhCheckEnabled | int | 0 | If set, data pages are parsed and RDH headers checked. Errors are reported in logs. |
 | equipment-rorc-* | rdhDumpEnabled | int | 0 | If set, data pages are parsed and RDH headers summary printed. Setting a negative number will print only the first N RDH.|
 | equipment-rorc-* | rdhDumpErrorEnabled | int | 1 | If set, a log message is printed for each RDH header error found.|
 | equipment-rorc-* | rdhUseFirstInPageEnabled | int | 0 | If set, the first RDH in each data page is used to populate readout headers (e.g. linkId).|
 | equipment-rorc-* | cleanPageBeforeUse | int | 0 | If set, data pages are filled with zero before being given for writing by device. Slow, but usefull to readout incomplete pages (driver currently does not return correctly number of bytes written in page. |
+| equipment-rorc-* | firmwareCheckEnabled | int | 1 | If set, RORC driver checks compatibility with detected firmware. Use 0 to bypass this check (eg new fw version not yet recognized by ReadoutCard version). |
 | equipment-rorc-* | TFperiod | int | 256 | Duration of a timeframe, in number of LHC orbits. |
+| equipment-rorc-* | debugStatsEnabled | int | 0 | If set, enable extra statistics about internal buffers status. (printed to stdout when stopping) |
 | consumer-* | enabled | int | 1 | Enable (value=1) or disable (value=0) the consumer. |
 | consumer-* | consumerType | string |  | The type of consumer to be instanciated. One of:stats, FairMQDevice, DataSampling, FairMQChannel, fileRecorder, checker, processor, tcp, rdma. |
 | consumer-* | consumerOutput | string |  | Name of the consumer where the output of this consumer (if any) should be pushed. |
@@ -113,6 +115,8 @@ set configurationParametersDescriptor {
 | receiverFMQ | channelType | string | pair | c.f. parameter with same name in consumer-FairMQChannel-* |
 | receiverFMQ | channelAddress | string | ipc:///tmp/pipe-readout | c.f. parameter with same name in consumer-FairMQChannel-* |
 | receiverFMQ | decodingMode | string | none | Decoding mode of the readout FMQ output stream. Possible values: none (no decoding), readout (wp5 protocol) |
+| receiverFMQ | dumpRDH | int | 0 | When set, the RDH of data received are printed (needs decodingMode=readout).|
+| receiverFMQ | dumpTF | int | 0 | When set, a message is printed when a new timeframe is received. If the value is bigger than one, this specifies a periodic interval between TF print after the first one. (e.g. 100 would print TF 1, 100, 200, etc). |
 | consumer-data-sampling-* | address | string | ipc:///tmp/readout-pipe-1 | Address of the data sampling. |
 }
 

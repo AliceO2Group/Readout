@@ -67,6 +67,9 @@ private:
   int cfgCleanPageBeforeUse =
       0; // flag to enable filling page with zeros before giving for writing
 
+  int cfgFirmwareCheckEnabled = 1; // RORC lib check self-compatibility with fw
+  int cfgDebugStatsEnabled = 0;    // collect and print more buffer stats
+
   unsigned long long statsRdhCheckOk =
       0; // number of RDH structs which have passed check ok
   unsigned long long statsRdhCheckErr =
@@ -141,13 +144,6 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name)
     std::string cfgDataSource = "Internal";
     cfg.getOptionalValue<std::string>(name + ".dataSource", cfgDataSource);
 
-    // configuration parameter: | equipment-rorc-* | linkMask | string | 0-11 |
-    // List of links to be enabled. For CRU, in the 0-11 range. Can be a single
-    // value, a comma-separated list, a range or comma-separated list of ranges.
-    // c.f. AliceO2::roc::Parameters. |
-    std::string cfgLinkMask = "0-11";
-    cfg.getOptionalValue<std::string>(name + ".linkMask", cfgLinkMask);
-
     // std::string cfgReadoutMode="CONTINUOUS";
     // cfg.getOptionalValue<std::string>(name + ".readoutMode", cfgReadoutMode);
 
@@ -186,6 +182,23 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name)
       theLog.log(
           "Superpages will be cleaned before each DMA - this may be slow!");
     }
+
+    // configuration parameter: | equipment-rorc-* | firmwareCheckEnabled | int
+    // | 1 | If set, RORC driver checks compatibility with detected firmware.
+    // Use 0 to bypass this check (eg new fw version not yet recognized
+    // by ReadoutCard version). |
+    cfg.getOptionalValue<int>(name + ".firmwareCheckEnabled",
+                              cfgFirmwareCheckEnabled);
+    if (!cfgFirmwareCheckEnabled) {
+      theLog.log(InfoLogger::Severity::Warning,
+                 "Bypassing RORC firmware compatibility check");
+    }
+
+    // configuration parameter: | equipment-rorc-* | debugStatsEnabled | int | 0
+    // | If set, enable extra statistics about internal buffers status. (printed
+    // to stdout when stopping) |
+    cfg.getOptionalValue<int>(name + ".debugStatsEnabled",
+                              cfgDebugStatsEnabled);
 
     // configuration parameter: | equipment-rorc-* | TFperiod | int | 256 |
     // Duration of a timeframe, in number of LHC orbits. |
@@ -229,6 +242,7 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name)
     AliceO2::roc::Parameters params;
     params.setCardId(AliceO2::roc::Parameters::cardIdFromString(cardId));
     params.setChannelNumber(cfgChannelNumber);
+    params.setFirmwareCheckEnabled(cfgFirmwareCheckEnabled);
 
     // setDmaPageSize() : seems deprecated, let's not configure it
 
@@ -251,11 +265,6 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name)
     theLog.log("Register DMA block %p:%lu", baseAddress, blockSize);
     params.setBufferParameters(
         AliceO2::roc::buffer_parameters::Memory{baseAddress, blockSize});
-
-    // define link mask
-    // this is harmless for C-RORC
-    params.setLinkMask(
-        AliceO2::roc::Parameters::linkMaskFromString(cfgLinkMask));
 
     // open channel with above parameters
     channel = AliceO2::roc::ChannelFactory().getDmaChannel(params);
@@ -297,6 +306,7 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name)
   } catch (const std::exception &e) {
     std::cout << "Error: " << e.what() << '\n'
               << boost::diagnostic_information(e) << "\n";
+    throw; // propagate error
     return;
   }
   isInitialized = true;
@@ -678,6 +688,13 @@ void ReadoutEquipmentRORC::setDataOn() {
     if (RocFifoSize == 0) {
       RocFifoSize = 1;
     }
+    // enable enhanced statistics
+    if (cfgDebugStatsEnabled) {
+      equipmentStats[EquipmentStatsIndexes::fifoOccupancyFreeBlocks]
+          .enableHistogram(12, 0, RocFifoSize, 0);
+      equipmentStats[EquipmentStatsIndexes::fifoOccupancyReadyBlocks]
+          .enableHistogram(12, 0, RocFifoSize, 0);
+    }
   }
   ReadoutEquipment::setDataOn();
 }
@@ -737,5 +754,54 @@ void ReadoutEquipmentRORC::finalCounters() {
     theLog.log("Equipment %s : %llu pages (+ %llu lost + %llu empty)",
                name.c_str(), statsNumberOfPages, statsNumberOfPagesLost,
                statsNumberOfPagesEmpty);
+  }
+
+  if (cfgDebugStatsEnabled) {
+
+    printf("\n*** begin debug stats ***\n");
+
+    std::vector<double> tx;
+    std::vector<CounterValue> tv;
+    CounterValue ts;
+
+    auto dumpStats = [&](bool revert) {
+      ts = 0;
+      for (unsigned int i = 0; i < tx.size(); i++) {
+        ts += tv[i];
+      }
+      printf("Fifo used (%%)\tSamples count\tSamples fraction (%%)\n");
+      for (unsigned int i = 0; i < tx.size(); i++) {
+        double t1 = tx[i] * 100.0 / RocFifoSize;
+        if (revert) {
+          t1 = 100 - t1;
+        }
+        double tr = 0.0;
+        if (ts != 0) {
+          tr = tv[i] * 100.0 / ts;
+        }
+        if ((i == 0) || (i == tx.size() - 1)) {
+          printf("%3d       \t%13lu\t%3.1lf\n", (int)t1, tv[i], tr);
+        } else {
+          double t2 = tx[i + 1] * 100.0 / RocFifoSize;
+          if (revert) {
+            t2 = 100 - t2;
+          }
+          printf("%3d - %3d     \t%13lu\t%3.1lf\n", (int)t1, (int)t2, tv[i],
+                 tr);
+        }
+      }
+    };
+
+    equipmentStats[EquipmentStatsIndexes::fifoOccupancyFreeBlocks].getHisto(tx,
+                                                                            tv);
+    printf("\nRORC transfer queue\n");
+    dumpStats(1);
+
+    equipmentStats[EquipmentStatsIndexes::fifoOccupancyReadyBlocks].getHisto(
+        tx, tv);
+    printf("\nRORC ready queue\n");
+    dumpStats(0);
+
+    printf("\n*** end debug stats ***\n");
   }
 }

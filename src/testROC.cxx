@@ -60,7 +60,6 @@ private:
 
   std::string cardId = "0:0.0";
   int cfgChannelNumber = 0;
-  std::string cfgLinkMask = "0";
 
   std::string cfgDataSource = "Internal";
   std::string cfgResetLevel = "INTERNAL";
@@ -93,8 +92,6 @@ ROCdevice::ROCdevice(std::string id) {
 
   params.setBufferParameters(AliceO2::roc::buffer_parameters::Memory{
       mp->getBaseBlockAddress(), mp->getBaseBlockSize()});
-
-  params.setLinkMask(AliceO2::roc::Parameters::linkMaskFromString(cfgLinkMask));
 
   channel = AliceO2::roc::ChannelFactory().getDmaChannel(params);
   channel->resetChannel(AliceO2::roc::ResetLevel::fromString(cfgResetLevel));

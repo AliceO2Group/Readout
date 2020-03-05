@@ -40,8 +40,13 @@ void CounterStats::set(CounterValue newValue) {
     } else if (newValue >= histoVmax) {
       histoCounts[histoNbin - 1]++;
     } else {
-      int n = (int)floor(histoNbin - 1 - (log(newValue * histoK1) * histoK2));
-      if ((n >= 0) && (n < (int) histoNbin)) {
+      int n = 0;
+      if (histoLogScale) {
+        n = (int)floor(histoNbin - 1 - (log(newValue * histoK1) * histoK2));
+      } else {
+        n = (int)floor(1 + (newValue - histoVmin) * histoK1);
+      }
+      if ((n >= 0) && (n < (int)histoNbin)) {
         histoCounts[n]++;
       }
     }
@@ -89,18 +94,29 @@ CounterValue CounterStats::getMaximum() {
 CounterValue CounterStats::getCount() { return nValues; }
 
 void CounterStats::enableHistogram(unsigned int nbin, CounterValue vmin,
-                                   CounterValue vmax) {
+                                   CounterValue vmax, int logScale) {
   histoCounts.clear();
   histoVmin = vmin;
   histoVmax = vmax;
   histoNbin = nbin;
+  histoLogScale = logScale;
   if (nbin == 0) {
     histoStep = 0;
     return;
   }
-  histoStep = exp(log(vmin * 1.0 / vmax) / (nbin - 1));
-  histoK1 = 1.0 / vmax;
-  histoK2 = 1.0 / (log(vmin * 1.0 / vmax) / (nbin - 1));
+  if (histoLogScale) {
+    histoStep = exp(log(vmin * 1.0 / vmax) / (nbin - 1));
+    histoK1 = 1.0 / vmax;
+    histoK2 = 1.0 / (log(vmin * 1.0 / vmax) / (nbin - 1));
+  } else {
+    if ((nbin > 2) && (vmax > vmin)) {
+      histoStep = (vmax - vmin) * 1.0 / (nbin - 2);
+      histoK1 = 1.0 / histoStep;
+    } else {
+      histoStep = 0;
+      histoK1 = 0;
+    }
+  }
   histoCounts.resize(nbin, 0);
 }
 
@@ -110,7 +126,17 @@ void CounterStats::getHisto(std::vector<double> &x,
     x.resize(histoNbin);
     count.resize(histoNbin);
     for (unsigned int i = 0; i < histoNbin; i++) {
-      x[i] = histoVmax * pow(histoStep, histoNbin - 1 - i);
+      if (histoLogScale) {
+        x[i] = histoVmax * pow(histoStep, histoNbin - 1 - i);
+      } else {
+        if (i == 0) {
+          x[i] = histoVmin;
+        } else if (i == histoNbin - 1) {
+          x[i] = histoVmax;
+        } else {
+          x[i] = histoVmin + (i - 1) * histoStep;
+        }
+      }
       count[i] = histoCounts[i];
     }
   } else {

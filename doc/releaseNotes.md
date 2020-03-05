@@ -210,3 +210,9 @@ This file describes the main feature changes for each readout.exe released versi
 - Updated configuration parameters:
   - added readout.memoryPoolStatsEnabled, to print debug information on memory pages usage.
   - added equipment-*.debugFirstPages, to print debug information for first (given number of) data pages readout.
+
+## v1.3.8 - 05/03/2020
+- Updated configuration parameters:
+  - equipment-rorc-*.firmwareCheckEnabled : set to zero to disable RORC firmware compatibility check (enabled by default).
+  - equipment-rorc-*.debugStatsEnabled : if set, more information collected about internal buffers status (disabled by default).
+  - equipment-rorc-*.linkMask : parameter removed (and ignored if present in configuration). The RORC library now automatically enables links as configured with roc-config.
