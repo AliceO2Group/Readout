@@ -67,6 +67,8 @@ private:
   int cfgCleanPageBeforeUse =
       0; // flag to enable filling page with zeros before giving for writing
 
+  int cfgFirmwareCheckEnabled = 1; // RORC lib check self-compatibility with fw
+
   unsigned long long statsRdhCheckOk =
       0; // number of RDH structs which have passed check ok
   unsigned long long statsRdhCheckErr =
@@ -187,6 +189,17 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name)
           "Superpages will be cleaned before each DMA - this may be slow!");
     }
 
+    // configuration parameter: | equipment-rorc-* | firmwareCheckEnabled | int
+    // | 1 | If set, RORC driver checks compatibility with detected firmware.
+    // Use 0 to bypass this check (eg new fw version not yet recognized
+    // by ReadoutCard version). |
+    cfg.getOptionalValue<int>(name + ".firmwareCheckEnabled",
+                              cfgFirmwareCheckEnabled);
+    if (!cfgFirmwareCheckEnabled) {
+      theLog.log(InfoLogger::Severity::Warning,
+                 "Bypassing RORC firmware compatibility check");
+    }
+
     // configuration parameter: | equipment-rorc-* | TFperiod | int | 256 |
     // Duration of a timeframe, in number of LHC orbits. |
     int cfgTFperiod = 256;
@@ -229,6 +242,7 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name)
     AliceO2::roc::Parameters params;
     params.setCardId(AliceO2::roc::Parameters::cardIdFromString(cardId));
     params.setChannelNumber(cfgChannelNumber);
+    params.setFirmwareCheckEnabled(cfgFirmwareCheckEnabled);
 
     // setDmaPageSize() : seems deprecated, let's not configure it
 
@@ -297,6 +311,7 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name)
   } catch (const std::exception &e) {
     std::cout << "Error: " << e.what() << '\n'
               << boost::diagnostic_information(e) << "\n";
+    throw; // propagate error
     return;
   }
   isInitialized = true;
