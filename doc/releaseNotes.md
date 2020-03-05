@@ -215,3 +215,4 @@ This file describes the main feature changes for each readout.exe released versi
 - Updated configuration parameters:
   - equipment-rorc-*.firmwareCheckEnabled : set to zero to disable RORC firmware compatibility check (enabled by default).
   - equipment-rorc-*.debugStatsEnabled : if set, more information collected about internal buffers status (disabled by default).
+  - equipment-rorc-*.linkMask : parameter removed (and ignored if present in configuration). The RORC library now automatically enables links as configured with roc-config.

@@ -263,7 +263,6 @@ dataSource=Internal
 memoryBankName=bank-${rocN}
 memoryPoolNumberOfPages=${readoutNPages}
 memoryPoolPageSize=${readoutPageSize}
-#linkMask=0
 "
   }
 }
