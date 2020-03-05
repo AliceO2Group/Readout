@@ -214,3 +214,4 @@ This file describes the main feature changes for each readout.exe released versi
 ## v1.3.8 - 05/03/2020
 - Updated configuration parameters:
   - equipment-rorc-*.firmwareCheckEnabled : set to zero to disable RORC firmware compatibility check (enabled by default).
+  - equipment-rorc-*.debugStatsEnabled : if set, more information collected about internal buffers status (disabled by default).
