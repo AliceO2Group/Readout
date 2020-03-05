@@ -34,8 +34,8 @@ public:
   CounterValue getMaximum();
   CounterValue getCount();
 
-  void enableHistogram(unsigned int nbins, CounterValue vmin,
-                       CounterValue vmax);
+  void enableHistogram(unsigned int nbins, CounterValue vmin, CounterValue vmax,
+                       int logScale = 1);
   void getHisto(std::vector<double> &x, std::vector<CounterValue> &count);
 
 private:
@@ -56,6 +56,7 @@ private:
   double histoStep;                      // step size (as a fraction of vmax)
   double histoK1;
   double histoK2;
+  int histoLogScale; // if set, using logarithmic scale on X
 };
 
 #endif // #ifndef _COUNTERSTATS_H
