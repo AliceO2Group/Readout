@@ -151,6 +151,7 @@ int main(int argc, const char **argv) {
   int statsTimeout = 1000000;
   runningTime.reset(statsTimeout);
   unsigned long long nMsg = 0;
+  unsigned long long nMsgParts = 0;
   unsigned long long nBytes = 0;
   bool isMultiPart = false;
 
@@ -176,6 +177,7 @@ int main(int argc, const char **argv) {
         if (mode == decodingMode::readout) {
 
           int nPart = msgParts.Size();
+	  nMsgParts += nPart;
           if (nPart < 2) {
             theLog.log(InfoLogger::Severity::Error,
                        "Only %d parts in message, need at least 2", nPart);
@@ -279,10 +281,11 @@ int main(int argc, const char **argv) {
     // print regularly the current throughput
     if (runningTime.isTimeout()) {
       double t = runningTime.getTime();
-      theLog.log("%.3lf msg/s %.3lfMB/s", nMsg / t,
+      theLog.log("%.3lf msg/s %.3lf parts/s %.3lfMB/s", nMsg / t, nMsgParts / t,
                  nBytes / (1024.0 * 1024.0 * t));
       runningTime.reset(statsTimeout);
       nMsg = 0;
+      nMsgParts = 0;
       nBytes = 0;
     }
   }
