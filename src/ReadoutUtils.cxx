@@ -107,9 +107,6 @@ int getKeyValuePairsFromString(const std::string &input,
           std::pair<std::string, std::string>(input.substr(ix0, ix2-ix0), input.substr(ix2+1,ix1-(ix2+1))));
     ix0 = ix1 + 1;
   }
-  if (output.size()==0) {
-    return -1;
-  }
   return 0;
 }
 
