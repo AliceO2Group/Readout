@@ -89,16 +89,26 @@ void dumpRDH(o2::Header::RAWDataHeader *rdh) {
 
 int getKeyValuePairsFromString(const std::string &input,
                                std::map<std::string, std::string> &output) {
-  std::string s;
   output.clear();
-  while (getline(std::istringstream(input), s, ',')) {
-    std::size_t ix = s.find("=");
-    if (ix != std::string::npos) {
+  std::size_t ix0=0;                 // begin of pair in string
+  std::size_t ix1=std::string::npos; // end of pair in string
+  std::size_t ix2=std::string::npos; // position of '='
+  for(;;) {
+    ix1 = input.find(",",ix0);
+    ix2 = input.find("=",ix0);
+    if (ix2>=ix1) { break; } // end of string
+    if (ix1 == std::string::npos) {
       output.insert(
-          std::pair<std::string, std::string>(s.substr(0, ix), s.substr(ix)));
-    } else {
-      return -1;
+          std::pair<std::string, std::string>(input.substr(ix0, ix2-ix0), input.substr(ix2+1)));
+      
+      break;
     }
+    output.insert(
+          std::pair<std::string, std::string>(input.substr(ix0, ix2-ix0), input.substr(ix2+1,ix1-(ix2+1))));
+    ix0 = ix1 + 1;
+  }
+  if (output.size()==0) {
+    return -1;
   }
   return 0;
 }
