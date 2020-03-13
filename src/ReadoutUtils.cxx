@@ -11,6 +11,8 @@
 #include "ReadoutUtils.h"
 #include <math.h>
 #include <sstream>
+#include <stdio.h>
+#include <unistd.h>
 
 #include "RAWDataHeader.h"
 
@@ -90,21 +92,23 @@ void dumpRDH(o2::Header::RAWDataHeader *rdh) {
 int getKeyValuePairsFromString(const std::string &input,
                                std::map<std::string, std::string> &output) {
   output.clear();
-  std::size_t ix0=0;                 // begin of pair in string
-  std::size_t ix1=std::string::npos; // end of pair in string
-  std::size_t ix2=std::string::npos; // position of '='
-  for(;;) {
-    ix1 = input.find(",",ix0);
-    ix2 = input.find("=",ix0);
-    if (ix2>=ix1) { break; } // end of string
+  std::size_t ix0 = 0;                 // begin of pair in string
+  std::size_t ix1 = std::string::npos; // end of pair in string
+  std::size_t ix2 = std::string::npos; // position of '='
+  for (;;) {
+    ix1 = input.find(",", ix0);
+    ix2 = input.find("=", ix0);
+    if (ix2 >= ix1) {
+      break;
+    } // end of string
     if (ix1 == std::string::npos) {
-      output.insert(
-          std::pair<std::string, std::string>(input.substr(ix0, ix2-ix0), input.substr(ix2+1)));
-      
+      output.insert(std::pair<std::string, std::string>(
+          input.substr(ix0, ix2 - ix0), input.substr(ix2 + 1)));
+
       break;
     }
-    output.insert(
-          std::pair<std::string, std::string>(input.substr(ix0, ix2-ix0), input.substr(ix2+1,ix1-(ix2+1))));
+    output.insert(std::pair<std::string, std::string>(
+        input.substr(ix0, ix2 - ix0), input.substr(ix2 + 1, ix1 - (ix2 + 1))));
     ix0 = ix1 + 1;
   }
   return 0;
@@ -128,4 +132,33 @@ std::string NumberOfBytesToString(double value, const char *suffix, int base) {
   snprintf(bufStr, sizeof(bufStr) - 1, "%.03lf %s%s", scaledValue,
            prefixes[prefixIndex], suffix);
   return std::string(bufStr);
+}
+
+int getProcessStats(double &uTime, double &sTime) {
+  int err = -1;
+  FILE *fp;
+  fp = fopen("/proc/self/stat", "r");
+  if (fp != NULL) {
+    char buf[256];
+    int k = fread(buf, 1, sizeof(buf) - 1, fp);
+    if (k > 0) {
+      buf[k] = 0;
+      int i;
+      char s[sizeof(buf)];
+      char c;
+      unsigned int u;
+      unsigned long lu;
+      unsigned long utime, stime;
+      int n = sscanf(buf, "%d %s %c %d %d %d %d %d %u %lu %lu %lu %lu %lu %lu",
+                     &i, &s, &c, &i, &i, &i, &i, &i, &u, &lu, &lu, &lu, &lu,
+                     &utime, &stime);
+      if (n == 15) {
+        uTime = utime * 1.0 / sysconf(_SC_CLK_TCK);
+        sTime = stime * 1.0 / sysconf(_SC_CLK_TCK);
+        err = 0;
+      }
+    }
+    fclose(fp);
+  }
+  return err;
 }
