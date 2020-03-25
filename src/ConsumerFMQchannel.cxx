@@ -32,6 +32,7 @@ private:
   FairMQUnmanagedRegionPtr memoryBuffer = nullptr;
   bool disableSending = 0;
   bool enableRawFormat = false;
+  bool enableStfSuperpage = false; // optimized stf transport: minimize STF packets
 
   std::shared_ptr<MemoryBank>
       memBank; // a dedicated memory bank allocated by FMQ mechanism
@@ -61,14 +62,19 @@ public:
     }
 
     // configuration parameter: | consumer-FairMQchannel-* | enableRawFormat |
-    // int | 0 | If set, data is pushed in raw format without additional
-    // headers, 1 FMQ message per data page. |
+    // int | 0 | If 0, data is pushed 1 STF header + 1 part per HBF. 
+    // If 1, data is pushed in raw format without STF headers, 1 FMQ message
+    // per data page. If 2, format is 1 STF header + 1 part per data page.|
     int cfgEnableRawFormat = 0;
     cfg.getOptionalValue<int>(cfgEntryPoint + ".enableRawFormat",
                               cfgEnableRawFormat);
-    if (cfgEnableRawFormat) {
-      theLog.log("FMQ message output in raw format: 1 message per data page");
+    if (cfgEnableRawFormat==1) {
+      theLog.log("FMQ message output in raw format - mode 1 : 1 message per data page");
       enableRawFormat = true;
+    } else if (cfgEnableRawFormat==2) {
+      theLog.log("FMQ message output in raw format - mode 2 : 1 message = "
+      "1 header + 1 part per data page");
+      enableStfSuperpage = true;
     }
 
     // configuration parameter: | consumer-FairMQchannel-* | sessionName |
@@ -249,8 +255,52 @@ public:
       return 0;
     }
 
+
+    // StfSuperpage format
+    // we just ship STFheader + one FMQ message part per incoming data page
+    if (enableStfSuperpage) {     
+
+      DataBlockContainerReference headerBlock = nullptr;
+      headerBlock = mp->getNewDataBlockContainer();
+      auto blockRef = new DataBlockContainerReference(headerBlock);
+      SubTimeframe *stfHeader = (SubTimeframe *)headerBlock->getData()->data;
+      stfHeader->timeframeId = 0;
+      stfHeader->numberOfHBF = 0;
+      stfHeader->linkId = undefinedLinkId;
+
+      for (auto &br : *bc) {
+        DataBlock *b = br->getData();
+        stfHeader->timeframeId = b->header.timeframeId;
+        stfHeader->linkId = b->header.linkId;
+	break;
+      }
+
+      std::vector<FairMQMessagePtr> msgs;
+      msgs.reserve(bc->size()+1);
+
+      // header
+      msgs.emplace_back(std::move(
+        sendingChannel->NewMessage(memoryBuffer, (void *)stfHeader,
+                                   sizeof(SubTimeframe), (void *)(blockRef))));
+      // one msg part per superpage
+      for (auto &br : *bc) {
+        DataBlock *b = br->getData();
+        DataBlockContainerReference *blockRef =
+            new DataBlockContainerReference(br);
+        void *hint = (void *)blockRef;
+        void *blobPtr = b->data;
+        size_t blobSize = (size_t)b->header.dataSize;
+        msgs.emplace_back(std::move(
+	sendingChannel->NewMessage(memoryBuffer, blobPtr, blobSize, hint)));
+      }
+      sendingChannel->Send(msgs);
+      
+      return 0;
+    }
+
+
     // send msg with WP5 format: 1 FMQ message for header + 1 FMQ message per
-    // data page
+    // HBF (all belonging to same CRU/link id)
 
     // we iterate a first time to count number of HB
     if (memoryPoolPageSize < (int)sizeof(SubTimeframe)) {
@@ -320,6 +370,8 @@ public:
         offset += offsetNextPacket;
       }
     }
+
+
 
     // printf("TF %d link %d = %d blocks, %d
     // HBf\n",(int)stfHeader->timeframeId,(int)stfHeader->linkId,(int)bc->size(),(int)stfHeader->numberOfHBF);
