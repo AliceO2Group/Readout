@@ -221,3 +221,4 @@ This file describes the main feature changes for each readout.exe released versi
 - Updated configuration parameters:
   - consumer-FairMQChannel.enableRawFormat : added new mode (use value = 2) to send 1 part per superpage instead of 1 part per HBF.
   - receiver-fmq-*.decodingMode :  readout mode replaced by stfHbf and stfSuperpage.
+- Added utilities testTxPerfFMQ / testRxPerfFMQ
