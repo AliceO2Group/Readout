@@ -50,6 +50,160 @@ static void signalHandler(int) {
   ShutdownRequest = 1;
 }
 
+
+
+class ReadoutStfDecoder {
+  public:
+    ReadoutStfDecoder(std::vector<FairMQMessagePtr> inMsgParts);
+    ~ReadoutStfDecoder();
+ 
+    struct Part {
+      void *data;
+      size_t size;
+    };
+
+    std::vector<Part> & getHbf() {    
+      return hbf;
+    }
+    
+    double getCopyRatio() {
+       return nPartsRepacked*1.0/(nPartsRepacked+nPartsReused);
+    }
+    
+  private:
+    std::vector<FairMQMessagePtr> msgParts; // keep ownership of FMQ messages for this object lifetime   
+    std::vector<void*> allocatedParts; // keep ownership of data copied
+    std::vector<Part> hbf; // list of HBFs
+    SubTimeframe *stf = nullptr; // STF header
+    
+    size_t nPartsReused=0;
+    size_t nPartsRepacked=0;
+};
+
+ReadoutStfDecoder::ReadoutStfDecoder(std::vector<FairMQMessagePtr> inMsgParts){
+  msgParts=std::move(inMsgParts);
+  
+  // expected format of received messages : (header + superpage + superpage ...)
+  // we gonna split in HBF, and if necessary copy HBF data overlapping 2 pages in a newly allocated contiguous block
+  
+  int i = 0;
+  uint32_t lastHbOrbit;
+  bool lastHbOrbitUndefined=true;
+
+  std::vector<Part> pendingHbf; // current HBF, completed contiguous parts
+  // last chunk of current HBF
+  Part lastPart = {nullptr, 0};
+
+  auto pendingHbfCollect = [&](bool isLast) {
+    // move last piece, if any
+    if (lastPart.size != 0 ) {
+      if (lastPart.data==nullptr) {throw;}
+      pendingHbf.push_back(lastPart);
+    }
+    
+    if (isLast) {
+      // move (if already a single piece) or copy (in a fresh contiguuous block) pending HBF
+      if (pendingHbf.size()==1) {
+	// use as is
+	nPartsReused++;
+	hbf.push_back(pendingHbf[0]);
+	//printf("HBF 1 page\n");
+      } else if (pendingHbf.size()>1) {
+      	// create a copy
+	size_t size=0;
+	for (auto const &p : pendingHbf) {
+	  size += p.size;
+	}
+	char *newHbf = (char *) malloc(size);
+	if (newHbf==NULL) {
+	  throw;	  
+	}
+	Part newPart;
+	newPart.data=(void *)newHbf;
+	newPart.size=size;
+	hbf.push_back(newPart);
+	allocatedParts.push_back(newHbf);  // keep track for later delete
+	for (auto const &p : pendingHbf) {
+	  memcpy(newHbf,p.data,p.size);
+	  newHbf += p.size;
+	  nPartsRepacked++;
+	}
+      }
+      pendingHbf.clear();
+    }
+    
+    // cleanup
+    lastPart.data = nullptr;
+    lastPart.size = 0;
+  };
+
+  for (auto const &mm : msgParts) {
+    if (i == 0) {
+      // first part is STF header
+      if (mm->GetSize() != sizeof(SubTimeframe)) {
+        throw;
+      }
+      stf = (SubTimeframe *)mm->GetData();
+    } else {    
+      // then 1 part per superpage
+      size_t dataSize = mm->GetSize();
+      void *data = mm->GetData();
+      
+      //printf ("Page %d size %d\n",i,(int)dataSize);
+      std::string errorDescription;
+		    
+      for (size_t pageOffset = 0; pageOffset < dataSize;) {
+        if (pageOffset + sizeof(o2::Header::RAWDataHeader) > dataSize) {
+          throw;
+        }
+
+        RdhHandle h(((uint8_t *)data) + pageOffset);
+        int nErr = h.validateRdh(errorDescription);
+
+	uint16_t offsetNextPacket = h.getOffsetNextPacket();
+	if (offsetNextPacket == 0) {
+          throw;
+        }
+	//h.dumpRdh(pageOffset, 1);
+	
+	if (lastHbOrbitUndefined || lastHbOrbit != h.getHbOrbit()) {
+	  // this is a new HBF
+	  //printf("new HBF:%d\n",(int)h.getHbOrbit());
+	 
+	  // handle previous HBF, now completed
+	  pendingHbfCollect(1);
+
+	  // start new HBF	  
+	  lastPart.data=((uint8_t *)data) + pageOffset;
+	  lastPart.size = offsetNextPacket;
+	} else {
+	  // check if beginning of new page
+	  if (lastPart.data==nullptr) {
+	    lastPart.data=((uint8_t *)data) + pageOffset;
+	  }
+	  lastPart.size += offsetNextPacket;
+	}
+	lastHbOrbitUndefined = false;
+	lastHbOrbit=h.getHbOrbit();
+        pageOffset += offsetNextPacket;
+      }
+      // end of page (but not sure end of HBF, so dont flush it yet)
+      pendingHbfCollect(0);
+    }
+    i++;
+  }
+  // handle previous HBF, now completed
+  pendingHbfCollect(1);   
+}
+
+ReadoutStfDecoder::~ReadoutStfDecoder() {
+  // release data copied
+  for (auto const &p: allocatedParts) {
+    free(p);
+  }
+}
+
+
 // program main
 int main(int argc, const char **argv) {
 
@@ -100,16 +254,18 @@ int main(int argc, const char **argv) {
 
   // configuration parameter: | receiverFMQ | decodingMode | string | none |
   // Decoding mode of the readout FMQ output stream. Possible values: none (no
-  // decoding), readout (wp5 protocol) |
+  // decoding), stfHbf, stfSuperpage |
   std::string cfgDecodingMode = "none";
   cfg.getOptionalValue<std::string>(cfgEntryPoint + ".decodingMode",
                                     cfgDecodingMode);
-  enum decodingMode { none = 0, readout = 1 };
+  enum decodingMode { none = 0, stfHbf = 1, stfSuperpage = 2 };
   decodingMode mode = decodingMode::none;
   if (cfgDecodingMode == "none") {
     mode = decodingMode::none;
-  } else if (cfgDecodingMode == "readout") {
-    mode = decodingMode::readout;
+  } else if (cfgDecodingMode == "stfHbf") {
+    mode = decodingMode::stfHbf;
+  } else if (cfgDecodingMode == "stfSuperpage") {
+    mode = decodingMode::stfSuperpage;
   } else {
     theLog.log(InfoLogger::Severity::Error, "Wrong decoding mode set : %s",
                cfgDecodingMode.c_str());
@@ -151,10 +307,14 @@ int main(int argc, const char **argv) {
   int statsTimeout = 1000000;
   runningTime.reset(statsTimeout);
   unsigned long long nMsg = 0;
+  unsigned long long nMsgParts = 0;
   unsigned long long nBytes = 0;
   bool isMultiPart = false;
 
-  if (mode == decodingMode::readout) {
+  double copyRatio=0;
+  unsigned long long copyRatioCount=0;
+
+  if ( (mode == decodingMode::stfHbf) || (mode == decodingMode::stfSuperpage)){
     isMultiPart = true;
   }
 
@@ -165,7 +325,7 @@ int main(int argc, const char **argv) {
     int timeout = 1000;
 
     if (isMultiPart) {
-      FairMQParts msgParts;
+      std::vector<FairMQMessagePtr> msgParts;
       int64_t bytesReceived;
       bytesReceived = pull.Receive(msgParts, timeout);
       if (bytesReceived > 0) {
@@ -173,24 +333,25 @@ int main(int argc, const char **argv) {
         nMsg++;
         msgStats.increment(bytesReceived);
 
-        if (mode == decodingMode::readout) {
+        if (mode == decodingMode::stfHbf) {
+	
+          // expected format of received messages : (header + HB + HB ...)
 
-          int nPart = msgParts.Size();
+          int nPart = msgParts.size();
+	  nMsgParts += nPart;
           if (nPart < 2) {
             theLog.log(InfoLogger::Severity::Error,
                        "Only %d parts in message, need at least 2", nPart);
             continue;
           }
 
-          // expected format of received messages : (header + HB + HB ...)
-
-          // first part is STF header
-
           int i = 0;
           bool dumpNext = false;
           SubTimeframe *stf = nullptr;
           for (auto const &mm : msgParts) {
+            
             if (i == 0) {
+              // first part is STF header
               if (mm->GetSize() != sizeof(SubTimeframe)) {
                 theLog.log(InfoLogger::Severity::Error,
                            "Header wrong size %d != %d\n", (int)mm->GetSize(),
@@ -212,7 +373,8 @@ int main(int argc, const char **argv) {
                   dumpNext = true;
                 }
               }
-            } else {
+            } else {	    
+	      // then we have 1 part per HBF
               size_t dataSize = mm->GetSize();
               void *data = mm->GetData();
               std::string errorDescription;
@@ -258,7 +420,34 @@ int main(int argc, const char **argv) {
             }
             i++;
           }
-        }
+	  
+        } else if (mode == decodingMode::stfSuperpage) {
+
+	  nMsgParts += msgParts.size();
+          ReadoutStfDecoder decoder(std::move(msgParts));
+	  copyRatio+=decoder.getCopyRatio();
+	  copyRatioCount++;
+	  
+	  if (cfgDumpRDH) {
+	    int i=0;
+	    for (auto const &p : decoder.getHbf()) {
+	      printf("HBF %d\n",i);
+	      for (size_t offset = 0; offset < p.size;) {
+                RdhHandle h(((uint8_t *)p.data) + offset);
+                if (cfgDumpRDH) {
+                  h.dumpRdh(offset, 1);
+        	}
+		// go to next RDH
+                uint16_t offsetNextPacket = h.getOffsetNextPacket();
+                if (offsetNextPacket == 0) {
+                  break;
+                }
+                offset += offsetNextPacket;
+	      }
+	      i++;
+	    }
+          }
+	}
       }
     } else {
       if (pull.Receive(msg, 0) > 0) {
@@ -279,10 +468,14 @@ int main(int argc, const char **argv) {
     // print regularly the current throughput
     if (runningTime.isTimeout()) {
       double t = runningTime.getTime();
-      theLog.log("%.3lf msg/s %.3lfMB/s", nMsg / t,
+      theLog.log("%.3lf msg/s %.3lf parts/s %.3lfMB/s", nMsg / t, nMsgParts / t,
                  nBytes / (1024.0 * 1024.0 * t));
+      if (copyRatioCount) {
+        theLog.log("HBF copy ratio = %.3lf %%",copyRatio*100/copyRatioCount);
+      }
       runningTime.reset(statsTimeout);
       nMsg = 0;
+      nMsgParts = 0;
       nBytes = 0;
     }
   }

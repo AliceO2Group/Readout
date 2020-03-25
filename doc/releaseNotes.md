@@ -216,3 +216,9 @@ This file describes the main feature changes for each readout.exe released versi
   - equipment-rorc-*.firmwareCheckEnabled : set to zero to disable RORC firmware compatibility check (enabled by default).
   - equipment-rorc-*.debugStatsEnabled : if set, more information collected about internal buffers status (disabled by default).
   - equipment-rorc-*.linkMask : parameter removed (and ignored if present in configuration). The RORC library now automatically enables links as configured with roc-config.
+
+## next version
+- Updated configuration parameters:
+  - consumer-FairMQChannel.enableRawFormat : added new mode (use value = 2) to send 1 part per superpage instead of 1 part per HBF.
+  - receiver-fmq-*.decodingMode :  readout mode replaced by stfHbf and stfSuperpage.
+- Added utilities testTxPerfFMQ / testRxPerfFMQ

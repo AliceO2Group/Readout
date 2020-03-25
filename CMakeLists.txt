@@ -276,6 +276,19 @@ add_executable(
 	$<TARGET_OBJECTS:objReadoutUtils>
 )
 
+# Tx/Rx FMQ channel performance testers
+add_executable(
+	testTxPerfFMQ.exe
+        ${SOURCE_DIR}/testTxPerfFMQ.cxx
+	$<TARGET_OBJECTS:objReadoutUtils>
+)
+add_executable(
+	testRxPerfFMQ.exe
+        ${SOURCE_DIR}/testRxPerfFMQ.cxx
+	$<TARGET_OBJECTS:objReadoutUtils>
+)
+
+
 # a test to check memory banks
 add_executable(
         testMemoryBanks.exe
@@ -304,12 +317,12 @@ add_executable(
 )
 
 # disable some executables when corresponding dependencies not found
-if (NOT FAIRMQ_FOUND)
-	set_target_properties(testTxFMQ.exe testRxFMQ.exe PROPERTIES EXCLUDE_FROM_ALL 1)
+if (NOT FairMQ_FOUND)
+	set_target_properties(testTxFMQ.exe testRxFMQ.exe testTxPerf testRxPerf PROPERTIES EXCLUDE_FROM_ALL 1)
 endif ()
 
 # set include and libraries for all
-set(executables readout.exe receiverFMQ.exe testTxFMQ.exe testRxFMQ.exe testMemoryBanks.exe readRaw.exe testROC.exe testMonitor.exe)
+set(executables readout.exe receiverFMQ.exe testTxFMQ.exe testRxFMQ.exe testTxPerfFMQ.exe testRxPerfFMQ.exe testMemoryBanks.exe readRaw.exe testROC.exe testMonitor.exe)
 foreach (exe ${executables})
 	target_include_directories(${exe} PRIVATE ${READOUT_INCLUDE_DIRS})
 	target_link_libraries(${exe} PRIVATE ${READOUT_LINK_LIBRARIES})
