@@ -186,7 +186,7 @@ if {($pagesPerRoc<1)} {
 
 puts "Using $pagesPerRoc x 1G page per ROC"
 set readoutPageSize [expr 1024*1024]
-set readoutNPages [expr int($pagesPerRoc * (1024.0*1024.0*1024.0) / $readoutPageSize)]
+set readoutNPages [expr int($pagesPerRoc * (1024.0*1024.0*1024.0) / $readoutPageSize) - 1]
 if {0} {
   # enforce a minimum number of pages
   # this could be needed if aggregator slicing with many links / many pages per STF

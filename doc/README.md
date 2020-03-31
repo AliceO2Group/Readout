@@ -89,6 +89,9 @@ with number (memoryPoolNumberOfPages=1000) and size of each page (memoryPoolPage
 and which bank to use (memoryBankName=bank-a1). By default of a bank name,
 readout will try to create the pool from the first bank available.
 Several memory pools can be created from the same memory bank, if space allows.
+There should be enough space in the pool for memoryPoolNumberOfPages+1 pages, as some space is reserved for metadata.
+In other words, a 1GB bank can accomodate only 1023 x 1MB pages. Page alignment settings may also reduce the usable
+space further.
 
 The number of pages allocated for an equipment should be large enough to accomodate data of at least 2 subtimeframes
 Otherwise, the slicing into timeframes can not work, as it holds the data of current subtimeframe until it is complete
