@@ -73,7 +73,8 @@ ReadoutEquipment::ReadoutEquipment(ConfigFile &cfg, std::string cfgEntryPoint) {
                                     cfgMemoryPoolPageSize);
   // configuration parameter: | equipment-* | memoryPoolNumberOfPages | int | |
   // Number of pages to be created for this equipment, taken from the chosen
-  // memory bank.|
+  // memory bank. The bank should have enough free space to accomodate
+  // (memoryPoolNumberOfPages + 1) * memoryPoolPageSize bytes. |
   memoryPoolPageSize = (int)ReadoutUtils::getNumberOfBytesFromString(
       cfgMemoryPoolPageSize.c_str());
   cfg.getOptionalValue<int>(cfgEntryPoint + ".memoryPoolNumberOfPages",
