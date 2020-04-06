@@ -81,11 +81,9 @@ std::string ReadoutUtils::NumberOfBytesToString(double value,
 }
 
 void dumpRDH(o2::Header::RAWDataHeader *rdh) {
-  printf("RDH:\tversion=%d\theader size=%d\tblock length=%d\n",
-         (int)rdh->version, (int)rdh->headerSize, (int)rdh->blockLength);
-  printf("\tTRG orbit=%d bc=%d\n", (int)rdh->triggerOrbit, (int)rdh->triggerBC);
-  printf("\tHB  orbit=%d bc=%d\n", (int)rdh->heartbeatOrbit,
-         (int)rdh->heartbeatBC);
+  printf("RDH:\tversion=%d\theader size=%d\n",
+         (int)rdh->version, (int)rdh->headerSize);
+  printf("\torbit=%d bc=%d\n", (int)rdh->triggerOrbit, (int)rdh->triggerBC);
   printf("\tfeeId=%d\tlinkId=%d\n", (int)rdh->feeId, (int)rdh->linkId);
 }
 

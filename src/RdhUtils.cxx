@@ -29,9 +29,9 @@ void RdhHandle::dumpRdh(long offset, bool singleLine) {
     } else {
       printf("0x%08lX", offset);
     }
-    printf("   %02d      %02d %8d %8d %8d  %5d  %4d %4d  0x%08X:%03X    "
+    printf("   %02d      %02d %8d %8d  %5d  %4d %4d  0x%08X:%03X    "
            "0x%04X     %2d   %2d    %03d\n",
-           (int)getHeaderVersion(), (int)getHeaderSize(), (int)getBlockLength(),
+           (int)getHeaderVersion(), (int)getHeaderSize(),
            (int)getMemorySize(), (int)getOffsetNextPacket(), (int)getFeeId(),
            (int)getCruId(), (int)getLinkId(), getTriggerOrbit(), getTriggerBC(),
            (int)getTriggerType(), (int)getPagesCounter(), (int)getStopBit(), (int)getPacketCounter());
@@ -44,7 +44,6 @@ void RdhHandle::dumpRdh(long offset, bool singleLine) {
     }
     printf("Version       = 0x%02X\n", (int)getHeaderVersion());
     printf("Header size   = %d\n", (int)getHeaderSize());
-    printf("Block length (link) = %d bytes\n", (int)getBlockLength());
     printf("Block length (memory) = %d bytes\n", (int)getMemorySize());
     printf("FEE Id        = %d\n", (int)getFeeId());
     printf("Link Id       = %d\n", (int)getLinkId());
@@ -62,7 +61,7 @@ void RdhHandle::dumpRdh(long offset, bool singleLine) {
 int RdhHandle::validateRdh(std::string &err) {
   int retCode = 0;
   // expecting RDH v3 or v4
-  if ((getHeaderVersion() != 3) && (getHeaderVersion() != 4)) {
+  if ((getHeaderVersion() != 3) && (getHeaderVersion() != 4) && (getHeaderVersion() != 6)) {
     err += "Wrong header version\n";
     retCode++;
   }
