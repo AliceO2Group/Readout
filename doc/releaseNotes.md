@@ -223,3 +223,6 @@ This file describes the main feature changes for each readout.exe released versi
   - receiver-fmq-*.decodingMode :  readout mode replaced by stfHbf and stfSuperpage.
 - Added utilities testTxPerfFMQ / testRxPerfFMQ
 - Memory banks: 1 page should be kept for metadata. readoutAutoConfigure updated accordingly.
+
+## next version
+- Added readout version in startup log

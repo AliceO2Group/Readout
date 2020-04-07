@@ -46,6 +46,7 @@
 #include "ReadoutEquipment.h"
 #include "ReadoutStats.h"
 #include "ReadoutUtils.h"
+#include "ReadoutVersion.h"
 
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -257,7 +258,7 @@ int Readout::init(int argc, char *argv[]) {
   sigaction(SIGINT, &signalSettings, NULL);
 
   // log startup and options
-  theLog.log("Readout process starting, pid %d", getpid());
+  theLog.log("Readout " READOUT_VERSION " - process starting, pid %d", getpid());
   theLog.log("Optional built features enabled:");
 #ifdef WITH_CONFIG
   theLog.log("CONFIG : yes");
