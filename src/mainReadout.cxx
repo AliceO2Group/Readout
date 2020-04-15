@@ -292,6 +292,11 @@ int Readout::init(int argc, char *argv[]) {
 #else
   theLog.log("LOGBOOK : no");
 #endif
+#ifdef WITH_ZMQ
+  theLog.log("ZMQ : yes");
+#else
+  theLog.log("ZMQ : no");
+#endif
 
   return 0;
 }
@@ -740,6 +745,13 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
         newDevice = getReadoutEquipmentCruEmulator(cfg, kName);
       } else if (!cfgEquipmentType.compare("player")) {
         newDevice = getReadoutEquipmentPlayer(cfg, kName);
+      } else if (!cfgEquipmentType.compare("zmq")) {
+#ifdef WITH_ZMQ
+        newDevice = getReadoutEquipmentZmq(cfg, kName);
+#else
+        theLog.log("Skipping %s: %s - not supported by this build",
+                   kName.c_str(), cfgEquipmentType.c_str());
+#endif
       } else {
         theLog.log("Unknown equipment type '%s' for [%s]",
                    cfgEquipmentType.c_str(), kName.c_str());
