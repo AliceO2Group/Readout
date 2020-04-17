@@ -226,3 +226,5 @@ This file describes the main feature changes for each readout.exe released versi
 
 ## next version
 - Added readout version in startup log
+- Updated configuration parameters:
+  -  readout.aggregatorStfTimeout: if set, STF buffered until timeout, so that slices of all sources sent together. This requires enough memory buffer for the corresponding amount of time.

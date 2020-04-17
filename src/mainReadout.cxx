@@ -165,6 +165,7 @@ private:
   double cfgFlushEquipmentTimeout;
   int cfgDisableAggregatorSlicing;
   double cfgAggregatorSliceTimeout;
+  double cfgAggregatorStfTimeout;
   int cfgLogbookEnabled;
   std::string cfgLogbookUrl;
   std::string cfgLogbookApiToken;
@@ -450,6 +451,13 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
   cfgAggregatorSliceTimeout = 0;
   cfg.getOptionalValue<double>("readout.aggregatorSliceTimeout",
                                cfgAggregatorSliceTimeout);
+  // configuration parameter: | readout | aggregatorStfTimeout | double | 0 |
+  // When set, subtimeframes are buffered until timeout
+  // (otherwise, sent immediately and independently for each data source). |
+  cfgAggregatorStfTimeout = 0;
+  cfg.getOptionalValue<double>("readout.aggregatorStfTimeout",
+                               cfgAggregatorStfTimeout);
+
   // configuration parameter: | readout | logbookEnabled | int | 0 | When set,
   // the logbook is enabled and populated with readout stats at runtime. |
   cfgLogbookEnabled = 0;
@@ -825,6 +833,12 @@ int Readout::start() {
     theLog.log("Aggregator slice timeout = %.2lf seconds",
                cfgAggregatorSliceTimeout);
     agg->cfgSliceTimeout = cfgAggregatorSliceTimeout;
+  }
+  if (cfgAggregatorStfTimeout > 0) {
+    theLog.log("Aggregator subtimeframe timeout = %.2lf seconds",
+               cfgAggregatorStfTimeout);
+    agg->cfgStfTimeout=cfgAggregatorStfTimeout;
+    agg->enableStfBuilding=1;
   }
 
   agg->start();

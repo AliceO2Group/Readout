@@ -162,15 +162,68 @@ Thread::CallbackResult DataBlockAggregator::executeCallback() {
       if (bcv == nullptr) {
         break;
       }
-      output->push(bcv);
-      nSlicesOut++;
+
+      if (enableStfBuilding) {     
+        // buffer timeframes
+	DataBlock *db = bcv->at(0)->getData();
+	uint64_t tfId=db->header.timeframeId;
+	uint64_t sourceId=(((uint64_t)db->header.equipmentId) << 32) | ((uint64_t)db->header.linkId);
+	if (tfId<=lastTimeframeId) {
+		theLog.log(InfoLogger::Severity::Warning, "Discarding late data for TF %lu (source = 0x%lX)",tfId,sourceId);
+	} else {
+	  tStf &stf=stfBuffer[tfId];
+	  stf.tfId=tfId;
+	  stf.sstf.push_back({sourceId, bcv, now});
+	  stf.updateTime=now;
+	  //theLog.log(InfoLogger::Severity::Info, "aggregate - added tf %lu : source %lX",tfId,sourceId);
+	}     
+      } else {
+        // push directly out completed slices
+        output->push(bcv);
+      }
+
+      nSlicesOut++;      
       nextIndex = i + 1;
       // printf("Pushed STF : %d chunks\n",(int)bcv->size());
     }
   }
 
+  // in TF buffering mode, are there some complete timeframes?
+  if (enableStfBuilding) {
+    int nDataSetPushed=0;
+    int nStfPushed=0;
+    auto it=stfBuffer.begin();
+    while (it!=stfBuffer.end()) {
+      double age=now-it->second.updateTime;      
+      if (age>=cfgStfTimeout) {
+        //printf("pushing age %.3f tf %d -> %d sources\n",age,it->second.tfId,it->second.sstf.size());
+	double tmin=it->second.updateTime;
+	double tmax=it->second.updateTime;	
+	for (auto const &ss: it->second.sstf) {
+	  output->push(ss.data);
+          nDataSetPushed++;
+	  if (ss.updateTime<tmin) {tmin=ss.updateTime;}
+	  if (ss.updateTime<tmax) {tmax=ss.updateTime;}	  
+	}
+	if (it->second.tfId == 1) {
+	    nSources=it->second.sstf.size(); // keep track of number of sources in first TF
+	}
+	nStfPushed++;
+	lastTimeframeId = it->second.tfId;
+	/*
+	if (lastTimeframeId % 10 == 1) {
+	  theLog.log(InfoLogger::Severity::Info,"LastTimeframeId=%lu deltaT=%f",lastTimeframeId,tmax-tmin);
+	}
+	*/
+	it=stfBuffer.erase(it);
+      } else {
+        break;
+      }
+    }
+  }
+
   if ((nBlocksIn == 0) && (nSlicesOut == 0)) {
-    if (doFlush) {
+    if ((doFlush)&&(stfBuffer.size()==0)) {
       doFlush = 0; // flushing is complete if we are now idle
     }
     return Thread::CallbackResult::Idle;
