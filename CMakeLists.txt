@@ -20,7 +20,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # ensure hard warning checks
-# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror -Wno-deprecated-declarations -Wall -Wextra")
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror -Wno-deprecated-declarations -Wno-unused-variable -Wno-unused-parameter -Wall -Wextra")
 
 # by default, build optimized release code
 if(NOT CMAKE_BUILD_TYPE)
@@ -59,7 +59,7 @@ find_package(ZLIB)
 find_package(RDMA)
 find_package(Occ)
 find_package(JiskefetApiCpp)
-find_package(ZeroMQ)
+#find_package(ZeroMQ)
 
 # extract include directories from targets
 get_target_property(InfoLogger_INCLUDE_DIRS AliceO2::InfoLogger INTERFACE_INCLUDE_DIRECTORIES)

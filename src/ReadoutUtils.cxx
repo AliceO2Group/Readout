@@ -150,7 +150,7 @@ int getProcessStats(double &uTime, double &sTime) {
       unsigned long lu;
       unsigned long utime, stime;
       int n = sscanf(buf, "%d %s %c %d %d %d %d %d %u %lu %lu %lu %lu %lu %lu",
-                     &i, &s, &c, &i, &i, &i, &i, &i, &u, &lu, &lu, &lu, &lu,
+                     &i, &s[0], &c, &i, &i, &i, &i, &i, &u, &lu, &lu, &lu, &lu,
                      &utime, &stime);
       if (n == 15) {
         uTime = utime * 1.0 / sysconf(_SC_CLK_TCK);
