@@ -223,3 +223,8 @@ This file describes the main feature changes for each readout.exe released versi
   - receiver-fmq-*.decodingMode :  readout mode replaced by stfHbf and stfSuperpage.
 - Added utilities testTxPerfFMQ / testRxPerfFMQ
 - Memory banks: 1 page should be kept for metadata. readoutAutoConfigure updated accordingly.
+
+## v1.3.10 - 20/04/2020
+- Added readout version in startup log
+- Updated configuration parameters:
+  -  readout.aggregatorStfTimeout: if set, STF buffered until timeout, so that slices of all sources sent together. This requires enough memory buffer for the corresponding amount of time.

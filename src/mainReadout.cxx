@@ -46,6 +46,7 @@
 #include "ReadoutEquipment.h"
 #include "ReadoutStats.h"
 #include "ReadoutUtils.h"
+#include "ReadoutVersion.h"
 
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -164,6 +165,7 @@ private:
   double cfgFlushEquipmentTimeout;
   int cfgDisableAggregatorSlicing;
   double cfgAggregatorSliceTimeout;
+  double cfgAggregatorStfTimeout;
   int cfgLogbookEnabled;
   std::string cfgLogbookUrl;
   std::string cfgLogbookApiToken;
@@ -257,7 +259,7 @@ int Readout::init(int argc, char *argv[]) {
   sigaction(SIGINT, &signalSettings, NULL);
 
   // log startup and options
-  theLog.log("Readout process starting, pid %d", getpid());
+  theLog.log("Readout " READOUT_VERSION " - process starting, pid %d", getpid());
   theLog.log("Optional built features enabled:");
 #ifdef WITH_CONFIG
   theLog.log("CONFIG : yes");
@@ -290,6 +292,11 @@ int Readout::init(int argc, char *argv[]) {
   theLog.log("LOGBOOK : yes");
 #else
   theLog.log("LOGBOOK : no");
+#endif
+#ifdef WITH_ZMQ
+  theLog.log("ZMQ : yes");
+#else
+  theLog.log("ZMQ : no");
 #endif
 
   return 0;
@@ -444,6 +451,13 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
   cfgAggregatorSliceTimeout = 0;
   cfg.getOptionalValue<double>("readout.aggregatorSliceTimeout",
                                cfgAggregatorSliceTimeout);
+  // configuration parameter: | readout | aggregatorStfTimeout | double | 0 |
+  // When set, subtimeframes are buffered until timeout
+  // (otherwise, sent immediately and independently for each data source). |
+  cfgAggregatorStfTimeout = 0;
+  cfg.getOptionalValue<double>("readout.aggregatorStfTimeout",
+                               cfgAggregatorStfTimeout);
+
   // configuration parameter: | readout | logbookEnabled | int | 0 | When set,
   // the logbook is enabled and populated with readout stats at runtime. |
   cfgLogbookEnabled = 0;
@@ -739,6 +753,13 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
         newDevice = getReadoutEquipmentCruEmulator(cfg, kName);
       } else if (!cfgEquipmentType.compare("player")) {
         newDevice = getReadoutEquipmentPlayer(cfg, kName);
+      } else if (!cfgEquipmentType.compare("zmq")) {
+#ifdef WITH_ZMQ
+        newDevice = getReadoutEquipmentZmq(cfg, kName);
+#else
+        theLog.log("Skipping %s: %s - not supported by this build",
+                   kName.c_str(), cfgEquipmentType.c_str());
+#endif
       } else {
         theLog.log("Unknown equipment type '%s' for [%s]",
                    cfgEquipmentType.c_str(), kName.c_str());
@@ -812,6 +833,12 @@ int Readout::start() {
     theLog.log("Aggregator slice timeout = %.2lf seconds",
                cfgAggregatorSliceTimeout);
     agg->cfgSliceTimeout = cfgAggregatorSliceTimeout;
+  }
+  if (cfgAggregatorStfTimeout > 0) {
+    theLog.log("Aggregator subtimeframe timeout = %.2lf seconds",
+               cfgAggregatorStfTimeout);
+    agg->cfgStfTimeout=cfgAggregatorStfTimeout;
+    agg->enableStfBuilding=1;
   }
 
   agg->start();
