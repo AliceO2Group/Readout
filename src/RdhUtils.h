@@ -40,7 +40,6 @@ public:
   // access RDH fields
   // functions defined inline here
   inline uint8_t getHeaderVersion() { return rdhPtr->version; }
-  inline uint16_t getBlockLength() { return (uint16_t)rdhPtr->blockLength; }
   inline uint16_t getFeeId() { return (uint16_t)rdhPtr->feeId; }
   inline uint8_t getLinkId() { return (uint8_t)rdhPtr->linkId; }
   inline uint8_t getPacketCounter() { return (uint8_t)rdhPtr->packetCounter; }

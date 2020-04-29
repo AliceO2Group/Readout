@@ -370,7 +370,145 @@ typedef struct _RAWDataHeaderV4 {
 
 } RAWDataHeaderV4;
 
-using RAWDataHeader = RAWDataHeaderV4;
+typedef struct _RAWDataHeaderV6 {
+  // 32-bits words
+
+  union {
+    uint32_t word0 = 0xffff4006;
+    //                     | | version 4
+    //                     | header size 16x32 bit = 64 bytes
+    struct {
+      uint32_t version : 8;      /// bit 0 to 7: header version
+      uint32_t headerSize : 8;   /// bit 8 to 15: header size
+      uint32_t feeId : 16;       /// bit 16 to 31: FEE id
+    };
+  };
+
+  union {
+    uint32_t word1 = 0x0000ffff;
+    struct {
+      uint32_t priorityBit : 8; /// bit 0 to 7: priority bit
+      uint32_t detectorId : 8;  /// bit 8 to 15: detector id
+      uint32_t zero1 : 16;      /// bit 16 to 31: reserved
+    };
+  };
+
+  union {
+    uint32_t word2 = 0x0;
+    struct {
+      uint32_t offsetNextPacket : 16; /// bit 0 to 15: offset of next block
+      uint32_t
+          memorySize : 16; /// bit 16 to 31: size of block (in bytes) in memory
+    };
+  };
+
+  union {
+    uint32_t word3 = 0xffffffff;
+    struct {
+      uint32_t linkId : 8;        /// bit 0 to 7: link id (GBT channel number)
+      uint32_t packetCounter : 8; /// bit 8 to 15: packet counter (increased at
+                                  /// every packet received in the link)
+      uint32_t cruId : 12;        /// bit 16 to 27: CRU id
+      uint32_t dpwId : 4; /// bit 28 to 31: data path wrapper id, used to
+                          /// identify one of the 2 CRU End Points
+    };
+  };
+
+  union {
+    uint32_t word4 = 0x00000fff;
+    struct {
+      uint32_t triggerBC : 12;   /// bit 0 to 11: TRG BC ID
+      uint32_t zero4 : 20;       /// bit 12 to 31: reserved
+    };
+  };
+
+  union {
+    uint32_t word5 = 0xffffffff;
+    struct {
+      // there's a single orbit counter now
+      union {
+        uint32_t triggerOrbit;   /// bit 0 to 31: orbit
+	uint32_t heartbeatOrbit; /// bit 0 to 31: orbit
+      };
+    };
+  };
+
+  union {
+    uint32_t word6 = 0x0;
+    struct {
+      uint32_t zero6; /// bit 0 to 31: reserved
+    };
+  };
+  
+  union {
+    uint32_t word7 = 0x0;
+    struct {
+      uint32_t zero7; /// bit 0 to 31: reserved
+    };
+  };
+
+  union {
+    uint32_t word8 = 0xffffffff;
+    struct {
+      uint32_t triggerType : 32; /// bit 0 to 31: trigger types
+    };
+  };
+
+  union {
+    uint32_t word9 = 0x00ffffff;
+    struct {
+      uint32_t pagesCounter : 16; /// bit 0 to 15: pages counter
+      uint32_t stopBit : 8;       /// bit 16 to 23: stop bit
+      uint32_t zero9 : 8;        /// bit 24 to 31: reserved
+    };
+  };
+
+  union {
+    uint32_t word10 = 0x0;
+    struct {
+      uint32_t zero10; /// bit 0 to 31: reserved
+    };
+  };
+
+  union {
+    uint32_t word11 = 0x0;
+    struct {
+      uint32_t zero11; /// bit 0 to 31: reserved
+    };
+  };
+
+  union {
+    uint32_t word12 = 0xffffffff;
+    struct {
+      uint32_t detectorField; /// bit 0 to 31: detector field
+    };
+  };
+  
+  union {
+    uint32_t word13 = 0x0000ffff;
+    struct {
+      uint32_t par;    /// bit 0 to 15: PAR
+      uint32_t zero13; /// bit 16 to 31: reserved
+    };
+  };
+  
+  union {
+    uint32_t word14 = 0x0;
+    struct {
+      uint32_t zero14; /// bit 0 to 31: reserved
+    };
+  };
+  
+  union {
+    uint32_t word15 = 0x0;
+    struct {
+      uint32_t zero15; /// bit 0 to 31: reserved
+    };
+  };
+
+} RAWDataHeaderV6;
+
+using RAWDataHeader = RAWDataHeaderV6;
 
 } // namespace Header
 } // namespace o2

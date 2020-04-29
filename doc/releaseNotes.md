@@ -228,3 +228,10 @@ This file describes the main feature changes for each readout.exe released versi
 - Added readout version in startup log
 - Updated configuration parameters:
   -  readout.aggregatorStfTimeout: if set, STF buffered until timeout, so that slices of all sources sent together. This requires enough memory buffer for the corresponding amount of time.
+
+## next version
+- Updated configuration parameters:
+  - removed equipment-rorc-*.resetLevel : the reset is now handled internally by ReadoutCard driver.
+
+## v1.3.10.1.RDH6 - 29/04/2020
+- This is a patched version providing support for RDHv6. It is NOT backward compatible: features making use of the RDH (e.g. timeframe identification) will NOT work with this version of readout.

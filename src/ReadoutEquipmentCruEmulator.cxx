@@ -279,7 +279,6 @@ Thread::CallbackResult ReadoutEquipmentCruEmulator::prepareBlocks() {
       // *)b->data));
 
       *rdh = defaultRDH; // reset fields to defaults
-      rdh->blockLength = (uint16_t)cruBlockSize;
       rdh->triggerOrbit = nowOrbit;
       rdh->triggerBC = nowBc;
       rdh->heartbeatOrbit = nowHb;
