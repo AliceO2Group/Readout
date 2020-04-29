@@ -147,12 +147,6 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name)
     // std::string cfgReadoutMode="CONTINUOUS";
     // cfg.getOptionalValue<std::string>(name + ".readoutMode", cfgReadoutMode);
 
-    // configuration parameter: | equipment-rorc-* | resetLevel | string |
-    // INTERNAL | Reset level of the device. Can be one of NOTHING, INTERNAL,
-    // INTERNAL_DIU, INTERNAL_DIU_SIU. c.f. AliceO2::roc::Parameters. |
-    std::string cfgResetLevel = "INTERNAL";
-    cfg.getOptionalValue<std::string>(name + ".resetLevel", cfgResetLevel);
-
     // extra configuration parameters
     // configuration parameter: | equipment-rorc-* | rdhCheckEnabled | int | 0 |
     // If set, data pages are parsed and RDH headers checked. Errors are
@@ -268,7 +262,6 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name)
 
     // open channel with above parameters
     channel = AliceO2::roc::ChannelFactory().getDmaChannel(params);
-    channel->resetChannel(AliceO2::roc::ResetLevel::fromString(cfgResetLevel));
 
     // retrieve card information
     std::string infoPciAddress = channel->getPciAddress().toString();

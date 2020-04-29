@@ -20,6 +20,7 @@
 #include <map>
 #include <memory>
 #include <queue>
+#include <vector>
 
 using namespace AliceO2::Common;
 
@@ -117,6 +118,10 @@ public:
   bool doFlush = 0; // when set, flush slices including incomplete ones
                     // the flag is reset automatically when done
 
+  bool enableStfBuilding = 0; // when set, STF are buffered until all sources have participated. Data from late sources are discarded.
+  double cfgStfTimeout = 0; // timeout used with enableStfBuilding
+  int nSources = 0; // accounted number of sources, on first timeframe
+
 private:
   std::vector<
       std::shared_ptr<AliceO2::Common::Fifo<DataBlockContainerReference>>>
@@ -134,4 +139,23 @@ private:
                      // to fill output fifo. not starting always from zero to
                      // avoid favorizing low-index channels.
   unsigned long long totalBlocksIn = 0; // number of blocks received from inputs
+  
+  // container for sub-subtimeframe (i.e. all data pages of 1 timeframe for a given single source)
+  struct tSstf {
+    uint64_t sourceId; // id of the source (equipmentId + linkId);
+    DataSetReference data; // data pages for this sstf
+    double updateTime;
+  };
+  
+  // container for one subtimeframe (i.e. sub-subtimeframes of all sources of 1 timeframe)
+  struct tStf {
+    uint64_t tfId; // timeframe id
+    std::vector<tSstf> sstf; // vector of sub-subtimeframes (1 per source)
+    double updateTime;
+  };
+  
+  typedef std::map<uint64_t, tStf> tStfMap;
+  tStfMap stfBuffer; // buffer to hold pending subtimeframes
+  uint64_t lastTimeframeId = 0; // counter for last timeframe id sent out
+  
 };

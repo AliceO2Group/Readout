@@ -174,3 +174,5 @@ std::unique_ptr<ReadoutEquipment>
 getReadoutEquipmentCruEmulator(ConfigFile &cfg, std::string cfgEntryPoint);
 std::unique_ptr<ReadoutEquipment>
 getReadoutEquipmentPlayer(ConfigFile &cfg, std::string cfgEntryPoint);
+std::unique_ptr<ReadoutEquipment>
+getReadoutEquipmentZmq(ConfigFile &cfg, std::string cfgEntryPoint);
