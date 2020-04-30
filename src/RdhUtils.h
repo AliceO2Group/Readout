@@ -55,6 +55,7 @@ public:
   inline uint32_t getTriggerBC() { return (uint32_t)rdhPtr->triggerBC; }
   inline uint32_t getTriggerType() { return (uint32_t)rdhPtr->triggerType; }
   inline uint16_t getCruId() { return (uint16_t)rdhPtr->cruId; }
+  inline uint8_t getEndPointId() { return (uint8_t)rdhPtr->dpwId; }
 
 private:
   o2::Header::RAWDataHeader *rdhPtr; // pointer to RDH in memory
