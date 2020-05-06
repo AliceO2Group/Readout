@@ -61,7 +61,7 @@ void RdhHandle::dumpRdh(long offset, bool singleLine) {
 int RdhHandle::validateRdh(std::string &err) {
   int retCode = 0;
   // expecting RDH v3 or v4
-  if ((getHeaderVersion() != 3) && (getHeaderVersion() != 4) && (getHeaderVersion() != 6)) {
+  if ((getHeaderVersion() != 5) && (getHeaderVersion() != 6)) {
     err += "Wrong header version\n";
     retCode++;
   }
