@@ -235,3 +235,6 @@ This file describes the main feature changes for each readout.exe released versi
 
 ## v1.3.10.1.RDH6 - 29/04/2020
 - This is a patched version providing support for RDHv6. It is NOT backward compatible: features making use of the RDH (e.g. timeframe identification) will NOT work with this version of readout.
+
+## v1.3.10.2.RDH6 - 06/05/2020
+- Experimental support for RDH v5 + v6.
