@@ -479,8 +479,9 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
                        errorDescription.c_str());
           } else {
 
-            // equipmentId
-            equipmentId = h.getCruId();
+            // equipmentId - computed from CRU id + end-point
+            equipmentId = h.getCruId() * 10 + h.getEndPointId();
+	    
             // discard value from CRU if this is the default one
             if (equipmentId == 0) {
               equipmentId = undefinedEquipmentId;
