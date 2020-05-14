@@ -217,6 +217,7 @@ public:
       theLog.log("Monitoring enabled - period %.2fs - using %s",
                  monitoringUpdatePeriod, configURI.c_str());
       monitoringCollector = MonitoringFactory::Get(configURI.c_str());
+      monitoringCollector->addGlobalTag(tags::Key::Subsystem, tags::Value::Readout);
 
       // enable process monitoring
       // configuration parameter: | consumer-stats-* | processMonitoringInterval
