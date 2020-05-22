@@ -62,7 +62,6 @@ private:
   int cfgChannelNumber = 0;
 
   std::string cfgDataSource = "Internal";
-  std::string cfgResetLevel = "INTERNAL";
   size_t superPageSize;
 
   std::shared_ptr<MemoryBank> bank;
@@ -94,7 +93,6 @@ ROCdevice::ROCdevice(std::string id) {
       mp->getBaseBlockAddress(), mp->getBaseBlockSize()});
 
   channel = AliceO2::roc::ChannelFactory().getDmaChannel(params);
-  channel->resetChannel(AliceO2::roc::ResetLevel::fromString(cfgResetLevel));
 
   std::string infoPciAddress = channel->getPciAddress().toString();
   int infoNumaNode = channel->getNumaNode();

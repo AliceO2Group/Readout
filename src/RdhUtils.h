@@ -40,7 +40,6 @@ public:
   // access RDH fields
   // functions defined inline here
   inline uint8_t getHeaderVersion() { return rdhPtr->version; }
-  inline uint16_t getBlockLength() { return (uint16_t)rdhPtr->blockLength; }
   inline uint16_t getFeeId() { return (uint16_t)rdhPtr->feeId; }
   inline uint8_t getLinkId() { return (uint8_t)rdhPtr->linkId; }
   inline uint8_t getPacketCounter() { return (uint8_t)rdhPtr->packetCounter; }
@@ -56,6 +55,7 @@ public:
   inline uint32_t getTriggerBC() { return (uint32_t)rdhPtr->triggerBC; }
   inline uint32_t getTriggerType() { return (uint32_t)rdhPtr->triggerType; }
   inline uint16_t getCruId() { return (uint16_t)rdhPtr->cruId; }
+  inline uint8_t getEndPointId() { return (uint8_t)rdhPtr->dpwId; }
 
 private:
   o2::Header::RAWDataHeader *rdhPtr; // pointer to RDH in memory

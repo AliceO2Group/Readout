@@ -387,8 +387,9 @@ int main(int argc, const char **argv) {
                 RdhHandle h(((uint8_t *)data) + pageOffset);
 
                 if (dumpNext) {
-                  printf("Receiving TF %d CRU %d link %d : %d HBf\n",
+                  printf("Receiving TF %d CRU %d.%d link %d : %d HBf\n",
                          (int)stf->timeframeId, (int)h.getCruId(),
+			 (int)h.getEndPointId(),
                          (int)stf->linkId, (int)stf->numberOfHBF);
                   dumpNext = false;
                 }
