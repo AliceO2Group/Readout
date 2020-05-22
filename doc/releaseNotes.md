@@ -229,7 +229,7 @@ This file describes the main feature changes for each readout.exe released versi
 - Updated configuration parameters:
   -  readout.aggregatorStfTimeout: if set, STF buffered until timeout, so that slices of all sources sent together. This requires enough memory buffer for the corresponding amount of time.
 
-## v1.3.11 - 22/05/2020
+## v1.4.0 - 22/05/2020
 - Updated configuration parameters:
   - removed equipment-rorc-*.resetLevel : the reset is now handled internally by ReadoutCard driver.
 - Monitoring: statistics are tagged with Readout tag.
