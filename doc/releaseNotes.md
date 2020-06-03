@@ -234,3 +234,7 @@ This file describes the main feature changes for each readout.exe released versi
   - removed equipment-rorc-*.resetLevel : the reset is now handled internally by ReadoutCard driver.
 - Monitoring: statistics are tagged with Readout tag.
 - RDH version updated to RDHv6 (also works with RDHv5). It is NOT backward compatible: features making use of the RDH (e.g. timeframe identification) will NOT work with this version of readout.
+
+# next release
+- Updated configuration parameters:
+  - added equipment-rorc-*.rdhDumpWarningEnabled : disabled by default. For checks concerning e.g. timeframe ID continuity and link consistency in data page.
