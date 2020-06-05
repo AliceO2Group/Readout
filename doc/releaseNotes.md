@@ -238,3 +238,4 @@ This file describes the main feature changes for each readout.exe released versi
 # next release
 - Updated configuration parameters:
   - added equipment-rorc-*.rdhDumpWarningEnabled : disabled by default. For checks concerning e.g. timeframe ID continuity and link consistency in data page.
+- consumer-FairMQChannel: channel bind failure is now fatal for the consumer, and associated memory bank will not be created.
