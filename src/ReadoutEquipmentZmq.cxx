@@ -11,6 +11,9 @@
 #include "MemoryBankManager.h"
 #include "ReadoutEquipment.h"
 #include "ReadoutUtils.h"
+#include <thread>
+#include <functional>
+#include <atomic>
 #include <zmq.h>
 
 #include <InfoLogger/InfoLogger.hxx>
@@ -29,103 +32,160 @@ private:
 
   void *context=nullptr;
   void *zh=nullptr;
+  
+  std::atomic<int> shutdownSnapshotThread = 0;
+  std::unique_ptr<std::thread> snapshotThread;
+  void loopSnapshot(void);
+  std::unique_ptr<unsigned char[]> snapshotData = nullptr; // latestSnapshot
+  
+  struct SnapshotDescriptor {
+    int maxSize = 0;
+    int currentSize = 0;
+    int timestamp = 0;
+  };
+  
+  SnapshotDescriptor snapshotMetadata;
+  std::mutex snapshotLock; // to access snapshotData/Metadata
 };
 
 ReadoutEquipmentZmq::ReadoutEquipmentZmq(ConfigFile &cfg,
                                              std::string cfgEntryPoint)
     : ReadoutEquipment(cfg, cfgEntryPoint) {
+  
 
- printf ("Connecting to DCS ADAPOS server\n");
-int err=0;
+  std::string cfgAddress = "";
+  // configuration parameter: | equipment-Zmq-* | address | string | |
+  // Address of remote server to connect, eg tcp://remoteHost:12345. |
+  cfg.getValue<std::string>(cfgEntryPoint + ".address", cfgAddress);
+  theLog.log("Connecting to %s",cfgAddress.c_str());
 
-context = zmq_ctx_new ();
-if (context!=nullptr) {
- zh = zmq_socket (context, ZMQ_PULL);
- if (zh!=nullptr) {
-   
-   err=zmq_connect (zh,"tcp://localhost:5555");
-   if (err) { throw __LINE__; } // zmq_errno()
+  int linerr=0;
+  int zmqerr=0;
+  for (;;) {
+    context = zmq_ctx_new ();
+    if (context==nullptr) { linerr=__LINE__; zmqerr=zmq_errno(); break; }
+    zh = zmq_socket (context, ZMQ_PULL);
+    if (zh==nullptr) { linerr=__LINE__; zmqerr=zmq_errno(); break; }
+    int timeout = 5000;
+    zmqerr=zmq_setsockopt(zh, ZMQ_RCVTIMEO, (void*) &timeout, sizeof(int));
+    if (zmqerr) { linerr=__LINE__; break; }
 
-     int timeout = 10000;
-     err=zmq_setsockopt(zh, ZMQ_RCVTIMEO, (void*) &timeout, sizeof(int));
-     printf("err=%d, zmq_errno returned %d.\n", err, zmq_errno());
-     timeout=0;
-     size_t argsz=sizeof(timeout);
-     err=zmq_getsockopt(zh, ZMQ_RCVTIMEO, (void*) &timeout, &argsz);
-     printf("err=%d, timeout=%d argsz=%d\n", err, timeout,(int)argsz);
-     
-     zmq_msg_t msg;
-     err=zmq_msg_init(&msg);
-     if (err) { throw __LINE__;}
-   
-     int nbytes=zmq_recvmsg(zh, &msg,0);
-     if (nbytes) {
-       err=zmq_errno();
-       printf("zmq_errno returned %d = %s\n", err,zmq_strerror(err));
-       printf("received %d\n",nbytes);
-       zmq_msg_close (&msg);
-     }
-   }
- }
-/*
-int i;
-for (i=0;i<50;i++) {
-  zmq_msg_t msg;
-  err=zmq_msg_init(&msg);
-  if (err) {
-    return __LINE__;
+    zmqerr=zmq_connect(zh,"");
+    if (zmqerr) { linerr=__LINE__; break; }
+
+    break;
   }
 
-  int nbytes=zmq_recvmsg(zh, &msg,0);
-  if (nbytes) {
-    err=zmq_errno();
-    printf("zmq_errno returned %d = %s\n", err,zmq_strerror(err));
-    printf("received %d\n",nbytes);
-    zmq_msg_close (&msg);
-  } else {
-    fflush(stdout);  
-    usleep(100000);
+  if ((zmqerr)||(linerr)) {
+    theLog.log(InfoLogger::Severity::Error,
+               "ZeroMQ error @%d : (%d) %s", linerr, zmqerr, zmq_strerror(zmqerr));
+    throw __LINE__;
   }
+
+  // allocate data for snapshot
+  snapshotMetadata.maxSize = memoryPoolPageSize;
+  snapshotMetadata.currentSize = 0;
+  snapshotMetadata.timestamp = 0;
+  snapshotData = std::make_unique<unsigned char[]>(snapshotMetadata.maxSize);
+  if (snapshotData == nullptr) {
+    theLog.log(InfoLogger::Severity::Error, "Failed to allocate memory (%d bytes)", snapshotMetadata.maxSize);
+    throw __LINE__;
+  }
+    
+  // starting snapshot thread
+  shutdownSnapshotThread = 0;
+  std::function<void(void)> l = std::bind(&ReadoutEquipmentZmq::loopSnapshot, this);
+  snapshotThread = std::make_unique<std::thread>(l);
+  
+  // wait that we have at least one snapshot with success
 }
-*/
-
- }
 
 ReadoutEquipmentZmq::~ReadoutEquipmentZmq() {
 
-  if (zh!=nullptr) {
+  // stopping snapshot thread
+  if (snapshotThread != nullptr) {
+    theLog.log("Terminating snapshot thread");
+    shutdownSnapshotThread = 1;    
+    snapshotThread->join();
+    snapshotThread=nullptr;
+  }
+  
+  if (zh != nullptr) {
     zmq_close (zh);
   }
-  if (context!=nullptr) {
+  
+  if (context != nullptr) {
     zmq_ctx_destroy (context);
   }
-
+  
+  // release memory
+  snapshotLock.lock();
+  snapshotData = nullptr;
+  snapshotLock.unlock();
 }
+
+void ReadoutEquipmentZmq::loopSnapshot(void) {
+ 
+  int linerr=0, zmqerr=0;
+  for (;!shutdownSnapshotThread;) {
+    zmq_msg_t msg;
+    zmqerr=zmq_msg_init(&msg);
+    if (zmqerr) { linerr=__LINE__; break; }
+
+    int nbytes=zmq_recvmsg(zh, &msg,0);
+    if (nbytes<=0) {
+       zmqerr=zmq_errno();
+       if (zmqerr) { linerr=__LINE__; break; }
+    }
+    
+    snapshotLock.lock();
+    if (zmq_msg_size(&msg) < snapshotMetadata.maxSize) {
+      memcpy(snapshotData.get(),zmq_msg_data(&msg), zmq_msg_size(&msg));
+      snapshotMetadata.currentSize = zmq_msg_size(&msg);
+      snapshotMetadata.timestamp = time(NULL);
+    }
+    snapshotLock.unlock();
+
+    zmq_msg_close (&msg);
+    usleep(100000);
+  }
+  
+  if ((zmqerr)||(linerr)) {
+    theLog.log(InfoLogger::Severity::Error,
+               "ZeroMQ error @%d : (%d) %s", linerr, zmqerr, zmq_strerror(zmqerr));
+    theLog.log(InfoLogger::Severity::Error,"Aborting snapshot thread");
+  }
+}
+
 
 DataBlockContainerReference ReadoutEquipmentZmq::getNextBlock() {
 
   if (!isDataOn) {
     return nullptr;
   }
+  
+  // check TF rate... do we produce data now ?
 
   // query memory pool for a free block
   DataBlockContainerReference nextBlock = nullptr;
   try {
     nextBlock = mp->getNewDataBlockContainer();
-  } catch (...) {
+  }
+  catch (...) {
   }
 
   // format data block
   if (nextBlock != nullptr) {
     DataBlock *b = nextBlock->getData();
 
-    // set size
-    int dSize = 0;
+    snapshotLock.lock();
+    if ((time(NULL) - snapshotMetadata.timestamp < 5) && (snapshotMetadata.currentSize < b->header.dataSize)) {
+      b->header.dataSize = snapshotMetadata.currentSize;
+      memcpy(b->data, snapshotData.get(), snapshotMetadata.currentSize);
+    }
+    snapshotLock.unlock();
     
-    // no need to fill header defaults, this is done by getNewDataBlockContainer()
-    // only adjust payload size
-    b->header.dataSize = dSize;
-    //b->data[k] = (char)k;
+    // set TF id, etc   
   }
 
   return nextBlock;
