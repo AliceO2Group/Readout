@@ -59,7 +59,7 @@ find_package(ZLIB)
 find_package(RDMA)
 find_package(Occ)
 find_package(JiskefetApiCpp)
-#find_package(ZeroMQ)
+find_package(ZMQ)
 
 # extract include directories from targets
 get_target_property(InfoLogger_INCLUDE_DIRS AliceO2::InfoLogger INTERFACE_INCLUDE_DIRECTORIES)
@@ -101,17 +101,17 @@ else ()
   message(STATUS "Jiskefet not found, corresponding features will be disabled.")
 endif(JiskefetApiCpp_FOUND)
 
-# check ZeroMQ
-if(${ZeroMQ_FOUND})
+# check ZMQ
+if(${ZMQ_FOUND})
     message(
     STATUS
-    "ZeroMQ found: ${ZeroMQ_INCLUDE_DIRS} ${ZeroMQ_LIBRARIES}")
+    "ZMQ found: ${ZMQ_INCLUDE_DIRS} ${ZMQ_LIBRARIES}")
 else ()
-  message(STATUS "ZeroMQ not found, corresponding features will be disabled.")
+  message(STATUS "ZMQ not found, corresponding features will be disabled.")
 endif()
 
 # add flags to enable optional features in Readout, based on available dependencies
-add_compile_definitions($<$<BOOL:${Numa_FOUND}>:WITH_NUMA> $<$<BOOL:${RDMA_FOUND}>:WITH_RDMA> $<$<BOOL:${Configuration_FOUND}>:WITH_CONFIG> $<$<BOOL:${FairMQ_FOUND}>:WITH_FAIRMQ> $<$<BOOL:${Occ_FOUND}>:WITH_OCC> $<$<BOOL:${JiskefetApiCpp_FOUND}>:WITH_LOGBOOK> $<$<BOOL:${ZeroMQ_FOUND}>:WITH_ZMQ>)
+add_compile_definitions($<$<BOOL:${Numa_FOUND}>:WITH_NUMA> $<$<BOOL:${RDMA_FOUND}>:WITH_RDMA> $<$<BOOL:${Configuration_FOUND}>:WITH_CONFIG> $<$<BOOL:${FairMQ_FOUND}>:WITH_FAIRMQ> $<$<BOOL:${Occ_FOUND}>:WITH_OCC> $<$<BOOL:${JiskefetApiCpp_FOUND}>:WITH_LOGBOOK> $<$<BOOL:${ZMQ_FOUND}>:WITH_ZMQ>)
 
 # define include directories
 set(READOUT_INCLUDE_DIRS
@@ -123,7 +123,7 @@ set(READOUT_INCLUDE_DIRS
  ${FairMQ_INCLUDE_DIRS}
  ${Occ_INCLUDE_DIRS}
  ${JiskefetApiCpp_INCLUDES}
- ${ZeroMQ_INCLUDE_DIRS}
+ ${ZMQ_INCLUDE_DIRS}
 )
 
 # define liraries to be linked
@@ -143,8 +143,8 @@ endif()
 if(RDMA_FOUND)
   list(APPEND READOUT_LINK_LIBRARIES ${RDMA_LIBRARIES})
 endif()
-if(ZeroMQ_FOUND)
-  list(APPEND READOUT_LINK_LIBRARIES ${ZeroMQ_LIBRARIES})
+if(ZMQ_FOUND)
+  list(APPEND READOUT_LINK_LIBRARIES ${ZMQ_LIBRARIES})
 endif()
 
 # some systems don't need an explicit library to have dlopen()
@@ -180,7 +180,7 @@ add_library(
         ${SOURCE_DIR}/ReadoutEquipmentRORC.cxx
         ${SOURCE_DIR}/ReadoutEquipmentCruEmulator.cxx
         ${SOURCE_DIR}/ReadoutEquipmentPlayer.cxx
-        $<$<BOOL:${ZeroMQ_FOUND}>:${SOURCE_DIR}/ReadoutEquipmentZmq.cxx>
+        $<$<BOOL:${ZMQ_FOUND}>:${SOURCE_DIR}/ReadoutEquipmentZmq.cxx>
 )
 target_include_directories(objReadoutEquipment PRIVATE ${READOUT_INCLUDE_DIRS})
 

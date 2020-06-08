@@ -26,6 +26,13 @@ find_package_handle_standard_args(ZeroMQ
    ZeroMQ_LIBRARIES
 )
 
+message(
+    STATUS
+    "CMAKE ZeroMQ search using path = ${ZeroMQ_ROOT}")    
+message(
+    STATUS
+    "CMAKE ZeroMQ search lib= ${ZeroMQ_LIBRARIES} include=${ZeroMQ_INCLUDE_DIRS}")    
+
 if(${ZeroMQ_FOUND})
     message(
     STATUS
