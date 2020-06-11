@@ -35,7 +35,7 @@ typedef struct {
   uint32_t linkId;      ///< id of link
   uint16_t equipmentId; ///< id of equipment generating the data
   uint64_t timeframeId; ///< id of timeframe
-  DataBlockId id;       ///< obsolete - kept for compatibility only. Use blockId or timeframeId instead.
+  DataBlockId pipelineId;  ///< id used to sort data in/out in parallel pipelines
 } DataBlockHeaderBase;
 
 const uint64_t undefinedBlockId = 0;        ///< default value, when blockId undefined

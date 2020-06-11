@@ -340,8 +340,8 @@ public:
     // tag data page with a unique id
     DataBlockId newId = currentId++;
 
-    // use the general-purpose id in header to store it
-    b->getData()->header.id = newId;
+    // use the pipeline id in header to store it
+    b->getData()->header.pipelineId = newId;
 
     if (cfgEnsurePageOrder) {
       if (idFifo->push(newId) != 0) {
@@ -351,7 +351,7 @@ public:
 
     if (fpPagesIn != nullptr) {
       fprintf(fpPagesIn, "%llu\t%llu\t%d\t%d\t%llu\n",
-              (unsigned long long)b->getData()->header.id,
+              (unsigned long long)b->getData()->header.pipelineId,
               (unsigned long long)b->getData()->header.blockId,
               b->getData()->header.linkId, b->getData()->header.equipmentId,
               (unsigned long long)b->getData()->header.timeframeId);
@@ -369,7 +369,7 @@ public:
     auto pushPage = [&](DataBlockContainerReference bc) {
       isActive = 1;
       // if (debug) {printf("output: got %p\n",bc.get());}
-      // printf("output: push %lu\n",bc->getData()->header.id);
+      // printf("output: push %lu\n",bc->getData()->header.pipelineId);
 
       this->processedBlocksOut++;
       this->processedBytesOut += bc->getData()->header.dataSize;
@@ -397,7 +397,7 @@ public:
             int ix =
                 (i + threadIx) % numberOfThreads; // we start from stored index
             if (threadPool[ix]->outputFifo->front(bc) == 0) {
-              if (bc->getData()->header.id == nextId) {
+              if (bc->getData()->header.pipelineId == nextId) {
                 // we found it !
                 idFifo->pop(nextId);
                 threadPool[ix]->outputFifo->pop(bc);
@@ -405,7 +405,7 @@ public:
                 if (fpPagesOut != nullptr) {
                   fprintf(
                       fpPagesOut, "%llu\t%llu\t%d\t%d\t%llu\n",
-                      (unsigned long long)bc->getData()->header.id,
+                      (unsigned long long)bc->getData()->header.pipelineId,
                       (unsigned long long)bc->getData()->header.blockId,
                       bc->getData()->header.linkId,
                       bc->getData()->header.equipmentId,
@@ -433,7 +433,7 @@ public:
           pushPage(bc);
           if (fpPagesOut != nullptr) {
             fprintf(fpPagesOut, "%llu\t%llu\t%d\t%d\t%llu\n",
-                    (unsigned long long)bc->getData()->header.id,
+                    (unsigned long long)bc->getData()->header.pipelineId,
                     (unsigned long long)bc->getData()->header.blockId,
                     bc->getData()->header.linkId,
                     bc->getData()->header.equipmentId,
