@@ -11,9 +11,9 @@
 #include "Consumer.h"
 #include "ReadoutUtils.h"
 
-#include <Common/DataBlock.h>
-#include <Common/DataBlockContainer.h>
-#include <Common/DataSet.h>
+#include "DataBlock.h"
+#include "DataBlockContainer.h"
+#include "DataSet.h"
 
 #include <memory>
 

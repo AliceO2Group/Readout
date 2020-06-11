@@ -202,6 +202,7 @@ add_library(
         ${SOURCE_DIR}/MemoryBank.cxx
         ${SOURCE_DIR}/MemoryBankManager.cxx
         ${SOURCE_DIR}/MemoryPagesPool.cxx
+	${SOURCE_DIR}/DataBlockContainer.cxx
 )
 target_include_directories(objReadoutUtils PRIVATE ${READOUT_INCLUDE_DIRS})
 

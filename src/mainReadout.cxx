@@ -14,9 +14,9 @@
 ///
 
 #include <Common/Configuration.h>
-#include <Common/DataBlock.h>
-#include <Common/DataBlockContainer.h>
-#include <Common/DataSet.h>
+#include "DataBlock.h"
+#include "DataBlockContainer.h"
+#include "DataSet.h"
 #include <Common/Fifo.h>
 #include <Common/MemPool.h>
 #include <Common/Thread.h>
