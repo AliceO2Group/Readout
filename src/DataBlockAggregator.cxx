@@ -198,8 +198,14 @@ Thread::CallbackResult DataBlockAggregator::executeCallback() {
       if (age>=cfgStfTimeout) {
         //printf("pushing age %.3f tf %d -> %d sources\n",age,it->second.tfId,it->second.sstf.size());
 	double tmin=it->second.updateTime;
-	double tmax=it->second.updateTime;	
+	double tmax=it->second.updateTime;
+	int ix=0;	
 	for (auto const &ss: it->second.sstf) {
+	  ix++;
+	  if (ix==it->second.sstf.size()) {
+	    // this is the last piece of this TF, mark last block as such
+	    ss.data->back()->getData()->header.flagEndOfTimeframe=1;
+	  }
 	  output->push(ss.data);
           nDataSetPushed++;
 	  if (ss.updateTime<tmin) {tmin=ss.updateTime;}
