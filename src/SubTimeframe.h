@@ -15,7 +15,18 @@
 // FEE ids)
 
 struct SubTimeframe {
-  uint32_t timeframeId; // id of timeframe
-  uint32_t numberOfHBF; // number of HB frames (i.e. following messages)
-  uint8_t linkId;       // common link id of all data in this HBframe
+  uint64_t timeframeId = 0; // id of timeframe
+  uint8_t systemId = 0xFF;
+  uint16_t feeId = 0xFFFF;
+  uint16_t equipmentId = 0xFF;
+  uint8_t linkId = 0xFF;
+  uint32_t timeframeOrbitFirst = 0;
+  uint32_t timeframeOrbitLast = 0;
+  union {
+    uint8_t flags = 0;
+    struct {
+      uint8_t lastTFMessage : 1; // bit 0
+      uint8_t flagsUnused : 7;   // bit 1-7: unused
+    };
+  };
 };

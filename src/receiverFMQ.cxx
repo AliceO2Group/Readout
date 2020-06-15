@@ -348,6 +348,7 @@ int main(int argc, const char **argv) {
           int i = 0;
           bool dumpNext = false;
           SubTimeframe *stf = nullptr;
+          int numberOfHBF = nPart - 1;
           for (auto const &mm : msgParts) {
             
             if (i == 0) {
@@ -359,14 +360,6 @@ int main(int argc, const char **argv) {
                 break;
               }
               stf = (SubTimeframe *)mm->GetData();
-              if ((int)stf->numberOfHBF != nPart - 1) {
-                theLog.log(
-                    InfoLogger::Severity::Error,
-                    "Mismatch stf->numberOfHBF %d != %d message parts - 1\n",
-                    stf->numberOfHBF, nPart - 1);
-                break;
-              }
-              // number of message parts matches number of HBFs in header ?
               if (cfgDumpTF) {
                 if ((stf->timeframeId == 1) ||
                     (stf->timeframeId % cfgDumpTF == 0)) {
@@ -390,7 +383,7 @@ int main(int argc, const char **argv) {
                   printf("Receiving TF %d CRU %d.%d link %d : %d HBf\n",
                          (int)stf->timeframeId, (int)h.getCruId(),
 			 (int)h.getEndPointId(),
-                         (int)stf->linkId, (int)stf->numberOfHBF);
+                         (int)stf->linkId, numberOfHBF);
                   dumpNext = false;
                 }
 

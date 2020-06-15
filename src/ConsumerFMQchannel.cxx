@@ -273,13 +273,22 @@ public:
       auto blockRef = new DataBlockContainerReference(headerBlock);
       SubTimeframe *stfHeader = (SubTimeframe *)headerBlock->getData()->data;
       stfHeader->timeframeId = 0;
-      stfHeader->numberOfHBF = 0;
       stfHeader->linkId = undefinedLinkId;
+
+      // set flag when this is last STF in timeframe
+      if (bc->back()->getData()->header.flagEndOfTimeframe) {
+        stfHeader->lastTFMessage=1;
+      }
 
       for (auto &br : *bc) {
         DataBlock *b = br->getData();
         stfHeader->timeframeId = b->header.timeframeId;
-        stfHeader->linkId = b->header.linkId;
+        stfHeader->systemId = b->header.systemId;
+	stfHeader->feeId = b->header.feeId;
+	stfHeader->equipmentId = b->header.equipmentId;
+	stfHeader->linkId = b->header.linkId;
+	stfHeader->timeframeOrbitFirst = b->header.timeframeOrbitFirst;
+	stfHeader->timeframeOrbitLast = b->header.timeframeOrbitLast;
 	break;
       }
 
@@ -328,7 +337,6 @@ public:
       return -1;
     }
     stfHeader->timeframeId = 0;
-    stfHeader->numberOfHBF = 0;
     stfHeader->linkId = undefinedLinkId;
 
     unsigned int lastHBid = -1;
@@ -340,7 +348,6 @@ public:
       if (isFirst) {
         stfHeader->timeframeId = b->header.timeframeId;
         stfHeader->linkId = b->header.linkId;
-        stfHeader->numberOfHBF = 0;
         isFirst = false;
       } else {
         if (stfHeader->timeframeId != b->header.timeframeId) {
@@ -359,10 +366,9 @@ public:
         o2::Header::RAWDataHeader *rdh =
             (o2::Header::RAWDataHeader *)&b->data[offset];
         if (rdh->heartbeatOrbit != lastHBid) {
-          stfHeader->numberOfHBF++;
           lastHBid = rdh->heartbeatOrbit;
-          // printf("offset %d now %d HBF -
-          // HBid=%d\n",offset,stfHeader->numberOfHBF,lastHBid);
+          // printf("offset %d -
+          // HBid=%d\n",offset,lastHBid);
         }
         if (stfHeader->linkId != rdh->linkId) {
           theLog.log(InfoLogger::Severity::Warning,"TF%d link Id mismatch %d != %d @ page offset %d",
@@ -381,8 +387,8 @@ public:
 
 
 
-    // printf("TF %d link %d = %d blocks, %d
-    // HBf\n",(int)stfHeader->timeframeId,(int)stfHeader->linkId,(int)bc->size(),(int)stfHeader->numberOfHBF);
+    // printf("TF %d link %d = %d blocks 
+    // \n",(int)stfHeader->timeframeId,(int)stfHeader->linkId,(int)bc->size());
 
     // create a header message
     // std::unique_ptr<FairMQMessage>
