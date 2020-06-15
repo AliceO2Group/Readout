@@ -10,6 +10,10 @@
 
 // Utilities to handle RDH content from CRU data
 
+#ifndef RDHUTILS_H
+#define RDHUTILS_H
+
+
 #include "RAWDataHeader.h"
 #include <string>
 
@@ -79,3 +83,6 @@ private:
   void *blockPtr;   // pointer to beginning of memory block
   size_t blockSize; // size of memory block
 };
+
+
+#endif
