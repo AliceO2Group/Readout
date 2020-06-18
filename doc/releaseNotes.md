@@ -234,3 +234,6 @@ This file describes the main feature changes for each readout.exe released versi
   - removed equipment-rorc-*.resetLevel : the reset is now handled internally by ReadoutCard driver.
 - Monitoring: statistics are tagged with Readout tag.
 - RDH version updated to RDHv6 (also works with RDHv5). It is NOT backward compatible: features making use of the RDH (e.g. timeframe identification) will NOT work with this version of readout.
+
+## v1.4.1 - 18/06/2020
+- FairLogger dependency update
