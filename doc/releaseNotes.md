@@ -235,7 +235,9 @@ This file describes the main feature changes for each readout.exe released versi
 - Monitoring: statistics are tagged with Readout tag.
 - RDH version updated to RDHv6 (also works with RDHv5). It is NOT backward compatible: features making use of the RDH (e.g. timeframe identification) will NOT work with this version of readout.
 
-# next release
+## v1.4.1 - 18/06/2020
+- FairLogger dependency update
+
+## next release
 - Updated configuration parameters:
   - added equipment-rorc-*.rdhDumpWarningEnabled : disabled by default. For checks concerning e.g. timeframe ID continuity and link consistency in data page.
-- consumer-FairMQChannel: channel bind failure is now fatal for the consumer, and associated memory bank will not be created.
