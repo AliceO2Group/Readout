@@ -237,3 +237,6 @@ This file describes the main feature changes for each readout.exe released versi
 
 ## v1.4.1 - 18/06/2020
 - FairLogger dependency update
+
+## v1.4.2 - 19/06/2020
+- FairLogger dependency update
