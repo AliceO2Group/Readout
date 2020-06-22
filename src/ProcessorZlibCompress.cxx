@@ -8,9 +8,9 @@
 // granted to it by virtue of its status as an Intergovernmental Organization
 // or submit itself to any jurisdiction.
 
-#include <Common/DataBlock.h>
-#include <Common/DataBlockContainer.h>
-#include <Common/DataSet.h>
+#include "DataBlock.h"
+#include "DataBlockContainer.h"
+#include "DataSet.h"
 #include <string.h>
 #include <zlib.h>
 

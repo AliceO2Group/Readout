@@ -12,9 +12,9 @@
   This processor compresses data with LZ4 algorithm https://lz4.github.io/lz4/
 */
 
-#include <Common/DataBlock.h>
-#include <Common/DataBlockContainer.h>
-#include <Common/DataSet.h>
+#include "DataBlock.h"
+#include "DataBlockContainer.h"
+#include "DataSet.h"
 
 #include "lz4.h"
 #include <stdint.h>

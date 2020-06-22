@@ -240,3 +240,10 @@ This file describes the main feature changes for each readout.exe released versi
 
 ## v1.4.2 - 19/06/2020
 - FairLogger dependency update
+
+## v1.4.3 - 22/06/2020
+- Updated configuration parameters:
+  - added equipment-rorc-*.rdhDumpWarningEnabled : disabled by default. For checks concerning e.g. timeframe ID continuity and link consistency in data page.
+- consumer-FairMQChannel: channel bind failure is now fatal for the consumer, and associated memory bank will not be created.
+- consumer-zmq: new equipment to stream data from DCS.
+- fix RDH struct (PAR fields), and improved checks related to RDH size.

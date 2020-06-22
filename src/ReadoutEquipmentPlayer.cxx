@@ -258,7 +258,7 @@ DataBlockContainerReference ReadoutEquipmentPlayer::getNextBlock() {
             // printf ("RDH @ %lu+ %d\n",fileOffset,pageOffset);
             PacketHeader currentPacketHeader;
             currentPacketHeader.linkId = (int)h.getLinkId();
-            currentPacketHeader.equipmentId = (int)h.getCruId();
+            currentPacketHeader.equipmentId = (int)(h.getCruId() * 10 + h.getEndPointId());
 
             bool isFirst = (fileOffset == 0) && (pageOffset == 0);
 

@@ -34,6 +34,7 @@ devices, using the ReadoutCard library DmaChannelInterface for readout.
 - ReadoutEquipmentCruEmulator : a class emulating CRU data, with realistic
 LHC clock rates.
 - ReadoutEquipmentPlayer: a class to inject data from a file.
+- ReadoutEquipmentZmq: a class to inject data from a remotely ZeroMQ publishing service (e.g. the DCS ADAPOS server).
 
 
 ## Aggregator

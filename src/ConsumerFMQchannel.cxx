@@ -174,6 +174,19 @@ public:
 
       theLog.log("Got FMQ unmanaged memory buffer size %lu @ %p",
                  memoryBuffer->GetSize(), memoryBuffer->GetData());
+    }
+
+    // complete channel bind/validate before proceeding with memory bank
+    if (!sendingChannel->Bind(cfgChannelAddress)) {
+     throw "ConsumerFMQ: channel bind failed";
+    }
+
+    if (!sendingChannel->Validate()) {
+      throw "ConsumerFMQ: channel validation failed";
+    }
+
+    // create of a readout memory bank if unmanaged region defined
+    if (memoryBuffer!=nullptr) { 
       memBank = std::make_shared<MemoryBank>(
           memoryBuffer->GetData(), memoryBuffer->GetSize(), nullptr,
           "FMQ unmanaged memory buffer from " + cfgEntryPoint);
@@ -209,11 +222,6 @@ public:
     theLog.log("Using memory pool %d pages x %d bytes", memoryPoolNumberOfPages,
                memoryPoolPageSize);
 
-    sendingChannel->Bind(cfgChannelAddress);
-
-    if (!sendingChannel->Validate()) {
-      throw "ConsumerFMQ: channel validation failed";
-    }
   }
 
   ~ConsumerFMQchannel() {

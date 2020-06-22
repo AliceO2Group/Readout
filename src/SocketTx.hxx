@@ -14,9 +14,9 @@
 #include <string>
 #include <thread>
 
-#include <Common/DataBlock.h>
-#include <Common/DataBlockContainer.h>
-#include <Common/DataSet.h>
+#include "DataBlock.h"
+#include "DataBlockContainer.h"
+#include "DataSet.h"
 #include <Common/Fifo.h>
 
 // class to send data blocks remotely over a TCP/IP socket

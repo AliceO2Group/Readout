@@ -58,6 +58,7 @@ private:
   int cfgRdhCheckEnabled = 0;     // flag to enable RDH check at runtime
   int cfgRdhDumpEnabled = 0;      // flag to enable RDH dump at runtime
   int cfgRdhDumpErrorEnabled = 1; // flag to enable RDH error log at runtime
+  int cfgRdhDumpWarningEnabled = 0; // flag to enable RDH warning log at runtime
   int cfgRdhUseFirstInPageEnabled = 0; // flag to enable reading of first RDH in
                                        // page to populate readout headers
   int cfgRdhCheckPacketCounterContiguous =
@@ -160,6 +161,10 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name)
     // 1 | If set, a log message is printed for each RDH header error found.|
     cfg.getOptionalValue<int>(name + ".rdhDumpErrorEnabled",
                               cfgRdhDumpErrorEnabled);
+    // configuration parameter: | equipment-rorc-* | rdhDumpWarningEnabled | int |
+    // 0 | If set, a log message is printed for each RDH header warning found.|
+    cfg.getOptionalValue<int>(name + ".rdhDumpWarningEnabled",
+                              cfgRdhDumpWarningEnabled);
     // configuration parameter: | equipment-rorc-* | rdhUseFirstInPageEnabled |
     // int | 0 | If set, the first RDH in each data page is used to populate
     // readout headers (e.g. linkId).|
@@ -510,7 +515,7 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
                                            firstTimeframeHbOrbitBegin) /
                                               timeframePeriodOrbits;
               if (newTimeframe != currentTimeframe + 1) {
-                if (cfgRdhDumpErrorEnabled) {
+                if (cfgRdhDumpWarningEnabled) {
                   theLog.log(InfoLogger::Severity::Warning,
                              "Non-contiguous timeframe IDs %llu ... %llu",
                              (unsigned long long)currentTimeframe,
@@ -593,7 +598,7 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
 
             // linkId should be same everywhere in page
             if (linkId != h.getLinkId()) {
-              if (cfgRdhDumpErrorEnabled) {
+              if (cfgRdhDumpWarningEnabled) {
                 theLog.log(InfoLogger::Severity::Warning,
                            "RDH #%d @ 0x%X : inconsistent link ids: %d != %d",
                            rdhIndexInPage, (unsigned int)pageOffset, linkId,
