@@ -238,6 +238,9 @@ This file describes the main feature changes for each readout.exe released versi
 ## v1.4.1 - 18/06/2020
 - FairLogger dependency update
 
+## v1.4.2 - 19/06/2020
+- FairLogger dependency update
+
 ## next release
 - Updated configuration parameters:
   - added equipment-rorc-*.rdhDumpWarningEnabled : disabled by default. For checks concerning e.g. timeframe ID continuity and link consistency in data page.
