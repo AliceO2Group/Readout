@@ -797,7 +797,7 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
 
   // aggregator
   theLog.log("Creating aggregator");
-  agg_output = std::make_unique<AliceO2::Common::Fifo<DataSetReference>>(1000);
+  agg_output = std::make_unique<AliceO2::Common::Fifo<DataSetReference>>(10000);
   int nEquipmentsAggregated = 0;
   agg = std::make_unique<DataBlockAggregator>(agg_output.get(), "Aggregator");
 
