@@ -239,8 +239,8 @@ There is no particular formatting for the files recorded by readout.exe/Consumer
 this is a simple binary dump of the data stream received from the CRU(s) or other equipments,
 the memory data pages are saved to disk one by one continuously (without separator).
 
-So by default, for CRU equipments, the file strictly follows the format documented for the RDHv4 (RDH-FLP section)
-available at https://gitlab.cern.ch/AliceO2Group/wp6-doc/blob/master/rdh/RDHV4.md
+So by default, for CRU equipments, the file strictly follows the format documented for the RDHv6 (RDH-FLP section)
+available at https://gitlab.cern.ch/AliceO2Group/wp6-doc/-/blob/master/rdh/RDHv6.md
 
 Pages of the different CRUs might be interleaved in an unspecified order.
 
