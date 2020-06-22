@@ -53,7 +53,7 @@ The parameters related to 3rd-party libraries are described here for convenience
 | bank-* | type | string| | Support used to allocate memory. Possible values: malloc, MemoryMappedFile. For MemoryMappedFile: 1) the name given to the bank (bank-*) is reused in the filesystem namespace to create the resource, so make sure it is unique on a given machine for all instances of readout 2) the hugePages are split evenly accross NUMA nodes, so make sure that the bank size can be allocated on a single node... if there are 2GB of hugePages on the system, you probably can't have a bank size bigger than 1G on a dual-node system. |
 | bank-* | numaNode | int | -1| Numa node where memory should be bound. -1 means unspecified (system will choose). |
 | equipment-* | enabled | int | 1 | Enable (value=1) or disable (value=0) the equipment. |
-| equipment-* | equipmentType | string |  | The type of equipment to be instanciated. One of: dummy, rorc, cruEmulator, player. |
+| equipment-* | equipmentType | string |  | The type of equipment to be instanciated. One of: dummy, rorc, cruEmulator, player, zmq. |
 | equipment-* | name | string| | Name used to identify this equipment (in logs). By default, it takes the name of the configuration section, equipment-xxx |
 | equipment-* | id | int| | Optional. Number used to identify equipment (used e.g. in file recording). Range 1-65535.|
 | equipment-* | idleSleepTime | int | 200 | Thread idle sleep time, in microseconds. |
@@ -96,6 +96,7 @@ The parameters related to 3rd-party libraries are described here for convenience
 | equipment-rorc-* | firmwareCheckEnabled | int | 1 | If set, RORC driver checks compatibility with detected firmware. Use 0 to bypass this check (eg new fw version not yet recognized by ReadoutCard version). |
 | equipment-rorc-* | TFperiod | int | 256 | Duration of a timeframe, in number of LHC orbits. |
 | equipment-rorc-* | debugStatsEnabled | int | 0 | If set, enable extra statistics about internal buffers status. (printed to stdout when stopping) |
+| equipment-zmq-* | address | string | | Address of remote server to connect, eg tcp://remoteHost:12345. |
 | consumer-* | enabled | int | 1 | Enable (value=1) or disable (value=0) the consumer. |
 | consumer-* | consumerType | string |  | The type of consumer to be instanciated. One of:stats, FairMQDevice, DataSampling, FairMQChannel, fileRecorder, checker, processor, tcp, rdma. |
 | consumer-* | consumerOutput | string |  | Name of the consumer where the output of this consumer (if any) should be pushed. |
