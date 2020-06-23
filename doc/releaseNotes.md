@@ -248,3 +248,6 @@ This file describes the main feature changes for each readout.exe released versi
 - consumer-zmq: new equipment to stream data from DCS.
 - fix RDH struct (PAR fields), and improved checks related to RDH size.
 - increased aggregator output queue length for file replay with many sources.
+
+## v1.4.4 - 23/06/2020
+- Improvements for the DCS readout. Added example config file.
