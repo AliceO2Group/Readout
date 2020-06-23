@@ -370,7 +370,7 @@ endforeach ()
 ###################################################
 
 install(
-        FILES readout.cfg readout-cru.cfg readout-dummy.cfg readout-player.cfg
+        FILES readout.cfg readout-cru.cfg readout-dummy.cfg readout-player.cfg readout-dcs.cfg
         DESTINATION ${CMAKE_INSTALL_PREFIX}/etc
         PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
 )

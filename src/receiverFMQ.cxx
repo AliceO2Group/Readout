@@ -359,7 +359,7 @@ int main(int argc, const char **argv) {
                 break;
               }
               stf = (SubTimeframe *)mm->GetData();
-              if ((int)stf->numberOfHBF != nPart - 1) {
+              if (((int)stf->numberOfHBF != nPart - 1) &&  (stf->numberOfHBF != 0)) {
                 theLog.log(
                     InfoLogger::Severity::Error,
                     "Mismatch stf->numberOfHBF %d != %d message parts - 1\n",
@@ -373,7 +373,8 @@ int main(int argc, const char **argv) {
                   dumpNext = true;
                 }
               }
-            } else {	    
+            } else {	  
+              if (stf->numberOfHBF != 0)  {
 	      // then we have 1 part per HBF
               size_t dataSize = mm->GetSize();
               void *data = mm->GetData();
@@ -418,7 +419,14 @@ int main(int argc, const char **argv) {
                 }
                 pageOffset += offsetNextPacket;
               }
-            }
+	    } else {
+              if (dumpNext) {
+                printf("Receiving TF %d link %d\n",
+                         (int)stf->timeframeId, (int)stf->linkId);
+                dumpNext = false;
+              }
+	    }
+	    }
             i++;
           }
 	  

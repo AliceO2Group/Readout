@@ -70,7 +70,7 @@ ReadoutEquipmentZmq::ReadoutEquipmentZmq(ConfigFile &cfg,
     zmqerr=zmq_setsockopt(zh, ZMQ_RCVTIMEO, (void*) &timeout, sizeof(int));
     if (zmqerr) { linerr=__LINE__; break; }
 
-    zmqerr=zmq_connect(zh,"");
+    zmqerr=zmq_connect(zh,cfgAddress.c_str());
     if (zmqerr) { linerr=__LINE__; break; }
 
     break;
