@@ -25,6 +25,17 @@
 #include "RAWDataHeader.h"
 #include "SubTimeframe.h"
 
+// cleanup function, defined with the callback footprint expected in the 3rd
+// argument of FairMQTransportFactory.CreateMessage() when object not null, it
+// should be a (DataBlockContainerReference *), which will be destroyed
+void msgcleanupCallback(void *data, void *object) {
+  if ((object != nullptr) && (data != nullptr)) {
+    DataBlockContainerReference *ptr = (DataBlockContainerReference *)object;
+    //printf("ptr %p: use_count=%d\n",ptr,ptr->use_count());
+    delete ptr;
+  }
+}
+
 class ConsumerFMQchannel : public Consumer {
 private:
   std::unique_ptr<FairMQChannel> sendingChannel;
@@ -287,9 +298,15 @@ public:
       msgs.reserve(bc->size()+1);
 
       // header
+      if (memoryBuffer) {
+	msgs.emplace_back(std::move(
+          sendingChannel->NewMessage(memoryBuffer, (void *)stfHeader,
+                                     sizeof(SubTimeframe), (void *)(blockRef))));
+      } else {
       msgs.emplace_back(std::move(
-        sendingChannel->NewMessage(memoryBuffer, (void *)stfHeader,
-                                   sizeof(SubTimeframe), (void *)(blockRef))));
+          sendingChannel->NewMessage(	  
+            (void *)stfHeader, sizeof(SubTimeframe), msgcleanupCallback, (void *)(blockRef))));
+      }
       // one msg part per superpage
       for (auto &br : *bc) {
         DataBlock *b = br->getData();
@@ -298,8 +315,13 @@ public:
         void *hint = (void *)blockRef;
         void *blobPtr = b->data;
         size_t blobSize = (size_t)b->header.dataSize;
-        msgs.emplace_back(std::move(
-	sendingChannel->NewMessage(memoryBuffer, blobPtr, blobSize, hint)));
+	if (memoryBuffer) {
+          msgs.emplace_back(std::move(
+	  sendingChannel->NewMessage(memoryBuffer, blobPtr, blobSize, hint)));
+	} else {
+          msgs.emplace_back(std::move(
+	  sendingChannel->NewMessage(blobPtr, blobSize, msgcleanupCallback, hint)));
+	}
       }
       sendingChannel->Send(msgs);
       
