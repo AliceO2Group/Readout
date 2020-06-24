@@ -79,9 +79,13 @@ if ((NOT FairMQ_FOUND) OR (NOT FairLogger_FOUND))
 else ()
   message(STATUS "FairMQ found: ${FairMQ_DIR}")
   message(STATUS "FairLogger found: ${FairLogger_ROOT}")
+  foreach(dep IN LISTS FairLogger_PACKAGE_DEPENDENCIES)
+    find_package(${dep} ${FairLogger_${dep}_VERSION} REQUIRED)
+  endforeach()
   get_target_property(FairMQ_INCLUDE_DIRS FairMQ::FairMQ INTERFACE_INCLUDE_DIRECTORIES)
   get_target_property(FairLogger_INCLUDE_DIRS FairLogger::FairLogger INTERFACE_INCLUDE_DIRECTORIES)
-  list(APPEND FairMQ_INCLUDE_DIRS ${FairLogger_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
+  get_target_property(fmt_INCLUDE_DIRS fmt::fmt INTERFACE_INCLUDE_DIRECTORIES)
+  list(APPEND FairMQ_INCLUDE_DIRS ${FairLogger_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS} ${fmt_INCLUDE_DIRS})
 endif ()
 
 # check OCC
@@ -366,7 +370,7 @@ endforeach ()
 ###################################################
 
 install(
-        FILES readout.cfg readout-cru.cfg readout-dummy.cfg readout-player.cfg
+        FILES readout.cfg readout-cru.cfg readout-dummy.cfg readout-player.cfg readout-dcs.cfg
         DESTINATION ${CMAKE_INSTALL_PREFIX}/etc
         PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
 )

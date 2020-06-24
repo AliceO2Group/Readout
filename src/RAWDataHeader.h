@@ -487,8 +487,8 @@ typedef struct _RAWDataHeaderV6 {
   union {
     uint32_t word13 = 0x0000ffff;
     struct {
-      uint32_t par;    /// bit 0 to 15: PAR
-      uint32_t zero13; /// bit 16 to 31: reserved
+      uint16_t par;    /// bit 0 to 15: PAR
+      uint16_t zero13; /// bit 16 to 31: reserved
     };
   };
   
@@ -509,6 +509,9 @@ typedef struct _RAWDataHeaderV6 {
 } RAWDataHeaderV6;
 
 using RAWDataHeader = RAWDataHeaderV6;
+
+// expecting 16*32bits = 64 bytes
+static_assert(sizeof(RAWDataHeader)==64);
 
 } // namespace Header
 } // namespace o2

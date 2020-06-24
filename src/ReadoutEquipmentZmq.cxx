@@ -23,7 +23,7 @@ extern InfoLogger theLog;
 class ReadoutEquipmentZmq : public ReadoutEquipment {
 
 public:
-  ReadoutEquipmentZmq(ConfigFile &cfg, std::string name = "dummyReadout");
+  ReadoutEquipmentZmq(ConfigFile &cfg, std::string name = "zmq");
   ~ReadoutEquipmentZmq();
   DataBlockContainerReference getNextBlock();
 
@@ -54,7 +54,7 @@ ReadoutEquipmentZmq::ReadoutEquipmentZmq(ConfigFile &cfg,
   
 
   std::string cfgAddress = "";
-  // configuration parameter: | equipment-Zmq-* | address | string | |
+  // configuration parameter: | equipment-zmq-* | address | string | |
   // Address of remote server to connect, eg tcp://remoteHost:12345. |
   cfg.getValue<std::string>(cfgEntryPoint + ".address", cfgAddress);
   theLog.log("Connecting to %s",cfgAddress.c_str());
@@ -70,7 +70,7 @@ ReadoutEquipmentZmq::ReadoutEquipmentZmq(ConfigFile &cfg,
     zmqerr=zmq_setsockopt(zh, ZMQ_RCVTIMEO, (void*) &timeout, sizeof(int));
     if (zmqerr) { linerr=__LINE__; break; }
 
-    zmqerr=zmq_connect(zh,"");
+    zmqerr=zmq_connect(zh,cfgAddress.c_str());
     if (zmqerr) { linerr=__LINE__; break; }
 
     break;
