@@ -263,10 +263,14 @@ public:
       return 0;
     }
 
-
+    bool isRdhFormat = false;
+    if (bc->size() > 0) {
+      isRdhFormat = bc->at(0)->getData()->header.isRdhFormat;
+    }
+    
     // StfSuperpage format
     // we just ship STFheader + one FMQ message part per incoming data page
-    if (enableStfSuperpage) {     
+    if ((enableStfSuperpage)||(!isRdhFormat)) {     
 
       DataBlockContainerReference headerBlock = nullptr;
       headerBlock = mp->getNewDataBlockContainer();
@@ -291,6 +295,8 @@ public:
 	stfHeader->timeframeOrbitLast = b->header.timeframeOrbitLast;
 	break;
       }
+
+      //printf("Sending TF %lu\n", stfHeader->timeframeId);
 
       std::vector<FairMQMessagePtr> msgs;
       msgs.reserve(bc->size()+1);

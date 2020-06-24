@@ -26,7 +26,8 @@ struct SubTimeframe {
     uint8_t flags = 0;
     struct {
       uint8_t lastTFMessage : 1; // bit 0
-      uint8_t flagsUnused : 7;   // bit 1-7: unused
+      uint8_t isRdhFormat : 1; // bit 1
+      uint8_t flagsUnused : 6;   // bit 2-7: unused
     };
   };
 };

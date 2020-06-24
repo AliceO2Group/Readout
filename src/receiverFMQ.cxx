@@ -367,7 +367,7 @@ int main(int argc, const char **argv) {
                 }
               }
             } else {	  
-              if (stf->numberOfHBF != 0)  {
+              if ((numberOfHBF != 0) && (stf->isRdhFormat))  {
 	      // then we have 1 part per HBF
               size_t dataSize = mm->GetSize();
               void *data = mm->GetData();

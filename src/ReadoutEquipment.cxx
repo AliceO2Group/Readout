@@ -604,6 +604,7 @@ int ReadoutEquipment::tagDatablockFromRdh(RdhHandle &h, DataBlockHeaderBase &bh)
   uint16_t equipmentId = undefinedEquipmentId;
   uint8_t linkId = undefinedLinkId;
   uint32_t hbOrbit = undefinedOrbit;
+  bool isError = 0;
    
   // check that it is a correct RDH
   std::string errorDescription;
@@ -611,6 +612,7 @@ int ReadoutEquipment::tagDatablockFromRdh(RdhHandle &h, DataBlockHeaderBase &bh)
     theLog.log(InfoLogger::Severity::Warning,
                "First RDH in page is wrong: %s",
                errorDescription.c_str());
+    isError = 1;       
   } else {
     // timeframe ID
     hbOrbit = h.getHbOrbit();
@@ -641,6 +643,7 @@ int ReadoutEquipment::tagDatablockFromRdh(RdhHandle &h, DataBlockHeaderBase &bh)
   bh.equipmentId = equipmentId;
   bh.linkId = linkId;
   getTimeframeOrbitRange(tfId, bh.timeframeOrbitFirst, bh.timeframeOrbitLast);
+  return isError;
 }
 
 int  ReadoutEquipment::processRdh(DataBlockContainerReference &block){
@@ -651,9 +654,11 @@ int  ReadoutEquipment::processRdh(DataBlockContainerReference &block){
   // retrieve metadata from RDH, if configured to do so
   if ((cfgRdhUseFirstInPageEnabled) || (cfgRdhCheckEnabled)) {
     RdhHandle h(block->getData()->data);
-    tagDatablockFromRdh(h, blockHeader);
+    if (tagDatablockFromRdh(h, blockHeader) == 0) {
+      blockHeader.isRdhFormat = 1;
+    }
   }
-
+  
   // Dump RDH if configured to do so
   if (cfgRdhDumpEnabled) {
     RdhBlockHandle b(blockData, blockHeader.dataSize);

@@ -134,11 +134,11 @@ Thread::CallbackResult DataBlockAggregator::executeCallback() {
       inputs[i]->pop(b);
       nBlocksIn++;
       totalBlocksIn++;
-      // printf("Got block %d from dev %d eq %d link %d tf
-      // %d\n",(int)(b->getData()->header.blockId),
-      // i,(int)(b->getData()->header.equipmentId),
-      // (int)(b->getData()->header.linkId),
-      // (int)(b->getData()->header.timeframeId));
+//       printf("Got block %d from dev %d eq %d link %d tf %d\n",
+//        (int)(b->getData()->header.blockId), i,
+//        (int)(b->getData()->header.equipmentId),
+//        (int)(b->getData()->header.linkId),
+//        (int)(b->getData()->header.timeframeId));
       if (slicers[i].appendBlock(b, now) <= 0) {
         return Thread::CallbackResult::Error;
       }

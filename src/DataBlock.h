@@ -55,6 +55,7 @@ typedef struct {
       uint32_t timeframeOrbitFirst = undefinedOrbit; /// from timeframe
       uint32_t timeframeOrbitLast = undefinedOrbit;  /// from timeframe
       bool flagEndOfTimeframe = 0 ; ///< flag to signal this is the last TF block
+      bool isRdhFormat = 1; ///< flag set when data 
     };
   };
 
