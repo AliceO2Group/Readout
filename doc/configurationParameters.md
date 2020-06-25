@@ -67,6 +67,12 @@ The parameters related to 3rd-party libraries are described here for convenience
 | equipment-* | consoleStatsUpdateTime | double | 0 | If set, number of seconds between printing statistics on console. |
 | equipment-* | stopOnError | int | 0 | If 1, readout will stop automatically on equipment error. |
 | equipment-* | debugFirstPages | int | 0 | If set, print debug information for first (given number of) data pages readout. |
+| equipment-* | rdhCheckEnabled | int | 0 | If set, data pages are parsed and RDH headers checked. Errors are reported in logs. |
+| equipment-* | rdhDumpEnabled | int | 0 | If set, data pages are parsed and RDH headers summary printed. Setting a negative number will print only the first N RDH.|
+| equipment-* | rdhDumpErrorEnabled | int | 1 | If set, a log message is printed for each RDH header error found.|
+| equipment-* | rdhDumpWarningEnabled | int | 0 | If set, a log message is printed for each RDH header warning found.|
+| equipment-* | rdhUseFirstInPageEnabled | int | 0 | If set, the first RDH in each data page is used to populate readout headers (e.g. linkId).|
+| equipment-* | TFperiod | int | 256 | Duration of a timeframe, in number of LHC orbits. |
 | equipment-dummy-* | eventMaxSize | bytes | 128k | Maximum size of randomly generated event. |
 | equipment-dummy-* | eventMinSize | bytes | 128k | Minimum size of randomly generated event. |
 | equipment-dummy-* | fillData | int | 0 | Pattern used to fill data page: (0) no pattern used, data page is left untouched, with whatever values were in memory (1) incremental byte pattern (2) incremental word pattern, with one random word out of 5. |
@@ -75,7 +81,6 @@ The parameters related to 3rd-party libraries are described here for convenience
 | equipment-cruemulator-* | numberOfLinks | int | 1 | Number of GBT links simulated by equipment. |
 | equipment-cruemulator-* | feeId | int | 0 | Front-End Electronics Id, used for FEE Id field in RDH. |
 | equipment-cruemulator-* | linkId | int | 0 | Id of first link. If numberOfLinks>1, ids will range from linkId to linkId+numberOfLinks-1. |
-| equipment-cruemulator-* | TFperiod | int | 256 | Duration of a timeframe, in number of LHC orbits. |
 | equipment-cruemulator-* | HBperiod | int | 1 | Interval between 2 HeartBeat triggers, in number of LHC orbits. |
 | equipment-cruemulator-* | EmptyHbRatio | double | 0 | Fraction of empty HBframes, to simulate triggered detectors. |
 | equipment-cruemulator-* | PayloadSize | int | 64k | Maximum payload size for each trigger. Actual size is randomized, and then split in a number of (cruBlockSize) packets. |
@@ -83,18 +88,11 @@ The parameters related to 3rd-party libraries are described here for convenience
 | equipment-player-* | preLoad | int | 1 | If 1, data pages preloaded with file content on startup. If 0, data is copied at runtime. |
 | equipment-player-* | fillPage | int | 1 | If 1, content of data file is copied multiple time in each data page until page is full (or almost full: on the last iteration, there is no partial copy if remaining space is smaller than full file size). If 0, data file is copied exactly once in each data page. |
 | equipment-player-* | autoChunk | int | 0 | When set, the file is replayed once, and cut automatically in data pages compatible with memory bank settings and RDH information. In this mode the preLoad and fillPage options have no effect. |
-| equipment-player-* | TFperiod | int | 256 | Duration of a timeframe, in number of LHC orbits. |
 | equipment-rorc-* | cardId | string | | ID of the board to be used. Typically, a PCI bus device id. c.f. AliceO2::roc::Parameters. |
 | equipment-rorc-* | channelNumber | int | 0 | Channel number of the board to be used. Typically 0 for CRU, or 1-6 for CRORC. c.f. AliceO2::roc::Parameters. |
 | equipment-rorc-* | dataSource | string | Internal | This parameter selects the data source used by ReadoutCard, c.f. AliceO2::roc::Parameters. It can be for CRU one of Fee, Ddg, Internal and for CRORC one of Fee, SIU, DIU, Internal. |
-| equipment-rorc-* | rdhCheckEnabled | int | 0 | If set, data pages are parsed and RDH headers checked. Errors are reported in logs. |
-| equipment-rorc-* | rdhDumpEnabled | int | 0 | If set, data pages are parsed and RDH headers summary printed. Setting a negative number will print only the first N RDH.|
-| equipment-rorc-* | rdhDumpErrorEnabled | int | 1 | If set, a log message is printed for each RDH header error found.|
-| equipment-rorc-* | rdhDumpWarningEnabled | int | 0 | If set, a log message is printed for each RDH header warning found.|
-| equipment-rorc-* | rdhUseFirstInPageEnabled | int | 0 | If set, the first RDH in each data page is used to populate readout headers (e.g. linkId).|
 | equipment-rorc-* | cleanPageBeforeUse | int | 0 | If set, data pages are filled with zero before being given for writing by device. Slow, but usefull to readout incomplete pages (driver currently does not return correctly number of bytes written in page. |
 | equipment-rorc-* | firmwareCheckEnabled | int | 1 | If set, RORC driver checks compatibility with detected firmware. Use 0 to bypass this check (eg new fw version not yet recognized by ReadoutCard version). |
-| equipment-rorc-* | TFperiod | int | 256 | Duration of a timeframe, in number of LHC orbits. |
 | equipment-rorc-* | debugStatsEnabled | int | 0 | If set, enable extra statistics about internal buffers status. (printed to stdout when stopping) |
 | equipment-zmq-* | address | string | | Address of remote server to connect, eg tcp://remoteHost:12345. |
 | consumer-* | enabled | int | 1 | Enable (value=1) or disable (value=0) the consumer. |

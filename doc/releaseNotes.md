@@ -252,5 +252,9 @@ This file describes the main feature changes for each readout.exe released versi
 ## v1.4.4 - 23/06/2020
 - Improvements for the DCS readout. Added example config file.
 
+## branch for STFB v2 interface
+- Implementation of the new STF interface. See SubTimeframe.h
+- RDH is handled in the same way for all equipments (RORC, player, emulator). Same RDH configuration parameters apply to all.
+
 ## next version
 - Added support for QC connection in consumer-FairMQChannel: see readout-qc.cfg example for alternate configuration.
