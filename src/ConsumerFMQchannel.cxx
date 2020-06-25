@@ -44,7 +44,8 @@ private:
   bool disableSending = 0;
   bool enableRawFormat = false;
   bool enableStfSuperpage = false; // optimized stf transport: minimize STF packets
-
+  bool enableRawFormatDatablock = false;
+  
   std::shared_ptr<MemoryBank>
       memBank; // a dedicated memory bank allocated by FMQ mechanism
   std::shared_ptr<MemoryPagesPool>
@@ -84,8 +85,12 @@ public:
       enableRawFormat = true;
     } else if (cfgEnableRawFormat==2) {
       theLog.log("FMQ message output in raw format - mode 2 : 1 message = "
-      "1 header + 1 part per data page");
+      "1 STF header + 1 part per data page");
       enableStfSuperpage = true;
+    } else if (cfgEnableRawFormat==3) {
+      theLog.log("FMQ message output in raw format - mode 3 : 1 message = "
+      "1 DataBlock header + 1 data page");
+      enableRawFormatDatablock = true;
     }
 
     // configuration parameter: | consumer-FairMQchannel-* | sessionName |
@@ -273,7 +278,31 @@ public:
       }
       return 0;
     }
+    
+    // mode to send in simple raw format with Datablock header:
+    // 1 FMQ message per data page, 1 part= header, 1 part= payload
+    if (enableRawFormatDatablock) {
+      for (auto &br : *bc) {    
+        // we create a copy of the reference, in a newly allocated object, so that
+	// reference is kept alive until this new object is destroyed in the
+	// cleanupCallback
+	DataBlockContainerReference *ptr = new DataBlockContainerReference(br);
 
+	std::unique_ptr<FairMQMessage> msgHeader(transportFactory->CreateMessage(
+            (void *)&(br->getData()->header),
+            (size_t)(br->getData()->header.headerSize), msgcleanupCallback,
+            (void *)nullptr));
+	std::unique_ptr<FairMQMessage> msgBody(transportFactory->CreateMessage(
+            (void *)(br->getData()->data), (size_t)(br->getData()->header.dataSize),
+            msgcleanupCallback, (void *)(ptr)));
+
+	FairMQParts message;
+	message.AddPart(std::move(msgHeader));
+	message.AddPart(std::move(msgBody));
+        sendingChannel->Send(message);	
+      }
+      return 0;
+    }
 
     // StfSuperpage format
     // we just ship STFheader + one FMQ message part per incoming data page
