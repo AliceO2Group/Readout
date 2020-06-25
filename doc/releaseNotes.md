@@ -251,3 +251,6 @@ This file describes the main feature changes for each readout.exe released versi
 
 ## v1.4.4 - 23/06/2020
 - Improvements for the DCS readout. Added example config file.
+
+## next version
+- Added support for QC connection in consumer-FairMQChannel: see readout-qc.cfg example for alternate configuration.
