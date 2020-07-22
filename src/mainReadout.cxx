@@ -83,6 +83,9 @@
 using namespace AliceO2::InfoLogger;
 using namespace AliceO2::Common;
 
+// some constants
+const char *envRunNumber = "O2_RUN"; // env var name for run number store
+
 // set log environment before theLog is initialized
 class TtyChecker {
 private:
@@ -154,6 +157,7 @@ public:
 
   std::string occRole;   // OCC role name
   uint64_t occRunNumber; // OCC run number
+
 
 private:
   ConfigFile cfg;
@@ -1136,6 +1140,13 @@ public:
     theLogContext.setField(InfoLoggerContext::FieldName::Run,
                            std::to_string(theReadout->occRunNumber));
     theLog.setContext(theLogContext);
+    if (theReadout->occRunNumber != 0 ) {
+      setenv(envRunNumber, std::to_string(theReadout->occRunNumber).c_str(), 1);
+      theLog.log("Run number %d",(int)theReadout->occRunNumber);
+    } else {
+      unsetenv(envRunNumber);
+      theLog.log("Run number not defined");
+    }
     return theReadout->start();
   }
 
@@ -1148,6 +1159,7 @@ public:
     theReadout->occRunNumber = 0;
     theLogContext.setField(InfoLoggerContext::FieldName::Run, "");
     theLog.setContext(theLogContext);
+    unsetenv(envRunNumber);
     return ret;
   }
 

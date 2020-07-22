@@ -254,3 +254,4 @@ This file describes the main feature changes for each readout.exe released versi
 
 ## next version
 - Added support for QC connection in consumer-FairMQChannel: see readout-qc.cfg example for alternate configuration.
+- Improved consumer-fileRecorder for use with start/stop cycles. The variable ${O2_RUN} can be used to set run number in recorded file name (when readout started with AliECS).
