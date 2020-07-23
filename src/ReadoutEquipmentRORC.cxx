@@ -225,8 +225,8 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name)
     // todo: log parameters ?
 
   } catch (const std::exception &e) {
-    std::cout << "Error: " << e.what() << '\n'
-              << boost::diagnostic_information(e) << "\n";
+    theLog.log(InfoLogger::Severity::Error, "Exception : %s", e.what());
+    theLog.log(InfoLogger::Severity::Error, "%s", boost::diagnostic_information(e).c_str());
     throw; // propagate error
     return;
   }

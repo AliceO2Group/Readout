@@ -244,18 +244,12 @@ public:
           "Some packets with RDH-only payload will not be recorded to file, "
           "option dropEmptyHBFrames is enabled");
     }
-
-    // check status
-    if (createFile() == 0) {
-      recordingEnabled = true;
-      theLog.log("Recording enabled");
-    } else {
-      theLog.log(InfoLogger::Severity::Warning, "Recording disabled");
-      isError++;
-    }
   }
 
   ~ConsumerFileRecorder() {
+  }
+
+  void resetCounters() {
     if (defaultFile != nullptr) {
       defaultFile->close();
       defaultFile = nullptr;
@@ -266,13 +260,41 @@ public:
       kv.second = nullptr;
     }
     filePerSourceMap.clear();
+    
+    // reset counters
+    recordingEnabled = false;
+    perLinkPreviousPacket.clear();
+    invalidRDH = 0;
+    emptyPacketsDropped = 0;
+    packetsRecorded = 0;
+  }
 
+  int start() {
+    resetCounters();
+    
+    theLog.log("Starting file recorder");
+    // check status
+    if (createFile() == 0) {
+      recordingEnabled = true;
+      theLog.log("Recording enabled");
+    } else {
+      theLog.log(InfoLogger::Severity::Warning, "Recording disabled");
+      isError++;
+    }
+    return 0;
+  };
+  
+  int stop() {
+    theLog.log("Stopping file recorder");
     if (dropEmptyHBFrames) {
       theLog.log("Packets recorded=%lld discarded(empty)=%lld", packetsRecorded,
                  emptyPacketsDropped);
     }
-  }
-
+    
+    resetCounters();
+    return 0;
+  }  
+  
   // create handle to recording file based on configuration
   // optional params:
   // equipmentID: use given equipment Id
