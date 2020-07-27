@@ -259,3 +259,4 @@ This file describes the main feature changes for each readout.exe released versi
 ## next version
 - Updated configuration parameters:
   - added equipment-player-*.autoChunkLoop: when set, file is replayed in loop. RDH orbit counters are updated after 1st loop to make a realistic TF sequence.
+- Cleanup configuration parameters documentation and editor.
