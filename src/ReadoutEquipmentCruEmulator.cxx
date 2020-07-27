@@ -94,11 +94,14 @@ ReadoutEquipmentCruEmulator::ReadoutEquipmentCruEmulator(
   // configuration parameter: | equipment-cruemulator-* | maxBlocksPerPage | int
   // | 0 | [obsolete- not used]. Maximum number of blocks per page. |
   // configuration parameter: | equipment-cruemulator-* | cruBlockSize | int |
-  // 8192 | Size of a RDH block. | configuration parameter: |
+  // 8192 | Size of a RDH block. |
+  // configuration parameter: |
   // equipment-cruemulator-* | numberOfLinks | int | 1 | Number of GBT links
-  // simulated by equipment. | configuration parameter: |
+  // simulated by equipment. |
+  // configuration parameter: |
   // equipment-cruemulator-* | feeId | int | 0 | Front-End Electronics Id, used
-  // for FEE Id field in RDH. | configuration parameter: |
+  // for FEE Id field in RDH. |
+  // configuration parameter: |
   // equipment-cruemulator-* | linkId | int | 0 | Id of first link. If
   // numberOfLinks>1, ids will range from linkId to linkId+numberOfLinks-1. |
   // configuration parameter: | equipment-cruemulator-* | TFperiod | int | 256 |

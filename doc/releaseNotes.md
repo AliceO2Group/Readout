@@ -255,3 +255,8 @@ This file describes the main feature changes for each readout.exe released versi
 ## v1.4.5 - 22/07/2020
 - Added support for QC connection in consumer-FairMQChannel: see readout-qc.cfg example for alternate configuration.
 - Improved consumer-fileRecorder for use with start/stop cycles. The variable ${O2_RUN} can be used to set run number in recorded file name (when readout started with AliECS).
+
+## v1.4.6 - 27/07/2020
+- Updated configuration parameters:
+  - added equipment-player-*.autoChunkLoop: when set, file is replayed in loop. RDH orbit counters are updated after 1st loop to make a realistic TF sequence.
+- Cleanup configuration parameters documentation and editor.

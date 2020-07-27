@@ -31,20 +31,17 @@ ReadoutEquipment::ReadoutEquipment(ConfigFile &cfg, std::string cfgEntryPoint) {
   cfg.getOptionalValue<std::string>(cfgEntryPoint + ".name", name,
                                     cfgEntryPoint);
 
-  // A number to identify equipment (used e.g. to tag data produced by this
-  // equipment) configuration parameter: | equipment-* | id | int| | Optional.
+  // configuration parameter: | equipment-* | id | int| | Optional.
   // Number used to identify equipment (used e.g. in file recording). Range
   // 1-65535.|
   int cfgEquipmentId = undefinedEquipmentId;
   cfg.getOptionalValue<int>(cfgEntryPoint + ".id", cfgEquipmentId);
   id = (uint16_t)cfgEquipmentId; // int to 16-bit value
 
-  // target readout rate in Hz, -1 for unlimited (default). Global parameter,
-  // same for all equipments. configuration parameter: | readout | rate | double
+  // configuration parameter: | readout | rate | double
   // | -1 | Data rate limit, per equipment, in Hertz. -1 for unlimited. |
   cfg.getOptionalValue<double>("readout.rate", readoutRate, -1.0);
 
-  // idle sleep time, in microseconds.
   // configuration parameter: | equipment-* | idleSleepTime | int | 200 | Thread
   // idle sleep time, in microseconds. |
   int cfgIdleSleepTime = 200;

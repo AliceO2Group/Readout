@@ -45,6 +45,7 @@ public:
   inline uint8_t getPacketCounter() { return (uint8_t)rdhPtr->packetCounter; }
   inline uint8_t getHeaderSize() { return rdhPtr->headerSize; }
   inline uint32_t getHbOrbit() { return (uint32_t)rdhPtr->heartbeatOrbit; }
+  inline void incrementHbOrbit(uint32_t offset) { rdhPtr->heartbeatOrbit += offset; }
   inline uint16_t getMemorySize() { return (uint16_t)rdhPtr->memorySize; }
   inline uint16_t getOffsetNextPacket() {
     return (uint16_t)rdhPtr->offsetNextPacket;

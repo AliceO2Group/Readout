@@ -223,14 +223,14 @@ public:
       }
     }
 
-    //  configuration parameter: | consumer-fileRecorder-* | dropEmptyHBFrames |
-    //  int | 0 | If 1, memory pages are scanned and empty HBframes are
-    //  discarded, i.e. couples of packets which contain only RDH, the first one
-    //  with pagesCounter=0 and the second with stop bit set. This setting does
-    //  not change the content of in-memory data pages, other consumers would
-    //  still get full data pages with empty packets. This setting is meant to
-    //  reduce the amount of data recorded for continuous detectors in triggered
-    //  mode.|
+    // configuration parameter: | consumer-fileRecorder-* | dropEmptyHBFrames |
+    // int | 0 | If 1, memory pages are scanned and empty HBframes are
+    // discarded, i.e. couples of packets which contain only RDH, the first one
+    // with pagesCounter=0 and the second with stop bit set. This setting does
+    // not change the content of in-memory data pages, other consumers would
+    // still get full data pages with empty packets. This setting is meant to
+    // reduce the amount of data recorded for continuous detectors in triggered
+    // mode.|
     cfg.getOptionalValue(cfgEntryPoint + ".dropEmptyHBFrames",
                          dropEmptyHBFrames, 0);
     if (dropEmptyHBFrames) {
