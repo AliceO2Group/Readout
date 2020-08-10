@@ -13,8 +13,10 @@
 #include <memory>
 #include <new>
 
+#ifdef WITH_READOUTCARD
 #include <ReadoutCard/Exception.h>
 #include <ReadoutCard/MemoryMappedFile.h>
+#endif
 #include <algorithm>
 #include <utility>
 #include <vector>
@@ -79,6 +81,7 @@ MemoryBankMalloc::~MemoryBankMalloc() {
   }
 }
 
+#ifdef WITH_READOUTCARD
 /// MemoryBank implementation with hugepages
 class MemoryBankMemoryMappedFile : public MemoryBank {
 public:
@@ -147,6 +150,7 @@ MemoryBankMemoryMappedFile::MemoryBankMemoryMappedFile(
 }
 
 MemoryBankMemoryMappedFile::~MemoryBankMemoryMappedFile() {}
+#endif
 
 /// MemoryBank factory based on type
 std::shared_ptr<MemoryBank> getMemoryBank(size_t size, std::string type,
@@ -155,7 +159,13 @@ std::shared_ptr<MemoryBank> getMemoryBank(size_t size, std::string type,
   if (type == "malloc") {
     return std::make_shared<MemoryBankMalloc>(size, description);
   } else if (type == "MemoryMappedFile") {
+    #ifdef WITH_READOUTCARD
     return std::make_shared<MemoryBankMemoryMappedFile>(size, description);
+    #else
+    theLog.log("MemoryMappedFile not supported by this build");
+    return nullptr;
+    #endif
   }
   return nullptr;
 }
+

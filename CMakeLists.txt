@@ -51,7 +51,7 @@ add_subdirectory(doc)
 find_package(Common REQUIRED)
 find_package(InfoLogger REQUIRED)
 find_package(Monitoring REQUIRED)
-find_package(ReadoutCard REQUIRED)
+find_package(ReadoutCard)
 find_package(Configuration)
 find_package(Numa)
 find_package(FairMQ)
@@ -64,7 +64,9 @@ find_package(ZMQ)
 # extract include directories from targets
 get_target_property(InfoLogger_INCLUDE_DIRS AliceO2::InfoLogger INTERFACE_INCLUDE_DIRECTORIES)
 get_target_property(Common_INCLUDE_DIRS AliceO2::Common INTERFACE_INCLUDE_DIRECTORIES)
-get_target_property(ReadoutCard_INCLUDE_DIRS AliceO2::ReadoutCard INTERFACE_INCLUDE_DIRECTORIES)
+if (ReadoutCard_FOUND)
+  get_target_property(ReadoutCard_INCLUDE_DIRS AliceO2::ReadoutCard INTERFACE_INCLUDE_DIRECTORIES)
+endif()
 get_target_property(Monitoring_INCLUDE_DIRS AliceO2::Monitoring INTERFACE_INCLUDE_DIRECTORIES)
 if (Configuration_FOUND)
   get_target_property(Configuration_INCLUDE_DIRS AliceO2::Configuration INTERFACE_INCLUDE_DIRECTORIES)
@@ -115,7 +117,7 @@ else ()
 endif()
 
 # add flags to enable optional features in Readout, based on available dependencies
-add_compile_definitions($<$<BOOL:${Numa_FOUND}>:WITH_NUMA> $<$<BOOL:${RDMA_FOUND}>:WITH_RDMA> $<$<BOOL:${Configuration_FOUND}>:WITH_CONFIG> $<$<BOOL:${FairMQ_FOUND}>:WITH_FAIRMQ> $<$<BOOL:${Occ_FOUND}>:WITH_OCC> $<$<BOOL:${JiskefetApiCpp_FOUND}>:WITH_LOGBOOK> $<$<BOOL:${ZMQ_FOUND}>:WITH_ZMQ>)
+add_compile_definitions($<$<BOOL:${Numa_FOUND}>:WITH_NUMA> $<$<BOOL:${RDMA_FOUND}>:WITH_RDMA> $<$<BOOL:${Configuration_FOUND}>:WITH_CONFIG> $<$<BOOL:${FairMQ_FOUND}>:WITH_FAIRMQ> $<$<BOOL:${Occ_FOUND}>:WITH_OCC> $<$<BOOL:${JiskefetApiCpp_FOUND}>:WITH_LOGBOOK> $<$<BOOL:${ZMQ_FOUND}>:WITH_ZMQ> $<$<BOOL:${ReadoutCard_FOUND}>:WITH_READOUTCARD> )
 
 # define include directories
 set(READOUT_INCLUDE_DIRS
@@ -134,7 +136,7 @@ set(READOUT_LINK_LIBRARIES
   AliceO2::InfoLogger
   AliceO2::Common
   AliceO2::Monitoring
-  AliceO2::ReadoutCard
+  $<$<BOOL:${ReadoutCard_FOUND}>:AliceO2::ReadoutCard>
   $<$<BOOL:${Configuration_FOUND}>:AliceO2::Configuration>
   $<$<BOOL:${FairMQ_FOUND}>:FairMQ::FairMQ>
   $<$<BOOL:${Occ_FOUND}>:AliceO2::Occ>
@@ -181,7 +183,7 @@ add_library(
         objReadoutEquipment OBJECT
         ${SOURCE_DIR}/ReadoutEquipment.cxx
         ${SOURCE_DIR}/ReadoutEquipmentDummy.cxx
-        ${SOURCE_DIR}/ReadoutEquipmentRORC.cxx
+        $<$<BOOL:${ReadoutCard_FOUND}>:${SOURCE_DIR}/ReadoutEquipmentRORC.cxx>
         ${SOURCE_DIR}/ReadoutEquipmentCruEmulator.cxx
         ${SOURCE_DIR}/ReadoutEquipmentPlayer.cxx
         $<$<BOOL:${ZMQ_FOUND}>:${SOURCE_DIR}/ReadoutEquipmentZmq.cxx>
@@ -339,11 +341,13 @@ add_executable(
 )
 
 # a minimal test program to readout a ROC device
+if (ReadoutCard_FOUND)
 add_executable(
 	testROC.exe
         ${SOURCE_DIR}/testROC.cxx
 	$<TARGET_OBJECTS:objReadoutUtils>
 )
+endif()
 
 # a minimal test program to check Monitoring library
 add_executable(
@@ -357,7 +361,10 @@ if (NOT FairMQ_FOUND)
 endif ()
 
 # set include and libraries for all
-set(executables readout.exe receiverFMQ.exe testTxFMQ.exe testRxFMQ.exe testTxPerfFMQ.exe testRxPerfFMQ.exe testMemoryBanks.exe readRaw.exe testROC.exe testMonitor.exe)
+set(executables readout.exe receiverFMQ.exe testTxFMQ.exe testRxFMQ.exe testTxPerfFMQ.exe testRxPerfFMQ.exe testMemoryBanks.exe readRaw.exe testMonitor.exe)
+if (ReadoutCard_FOUND)
+  list (APPEND executables testROC.exe)
+endif()
 foreach (exe ${executables})
 	target_include_directories(${exe} PRIVATE ${READOUT_INCLUDE_DIRS})
 	target_link_libraries(${exe} PRIVATE ${READOUT_LINK_LIBRARIES})
