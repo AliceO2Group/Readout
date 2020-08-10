@@ -265,6 +265,11 @@ int Readout::init(int argc, char *argv[]) {
   // log startup and options
   theLog.log("Readout " READOUT_VERSION " - process starting, pid %d", getpid());
   theLog.log("Optional built features enabled:");
+#ifdef WITH_READOUTCARD
+  theLog.log("READOUTCARD : yes");
+#else
+  theLog.log("READOUTCARD : no");
+#endif
 #ifdef WITH_CONFIG
   theLog.log("CONFIG : yes");
 #else
@@ -752,7 +757,12 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
       if (!cfgEquipmentType.compare("dummy")) {
         newDevice = getReadoutEquipmentDummy(cfg, kName);
       } else if (!cfgEquipmentType.compare("rorc")) {
+#ifdef WITH_READOUTCARD
         newDevice = getReadoutEquipmentRORC(cfg, kName);
+#else
+        theLog.log("Skipping %s: %s - not supported by this build",
+                   kName.c_str(), cfgEquipmentType.c_str());
+#endif
       } else if (!cfgEquipmentType.compare("cruEmulator")) {
         newDevice = getReadoutEquipmentCruEmulator(cfg, kName);
       } else if (!cfgEquipmentType.compare("player")) {
