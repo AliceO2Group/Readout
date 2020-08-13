@@ -51,6 +51,11 @@ void ZmqClient::run() {
       char buffer [128];
       int nb=0;
       nb=zmq_recv (zh, buffer, sizeof(buffer), 0);
+      uint64_t tf;
+      if (nb==sizeof(tf)) {
+        printf("TF %lu\n",*((uint64_t *)buffer));
+      }
+      break;
       if (nb==0) { linerr=__LINE__; break; }
       buffer[nb]=0;
       printf("recv %d = %s\n", nb, buffer);

@@ -3,7 +3,7 @@
 
 int main() {
   try {
-    ZmqServer s;
+    ZmqServer s("tcp://127.0.0.1:50001");
     for(;;) {
       sleep(1);
     }

@@ -4,7 +4,7 @@
 #include <string.h>
 #include <unistd.h>
 
-ZmqServer::ZmqServer(){
+void ZmqServer::init(){
   int linerr=0;
   int zmqerr=0;
   for (;;) {
@@ -28,6 +28,8 @@ ZmqServer::ZmqServer(){
   if ((zmqerr)||(linerr)) {
     printf("ZeroMQ error @%d : (%d) %s\n", linerr, zmqerr, zmq_strerror(zmqerr));
     throw __LINE__;
+  } else {
+    printf("ZeroMQ server started @ %s\n",cfgAddress.c_str());
   }
 
   // starting snapshot thread
@@ -45,24 +47,31 @@ ZmqServer::~ZmqServer(){
 }
 
 int ZmqServer::publish(void *msgBody, int msgSize){
-  return 0;
+  int err=zmq_send (zh, msgBody, msgSize, 0);
+  //printf("publish %d bytes = %d\n",msgSize,err);
+  return err;
 }
 
 void ZmqServer::run() { 
-  int i=0;
+  return;
+  uint64_t i = 0;
   for (;!shutdownRequest;) {
     int linerr=0, zmqerr=0;
+    i++;
+    publish(&i,sizeof(i));
     for (;;) {
+      break;
       char buf[128];
-      snprintf(buf,128,"Hello %d",i++);
-      zmqerr=zmq_send (zh, buf, strlen(buf), 0);
+      snprintf(buf,128,"Hello %d",i);
+      zmqerr=publish(buf,sizeof(buf));
+      //zmqerr=zmq_send (zh, buf, strlen(buf), 0);
       //zmqerr=zmq_send(zh, "World", 5, 0);
       //if (zmqerr) { linerr=__LINE__; break; }
       printf("PUB: %s = %d\n",buf,zmqerr); 
       break;
     }
     if ((zmqerr)||(linerr)) {
-//      printf("ZeroMQ error @%d : (%d) %s\n", linerr, zmqerr, zmq_strerror(zmqerr));
+      printf("ZeroMQ error @%d : (%d) %s\n", linerr, zmqerr, zmq_strerror(zmqerr));
     }
     sleep(1);
   }  
