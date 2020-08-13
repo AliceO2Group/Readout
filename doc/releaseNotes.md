@@ -263,3 +263,5 @@ This file describes the main feature changes for each readout.exe released versi
 
 ## next version
 - ReadoutCard dependency is now optional, to allow building readout on platforms where it is not available. If so, equipment-rorc and memoryMappedFile banks features are disabled.
+- Updated configuration parameters:
+  - added readout.timeframeServerUrl: creates a ZMQ server to publish each TF id produced, to serve as reference for other instances producing data without hardware clock.

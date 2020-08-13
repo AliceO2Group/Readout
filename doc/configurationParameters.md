@@ -135,6 +135,7 @@ The parameters related to 3rd-party libraries are described here for convenience
 | readout | logbookUrl | string | | The address to be used for the logbook API. | 
 | readout | memoryPoolStatsEnabled | int | 0 | Global debugging flag to enable statistics on memory pool usage (printed to stdout when pool released). | 
 | readout | rate | double | -1 | Data rate limit, per equipment, in Hertz. -1 for unlimited. | 
+| readout | timeframeServerUrl | string | | The address to be used to publish current timeframe, e.g. to be used as reference clock for other readout instances. |
 | receiverFMQ | channelAddress | string | ipc:///tmp/pipe-readout | c.f. parameter with same name in consumer-FairMQchannel-* | 
 | receiverFMQ | channelName | string | readout | c.f. parameter with same name in consumer-FairMQchannel-* | 
 | receiverFMQ | channelType | string | pair | c.f. parameter with same name in consumer-FairMQchannel-* | 

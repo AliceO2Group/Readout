@@ -24,6 +24,7 @@
 #include <InfoLogger/InfoLogger.hxx>
 #include <boost/property_tree/ptree.hpp>
 #include <thread>
+#include "ZmqServer.hxx"
 
 #ifdef WITH_CONFIG
 #include <Configuration/ConfigurationFactory.h>
@@ -174,7 +175,8 @@ private:
   std::string cfgLogbookUrl;
   std::string cfgLogbookApiToken;
   int cfgLogbookUpdateInterval;
-
+  std::string cfgTimeframeServerUrl;
+  
   // runtime entities
   std::vector<std::unique_ptr<Consumer>> dataConsumers;
   std::map<Consumer *, std::string>
@@ -205,7 +207,9 @@ private:
   void publishLogbookStats(); // publish current readout counters to logbook
   AliceO2::Common::Timer
       logbookTimer; // timer to handle readout logbook publish interval
+
   uint64_t maxTimeframeId;
+  std::unique_ptr<ZmqServer> tfServer;
 };
 
 void Readout::publishLogbookStats() {
@@ -498,6 +502,19 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
                  "Failed to create handle to logbook");
     }
 #endif
+  }
+
+  // configuration parameter: | readout | timeframeServerUrl | string | | The address
+  // to be used to publish current timeframe, e.g. to be used as reference clock for other
+  // readout instances. |
+  cfg.getOptionalValue<std::string>("readout.timeframeServerUrl", cfgTimeframeServerUrl);
+  if (cfgTimeframeServerUrl.length()>0) {
+    theLog.log(InfoLogger::Severity::Info, "Creating Timeframe server @ %s",
+                 cfgTimeframeServerUrl.c_str());
+    tfServer = std::make_unique<ZmqServer>(cfgTimeframeServerUrl);
+    if (tfServer == nullptr) {
+      theLog.log(InfoLogger::Severity::Error, "Failed to create TF server");  
+    }
   }
 
   // configuration of memory banks
@@ -912,6 +929,9 @@ void Readout::loopRunning() {
           uint64_t newTimeframeId = bc->at(0)->getData()->header.timeframeId;
           if (newTimeframeId > maxTimeframeId) {
             maxTimeframeId = newTimeframeId;
+	    if (tfServer) {
+	      tfServer->publish(&maxTimeframeId, sizeof(maxTimeframeId));
+	    }
             gReadoutStats.numberOfSubtimeframes++;
           }
         }
@@ -1106,6 +1126,9 @@ int Readout::reset() {
   // closing logbook
   logbookHandle = nullptr;
 #endif
+
+  // close tfServer
+  tfServer = nullptr;
 
   theLog.log("Readout completed RESET");
   return 0;
