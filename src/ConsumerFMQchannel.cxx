@@ -255,8 +255,9 @@ public:
   }
 
   int pushData(DataSetReference &bc) {
-
+     
     if (disableSending) {
+      totalPushSuccess++;
       return 0;
     }
 
@@ -267,6 +268,10 @@ public:
         DataBlock *b = br->getData();
         DataBlockContainerReference *blockRef =
             new DataBlockContainerReference(br);
+        if (blockRef == nullptr) {
+          totalPushError++;
+	  return -1;
+        }
         void *hint = (void *)blockRef;
         void *blobPtr = b->data;
         size_t blobSize = (size_t)b->header.dataSize;
@@ -276,6 +281,7 @@ public:
         sendingChannel->Send(msgBody);
         gReadoutStats.bytesFairMQ += blobSize;
       }
+      totalPushSuccess++;
       return 0;
     }
 
@@ -292,7 +298,10 @@ public:
 	// reference is kept alive until this new object is destroyed in the
 	// cleanupCallback
 	DataBlockContainerReference *ptr = new DataBlockContainerReference(br);
-
+        if (ptr == nullptr) {
+	   totalPushError++;
+	   return -1;
+	}        
 	std::unique_ptr<FairMQMessage> msgHeader(transportFactory->CreateMessage(
             (void *)&(br->getData()->header),
             (size_t)(br->getData()->header.headerSize), msgcleanupCallback,
@@ -306,6 +315,7 @@ public:
 	message.AddPart(std::move(msgBody));
         sendingChannel->Send(message);	
       }
+      totalPushSuccess++;
       return 0;
     }
 
@@ -315,8 +325,20 @@ public:
 
       DataBlockContainerReference headerBlock = nullptr;
       headerBlock = mp->getNewDataBlockContainer();
+      if (headerBlock == nullptr) {
+        totalPushError++;
+	return -1;
+      }
       auto blockRef = new DataBlockContainerReference(headerBlock);
+      if (blockRef == nullptr) {
+        totalPushError++;
+	return -1;
+      }
       SubTimeframe *stfHeader = (SubTimeframe *)headerBlock->getData()->data;
+      if (stfHeader == nullptr) {
+        totalPushError++;
+	return -1;
+      }
       stfHeader->timeframeId = 0;
       stfHeader->linkId = undefinedLinkId;
 
@@ -357,6 +379,10 @@ public:
         DataBlock *b = br->getData();
         DataBlockContainerReference *blockRef =
             new DataBlockContainerReference(br);
+	if (blockRef == nullptr) {
+	  totalPushError++;
+	  return -1;
+	}
         void *hint = (void *)blockRef;
         void *blobPtr = b->data;
         size_t blobSize = (size_t)b->header.dataSize;
@@ -370,6 +396,7 @@ public:
       }
       sendingChannel->Send(msgs);
       
+      totalPushSuccess++;
       return 0;
     }
 
@@ -379,6 +406,7 @@ public:
 
     // we iterate a first time to count number of HB
     if (memoryPoolPageSize < (int)sizeof(SubTimeframe)) {
+      totalPushError++;
       return -1;
     }
     DataBlockContainerReference headerBlock = nullptr;
@@ -387,11 +415,17 @@ public:
     } catch (...) {
     }
     if (headerBlock == nullptr) {
+      totalPushError++;
       return -1;
     }
     auto blockRef = new DataBlockContainerReference(headerBlock);
+    if (blockRef == nullptr) {
+      totalPushError++;
+      return -1;
+    }
     SubTimeframe *stfHeader = (SubTimeframe *)headerBlock->getData()->data;
     if (stfHeader == nullptr) {
+      totalPushError++;
       return -1;
     }
     stfHeader->timeframeId = 0;
@@ -636,6 +670,7 @@ public:
       pendingFrames.clear();
 	  
       theLog.log(InfoLogger::Severity::Error,"ConsumerFMQ : error %d",err);
+      totalPushError++;
       return -1;
     }
     
@@ -668,6 +703,7 @@ public:
         sendingChannel->Send(msgBody);
         return 0;
         */
+    totalPushSuccess++;
     return 0;
   }
 

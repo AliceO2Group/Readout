@@ -650,10 +650,13 @@ int  ReadoutEquipment::processRdh(DataBlockContainerReference &block){
 
   DataBlockHeaderBase &blockHeader=block->getData()->header;
   void *blockData=block->getData()->data;
-
+  if (blockData == nullptr) {
+    return -1;
+  }
+  
   // retrieve metadata from RDH, if configured to do so
   if ((cfgRdhUseFirstInPageEnabled) || (cfgRdhCheckEnabled)) {
-    RdhHandle h(block->getData()->data);
+    RdhHandle h(blockData);
     if (tagDatablockFromRdh(h, blockHeader) == 0) {
       blockHeader.isRdhFormat = 1;
     }
@@ -781,5 +784,6 @@ int  ReadoutEquipment::processRdh(DataBlockContainerReference &block){
       pageOffset += offsetNextPacket;
     }
   }
+  return 0;
 }
   

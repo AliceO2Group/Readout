@@ -32,10 +32,14 @@ public:
   virtual int pushData(DataSetReference &bc);
 
   virtual int start() {
+    totalPushSuccess = 0;
+    totalPushError = 0;
     return 0;
   }; // function called just before starting data taking. Data will soon start
      // to flow in.
   virtual int stop() {
+    theLog.log("Push statistics for %s: %llu err / %llu total", this->name.c_str(),
+      totalPushError, totalPushError + totalPushSuccess);
     return 0;
   }; // function called just after stopping data taking, after the last call to
      // pushData(). Not called before input FIFO empty.
@@ -53,6 +57,8 @@ public:
                    // occuring in the consumer
   bool isErrorReported =
       false; // flag to keep track of error reports for this consumer
+  unsigned long long totalPushSuccess = 0;
+  unsigned long long totalPushError = 0;
 };
 
 std::unique_ptr<Consumer> getUniqueConsumerStats(ConfigFile &cfg,
