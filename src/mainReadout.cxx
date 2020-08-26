@@ -24,6 +24,7 @@
 #include <InfoLogger/InfoLogger.hxx>
 #include <boost/property_tree/ptree.hpp>
 #include <thread>
+#include "ZmqServer.hxx"
 
 #ifdef WITH_CONFIG
 #include <Configuration/ConfigurationFactory.h>
@@ -174,7 +175,8 @@ private:
   std::string cfgLogbookUrl;
   std::string cfgLogbookApiToken;
   int cfgLogbookUpdateInterval;
-
+  std::string cfgTimeframeServerUrl;
+  
   // runtime entities
   std::vector<std::unique_ptr<Consumer>> dataConsumers;
   std::map<Consumer *, std::string>
@@ -205,7 +207,9 @@ private:
   void publishLogbookStats(); // publish current readout counters to logbook
   AliceO2::Common::Timer
       logbookTimer; // timer to handle readout logbook publish interval
+
   uint64_t maxTimeframeId;
+  std::unique_ptr<ZmqServer> tfServer;
 };
 
 void Readout::publishLogbookStats() {
@@ -265,6 +269,11 @@ int Readout::init(int argc, char *argv[]) {
   // log startup and options
   theLog.log("Readout " READOUT_VERSION " - process starting, pid %d", getpid());
   theLog.log("Optional built features enabled:");
+#ifdef WITH_READOUTCARD
+  theLog.log("READOUTCARD : yes");
+#else
+  theLog.log("READOUTCARD : no");
+#endif
 #ifdef WITH_CONFIG
   theLog.log("CONFIG : yes");
 #else
@@ -493,6 +502,19 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
                  "Failed to create handle to logbook");
     }
 #endif
+  }
+
+  // configuration parameter: | readout | timeframeServerUrl | string | | The address
+  // to be used to publish current timeframe, e.g. to be used as reference clock for other
+  // readout instances. |
+  cfg.getOptionalValue<std::string>("readout.timeframeServerUrl", cfgTimeframeServerUrl);
+  if (cfgTimeframeServerUrl.length()>0) {
+    theLog.log(InfoLogger::Severity::Info, "Creating Timeframe server @ %s",
+                 cfgTimeframeServerUrl.c_str());
+    tfServer = std::make_unique<ZmqServer>(cfgTimeframeServerUrl);
+    if (tfServer == nullptr) {
+      theLog.log(InfoLogger::Severity::Error, "Failed to create TF server");  
+    }
   }
 
   // configuration of memory banks
@@ -752,7 +774,12 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
       if (!cfgEquipmentType.compare("dummy")) {
         newDevice = getReadoutEquipmentDummy(cfg, kName);
       } else if (!cfgEquipmentType.compare("rorc")) {
+#ifdef WITH_READOUTCARD
         newDevice = getReadoutEquipmentRORC(cfg, kName);
+#else
+        theLog.log("Skipping %s: %s - not supported by this build",
+                   kName.c_str(), cfgEquipmentType.c_str());
+#endif
       } else if (!cfgEquipmentType.compare("cruEmulator")) {
         newDevice = getReadoutEquipmentCruEmulator(cfg, kName);
       } else if (!cfgEquipmentType.compare("player")) {
@@ -902,6 +929,9 @@ void Readout::loopRunning() {
           uint64_t newTimeframeId = bc->at(0)->getData()->header.timeframeId;
           if (newTimeframeId > maxTimeframeId) {
             maxTimeframeId = newTimeframeId;
+	    if (tfServer) {
+	      tfServer->publish(&maxTimeframeId, sizeof(maxTimeframeId));
+	    }
             gReadoutStats.numberOfSubtimeframes++;
           }
         }
@@ -1096,6 +1126,9 @@ int Readout::reset() {
   // closing logbook
   logbookHandle = nullptr;
 #endif
+
+  // close tfServer
+  tfServer = nullptr;
 
   theLog.log("Readout completed RESET");
   return 0;

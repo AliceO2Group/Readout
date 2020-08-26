@@ -37,9 +37,11 @@ ReadoutEquipmentDummy::ReadoutEquipmentDummy(ConfigFile &cfg,
 
   // get configuration values
   // configuration parameter: | equipment-dummy-* | eventMaxSize | bytes | 128k
-  // | Maximum size of randomly generated event. | configuration parameter: |
+  // | Maximum size of randomly generated event. |
+  // configuration parameter: |
   // equipment-dummy-* | eventMinSize | bytes | 128k | Minimum size of randomly
-  // generated event. | configuration parameter: | equipment-dummy-* | fillData
+  // generated event. |
+  // configuration parameter: | equipment-dummy-* | fillData
   // | int | 0 | Pattern used to fill data page: (0) no pattern used, data page
   // is left untouched, with whatever values were in memory (1) incremental byte
   // pattern (2) incremental word pattern, with one random word out of 5. |

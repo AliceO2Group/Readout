@@ -38,18 +38,22 @@ private:
   int preLoad;   // if set, data preloaded in the memory pool
   int fillPage;  // if set, page is filled multiple time
   int autoChunk; // if set, page boundary extracted from RDH info
+  int autoChunkLoop; // if set, file is replayed in loop
 
   size_t bytesPerPage = 0;      // number of bytes per data page
   FILE *fp = nullptr;           // file handle
   bool fpOk = false;            // flag to say if fp can be used
   unsigned long fileOffset = 0; // current file offset
-
+  uint64_t loopCount = 0;       // number of file reading loops so far
+  
   struct PacketHeader {
     uint64_t timeframeId = undefinedTimeframeId;
     int linkId = undefinedLinkId;
     int equipmentId = undefinedEquipmentId; // used to store CRU id
   };
   PacketHeader lastPacketHeader; // keep track of last packet header
+
+  uint32_t orbitOffset = 0; // to be applied to orbit after 1st loop
 
   void copyFileDataToPage(void *page); // fill given page with file data
                                        // according to current settings
@@ -106,12 +110,16 @@ ReadoutEquipmentPlayer::ReadoutEquipmentPlayer(ConfigFile &cfg,
   // compatible with memory bank settings and RDH information.
   // In this mode the preLoad and fillPage options have no effect. |
   cfg.getOptionalValue<int>(cfgEntryPoint + ".autoChunk", autoChunk, 0);
+  // configuration parameter: | equipment-player-* | autoChunkLoop | int | 0 | When
+  // set, the file is replayed in loops. Trigger orbit counter in RDH are modified for
+  // iterations after the first one, so that they keep increasing. |
+  cfg.getOptionalValue<int>(cfgEntryPoint + ".autoChunkLoop", autoChunkLoop, 0);
 
   // log config summary
   theLog.log("Equipment %s: using data source file=%s preLoad=%d fillPage=%d "
-             "autoChunk=%d",
-             name.c_str(), filePath.c_str(), preLoad, fillPage, autoChunk
-             );
+             "autoChunk=%d autoChunkLoop=%d",
+             name.c_str(), filePath.c_str(), preLoad, fillPage, autoChunk,
+             autoChunkLoop);
 
   // open data file
   fp = fopen(filePath.c_str(), "rb");
@@ -221,14 +229,30 @@ DataBlockContainerReference ReadoutEquipmentPlayer::getNextBlock() {
       if ((fp != nullptr) && (fpOk)) {
         size_t nBytes = fread(b->data, 1, bytesPerPage, fp);
         if (nBytes == 0) {
+          isOk = 0;
           if (ferror(fp)) {
             theLog.log(InfoLogger::Severity::Error,
                        "File %s read error, aborting replay", name.c_str());
           }
           if (feof(fp)) {
-            theLog.log("File %s replay completed", name.c_str());
+	    if (!autoChunkLoop) {
+              theLog.log("File %s replay completed", name.c_str());
+	    } else {
+              // replay file
+              if (fseek(fp, 0, SEEK_SET)) {
+                theLog.log(InfoLogger::Severity::Error,
+                         "Failed to rewind file, aborting replay");
+	      } else {
+	        if (loopCount == 0) {
+                  theLog.log("File %s replay - 1st loop completed", name.c_str());
+		}
+                loopCount++;
+                fileOffset = 0;
+		orbitOffset =  lastPacketHeader.timeframeId * getTimeframePeriodOrbits();
+                isOk = 1;
+	      }
+            }
           }
-          isOk = 0;
         } else {
           // printf ("read %d bytes\n",nBytes);
           // scan the data to find a page boundary
@@ -248,20 +272,25 @@ DataBlockContainerReference ReadoutEquipmentPlayer::getNextBlock() {
               isOk = 0;
               break;
             }
+	    if (orbitOffset) {
+	      // update RDH orbit when applicable
+	      h.incrementHbOrbit(orbitOffset);
+	    }
+	    
             // printf ("RDH @ %lu+ %d\n",fileOffset,pageOffset);
             PacketHeader currentPacketHeader;
             currentPacketHeader.linkId = (int)h.getLinkId();
             currentPacketHeader.equipmentId = (int)(h.getCruId() * 10 + h.getEndPointId());
 
             bool isFirst = (fileOffset == 0) && (pageOffset == 0);
-
+	
             int hbOrbit = h.getHbOrbit();
             currentPacketHeader.timeframeId = getTimeframeFromOrbit(hbOrbit);
- 
+
             // fill page metadata
             if (pageOffset == 0) {
-              // printf("link %d TF
-              // %d\n",(int)currentPacketHeader.linkId,(int)currentPacketHeader.timeframeId);
+              // printf("link %d TF %d\n",
+	      //  (int)currentPacketHeader.linkId,(int)currentPacketHeader.timeframeId);
               b->header.linkId = currentPacketHeader.linkId;
               b->header.equipmentId = currentPacketHeader.equipmentId;
               b->header.timeframeId = currentPacketHeader.timeframeId;
