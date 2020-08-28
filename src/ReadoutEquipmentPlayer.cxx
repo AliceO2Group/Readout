@@ -301,8 +301,8 @@ DataBlockContainerReference ReadoutEquipmentPlayer::getNextBlock() {
 
             // fill page metadata
             if (pageOffset == 0) {
-              printf("link %d TF %d\n",
-	        (int)currentPacketHeader.linkId,(int)currentPacketHeader.timeframeId);
+              // printf("link %d TF %d\n",
+	      //  (int)currentPacketHeader.linkId,(int)currentPacketHeader.timeframeId);
               b->header.linkId = currentPacketHeader.linkId;
               b->header.equipmentId = currentPacketHeader.equipmentId;
               b->header.timeframeId = currentPacketHeader.timeframeId;

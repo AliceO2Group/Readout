@@ -209,6 +209,8 @@ add_library(
         ${SOURCE_DIR}/MemoryBankManager.cxx
         ${SOURCE_DIR}/MemoryPagesPool.cxx
 	${SOURCE_DIR}/DataBlockContainer.cxx
+	$<$<BOOL:${ZMQ_FOUND}>:${SOURCE_DIR}/ZmqServer.cxx>
+	$<$<BOOL:${ZMQ_FOUND}>:${SOURCE_DIR}/ZmqClient.cxx>
 )
 target_include_directories(objReadoutUtils PRIVATE ${READOUT_INCLUDE_DIRS})
 
@@ -349,6 +351,20 @@ add_executable(
 )
 endif()
 
+# a test program to test ZMQ client
+if (${ZMQ_FOUND})
+add_executable(
+	testZmqClient.exe
+        ${SOURCE_DIR}/testZmqClient.cxx
+	$<TARGET_OBJECTS:objReadoutUtils>
+)
+add_executable(
+	testZmqServer.exe
+        ${SOURCE_DIR}/testZmqServer.cxx
+	$<TARGET_OBJECTS:objReadoutUtils>
+)
+endif()
+
 # a minimal test program to check Monitoring library
 add_executable(
 	testMonitor.exe
@@ -364,6 +380,9 @@ endif ()
 set(executables readout.exe receiverFMQ.exe testTxFMQ.exe testRxFMQ.exe testTxPerfFMQ.exe testRxPerfFMQ.exe testMemoryBanks.exe readRaw.exe testMonitor.exe)
 if (ReadoutCard_FOUND)
   list (APPEND executables testROC.exe)
+endif()
+if (${ZMQ_FOUND})
+  list (APPEND executables testZmqClient.exe testZmqServer.exe)
 endif()
 foreach (exe ${executables})
 	target_include_directories(${exe} PRIVATE ${READOUT_INCLUDE_DIRS})
