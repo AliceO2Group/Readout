@@ -2,14 +2,17 @@
 #include <memory>
 #include <thread>
 #include <atomic>
+#include <functional>
 
 class ZmqClient {
 public:
-  ZmqClient();
-  ~ZmqClient();
-  int publish(void *msgBody, int msgSize);
+  ZmqClient(const std::string &url = "tcp://127.0.0.1:50001");
+  ~ZmqClient();  
+  
+  int setCallback(std::function<int(void *msg, int msgSize)>);
+  
 private:
-  std::string cfgAddress="tcp://127.0.0.1:50001";
+  std::string cfgAddress;
   
   void *context=nullptr;
   void *zh=nullptr;
@@ -17,5 +20,5 @@ private:
   std::unique_ptr<std::thread> th;  // thread receiving data
   std::atomic<int> shutdownRequest; // flag to be set to 1 to stop thread
   void run(); // code executed in separate thread
-
+  std::function<int(void *msg, int msgSize)> callback = nullptr;
 };
