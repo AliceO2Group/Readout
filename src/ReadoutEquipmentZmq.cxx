@@ -15,6 +15,7 @@
 #include <functional>
 #include <atomic>
 #include <zmq.h>
+#include "ZmqClient.hxx"
 
 #include <InfoLogger/InfoLogger.hxx>
 using namespace AliceO2::InfoLogger;
@@ -26,7 +27,7 @@ public:
   ReadoutEquipmentZmq(ConfigFile &cfg, std::string name = "zmq");
   ~ReadoutEquipmentZmq();
   DataBlockContainerReference getNextBlock();
-
+  
 private:
   Thread::CallbackResult populateFifoOut(); // iterative callback
 
@@ -46,6 +47,13 @@ private:
   
   SnapshotDescriptor snapshotMetadata;
   std::mutex snapshotLock; // to access snapshotData/Metadata
+  
+  std::unique_ptr<ZmqClient> tfClient;
+  int tfClientCallback(void *msg, int msgSize);
+  std::atomic<int> maxTf=-1;
+  std::atomic<int> tfUpdateTime=0;
+  std::atomic<int> tfUpdateTimeWarning=0;
+  int nBlocks=0;
 };
 
 ReadoutEquipmentZmq::ReadoutEquipmentZmq(ConfigFile &cfg,
@@ -80,6 +88,26 @@ ReadoutEquipmentZmq::ReadoutEquipmentZmq(ConfigFile &cfg,
     theLog.log(InfoLogger::Severity::Error,
                "ZeroMQ error @%d : (%d) %s", linerr, zmqerr, zmq_strerror(zmqerr));
     throw __LINE__;
+  }
+
+
+  // configuration parameter: | equipment-zmq-* | timeframeClientUrl | string | | The address
+  // to be used to retrieve current timeframe. 
+  // When set, data is published only once for each TF id published by remote server. |
+  std::string cfgTimeframeClientUrl;
+  cfg.getOptionalValue<std::string>(cfgEntryPoint + ".timeframeClientUrl", cfgTimeframeClientUrl);
+  if (cfgTimeframeClientUrl.length()>0) {
+    theLog.log(InfoLogger::Severity::Info, "Creating Timeframe client @ %s",
+                 cfgTimeframeClientUrl.c_str());
+    tfClient = std::make_unique<ZmqClient>(cfgTimeframeClientUrl);
+    if (tfClient == nullptr) {
+      theLog.log(InfoLogger::Severity::Error, "Failed to create TF client");  
+    } else {
+      maxTf = 0;
+      tfUpdateTime = time(NULL);
+      std::function<int(void *, int)> cb = std::bind(&ReadoutEquipmentZmq::tfClientCallback, this, std::placeholders::_1, std::placeholders::_2);
+      tfClient->setCallback(cb);
+    }
   }
 
   // allocate data for snapshot
@@ -122,6 +150,8 @@ ReadoutEquipmentZmq::~ReadoutEquipmentZmq() {
   snapshotLock.lock();
   snapshotData = nullptr;
   snapshotLock.unlock();
+  
+  tfClient = nullptr;
 }
 
 void ReadoutEquipmentZmq::loopSnapshot(void) {
@@ -165,7 +195,18 @@ DataBlockContainerReference ReadoutEquipmentZmq::getNextBlock() {
   }
   
   // check TF rate... do we produce data now ?
-
+  if (maxTf>=0) {
+    const int tfTimeout = 5;
+    if ((time(NULL)>tfUpdateTime + tfTimeout)&&(!tfUpdateTimeWarning)) {
+      tfUpdateTimeWarning = 1;
+      theLog.log(InfoLogger::Severity::Warning,
+        "No TF id received from TF server for the past %d seconds", tfTimeout);
+    }
+    if (nBlocks>=maxTf) {
+      return nullptr;
+    }   
+  }
+  
   // query memory pool for a free block
   DataBlockContainerReference nextBlock = nullptr;
   try {
@@ -185,11 +226,35 @@ DataBlockContainerReference ReadoutEquipmentZmq::getNextBlock() {
     }
     snapshotLock.unlock();
     
-    // set TF id, etc   
+    // TODO: set TF id, timestamp, etc
+    nBlocks++;
+    //printf("publish DCS for tf %d / maxTf %d\n", nBlocks, (int)maxTf);
   }
 
   return nextBlock;
 }
+
+int ReadoutEquipmentZmq::tfClientCallback(void *msg, int msgSize) {
+  uint64_t tf;
+  if (msgSize==sizeof(tf)) {
+    int tf=(int)*((uint64_t *)msg);
+    //printf("TF %d\n",(int)tf);
+    tfUpdateTime=time(NULL);
+    if (tfUpdateTimeWarning) {
+      tfUpdateTimeWarning = 0;
+      theLog.log(InfoLogger::Severity::Info,
+        "New TF id received from TF server");
+    }
+    if (maxTf==0) {
+      // that's the first TF
+      nBlocks=maxTf;
+    }
+    maxTf=tf;
+    return 0;
+  }
+  return -1;
+}
+
 
 std::unique_ptr<ReadoutEquipment>
 getReadoutEquipmentZmq(ConfigFile &cfg, std::string cfgEntryPoint) {

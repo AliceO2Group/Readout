@@ -266,3 +266,4 @@ This file describes the main feature changes for each readout.exe released versi
 - Updated configuration parameters:
   - added readout.timeframeServerUrl: creates a ZMQ server to publish each TF id produced, to serve as reference for other instances producing data without hardware clock.
 - ProcessorLZ4Compress: data is no more compressed in-place, but in separate data pages to preserve original data (eg for shipping to data distribution).
+- equipment-zmq-*.timeframeClientUrl: when set, data is published only once for each TF id published by remote server. This allows to synchronize DCS data with a remote hardware-driven readout equipment.
