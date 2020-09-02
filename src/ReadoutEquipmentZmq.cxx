@@ -157,33 +157,54 @@ ReadoutEquipmentZmq::~ReadoutEquipmentZmq() {
 void ReadoutEquipmentZmq::loopSnapshot(void) {
  
   int linerr=0, zmqerr=0;
-  for (;!shutdownSnapshotThread;) {
-    zmq_msg_t msg;
-    zmqerr=zmq_msg_init(&msg);
-    if (zmqerr) { linerr=__LINE__; break; }
-
-    int nbytes=zmq_recvmsg(zh, &msg,0);
-    if (nbytes<=0) {
-       zmqerr=zmq_errno();
-       if (zmqerr) { linerr=__LINE__; break; }
-    }
-    
-    snapshotLock.lock();
-    if (zmq_msg_size(&msg) < snapshotMetadata.maxSize) {
-      memcpy(snapshotData.get(),zmq_msg_data(&msg), zmq_msg_size(&msg));
-      snapshotMetadata.currentSize = zmq_msg_size(&msg);
-      snapshotMetadata.timestamp = time(NULL);
-    }
-    snapshotLock.unlock();
-
-    zmq_msg_close (&msg);
-    usleep(100000);
-  }
+  bool doLogSnapshot = 1; // flag to display message on next successful snapshot
+                          // (1st on start or after error)
   
-  if ((zmqerr)||(linerr)) {
-    theLog.log(InfoLogger::Severity::Error,
-               "ZeroMQ error @%d : (%d) %s", linerr, zmqerr, zmq_strerror(zmqerr));
-    theLog.log(InfoLogger::Severity::Error,"Aborting snapshot thread");
+  for (;!shutdownSnapshotThread;) {
+    for (;!shutdownSnapshotThread;) {
+      zmq_msg_t msg;
+      zmqerr=zmq_msg_init(&msg);
+      if (zmqerr) { linerr=__LINE__; break; }
+
+      int nbytes=zmq_recvmsg(zh, &msg,0);
+      if (nbytes<=0) {
+	 zmqerr=zmq_errno();
+	 if (zmqerr) { linerr=__LINE__; break; }
+      }
+
+      int msgSize = zmq_msg_size(&msg);
+      if ( msgSize < snapshotMetadata.maxSize) {
+        snapshotLock.lock();
+	memcpy(snapshotData.get(), zmq_msg_data(&msg), msgSize);
+	snapshotMetadata.currentSize = msgSize;
+	snapshotMetadata.timestamp = time(NULL);
+	snapshotLock.unlock();
+	if (doLogSnapshot) {
+	  theLog.log(InfoLogger::Severity::Info,
+            "Received snapshot (%d bytes)", msgSize);
+	  doLogSnapshot = 0;
+	}
+      } else {
+        theLog.log(InfoLogger::Severity::Error,
+	  "Received message bigger than buffer: %d > %d",
+	  msgSize, snapshotMetadata.maxSize);
+      }
+      
+
+      zmq_msg_close (&msg);
+      usleep(100000);
+    }
+
+    if ((zmqerr)||(linerr)) {
+      if (zmqerr == 11) {
+        theLog.log(InfoLogger::Severity::Warning,
+        	 "ZeroMQ timeout @%d : (%d) %s", linerr, zmqerr, zmq_strerror(zmqerr));
+      } else {
+        theLog.log(InfoLogger::Severity::Error,
+        	 "ZeroMQ error @%d : (%d) %s", linerr, zmqerr, zmq_strerror(zmqerr));
+      }
+      doLogSnapshot = 1;
+    }
   }
 }
 
