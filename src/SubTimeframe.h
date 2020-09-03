@@ -15,7 +15,9 @@
 // FEE ids)
 
 struct SubTimeframe {
-  uint64_t timeframeId = 0; // id of timeframe
+  uint8_t version = 2; // version of this structure
+  uint32_t timeframeId = 0; // id of timeframe
+  uint32_t runNumber = 0;
   uint8_t systemId = 0xFF;
   uint16_t feeId = 0xFFFF;
   uint16_t equipmentId = 0xFFFF;

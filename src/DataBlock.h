@@ -27,6 +27,7 @@ typedef uint64_t DataBlockId;
 /// Definition of default values
 const uint64_t undefinedBlockId = 0;        ///< default value, when blockId undefined
 const uint64_t undefinedTimeframeId = 0;    ///< default value, when timeframeId undefined
+const uint32_t undefinedRunNumber = 0;    ///< default value, when runNumber undefined
 const uint8_t undefinedSystemId = 0xFF;      ///< default value, when linkId undefined
 const uint16_t undefinedFeeId = 0xFFFF;      ///< default value, when linkId undefined
 const uint16_t undefinedEquipmentId = 0xFFFF; ///< default value, when equipmentId undefined
@@ -45,9 +46,9 @@ typedef struct {
     uint32_t reserved[61];
     struct {
       DataBlockId blockId = undefinedBlockId;       ///< id of the block (strictly monotonic increasing sequence)    
-      DataBlockId pipelineId = undefinedBlockId;    ///< id used to sort data in/out in parallel pipelines
-            
+      DataBlockId pipelineId = undefinedBlockId;    ///< id used to sort data in/out in parallel pipelines 
       uint64_t timeframeId = undefinedTimeframeId;  ///< id of timeframe
+      uint64_t runNumber = undefinedRunNumber;      ///< the current run number
       uint8_t systemId = undefinedSystemId;        /// from RDH
       uint16_t feeId = undefinedFeeId;             /// from RDH
       uint16_t equipmentId = undefinedEquipmentId; /// id of equipment generating the data

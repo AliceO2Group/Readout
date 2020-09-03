@@ -15,6 +15,8 @@
 using namespace AliceO2::InfoLogger;
 extern InfoLogger theLog;
 
+extern tRunNumber occRunNumber;
+
 ReadoutEquipment::ReadoutEquipment(ConfigFile &cfg, std::string cfgEntryPoint) {
 
   // example: browse config keys
@@ -428,6 +430,9 @@ Thread::CallbackResult ReadoutEquipment::threadCallback(void *arg) {
       if (nextBlock->getData()->header.timeframeId == undefinedTimeframeId) {
         nextBlock->getData()->header.timeframeId = ptr->getCurrentTimeframe();
       }
+      
+      // tag data with run number
+      nextBlock->getData()->header.runNumber = occRunNumber;
 
       // update rate-limit clock
       if (ptr->readoutRate > 0) {

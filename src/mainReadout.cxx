@@ -143,6 +143,11 @@ static void signalHandler(int signalId) {
   ShutdownRequest = 1;
 }
 
+// some globals needed in other components
+std::string occRole;   // OCC role name
+tRunNumber occRunNumber;  // OCC run number
+
+
 class Readout {
 
 public:
@@ -155,9 +160,6 @@ public:
   int iterateCheck();
 
   void loopRunning(); // called in state "running"
-
-  std::string occRole;   // OCC role name
-  uint64_t occRunNumber; // OCC run number
 
 
 private:
@@ -1140,7 +1142,7 @@ public:
   ReadoutOCCStateMachine(std::unique_ptr<Readout> r)
       : RuntimeControlledObject("Readout Process") {
     theReadout = std::move(r);
-    theReadout->occRole = this->getRole();
+    occRole = this->getRole();
   }
 
   int executeConfigure(const boost::property_tree::ptree &properties) {
@@ -1169,13 +1171,13 @@ public:
       return -1;
     }
     // set run number
-    theReadout->occRunNumber = this->getRunNumber();
+    occRunNumber = this->getRunNumber();
     theLogContext.setField(InfoLoggerContext::FieldName::Run,
-                           std::to_string(theReadout->occRunNumber));
+                           std::to_string(occRunNumber));
     theLog.setContext(theLogContext);
-    if (theReadout->occRunNumber != 0 ) {
-      setenv(envRunNumber, std::to_string(theReadout->occRunNumber).c_str(), 1);
-      theLog.log("Run number %d",(int)theReadout->occRunNumber);
+    if (occRunNumber != 0 ) {
+      setenv(envRunNumber, std::to_string(occRunNumber).c_str(), 1);
+      theLog.log("Run number %d",(int)occRunNumber);
     } else {
       unsetenv(envRunNumber);
       theLog.log("Run number not defined");
@@ -1189,7 +1191,7 @@ public:
     }
     int ret = theReadout->stop();
     // unset run number
-    theReadout->occRunNumber = 0;
+    occRunNumber = 0;
     theLogContext.setField(InfoLoggerContext::FieldName::Run, "");
     theLog.setContext(theLogContext);
     unsetenv(envRunNumber);

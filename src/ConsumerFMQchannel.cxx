@@ -350,6 +350,7 @@ public:
       for (auto &br : *bc) {
         DataBlock *b = br->getData();
         stfHeader->timeframeId = b->header.timeframeId;
+        stfHeader->runNumber = b->header.runNumber;
         stfHeader->systemId = b->header.systemId;
 	stfHeader->feeId = b->header.feeId;
 	stfHeader->equipmentId = b->header.equipmentId;
@@ -428,9 +429,9 @@ public:
       totalPushError++;
       return -1;
     }
-    stfHeader->timeframeId = 0;
+    stfHeader->timeframeId = undefinedTimeframeId;
     stfHeader->linkId = undefinedLinkId;
-
+    
     unsigned int lastHBid = -1;
     int isFirst = true;
     int ix = 0;
