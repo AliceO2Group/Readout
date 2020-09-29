@@ -2,7 +2,10 @@
 #include <zmq.h>
 #include <functional>
 
-ZmqClient::ZmqClient(){
+ZmqClient::ZmqClient(const std::string &url){
+
+  cfgAddress = url;
+  
   int linerr=0;
   int zmqerr=0;
   for (;;) {
@@ -40,8 +43,14 @@ ZmqClient::~ZmqClient(){
   }
 }
 
+/*
 int ZmqClient::publish(void *msgBody, int msgSize){
   return 0;
+}
+*/
+
+int ZmqClient::setCallback(std::function<int(void *msg, int msgSize)> cb) {
+  callback = cb;
 }
 
 void ZmqClient::run() { 
@@ -51,6 +60,14 @@ void ZmqClient::run() {
       char buffer [128];
       int nb=0;
       nb=zmq_recv (zh, buffer, sizeof(buffer), 0);
+      
+      if ((callback!=nullptr)&&(nb>0)) {
+        if (callback(buffer, nb)) {
+	  linerr=__LINE__; break;
+	}
+      }
+      break;
+      
       uint64_t tf;
       if (nb==sizeof(tf)) {
         printf("TF %lu\n",*((uint64_t *)buffer));

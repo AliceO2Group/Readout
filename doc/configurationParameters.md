@@ -124,6 +124,7 @@ The parameters related to 3rd-party libraries are described here for convenience
 | equipment-rorc-* | rdhUseFirstInPageEnabled | int | 0 | If set, the first RDH in each data page is used to populate readout headers (e.g. linkId).| 
 | equipment-rorc-* | TFperiod | int | 256 | Duration of a timeframe, in number of LHC orbits. | 
 | equipment-zmq-* | address | string | | Address of remote server to connect, eg tcp://remoteHost:12345. | 
+| equipment-zmq-* | timeframeClientUrl | string | | The address to be used to retrieve current timeframe. When set, data is published only once for each TF id published by remote server. | 
 | readout | aggregatorSliceTimeout | double | 0 | When set, slices (groups) of pages are flushed if not updated after given timeout (otherwise closed only on beginning of next TF, or on stop). | 
 | readout | aggregatorStfTimeout | double | 0 | When set, subtimeframes are buffered until timeout (otherwise, sent immediately and independently for each data source). | 
 | readout | disableAggregatorSlicing | int | 0 | When set, the aggregator slicing is disabled, data pages are passed through without grouping/slicing. | 

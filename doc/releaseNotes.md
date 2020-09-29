@@ -261,8 +261,9 @@ This file describes the main feature changes for each readout.exe released versi
   - added equipment-player-*.autoChunkLoop: when set, file is replayed in loop. RDH orbit counters are updated after 1st loop to make a realistic TF sequence.
 - Cleanup configuration parameters documentation and editor.
 
-## next version
+## v1.4.7 - 29/09/2020
 - ReadoutCard dependency is now optional, to allow building readout on platforms where it is not available. If so, equipment-rorc and memoryMappedFile banks features are disabled.
 - Updated configuration parameters:
   - added readout.timeframeServerUrl: creates a ZMQ server to publish each TF id produced, to serve as reference for other instances producing data without hardware clock.
 - ProcessorLZ4Compress: data is no more compressed in-place, but in separate data pages to preserve original data (eg for shipping to data distribution).
+- equipment-zmq-*.timeframeClientUrl: when set, data is published only once for each TF id published by remote server. This allows to synchronize DCS data with a remote hardware-driven readout equipment.
