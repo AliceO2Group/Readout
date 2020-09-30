@@ -265,14 +265,23 @@ public:
       // we just ship one FMQmessage per incoming data page
       for (auto &br : *bc) {
         DataBlock *b = br->getData();
+	if (b == nullptr) {
+	  continue;
+	}
+	if (b->data == nullptr) {
+	  continue;
+	}
         DataBlockContainerReference *blockRef =
             new DataBlockContainerReference(br);
+	if (blockRef == nullptr) {
+	  continue;
+	}
         void *hint = (void *)blockRef;
         void *blobPtr = b->data;
         size_t blobSize = (size_t)b->header.dataSize;
+        //printf("send %p = %d bytes hint=%p\n",blobPtr,(int)blobSize,hint);
         std::unique_ptr<FairMQMessage> msgBody(transportFactory->CreateMessage(
             memoryBuffer, blobPtr, blobSize, hint));
-        // printf("send %p = %d bytes hint=%p\n",blobPtr,(int)blobSize,hint);
         sendingChannel->Send(msgBody);
         gReadoutStats.bytesFairMQ += blobSize;
       }
