@@ -34,10 +34,11 @@ extern "C" {
 int processBlock(DataBlockContainerReference &input,
                  DataBlockContainerReference &output) {
 
+  output = nullptr;
+  
   int err = ERR_ERROR_UNDEFINED; // function error flag, zero for sucess
 
-  void *ptrIn = input->getData()->data; // data input
-  if (ptrIn == NULL) {
+  if (input->getData()->data == NULL) {
     return ERR_NULL_INPUT;
   }
   size_t sizeIn = input->getData()->header.dataSize; // input size (bytes)
@@ -78,48 +79,102 @@ int processBlock(DataBlockContainerReference &input,
       sizeof(header) + sizeof(blockSize) +
       sizeof(trailer); // number of bytes needed for LZ4 frame formatting
 
-  // size needed for output buffer = maximum size after compression + few bytes
-  // for LZ4 file formatting
-  int outBufferSize = LZ4_compressBound(sizeIn) + lz4FrameFormatBytes;
+  const bool reuseInputBufferForOutput = 0; // flag to select copy method
 
-  char *ptrOut = nullptr; // output buffer
-  if (ptrOut == nullptr) {
-    ptrOut = (char *)malloc(outBufferSize);
-    if (ptrOut == nullptr) {
+  // size needed for final output buffer
+  // = maximum size after compression + few bytes for LZ4 file formatting
+  int64_t maxCompressedSize =  LZ4_compressBound(sizeIn);
+  int64_t maxFormattedSize = maxCompressedSize + lz4FrameFormatBytes;
+
+  char *ptrCompressed = nullptr; // buffer for compressed data
+  char *ptrFormatted = nullptr; // buffer for formatted compressed data with header/trailer
+
+  size_t ptrCompressedSize = 0; // allocated buffer size
+  size_t ptrFormattedSize = 0; // allocated buffer size
+  
+  if (!reuseInputBufferForOutput) {
+    // create a new data block + container from malloc()
+    // (not using a predefined memory bank,
+    // which are not readily available from consumers)
+    size_t pageSize = sizeof(DataBlock) + maxFormattedSize;
+    void *newPage = malloc(pageSize);
+    if (newPage == nullptr) {
       return ERR_MALLOC;
     }
+
+    // fill header at beginning of page
+    // assuming payload is contiguous after header
+    DataBlock *b = (DataBlock *)newPage;
+    b->header = input->getData()->header;
+    b->data = &(((char *)b)[sizeof(DataBlock)]);
+
+    auto releaseCallback = [newPage](void) -> void {
+      free(newPage);
+      return;
+    };
+
+    // create a container and associate data page and release callback
+    std::shared_ptr<DataBlockContainer> bc = std::make_shared<DataBlockContainer>(
+     releaseCallback, (DataBlock *)newPage, pageSize);
+    if (bc == nullptr) {
+      releaseCallback();
+      return ERR_MALLOC;
+    }
+
+    ptrFormatted = (char *)b->data;
+    ptrCompressed = &(ptrFormatted[sizeof(header)+sizeof(blockSize)]); // leave suitable space in front
+    ptrCompressedSize = maxCompressedSize;
+    ptrFormattedSize = maxFormattedSize;
+    output = bc; // new data block as output
+        
+  } else {
+    
+    // create a temporary buffer for compression
+    // will be copied back to existing input DataBlock
+    ptrCompressed = (char *)malloc(maxCompressedSize);
+    ptrCompressedSize = maxCompressedSize;
+    ptrFormatted = (char *)input->getData()->data;
+    ptrFormattedSize = (char *)input->getData() + input->getDataBufferSize() -
+        (char *)input->getData()->data; // remaining buffer size available after data ptr    
+    output = input; // reuse existing data block as output (might be wrong: other consumers will see modified data)
+  }
+
+  if ((ptrCompressed == nullptr)||(ptrFormatted == nullptr)) {
+    return ERR_MALLOC;
   }
 
   // compress
-  size_t sizeOut = LZ4_compress_default(input->getData()->data, ptrOut, sizeIn,
-                                        outBufferSize);
+  size_t sizeOut = LZ4_compress_default(input->getData()->data, ptrCompressed, sizeIn,
+                                        ptrCompressedSize);
 
-  // copy-back result
+  // format output
   if (sizeOut > 0) {
-    // compression success
-    int64_t sizeAvailable =
-        (char *)input->getData() + input->getDataBufferSize() -
-        (char *)ptrIn; // remaining buffer size available after data ptr
-    int64_t sizeNeeded = sizeOut + lz4FrameFormatBytes;
-    if (sizeNeeded <= sizeAvailable) {
-      // we are able to fit result+headers in same buffer
+    // compression success    
 
+    if (sizeOut + lz4FrameFormatBytes > ptrFormattedSize) {
+      err = ERR_OUTPUT_BUFFER_TOO_SMALL;
+    } else {
+      // we are able to fit result+headers in same buffer
+      
       // update lz4 block size
       blockSize = (uint32_t)sizeOut;
       blockSize &= 0x7FFFFFFF; // highest bit zero when frame is LZ4 compressed
 
       // let's build a formatted output back in provided input buffer
-      char *ptrFormatted = (char *)input->getData()->data;
       int ptrSize = 0;
-      auto push = [&](const void *source, size_t size) {
-        memcpy(&ptrFormatted[ptrSize], source, size);
+      auto push = [&ptrSize, &ptrFormatted](const void *source, size_t size) {
+        void *dest = &ptrFormatted[ptrSize];
+	// copy only if needed
+	if (dest != source) {
+          memcpy(dest, source, size);
+	}
         ptrSize += size;
       };
 
       // append the different pieces
-      push(header, sizeof(header));
+      push(header, sizeof(header));  
       push(&blockSize, sizeof(blockSize));
-      push(ptrOut, sizeOut);
+      push(ptrCompressed, sizeOut);
       push(trailer, sizeof(trailer));
 
       // artifical sleep, to force un-ordering (used for tests)
@@ -127,17 +182,19 @@ int processBlock(DataBlockContainerReference &input,
       // usleep(ss);
 
       // looks good, give it back
-      output = input;
       output->getData()->header.dataSize = ptrSize;
       err = ERR_SUCCESS;
-    } else {
-      err = ERR_OUTPUT_BUFFER_TOO_SMALL;
     }
   } else {
     err = ERR_LZ4_FAILED;
   }
-  if (ptrOut != nullptr) {
-    free(ptrOut);
+  if (reuseInputBufferForOutput) {
+    if (ptrCompressed != nullptr) {
+      free(ptrCompressed);
+    }
+  }
+  if (err != ERR_SUCCESS) {
+    output = nullptr;
   }
   return err;
 }
