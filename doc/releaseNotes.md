@@ -267,3 +267,7 @@ This file describes the main feature changes for each readout.exe released versi
   - added readout.timeframeServerUrl: creates a ZMQ server to publish each TF id produced, to serve as reference for other instances producing data without hardware clock.
 - ProcessorLZ4Compress: data is no more compressed in-place, but in separate data pages to preserve original data (eg for shipping to data distribution).
 - equipment-zmq-*.timeframeClientUrl: when set, data is published only once for each TF id published by remote server. This allows to synchronize DCS data with a remote hardware-driven readout equipment.
+
+## next version
+- Implementation of the new STF interface (v2). See SubTimeframe.h
+- RDH is handled in the same way for all equipments (RORC, player, emulator). Same RDH configuration parameters apply to all.

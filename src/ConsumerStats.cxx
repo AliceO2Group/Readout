@@ -286,6 +286,7 @@ public:
   }
 
   int start() {
+    Consumer::start();
     theLog.log("Starting stats clock");
     reset();
 
@@ -328,6 +329,7 @@ public:
       theLog.log("Stats: no data received");
     }
 
+    Consumer::stop();
     return 0;
   };
 };

@@ -10,6 +10,10 @@
 
 // Utilities to handle RDH content from CRU data
 
+#ifndef RDHUTILS_H
+#define RDHUTILS_H
+
+
 #include "RAWDataHeader.h"
 #include <string>
 
@@ -40,6 +44,7 @@ public:
   // access RDH fields
   // functions defined inline here
   inline uint8_t getHeaderVersion() { return rdhPtr->version; }
+  inline uint8_t getSystemId() { return (uint8_t)rdhPtr->systemId; }
   inline uint16_t getFeeId() { return (uint16_t)rdhPtr->feeId; }
   inline uint8_t getLinkId() { return (uint8_t)rdhPtr->linkId; }
   inline uint8_t getPacketCounter() { return (uint8_t)rdhPtr->packetCounter; }
@@ -80,3 +85,6 @@ private:
   void *blockPtr;   // pointer to beginning of memory block
   size_t blockSize; // size of memory block
 };
+
+
+#endif

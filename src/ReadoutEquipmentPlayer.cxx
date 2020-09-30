@@ -47,18 +47,14 @@ private:
   uint64_t loopCount = 0;       // number of file reading loops so far
   
   struct PacketHeader {
-    uint64_t timeframeId = 0;
+    uint64_t timeframeId = undefinedTimeframeId;
     int linkId = undefinedLinkId;
     int equipmentId = undefinedEquipmentId; // used to store CRU id
   };
   PacketHeader lastPacketHeader; // keep track of last packet header
 
-  uint32_t timeframePeriodOrbits =
-      256; // timeframe interval duration in number of LHC orbits
-  uint32_t firstTimeframeHbOrbitBegin =
-      0; // HbOrbit of beginning of first timeframe
   uint32_t orbitOffset = 0; // to be applied to orbit after 1st loop
-  
+
   void copyFileDataToPage(void *page); // fill given page with file data
                                        // according to current settings
 };
@@ -84,6 +80,9 @@ void ReadoutEquipmentPlayer::copyFileDataToPage(void *page) {
 ReadoutEquipmentPlayer::ReadoutEquipmentPlayer(ConfigFile &cfg,
                                                std::string cfgEntryPoint)
     : ReadoutEquipment(cfg, cfgEntryPoint) {
+
+  // declare RDH equipment
+  initRdhEquipment();
 
   auto errorHandler = [&](const std::string &err) {
     if (fp != nullptr) {
@@ -115,17 +114,12 @@ ReadoutEquipmentPlayer::ReadoutEquipmentPlayer(ConfigFile &cfg,
   // set, the file is replayed in loops. Trigger orbit counter in RDH are modified for
   // iterations after the first one, so that they keep increasing. |
   cfg.getOptionalValue<int>(cfgEntryPoint + ".autoChunkLoop", autoChunkLoop, 0);
-  // configuration parameter: | equipment-player-* | TFperiod | int | 256 |
-  // Duration of a timeframe, in number of LHC orbits. |
-  int cfgTFperiod = 256;
-  cfg.getOptionalValue<int>(name + ".TFperiod", cfgTFperiod);
-  timeframePeriodOrbits = cfgTFperiod;
 
   // log config summary
   theLog.log("Equipment %s: using data source file=%s preLoad=%d fillPage=%d "
-             "autoChunk=%d autoChunkLoop=%d TFperiod=%d",
+             "autoChunk=%d autoChunkLoop=%d",
              name.c_str(), filePath.c_str(), preLoad, fillPage, autoChunk,
-             autoChunkLoop, timeframePeriodOrbits);
+             autoChunkLoop);
 
   // open data file
   fp = fopen(filePath.c_str(), "rb");
@@ -254,7 +248,7 @@ DataBlockContainerReference ReadoutEquipmentPlayer::getNextBlock() {
 		}
                 loopCount++;
                 fileOffset = 0;
-		orbitOffset =  lastPacketHeader.timeframeId * timeframePeriodOrbits;
+		orbitOffset =  lastPacketHeader.timeframeId * getTimeframePeriodOrbits();
                 isOk = 1;
 	      }
             }
@@ -291,13 +285,7 @@ DataBlockContainerReference ReadoutEquipmentPlayer::getNextBlock() {
             bool isFirst = (fileOffset == 0) && (pageOffset == 0);
 	
             int hbOrbit = h.getHbOrbit();
-            
-            if ((isFirst) && (loopCount == 0)) {
-              firstTimeframeHbOrbitBegin = hbOrbit;
-            }
-            currentPacketHeader.timeframeId =
-                1 +
-                (hbOrbit - firstTimeframeHbOrbitBegin) / timeframePeriodOrbits;
+            currentPacketHeader.timeframeId = getTimeframeFromOrbit(hbOrbit);
 
             // fill page metadata
             if (pageOffset == 0) {
@@ -389,9 +377,9 @@ void ReadoutEquipmentPlayer::initCounters() {
     }
   }
   fileOffset = 0;
-  lastPacketHeader.timeframeId = 0;
+  lastPacketHeader.timeframeId = undefinedTimeframeId;
   lastPacketHeader.linkId = undefinedLinkId;
-  firstTimeframeHbOrbitBegin = 0;
+  lastPacketHeader.equipmentId = undefinedEquipmentId;
 }
 
 std::unique_ptr<ReadoutEquipment>

@@ -21,7 +21,9 @@ int Consumer::pushData(DataSetReference &bc) {
     }
   }
   if (error) {
+    totalPushError++;
     return -error; // return a negative number indicating number of errors
   }
+  totalPushSuccess++;
   return success; // return a positive number indicating number of success
 }

@@ -23,6 +23,7 @@
 #include "MemoryHandler.h"
 
 #include "MemoryBankManager.h"
+#include "RdhUtils.h"
 
 using namespace AliceO2::Common;
 
@@ -164,6 +165,71 @@ protected:
          // possibly to store header
 
   int debugFirstPages = 0; // print debug info on first number of pages read
+
+private:
+  
+  int tagDatablockFromRdh(RdhHandle &RDH, DataBlockHeaderBase &h);
+  unsigned long long statsNumberOfTimeframes =
+      0; // number of timeframes read out
+  uint32_t currentTimeframeHbOrbitBegin =
+      0; // HbOrbit of beginning of timeframe
+  uint32_t firstTimeframeHbOrbitBegin =
+      0; // HbOrbit of beginning of first timeframe
+  bool isDefinedFirstTimeframeHbOrbitBegin = 0;
+
+  AliceO2::Common::Timer
+      timeframeClock; // timeframe id should be increased at each clock cycle
+  uint64_t currentTimeframe = 0; // id of current timeframe
+  bool usingSoftwareClock =
+      false; // if set, using internal software clock to generate timeframe id
+
+  const unsigned int LHCBunches = 3564; // number of bunches in LHC
+  const unsigned int LHCOrbitRate =
+      11246; // LHC orbit rate, in Hz. 299792458 / 26659
+  uint32_t timeframePeriodOrbits =
+      256; // timeframe interval duration in number of LHC orbits
+  double timeframeRate = 0; // timeframe rate, when generated internally
+
+  // RDH-related configuration parameters
+  
+  int cfgRdhCheckEnabled = 0;     // flag to enable RDH check at runtime
+  int cfgRdhDumpEnabled = 0;      // flag to enable RDH dump at runtime
+  int cfgRdhDumpErrorEnabled = 1; // flag to enable RDH error log at runtime
+  int cfgRdhDumpWarningEnabled = 0; // flag to enable RDH warning log at runtime
+  int cfgRdhUseFirstInPageEnabled = 0; // flag to enable reading of first RDH in
+                                       // page to populate readout headers
+  int cfgRdhCheckPacketCounterContiguous =
+      1; // flag to enable checking if RDH packetCounter value contiguous (done
+         // link-by-link)
+
+  bool isRdhEquipment = false; // to be set true for RDH equipments
+  
+  int processRdh(DataBlockContainerReference &nextBlock);
+  
+protected:
+  // get timeframe from orbit
+  // orbit of TF 1 is set on first call
+  uint64_t getTimeframeFromOrbit(uint32_t orbit);
+  uint64_t getCurrentTimeframe();
+  
+  uint32_t getTimeframePeriodOrbits() {
+    return timeframePeriodOrbits;
+  }
+
+  // compute range of orbits for given timeframe
+  void getTimeframeOrbitRange(uint64_t tfId, uint32_t hbOrbitMin, uint32_t hbOrbitMax);
+
+  void initRdhEquipment(); // to be called by equipments producing RDH-formatted data
+  
+  unsigned long long statsRdhCheckOk =
+      0; // number of RDH structs which have passed check ok
+  unsigned long long statsRdhCheckErr =
+      0; // number of RDH structs which have not passed check
+  unsigned long long statsRdhCheckStreamErr =
+      0; // number of inconsistencies in RDH stream (e.g. ids/timing compared to
+         // previous RDH)
+
+
 };
 
 std::unique_ptr<ReadoutEquipment>

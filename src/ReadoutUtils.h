@@ -13,6 +13,7 @@
 
 #include <map>
 #include <string>
+#include <stdint.h>
 
 #include <Common/Configuration.h>
 
@@ -49,6 +50,10 @@ std::string NumberOfBytesToString(double value, const char *suffix,
 // in seconds.
 // returns 0 on success, -1 on error
 int getProcessStats(double &uTime, double &sTime);
+
+
+typedef uint32_t tRunNumber;
+typedef uint32_t tTimeframeId;
 
 // end of _READOUTUTILS_H
 #endif

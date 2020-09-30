@@ -270,6 +270,7 @@ public:
   }
 
   int start() {
+    Consumer::start();
     resetCounters();
     
     theLog.log("Starting file recorder");
@@ -292,6 +293,7 @@ public:
     }
     
     resetCounters();
+    Consumer::stop();
     return 0;
   }  
   

@@ -35,8 +35,6 @@ private:
 
   Thread::CallbackResult populateFifoOut(); // iterative callback
 
-  uint64_t currentTimeframeId; // current timeframe id
-
   int cfgNumberOfLinks; // number of links to simulate. Will create data blocks
                         // round-robin.
   int cfgFeeId;         // FEE id to be used
@@ -53,7 +51,6 @@ private:
   int bcStep; // interval in BC clocks between two CRU block transfers, based on
               // link input data rate
 
-  int cfgTFperiod = 256; // duration of a timeframe, in number of LHC orbits
   int cfgHBperiod =
       1; // interval between 2 HeartBeat triggers, in number of LHC orbits
   double cfgGbtLinkThroughput =
@@ -90,6 +87,9 @@ ReadoutEquipmentCruEmulator::ReadoutEquipmentCruEmulator(
     ConfigFile &cfg, std::string cfgEntryPoint)
     : ReadoutEquipment(cfg, cfgEntryPoint) {
 
+  // declare RDH equipment
+  initRdhEquipment();
+
   // get configuration values
   // configuration parameter: | equipment-cruemulator-* | maxBlocksPerPage | int
   // | 0 | [obsolete- not used]. Maximum number of blocks per page. |
@@ -104,8 +104,6 @@ ReadoutEquipmentCruEmulator::ReadoutEquipmentCruEmulator(
   // configuration parameter: |
   // equipment-cruemulator-* | linkId | int | 0 | Id of first link. If
   // numberOfLinks>1, ids will range from linkId to linkId+numberOfLinks-1. |
-  // configuration parameter: | equipment-cruemulator-* | TFperiod | int | 256 |
-  // Duration of a timeframe, in number of LHC orbits. | configuration
   // configuration parameter: | equipment-cruemulator-* | HBperiod | int | 1 |
   // Interval between 2 HeartBeat triggers, in number of LHC orbits. |
   // configuration parameter: | equipment-cruemulator-* | EmptyHbRatio | double
@@ -122,7 +120,6 @@ ReadoutEquipmentCruEmulator::ReadoutEquipmentCruEmulator(
                             (int)1);
   cfg.getOptionalValue<int>(cfgEntryPoint + ".feeId", cfgFeeId, (int)0);
   cfg.getOptionalValue<int>(cfgEntryPoint + ".linkId", cfgLinkId, (int)0);
-  cfg.getOptionalValue<int>(cfgEntryPoint + ".TFperiod", cfgTFperiod);
   cfg.getOptionalValue<int>(cfgEntryPoint + ".HBperiod", cfgHBperiod);
   cfg.getOptionalValue<double>(cfgEntryPoint + ".EmptyHbRatio",
                                cfgEmptyHbRatio);
@@ -130,10 +127,10 @@ ReadoutEquipmentCruEmulator::ReadoutEquipmentCruEmulator(
 
   // log config summary
   theLog.log("Equipment %s: maxBlocksPerPage=%d cruBlockSize=%d "
-             "numberOfLinks=%d feeId=%d linkId=%d TFperiod=%d HBperiod=%d "
+             "numberOfLinks=%d feeId=%d linkId=%d HBperiod=%d "
              "EmptyHbRatio=%f PayloadSize=%d",
              name.c_str(), cfgMaxBlocksPerPage, cruBlockSize, cfgNumberOfLinks,
-             cfgFeeId, cfgLinkId, cfgTFperiod, cfgHBperiod, cfgEmptyHbRatio,
+             cfgFeeId, cfgLinkId, cfgHBperiod, cfgEmptyHbRatio,
              cfgPayloadSize);
 
   // initialize array of pending blocks (to be filled with data)
@@ -217,7 +214,7 @@ Thread::CallbackResult ReadoutEquipmentCruEmulator::prepareBlocks() {
 
     nowOrbit = LHCorbit;
     nowBc = LHCbc;
-    uint64_t nowId = currentTimeframeId;
+    uint64_t nowId = getCurrentTimeframe();
 
     int linkId = cfgLinkId + currentLink;
     int bytesAvailableInPage =
@@ -238,7 +235,7 @@ Thread::CallbackResult ReadoutEquipmentCruEmulator::prepareBlocks() {
         if (nextBc >= LHCBunches) {
           nextOrbit += nextBc / LHCBunches;
           nextBc = nextBc % LHCBunches;
-          unsigned int nextId = 1 + nextOrbit / cfgTFperiod; // timeframe ID
+          unsigned int nextId = getTimeframeFromOrbit(nextOrbit); // timeframe ID
           if (nextId != nowId) {
             if (offset) {
               // force page change on timeframe boundary
@@ -332,7 +329,6 @@ Thread::CallbackResult ReadoutEquipmentCruEmulator::prepareBlocks() {
   }
   LHCorbit = nowOrbit;
   LHCbc = nowBc;
-  currentTimeframeId = 1 + LHCorbit / cfgTFperiod; // timeframe ID
 
   return Thread::CallbackResult::Ok;
 }
@@ -346,8 +342,6 @@ DataBlockContainerReference ReadoutEquipmentCruEmulator::getNextBlock() {
 
 void ReadoutEquipmentCruEmulator::initCounters() {
   // init variables
-  currentTimeframeId = 1; // TFid starts on 1
-
   for (auto &b : pendingBlocks) {
     b = nullptr;
   }

@@ -388,7 +388,7 @@ typedef struct _RAWDataHeaderV6 {
     uint32_t word1 = 0x0000ffff;
     struct {
       uint32_t priorityBit : 8; /// bit 0 to 7: priority bit
-      uint32_t detectorId : 8;  /// bit 8 to 15: detector id
+      uint32_t systemId : 8;  /// bit 8 to 15: system id
       uint32_t zero1 : 16;      /// bit 16 to 31: reserved
     };
   };

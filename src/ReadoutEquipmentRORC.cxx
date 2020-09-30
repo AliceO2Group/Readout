@@ -55,54 +55,17 @@ private:
   int RocFifoSize =
       0; // detected size of ROC fifo (when filling it for the first time)
 
-  int cfgRdhCheckEnabled = 0;     // flag to enable RDH check at runtime
-  int cfgRdhDumpEnabled = 0;      // flag to enable RDH dump at runtime
-  int cfgRdhDumpErrorEnabled = 1; // flag to enable RDH error log at runtime
-  int cfgRdhDumpWarningEnabled = 0; // flag to enable RDH warning log at runtime
-  int cfgRdhUseFirstInPageEnabled = 0; // flag to enable reading of first RDH in
-                                       // page to populate readout headers
-  int cfgRdhCheckPacketCounterContiguous =
-      1; // flag to enable checking if RDH packetCounter value contiguous (done
-         // link-by-link)
-
   int cfgCleanPageBeforeUse =
       0; // flag to enable filling page with zeros before giving for writing
 
   int cfgFirmwareCheckEnabled = 1; // RORC lib check self-compatibility with fw
   int cfgDebugStatsEnabled = 0;    // collect and print more buffer stats
 
-  unsigned long long statsRdhCheckOk =
-      0; // number of RDH structs which have passed check ok
-  unsigned long long statsRdhCheckErr =
-      0; // number of RDH structs which have not passed check
-  unsigned long long statsRdhCheckStreamErr =
-      0; // number of inconsistencies in RDH stream (e.g. ids/timing compared to
-         // previous RDH)
   unsigned long long statsNumberOfPages = 0; // number of pages read out
   unsigned long long statsNumberOfPagesEmpty =
       0; // number of empty pages read out
   unsigned long long statsNumberOfPagesLost =
       0; // number of pages read out but lost
-  unsigned long long statsNumberOfTimeframes =
-      0; // number of timeframes read out
-
-  AliceO2::Common::Timer
-      timeframeClock; // timeframe id should be increased at each clock cycle
-  uint64_t currentTimeframe = 0; // id of current timeframe
-  bool usingSoftwareClock =
-      false; // if set, using internal software clock to generate timeframe id
-
-  const unsigned int LHCBunches = 3564; // number of bunches in LHC
-  const unsigned int LHCOrbitRate =
-      11246; // LHC orbit rate, in Hz. 299792458 / 26659
-  uint32_t timeframePeriodOrbits =
-      256; // timeframe interval duration in number of LHC orbits
-  double timeframeRate = 0; // timeframe rate, when generated internally
-
-  uint32_t currentTimeframeHbOrbitBegin =
-      0; // HbOrbit of beginning of timeframe
-  uint32_t firstTimeframeHbOrbitBegin =
-      0; // HbOrbit of beginning of first timeframe
 
   uint8_t RdhLastPacketCounter[RdhMaxLinkId + 1]; // last value of packetCounter
                                                   // RDH field for each link id
@@ -120,6 +83,9 @@ struct ReadoutEquipmentRORCException : virtual Exception {};
 
 ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name)
     : ReadoutEquipment(cfg, name) {
+
+  // declare RDH equipment
+  initRdhEquipment();
 
   try {
 
@@ -148,29 +114,6 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name)
     // std::string cfgReadoutMode="CONTINUOUS";
     // cfg.getOptionalValue<std::string>(name + ".readoutMode", cfgReadoutMode);
 
-    // extra configuration parameters
-    // configuration parameter: | equipment-rorc-* | rdhCheckEnabled | int | 0 |
-    // If set, data pages are parsed and RDH headers checked. Errors are
-    // reported in logs. |
-    cfg.getOptionalValue<int>(name + ".rdhCheckEnabled", cfgRdhCheckEnabled);
-    // configuration parameter: | equipment-rorc-* | rdhDumpEnabled | int | 0 |
-    // If set, data pages are parsed and RDH headers summary printed. Setting a
-    // negative number will print only the first N RDH.|
-    cfg.getOptionalValue<int>(name + ".rdhDumpEnabled", cfgRdhDumpEnabled);
-    // configuration parameter: | equipment-rorc-* | rdhDumpErrorEnabled | int |
-    // 1 | If set, a log message is printed for each RDH header error found.|
-    cfg.getOptionalValue<int>(name + ".rdhDumpErrorEnabled",
-                              cfgRdhDumpErrorEnabled);
-    // configuration parameter: | equipment-rorc-* | rdhDumpWarningEnabled | int |
-    // 0 | If set, a log message is printed for each RDH header warning found.|
-    cfg.getOptionalValue<int>(name + ".rdhDumpWarningEnabled",
-                              cfgRdhDumpWarningEnabled);
-    // configuration parameter: | equipment-rorc-* | rdhUseFirstInPageEnabled |
-    // int | 0 | If set, the first RDH in each data page is used to populate
-    // readout headers (e.g. linkId).|
-    cfg.getOptionalValue<int>(name + ".rdhUseFirstInPageEnabled",
-                              cfgRdhUseFirstInPageEnabled);
-
     // configuration parameter: | equipment-rorc-* | cleanPageBeforeUse | int |
     // 0 | If set, data pages are filled with zero before being given for
     // writing by device. Slow, but usefull to readout incomplete pages (driver
@@ -198,12 +141,6 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name)
     // to stdout when stopping) |
     cfg.getOptionalValue<int>(name + ".debugStatsEnabled",
                               cfgDebugStatsEnabled);
-
-    // configuration parameter: | equipment-rorc-* | TFperiod | int | 256 |
-    // Duration of a timeframe, in number of LHC orbits. |
-    int cfgTFperiod = 256;
-    cfg.getOptionalValue<int>(name + ".TFperiod", cfgTFperiod);
-    timeframePeriodOrbits = cfgTFperiod;
 
     /*    // get readout memory buffer parameters
         std::string sMemorySize=cfg.getValue<std::string>(name +
@@ -286,20 +223,6 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name)
                infoCardId.c_str());
 
     // todo: log parameters ?
-
-    if (!cfgRdhUseFirstInPageEnabled) {
-      usingSoftwareClock =
-          true; // if RDH disabled, use internal clock for TF id
-    }
-    theLog.log("Timeframe length = %d orbits", (int)timeframePeriodOrbits);
-    if (usingSoftwareClock) {
-      timeframeRate =
-          LHCOrbitRate * 1.0 / timeframePeriodOrbits; // timeframe rate, in Hz
-      theLog.log("Timeframe IDs generated by software, %.2lf Hz",
-                 timeframeRate);
-    } else {
-      theLog.log("Timeframe IDs generated from RDH trigger counters");
-    }
 
   } catch (const std::exception &e) {
     theLog.log(InfoLogger::Severity::Error, "Exception : %s", e.what());
@@ -455,204 +378,9 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
       if (d != nullptr) {
         statsNumberOfPages++;
         nextBlock = d;
-
-        // printf("\nPage %llu\n",statsNumberOfPages);
-
-        // in software clock mode, set timeframe id based on current timestamp
-        if (usingSoftwareClock) {
-          if (timeframeClock.isTimeout()) {
-            currentTimeframe++;
-            statsNumberOfTimeframes++;
-            timeframeClock.increment();
-          }
-        }
-
-        // default values for metadata
-        int equipmentId = undefinedEquipmentId;
-        int linkId = undefinedLinkId;
-        int hbOrbit = -1;
-
-        // retrieve metadata from RDH, if configured to do so
-        if ((cfgRdhUseFirstInPageEnabled) || (cfgRdhCheckEnabled)) {
-          RdhHandle h(d->getData()->data);
-
-          // check that it is a correct RDH
-          std::string errorDescription;
-          if (h.validateRdh(errorDescription) != 0) {
-            theLog.log(InfoLogger::Severity::Warning,
-                       "First RDH in page is wrong: %s",
-                       errorDescription.c_str());
-          } else {
-
-            // equipmentId - computed from CRU id + end-point
-            equipmentId = h.getCruId() * 10 + h.getEndPointId();
-	    
-            // discard value from CRU if this is the default one
-            if (equipmentId == 0) {
-              equipmentId = undefinedEquipmentId;
-            }
-
-            // linkId
-            linkId = h.getLinkId();
-
-            // timeframe ID
-            hbOrbit = h.getHbOrbit();
-            // printf("HB orbit %u\n",hbOrbit);
-            // printf("Page %llu, link %d, orbit
-            // %u\n",statsNumberOfPages,linkId,hbOrbit);
-            if ((statsNumberOfPages == 1) ||
-                ((uint32_t)hbOrbit >=
-                 currentTimeframeHbOrbitBegin + timeframePeriodOrbits)) {
-              if (statsNumberOfPages == 1) {
-                firstTimeframeHbOrbitBegin = hbOrbit;
-              }
-              statsNumberOfTimeframes++;
-              currentTimeframeHbOrbitBegin =
-                  hbOrbit - ((hbOrbit - firstTimeframeHbOrbitBegin) %
-                             timeframePeriodOrbits); // keep it periodic and
-                                                     // aligned to 1st timeframe
-              uint64_t newTimeframe = 1 + (currentTimeframeHbOrbitBegin -
-                                           firstTimeframeHbOrbitBegin) /
-                                              timeframePeriodOrbits;
-              if (newTimeframe != currentTimeframe + 1) {
-                if (cfgRdhDumpWarningEnabled) {
-                  theLog.log(InfoLogger::Severity::Warning,
-                             "Non-contiguous timeframe IDs %llu ... %llu",
-                             (unsigned long long)currentTimeframe,
-                             (unsigned long long)newTimeframe);
-                }
-              }
-              currentTimeframe = newTimeframe;
-              // printf("Starting timeframe %llu @ orbit %d (actual:
-              // %d)\n",currentTimeframe,(int)currentTimeframeHbOrbitBegin,(int)hbOrbit);
-            } else {
-              // printf("HB orbit %d\n",hbOrbit);
-            }
-          }
-        }
-
-        // fill page metadata
         d->getData()->header.dataSize = superpage.getReceived();
-        d->getData()->header.equipmentId = equipmentId;
-        d->getData()->header.linkId = linkId;
-        d->getData()->header.timeframeId = currentTimeframe;
-
-        // Dump RDH if configured to do so
-        if (cfgRdhDumpEnabled) {
-          RdhBlockHandle b(d->getData()->data, d->getData()->header.dataSize);
-          if (b.printSummary()) {
-            printf("errors detected, suspending RDH dump\n");
-            cfgRdhDumpEnabled = 0;
-          } else {
-            cfgRdhDumpEnabled++; // if value positive, it continues... but
-                                 // negative, it stops on zero, to limit number
-                                 // of dumps
-          }
-        }
-
-        // validate RDH structure, if configured to do so
-        if (cfgRdhCheckEnabled) {
-          std::string errorDescription;
-          size_t blockSize = d->getData()->header.dataSize;
-          uint8_t *baseAddress = (uint8_t *)(d->getData()->data);
-          int rdhIndexInPage = 0;
-
-          for (size_t pageOffset = 0; pageOffset < blockSize;) {
-            RdhHandle h(baseAddress + pageOffset);
-            rdhIndexInPage++;
-
-            // printf("RDH #%d @ 0x%X : next block @ +%d
-            // bytes\n",rdhIndexInPage,(unsigned
-            // int)pageOffset,h.getOffsetNextPacket());
-
-            // data format:
-            // RDH v3 =
-            // https://docs.google.com/document/d/1otkSDYasqpVBDnxplBI7dWNxaZohctA-bvhyrzvtLoQ/edit?usp=sharing
-            if (h.validateRdh(errorDescription)) {
-              if ((cfgRdhDumpEnabled) || (cfgRdhDumpErrorEnabled)) {
-                for (int i = 0; i < 16; i++) {
-                  printf("%08X ", (int)(((uint32_t *)baseAddress)[i]));
-                }
-                printf("\n");
-                printf("Page 0x%p + %ld\n%s", (void *)baseAddress, pageOffset,
-                       errorDescription.c_str());
-                h.dumpRdh(pageOffset, 1);
-                errorDescription.clear();
-              }
-              statsRdhCheckErr++;
-              // stop on first RDH error (should distinguich valid/invalid block
-              // length)
-              break;
-            } else {
-              statsRdhCheckOk++;
-
-              if (cfgRdhDumpEnabled) {
-                h.dumpRdh(pageOffset, 1);
-                for (int i = 0; i < 16; i++) {
-                  printf("%08X ",
-                         (int)(((uint32_t *)baseAddress + pageOffset)[i]));
-                }
-                printf("\n");
-              }
-            }
-
-            // linkId should be same everywhere in page
-            if (linkId != h.getLinkId()) {
-              if (cfgRdhDumpWarningEnabled) {
-                theLog.log(InfoLogger::Severity::Warning,
-                           "RDH #%d @ 0x%X : inconsistent link ids: %d != %d",
-                           rdhIndexInPage, (unsigned int)pageOffset, linkId,
-                           h.getLinkId());
-              }
-              statsRdhCheckStreamErr++;
-              break; // stop checking this page
-            }
-
-            // check no timeframe overlap in page
-            if ((uint32_t)hbOrbit >=
-                currentTimeframeHbOrbitBegin + timeframePeriodOrbits) {
-              if (cfgRdhDumpErrorEnabled) {
-                theLog.log(InfoLogger::Severity::Warning,
-                           "RDH #%d @ 0x%X : TimeFrame ID change in page not "
-                           "allowed : hbOrbit %u > %u + %u",
-                           rdhIndexInPage, (unsigned int)pageOffset,
-                           (uint32_t)hbOrbit, currentTimeframeHbOrbitBegin,
-                           timeframePeriodOrbits);
-              }
-              statsRdhCheckStreamErr++;
-              break; // stop checking this page
-            }
-
-            // check packetCounter is contiguous
-            if (cfgRdhCheckPacketCounterContiguous) {
-              uint8_t newCount = h.getPacketCounter();
-              // no boundary check necessary to verify linkId<=RdhMaxLinkId,
-              // this was done in validateRDH()
-              if (newCount != RdhLastPacketCounter[linkId]) {
-                if (newCount !=
-                    (uint8_t)(RdhLastPacketCounter[linkId] + (uint8_t)1)) {
-                  theLog.log(InfoLogger::Severity::Warning,
-                             "RDH #%d @ 0x%X : possible packets dropped for "
-                             "link %d, packetCounter jump from %d to %d",
-                             rdhIndexInPage, (unsigned int)pageOffset,
-                             (int)linkId, (int)RdhLastPacketCounter[linkId],
-                             (int)newCount);
-                }
-                RdhLastPacketCounter[linkId] = newCount;
-              }
-            }
-
-            // TODO
-            // check counter increasing
-            // all have same TF id
-
-            uint16_t offsetNextPacket = h.getOffsetNextPacket();
-            if (offsetNextPacket == 0) {
-              break;
-            }
-            pageOffset += offsetNextPacket;
-          }
-        }
+	
+        // printf("\nPage %llu\n",statsNumberOfPages);
       } else {
         // there is a ready superpage, but we are not able to keep it
         statsNumberOfPagesLost++;
@@ -719,21 +447,9 @@ void ReadoutEquipmentRORC::initCounters() {
   RocFifoSize = 0;
 
   // reset stats
-  statsRdhCheckOk = 0;
-  statsRdhCheckErr = 0;
-  statsRdhCheckStreamErr = 0;
   statsNumberOfPages = 0;
   statsNumberOfPagesEmpty = 0;
   statsNumberOfPagesLost = 0;
-  statsNumberOfTimeframes = 0;
-
-  // reset timeframe id
-  currentTimeframe = 0;
-
-  // reset timeframe clock
-  if (usingSoftwareClock) {
-    timeframeClock.reset(1000000 / timeframeRate);
-  }
 
   // reset packetCounter monitor
   for (unsigned int i = 0; i <= RdhMaxLinkId; i++) {
@@ -742,18 +458,10 @@ void ReadoutEquipmentRORC::initCounters() {
 }
 
 void ReadoutEquipmentRORC::finalCounters() {
-  if (cfgRdhCheckEnabled) {
-    theLog.log("Equipment %s : %llu timeframes, %llu pages (+ %llu lost + %llu "
-               "empty), RDH checks %llu ok, %llu "
-               "errors, %llu stream inconsistencies %d packets dropped by CRU",
-               name.c_str(), statsNumberOfTimeframes, statsNumberOfPages,
-               statsNumberOfPagesLost, statsNumberOfPagesEmpty, statsRdhCheckOk,
-               statsRdhCheckErr, statsRdhCheckStreamErr, lastPacketDropped);
-  } else {
-    theLog.log("Equipment %s : %llu pages (+ %llu lost + %llu empty)",
+
+  theLog.log("Equipment %s : %llu pages (+ %llu lost + %llu empty), %d packets dropped by CRU",
                name.c_str(), statsNumberOfPages, statsNumberOfPagesLost,
-               statsNumberOfPagesEmpty);
-  }
+               statsNumberOfPagesEmpty, lastPacketDropped);
 
   if (cfgDebugStatsEnabled) {
 

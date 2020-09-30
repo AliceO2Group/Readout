@@ -255,8 +255,9 @@ public:
   }
 
   int pushData(DataSetReference &bc) {
-
+     
     if (disableSending) {
+      totalPushSuccess++;
       return 0;
     }
 
@@ -265,20 +266,36 @@ public:
       // we just ship one FMQmessage per incoming data page
       for (auto &br : *bc) {
         DataBlock *b = br->getData();
+	if (b == nullptr) {
+	  continue;
+	}
+	if (b->data == nullptr) {
+	  continue;
+	}
         DataBlockContainerReference *blockRef =
             new DataBlockContainerReference(br);
+        if (blockRef == nullptr) {
+          totalPushError++;
+	  return -1;
+        }
         void *hint = (void *)blockRef;
         void *blobPtr = b->data;
         size_t blobSize = (size_t)b->header.dataSize;
+        //printf("send %p = %d bytes hint=%p\n",blobPtr,(int)blobSize,hint);
         std::unique_ptr<FairMQMessage> msgBody(transportFactory->CreateMessage(
             memoryBuffer, blobPtr, blobSize, hint));
-        // printf("send %p = %d bytes hint=%p\n",blobPtr,(int)blobSize,hint);
         sendingChannel->Send(msgBody);
         gReadoutStats.bytesFairMQ += blobSize;
       }
+      totalPushSuccess++;
       return 0;
     }
-    
+
+    bool isRdhFormat = false;
+    if (bc->size() > 0) {
+      isRdhFormat = bc->at(0)->getData()->header.isRdhFormat;
+    }    
+   
     // mode to send in simple raw format with Datablock header:
     // 1 FMQ message per data page, 1 part= header, 1 part= payload
     if (enableRawFormatDatablock) {
@@ -287,7 +304,10 @@ public:
 	// reference is kept alive until this new object is destroyed in the
 	// cleanupCallback
 	DataBlockContainerReference *ptr = new DataBlockContainerReference(br);
-
+        if (ptr == nullptr) {
+	   totalPushError++;
+	   return -1;
+	}        
 	std::unique_ptr<FairMQMessage> msgHeader(transportFactory->CreateMessage(
             (void *)&(br->getData()->header),
             (size_t)(br->getData()->header.headerSize), msgcleanupCallback,
@@ -301,27 +321,52 @@ public:
 	message.AddPart(std::move(msgBody));
         sendingChannel->Send(message);	
       }
+      totalPushSuccess++;
       return 0;
     }
 
     // StfSuperpage format
     // we just ship STFheader + one FMQ message part per incoming data page
-    if (enableStfSuperpage) {     
+    if ((enableStfSuperpage)||(!isRdhFormat)) {     
 
       DataBlockContainerReference headerBlock = nullptr;
       headerBlock = mp->getNewDataBlockContainer();
+      if (headerBlock == nullptr) {
+        totalPushError++;
+	return -1;
+      }
       auto blockRef = new DataBlockContainerReference(headerBlock);
+      if (blockRef == nullptr) {
+        totalPushError++;
+	return -1;
+      }
       SubTimeframe *stfHeader = (SubTimeframe *)headerBlock->getData()->data;
+      if (stfHeader == nullptr) {
+        totalPushError++;
+	return -1;
+      }
       stfHeader->timeframeId = 0;
-      stfHeader->numberOfHBF = 0;
       stfHeader->linkId = undefinedLinkId;
+
+      // set flag when this is last STF in timeframe
+      if (bc->back()->getData()->header.flagEndOfTimeframe) {
+        stfHeader->lastTFMessage=1;
+      }
 
       for (auto &br : *bc) {
         DataBlock *b = br->getData();
         stfHeader->timeframeId = b->header.timeframeId;
-        stfHeader->linkId = b->header.linkId;
+        stfHeader->runNumber = b->header.runNumber;
+        stfHeader->systemId = b->header.systemId;
+	stfHeader->feeId = b->header.feeId;
+	stfHeader->equipmentId = b->header.equipmentId;
+	stfHeader->linkId = b->header.linkId;
+	stfHeader->timeframeOrbitFirst = b->header.timeframeOrbitFirst;
+	stfHeader->timeframeOrbitLast = b->header.timeframeOrbitLast;
 	break;
       }
+
+      //printf("Sending TF %lu\n", stfHeader->timeframeId);
 
       std::vector<FairMQMessagePtr> msgs;
       msgs.reserve(bc->size()+1);
@@ -341,6 +386,10 @@ public:
         DataBlock *b = br->getData();
         DataBlockContainerReference *blockRef =
             new DataBlockContainerReference(br);
+	if (blockRef == nullptr) {
+	  totalPushError++;
+	  return -1;
+	}
         void *hint = (void *)blockRef;
         void *blobPtr = b->data;
         size_t blobSize = (size_t)b->header.dataSize;
@@ -354,6 +403,7 @@ public:
       }
       sendingChannel->Send(msgs);
       
+      totalPushSuccess++;
       return 0;
     }
 
@@ -363,6 +413,7 @@ public:
 
     // we iterate a first time to count number of HB
     if (memoryPoolPageSize < (int)sizeof(SubTimeframe)) {
+      totalPushError++;
       return -1;
     }
     DataBlockContainerReference headerBlock = nullptr;
@@ -371,17 +422,22 @@ public:
     } catch (...) {
     }
     if (headerBlock == nullptr) {
+      totalPushError++;
       return -1;
     }
     auto blockRef = new DataBlockContainerReference(headerBlock);
-    SubTimeframe *stfHeader = (SubTimeframe *)headerBlock->getData()->data;
-    if (stfHeader == nullptr) {
+    if (blockRef == nullptr) {
+      totalPushError++;
       return -1;
     }
-    stfHeader->timeframeId = 0;
-    stfHeader->numberOfHBF = 0;
+    SubTimeframe *stfHeader = (SubTimeframe *)headerBlock->getData()->data;
+    if (stfHeader == nullptr) {
+      totalPushError++;
+      return -1;
+    }
+    stfHeader->timeframeId = undefinedTimeframeId;
     stfHeader->linkId = undefinedLinkId;
-
+    
     unsigned int lastHBid = -1;
     int isFirst = true;
     int ix = 0;
@@ -391,7 +447,6 @@ public:
       if (isFirst) {
         stfHeader->timeframeId = b->header.timeframeId;
         stfHeader->linkId = b->header.linkId;
-        stfHeader->numberOfHBF = 0;
         isFirst = false;
       } else {
         if (stfHeader->timeframeId != b->header.timeframeId) {
@@ -410,10 +465,9 @@ public:
         o2::Header::RAWDataHeader *rdh =
             (o2::Header::RAWDataHeader *)&b->data[offset];
         if (rdh->heartbeatOrbit != lastHBid) {
-          stfHeader->numberOfHBF++;
           lastHBid = rdh->heartbeatOrbit;
-          // printf("offset %d now %d HBF -
-          // HBid=%d\n",offset,stfHeader->numberOfHBF,lastHBid);
+          // printf("offset %d -
+          // HBid=%d\n",offset,lastHBid);
         }
         if (stfHeader->linkId != rdh->linkId) {
           theLog.log(InfoLogger::Severity::Warning,"TF%d link Id mismatch %d != %d @ page offset %d",
@@ -432,8 +486,8 @@ public:
 
 
 
-    // printf("TF %d link %d = %d blocks, %d
-    // HBf\n",(int)stfHeader->timeframeId,(int)stfHeader->linkId,(int)bc->size(),(int)stfHeader->numberOfHBF);
+    // printf("TF %d link %d = %d blocks 
+    // \n",(int)stfHeader->timeframeId,(int)stfHeader->linkId,(int)bc->size());
 
     // create a header message
     // std::unique_ptr<FairMQMessage>
@@ -623,6 +677,7 @@ public:
       pendingFrames.clear();
 	  
       theLog.log(InfoLogger::Severity::Error,"ConsumerFMQ : error %d",err);
+      totalPushError++;
       return -1;
     }
     
@@ -655,6 +710,7 @@ public:
         sendingChannel->Send(msgBody);
         return 0;
         */
+    totalPushSuccess++;
     return 0;
   }
 
