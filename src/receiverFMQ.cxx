@@ -33,6 +33,7 @@
 #include "SubTimeframe.h"
 
 #include "RdhUtils.h"
+#include "DataBlock.h"
 
 // definition of a global for logging
 using namespace AliceO2::InfoLogger;
@@ -258,7 +259,7 @@ int main(int argc, const char **argv) {
   std::string cfgDecodingMode = "none";
   cfg.getOptionalValue<std::string>(cfgEntryPoint + ".decodingMode",
                                     cfgDecodingMode);
-  enum decodingMode { none = 0, stfHbf = 1, stfSuperpage = 2 };
+  enum decodingMode { none = 0, stfHbf = 1, stfSuperpage = 2, stfDatablock = 3 };
   decodingMode mode = decodingMode::none;
   if (cfgDecodingMode == "none") {
     mode = decodingMode::none;
@@ -266,6 +267,8 @@ int main(int argc, const char **argv) {
     mode = decodingMode::stfHbf;
   } else if (cfgDecodingMode == "stfSuperpage") {
     mode = decodingMode::stfSuperpage;
+  } else if (cfgDecodingMode == "stfDatablock") {
+    mode = decodingMode::stfDatablock;
   } else {
     theLog.log(InfoLogger::Severity::Error, "Wrong decoding mode set : %s",
                cfgDecodingMode.c_str());
@@ -314,7 +317,7 @@ int main(int argc, const char **argv) {
   double copyRatio=0;
   unsigned long long copyRatioCount=0;
 
-  if ( (mode == decodingMode::stfHbf) || (mode == decodingMode::stfSuperpage)){
+  if ( (mode == decodingMode::stfHbf) || (mode == decodingMode::stfSuperpage) || (mode == decodingMode::stfDatablock)){
     isMultiPart = true;
   }
 
@@ -456,6 +459,22 @@ int main(int argc, const char **argv) {
 	      i++;
 	    }
           }
+	} else if (mode == decodingMode::stfDatablock) {
+	  nMsgParts += msgParts.size();
+	  //printf("parts=%d\n",msgParts.size());
+	  if (msgParts.size()!=2) {
+	    theLog.log(InfoLogger::Severity::Error,
+                       "%d parts in message, should be 2", (int)msgParts.size());
+	  } else {
+	    int sz = msgParts[0]->GetSize();
+	    if (sz != sizeof(DataBlockHeaderBase)) {
+              theLog.log(InfoLogger::Severity::Error,
+                       "part[0] size = %d, should be %d",sz , (int)sizeof(DataBlock));
+	    } else {
+	      DataBlockHeaderBase *dbhb = (DataBlockHeaderBase *)msgParts[0]->GetData();
+	      // printf("rx datablock size: header %d ?= msgpart %d\n",(int)dbhb->dataSize,(int)msgParts[1]->GetSize());
+	    }
+	  }
 	}
       }
     } else {
