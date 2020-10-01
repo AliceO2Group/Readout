@@ -217,7 +217,7 @@ protected:
   }
 
   // compute range of orbits for given timeframe
-  void getTimeframeOrbitRange(uint64_t tfId, uint32_t hbOrbitMin, uint32_t hbOrbitMax);
+  void getTimeframeOrbitRange(uint64_t tfId, uint32_t &hbOrbitMin, uint32_t &hbOrbitMax);
 
   void initRdhEquipment(); // to be called by equipments producing RDH-formatted data
   
