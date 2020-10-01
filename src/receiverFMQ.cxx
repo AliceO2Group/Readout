@@ -460,11 +460,11 @@ int main(int argc, const char **argv) {
                        "%d parts in message, should be 2", (int)msgParts.size());
 	  } else {
 	    int sz = msgParts[0]->GetSize();
-	    if (sz != sizeof(DataBlockHeaderBase)) {
+	    if (sz != sizeof(DataBlockHeader)) {
               theLog.log(InfoLogger::Severity::Error,
                        "part[0] size = %d, should be %d",sz , (int)sizeof(DataBlock));
 	    } else {
-	      DataBlockHeaderBase *dbhb = (DataBlockHeaderBase *)msgParts[0]->GetData();
+	      DataBlockHeader *dbhb = (DataBlockHeader *)msgParts[0]->GetData();
 	      // printf("rx datablock size: header %d ?= msgpart %d\n",(int)dbhb->dataSize,(int)msgParts[1]->GetSize());
 	    }
 	  }

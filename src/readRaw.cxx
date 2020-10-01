@@ -184,13 +184,13 @@ int main(int argc, const char *argv[]) {
     long dataSize;
 
     if (dataBlockHeaderEnabled) {
-      DataBlockHeaderBase hb;
+      DataBlockHeader hb;
       if (fread(&hb, sizeof(hb), 1, fp) != 1) {
         break;
       }
       fileOffset += sizeof(hb);
 
-      if (hb.blockType != DataBlockType::H_BASE) {
+      if (hb.headerVersion != defaultDataBlockHeader.headerVersion) {
         ERR_LOOP;
       }
       if (hb.headerSize != sizeof(hb)) {
@@ -200,7 +200,7 @@ int main(int argc, const char *argv[]) {
       if (dumpDataBlockHeader) {
         printf("Block header %lu @ %lu\n", pageCount + 1,
                fileOffset - sizeof(hb));
-        printf("\tblockType = 0x%02X\n", hb.blockType);
+        printf("\theaderVersion= 0x%08X\n", hb.headerVersion);
         printf("\theaderSize = %u\n", hb.headerSize);
         printf("\tdataSize = %u\n", hb.dataSize);
         printf("\tlinkId = %u\n", hb.linkId);

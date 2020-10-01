@@ -190,8 +190,8 @@ public:
 
     // configuration parameter: | consumer-fileRecorder-* |
     // dataBlockHeaderEnabled | int | 0 | Enable (1) or disable (0) the writing
-    // to file of the internal readout header (Common::DataBlockHeaderBase
-    // struct) between the data pages, to easily navigate through the file
+    // to file of the internal readout header (Readout DataBlock.h)
+    // between the data pages, to easily navigate through the file
     // without RDH decoding. If disabled, the raw data pages received from CRU
     // are written without further formatting. |
     cfg.getOptionalValue(cfgEntryPoint + ".dataBlockHeaderEnabled",

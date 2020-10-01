@@ -448,7 +448,7 @@ Thread::CallbackResult ReadoutEquipment::threadCallback(void *arg) {
 
       // print block debug info
       if (ptr->debugFirstPages > 0) {
-        DataBlockHeaderBase *h = &(nextBlock->getData()->header);
+        DataBlockHeader *h = &(nextBlock->getData()->header);
         theLog.log(InfoLogger::Severity::Debug,"Equipment %s (%d) page %lu link %d tf %lu size %d",
                    ptr->name.c_str(), h->equipmentId, h->blockId, h->linkId,
                    h->timeframeId, h->dataSize);
@@ -598,7 +598,7 @@ uint64_t ReadoutEquipment::getCurrentTimeframe() {
   return currentTimeframe;
 }
 
-int ReadoutEquipment::tagDatablockFromRdh(RdhHandle &h, DataBlockHeaderBase &bh) {
+int ReadoutEquipment::tagDatablockFromRdh(RdhHandle &h, DataBlockHeader &bh) {
 
   uint64_t tfId = undefinedTimeframeId;
   uint8_t systemId = undefinedSystemId;
@@ -650,7 +650,7 @@ int ReadoutEquipment::tagDatablockFromRdh(RdhHandle &h, DataBlockHeaderBase &bh)
 
 int  ReadoutEquipment::processRdh(DataBlockContainerReference &block){
 
-  DataBlockHeaderBase &blockHeader=block->getData()->header;
+  DataBlockHeader &blockHeader=block->getData()->header;
   void *blockData=block->getData()->data;
   if (blockData == nullptr) {
     return -1;

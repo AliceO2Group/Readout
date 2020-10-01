@@ -168,7 +168,7 @@ protected:
 
 private:
   
-  int tagDatablockFromRdh(RdhHandle &RDH, DataBlockHeaderBase &h);
+  int tagDatablockFromRdh(RdhHandle &RDH, DataBlockHeader &h);
   unsigned long long statsNumberOfTimeframes =
       0; // number of timeframes read out
   uint32_t currentTimeframeHbOrbitBegin =
