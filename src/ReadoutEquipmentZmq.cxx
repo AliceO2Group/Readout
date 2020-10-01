@@ -241,7 +241,7 @@ DataBlockContainerReference ReadoutEquipmentZmq::getNextBlock() {
     DataBlock *b = nextBlock->getData();
 
     snapshotLock.lock();
-    if ((time(NULL) - snapshotMetadata.timestamp < 5) && (snapshotMetadata.currentSize < b->header.dataSize)) {
+    if ((time(NULL) - snapshotMetadata.timestamp < 5) && (snapshotMetadata.currentSize < (int)b->header.dataSize)) {
       b->header.dataSize = snapshotMetadata.currentSize;
       memcpy(b->data, snapshotData.get(), snapshotMetadata.currentSize);
     }

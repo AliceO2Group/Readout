@@ -51,6 +51,7 @@ int ZmqClient::publish(void *msgBody, int msgSize){
 
 int ZmqClient::setCallback(std::function<int(void *msg, int msgSize)> cb) {
   callback = cb;
+  return 0;
 }
 
 void ZmqClient::run() { 

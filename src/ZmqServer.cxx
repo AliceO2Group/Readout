@@ -62,7 +62,7 @@ void ZmqServer::run() {
     for (;;) {
       break;
       char buf[128];
-      snprintf(buf,128,"Hello %d",i);
+      snprintf(buf,128,"Hello %d",(int)i);
       zmqerr=publish(buf,sizeof(buf));
       //zmqerr=zmq_send (zh, buf, strlen(buf), 0);
       //zmqerr=zmq_send(zh, "World", 5, 0);
