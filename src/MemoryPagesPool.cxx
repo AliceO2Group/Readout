@@ -249,13 +249,8 @@ MemoryPagesPool::getNewDataBlockContainer(void *newPage) {
   // fill header at beginning of page
   // assuming payload is contiguous after header
   DataBlock *b = (DataBlock *)newPage;
-  b->header.blockType = DataBlockType::H_BASE;
-  b->header.headerSize = sizeof(DataBlockHeaderBase);
+  b->header = defaultDataBlockHeader;
   b->header.dataSize = getDataBlockMaxSize();
-  b->header.blockId = undefinedBlockId;
-  b->header.linkId = undefinedLinkId;
-  b->header.equipmentId = undefinedEquipmentId;
-  b->header.timeframeId = undefinedTimeframeId;
   b->data = &(((char *)b)[headerReservedSpace]);
 
   // define a function to put it back in pool after use
