@@ -585,7 +585,7 @@ uint64_t ReadoutEquipment::getTimeframeFromOrbit(uint32_t hbOrbit) {
   return tfId;
 }
 
-void ReadoutEquipment::getTimeframeOrbitRange(uint64_t tfId, uint32_t hbOrbitMin, uint32_t hbOrbitMax) {
+void ReadoutEquipment::getTimeframeOrbitRange(uint64_t tfId, uint32_t &hbOrbitMin, uint32_t &hbOrbitMax) {
   hbOrbitMin = undefinedOrbit;
   hbOrbitMax = undefinedOrbit;
   if (tfId == undefinedTimeframeId) return;
@@ -640,8 +640,8 @@ int ReadoutEquipment::tagDatablockFromRdh(RdhHandle &h, DataBlockHeaderBase &bh)
   }
   
   bh.timeframeId = tfId;
-  bh.systemId = undefinedSystemId;
-  bh.feeId = undefinedFeeId;
+  bh.systemId = systemId;
+  bh.feeId = feeId;
   bh.equipmentId = equipmentId;
   bh.linkId = linkId;
   getTimeframeOrbitRange(tfId, bh.timeframeOrbitFirst, bh.timeframeOrbitLast);

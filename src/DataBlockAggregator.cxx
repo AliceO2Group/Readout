@@ -202,7 +202,7 @@ Thread::CallbackResult DataBlockAggregator::executeCallback() {
 	int ix=0;	
 	for (auto const &ss: it->second.sstf) {
 	  ix++;
-	  if (ix==it->second.sstf.size()) {
+	  if (ix==(int)it->second.sstf.size()) {
 	    // this is the last piece of this TF, mark last block as such
 	    ss.data->back()->getData()->header.flagEndOfTimeframe=1;
 	  }
