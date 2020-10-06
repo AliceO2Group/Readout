@@ -69,7 +69,7 @@ public:
     cfg.getOptionalValue<int>(cfgEntryPoint + ".disableSending",
                               cfgDisableSending);
     if (cfgDisableSending) {
-      theLog.log("FMQ message sending disabled");
+      theLog.log(LogInfoDevel_(3002), "FMQ message sending disabled");
       disableSending = true;
     }
 
@@ -81,14 +81,14 @@ public:
     cfg.getOptionalValue<int>(cfgEntryPoint + ".enableRawFormat",
                               cfgEnableRawFormat);
     if (cfgEnableRawFormat==1) {
-      theLog.log("FMQ message output in raw format - mode 1 : 1 message per data page");
+      theLog.log(LogInfoDevel_(3002), "FMQ message output in raw format - mode 1 : 1 message per data page");
       enableRawFormat = true;
     } else if (cfgEnableRawFormat==2) {
-      theLog.log("FMQ message output in raw format - mode 2 : 1 message = "
+      theLog.log(LogInfoDevel_(3002), "FMQ message output in raw format - mode 2 : 1 message = "
       "1 STF header + 1 part per data page");
       enableStfSuperpage = true;
     } else if (cfgEnableRawFormat==3) {
-      theLog.log("FMQ message output in raw format - mode 3 : 1 message = "
+      theLog.log(LogInfoDevel_(3002), "FMQ message output in raw format - mode 3 : 1 message = "
       "1 DataBlock header + 1 data page");
       enableRawFormatDatablock = true;
     }
@@ -127,7 +127,7 @@ public:
     cfg.getOptionalValue<std::string>(cfgEntryPoint + ".fmq-address",
                                       cfgChannelAddress);
 
-    theLog.log("Creating FMQ (session %s) TX channel %s type %s:%s @ %s",
+    theLog.log(LogInfoDevel_(3002), "Creating FMQ (session %s) TX channel %s type %s:%s @ %s",
                cfgSessionName.c_str(), cfgChannelName.c_str(),
                cfgTransportType.c_str(), cfgChannelType.c_str(),
                cfgChannelAddress.c_str());
@@ -147,7 +147,7 @@ public:
     }
     for (auto &it : mapOptions) {
       fmqOptions.SetValue<std::string>(it.first, it.second);
-      theLog.log("Setting FMQ option %s = %s", it.first.c_str(),
+      theLog.log(LogInfoDevel_(3002), "Setting FMQ option %s = %s", it.first.c_str(),
                  it.second.c_str());
     }
 
@@ -188,7 +188,7 @@ public:
             }
           });
 
-      theLog.log("Got FMQ unmanaged memory buffer size %lu @ %p",
+      theLog.log(LogInfoDevel_(3008), "Got FMQ unmanaged memory buffer size %lu @ %p",
                  memoryBuffer->GetSize(), memoryBuffer->GetData());
     }
 
@@ -211,7 +211,7 @@ public:
                                         // with the name of the consumer
       }
       theMemoryBankManager.addBank(memBank, memoryBankName);
-      theLog.log("Bank %s added", memoryBankName.c_str());
+      theLog.log(LogInfoDevel_(3008), "Bank %s added", memoryBankName.c_str());
     }
 
     // allocate a pool of pages for headers and data frame copies
@@ -235,7 +235,7 @@ public:
           " for " + std::to_string(memoryPoolNumberOfPages) + " pages x " +
           std::to_string(memoryPoolPageSize) + " bytes";
     }
-    theLog.log("Using memory pool %d pages x %d bytes", memoryPoolNumberOfPages,
+    theLog.log(LogInfoDevel_(3008), "Using memory pool %d pages x %d bytes", memoryPoolNumberOfPages,
                memoryPoolPageSize);
 
   }
@@ -450,10 +450,10 @@ public:
         isFirst = false;
       } else {
         if (stfHeader->timeframeId != b->header.timeframeId) {
-          theLog.log(InfoLogger::Severity::Warning,"mismatch tfId");
+          theLog.log(LogWarningSupport_(3004), "mismatch tfId");
         }
         if (stfHeader->linkId != b->header.linkId) {
-          theLog.log(InfoLogger::Severity::Warning,"mismatch linkId");
+          theLog.log(LogWarningSupport_(3004), "mismatch linkId");
         }
       }
       // printf("block %d tf %d link
@@ -470,7 +470,7 @@ public:
           // HBid=%d\n",offset,lastHBid);
         }
         if (stfHeader->linkId != rdh->linkId) {
-          theLog.log(InfoLogger::Severity::Warning,"TF%d link Id mismatch %d != %d @ page offset %d",
+          theLog.log(LogWarningSupport_(3004), "TF%d link Id mismatch %d != %d @ page offset %d",
                  (int)stfHeader->timeframeId, (int)stfHeader->linkId,
                  (int)rdh->linkId, (int)offset);
           // dumpRDH(rdh);
@@ -569,7 +569,7 @@ public:
         // todo: same code as for header -> create func/lambda
         // todo: send empty message if no page left in buffer
         if (memoryPoolPageSize < totalSize) {
-          theLog.log(InfoLogger::Severity::Warning,"page size too small %d < %d", memoryPoolPageSize,
+          theLog.log(LogWarningSupport_(3230), "page size too small %d < %d", memoryPoolPageSize,
                  totalSize);
           throw __LINE__;
         }
@@ -579,7 +579,7 @@ public:
         } catch (...) {
         }
         if (copyBlock == nullptr) {
-          theLog.log(InfoLogger::Severity::Warning,"no page left");
+          theLog.log(LogWarningSupport_(3230), "no page left");
           throw __LINE__;
         }
         auto blockRef = new DataBlockContainerReference(copyBlock);
@@ -663,7 +663,7 @@ public:
 	gReadoutStats.bytesFairMQ += messagesToSendSize;
 	messagesToSendSize = 0;
       } else {
-	LOG(ERROR) << "Sending failed!";
+        theLog.log(LogErrorSupport_(3233), "Sending failed");
       }
     }
     catch(int err) {
@@ -676,7 +676,7 @@ public:
       }
       pendingFrames.clear();
 	  
-      theLog.log(InfoLogger::Severity::Error,"ConsumerFMQ : error %d",err);
+      theLog.log(LogErrorSupport_(3233), "ConsumerFMQ : error %d",err);
       totalPushError++;
       return -1;
     }

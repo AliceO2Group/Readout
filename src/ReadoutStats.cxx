@@ -17,11 +17,7 @@
 // to be updated by the relevant modules
 
 #include "ReadoutStats.h"
-
-// get global log handle
-#include <InfoLogger/InfoLogger.hxx>
-using namespace AliceO2::InfoLogger;
-extern InfoLogger theLog;
+#include "readoutInfoLogger.h"
 
 // the global stats instance
 ReadoutStats gReadoutStats;
@@ -38,7 +34,7 @@ void ReadoutStats::reset() {
 }
 
 void ReadoutStats::print() {
-  theLog.log("Readout global stats: numberOfSubtimeframes=%llu  "
+  theLog.log(LogInfoSupport_(3003), "Readout global stats: numberOfSubtimeframes=%llu  "
              "bytesReadout=%llu bytesRecorded=%llu bytesFairMQ=%llu",
              (unsigned long long)numberOfSubtimeframes.load(),
              (unsigned long long)bytesReadout.load(),

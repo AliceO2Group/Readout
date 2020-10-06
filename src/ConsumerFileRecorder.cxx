@@ -26,12 +26,12 @@ public:
     maxFileSize = _maxFileSize;
     maxPages = _maxPages;
     if (theLog != nullptr) {
-      theLog->log("Opening file for writing: %s", path.c_str());
+      theLog->log(LogInfoDevel_(3007), "Opening file for writing: %s", path.c_str());
     }
     fp = fopen(path.c_str(), "wb");
     if (fp == NULL) {
       if (theLog != nullptr) {
-        theLog->log(InfoLogger::Severity::Error, "Failed to create file: %s",
+        theLog->log(LogErrorSupport_(3232), "Failed to create file: %s",
                     strerror(errno));
       }
       return;
@@ -44,7 +44,8 @@ public:
   void close() {
     if (fp != NULL) {
       if (theLog != nullptr) {
-        theLog->log("Closing file %s : %llu bytes (~%s)", path.c_str(),
+        theLog->log(LogInfoDevel_(3007), 
+	   "Closing file %s : %llu bytes (~%s)", path.c_str(),
                     counterBytesTotal,
                     ReadoutUtils::NumberOfBytesToString(counterBytesTotal, "B")
                         .c_str());
@@ -75,7 +76,7 @@ public:
     if ((maxFileSize) &&
         (counterBytesTotal + size + remainingBlockSize > maxFileSize)) {
       if (theLog != nullptr) {
-        theLog->log("Maximum file size reached");
+        theLog->log(LogInfoDevel_(3007), "Maximum file size reached");
       }
       isFull = true;
       close();
@@ -83,7 +84,7 @@ public:
     }
     if ((maxPages) && (counterPages >= maxPages)) {
       if (theLog != nullptr) {
-        theLog->log("Maximum number of pages in file reached");
+        theLog->log(LogInfoDevel_(3007), "Maximum number of pages in file reached");
       }
       isFull = true;
       close();
@@ -161,7 +162,7 @@ public:
     // equipments to different output files), %l -> link ID (used to write data
     // from different links to different output files). |
     fileName = cfg.getValue<std::string>(cfgEntryPoint + ".fileName");
-    theLog.log("Recording path = %s", fileName.c_str());
+    theLog.log(LogInfoDevel_(3002), "Recording path = %s", fileName.c_str());
 
     // configuration parameter: | consumer-fileRecorder-* | bytesMax | bytes | 0
     // | Maximum number of bytes to write to each file. Data pages are never
@@ -173,7 +174,7 @@ public:
                                           sMaxBytes) == 0) {
       maxFileSize = ReadoutUtils::getNumberOfBytesFromString(sMaxBytes.c_str());
       if (maxFileSize) {
-        theLog.log("Maximum recording size: %lld bytes", maxFileSize);
+        theLog.log(LogInfoDevel_(3002), "Maximum recording size: %lld bytes", maxFileSize);
       }
     }
 
@@ -184,7 +185,7 @@ public:
     if (cfg.getOptionalValue<int>(cfgEntryPoint + ".pagesMax", maxFilePages) ==
         0) {
       if (maxFilePages) {
-        theLog.log("Maximum recording size: %d pages", maxFilePages);
+        theLog.log(LogInfoDevel_(3002), "Maximum recording size: %d pages", maxFilePages);
       }
     }
 
@@ -196,7 +197,7 @@ public:
     // are written without further formatting. |
     cfg.getOptionalValue(cfgEntryPoint + ".dataBlockHeaderEnabled",
                          recordWithDataBlockHeader, 0);
-    theLog.log("Recording internal data block headers = %d",
+    theLog.log(LogInfoDevel_(3002), "Recording internal data block headers = %d",
                recordWithDataBlockHeader);
 
     // configuration parameter: | consumer-fileRecorder-* | filesMax | int | 1 |
@@ -212,13 +213,13 @@ public:
     filesMax = 1;
     if (cfg.getOptionalValue<int>(cfgEntryPoint + ".filesMax", filesMax) == 0) {
       if (filesMax == 1) {
-        theLog.log("File splitting disabled");
+        theLog.log(LogInfoDevel_(3002), "File splitting disabled");
       } else {
         if (filesMax > 0) {
-          theLog.log("File splitting enabled - max %d files per stream",
+          theLog.log(LogInfoDevel_(3002), "File splitting enabled - max %d files per stream",
                      filesMax);
         } else {
-          theLog.log("File splitting enabled - unlimited files");
+          theLog.log(LogInfoDevel_(3002), "File splitting enabled - unlimited files");
         }
       }
     }
@@ -235,12 +236,12 @@ public:
                          dropEmptyHBFrames, 0);
     if (dropEmptyHBFrames) {
       if (recordWithDataBlockHeader) {
-        theLog.log(InfoLogger::Severity::Error,
+        theLog.log(LogErrorSupport_(3100), 
                    "Incompatible options dropEmptyHBFrames and "
                    "dataBlockHeaderEnabled");
         throw __LINE__;
       }
-      theLog.log(
+      theLog.log(LogInfoSupport_(3002), 
           "Some packets with RDH-only payload will not be recorded to file, "
           "option dropEmptyHBFrames is enabled");
     }
@@ -273,22 +274,22 @@ public:
     Consumer::start();
     resetCounters();
     
-    theLog.log("Starting file recorder");
+    theLog.log(LogInfoDevel_(3006), "Starting file recorder");
     // check status
     if (createFile() == 0) {
       recordingEnabled = true;
-      theLog.log("Recording enabled");
+      theLog.log(LogInfoDevel_(3002), "Recording enabled");
     } else {
-      theLog.log(InfoLogger::Severity::Warning, "Recording disabled");
+      theLog.log(LogWarningSupport_(3232), "Recording disabled");
       isError++;
     }
     return 0;
   };
   
   int stop() {
-    theLog.log("Stopping file recorder");
+    theLog.log(LogInfoDevel_(3006), "Stopping file recorder");
     if (dropEmptyHBFrames) {
-      theLog.log("Packets recorded=%lld discarded(empty)=%lld", packetsRecorded,
+      theLog.log(LogInfoDevel_(3003), "Packets recorded=%lld discarded(empty)=%lld", packetsRecorded,
                  emptyPacketsDropped);
     }
     
@@ -348,7 +349,7 @@ public:
               const char *val = getenv(varName.c_str());
               if (val != nullptr) {
                 newFileName += val;
-                // theLog.log((varName + " = " + val).c_str());
+                // theLog.log(LogDebugTrace, (varName + " = " + val).c_str());
               }
             }
           }
@@ -403,7 +404,7 @@ public:
       }
     }
     if (parseError) {
-      theLog.log(InfoLogger::Severity::Error,
+      theLog.log(LogErrorSupport_(3102),
                  "Failed to parse recording file path");
       return -1;
     }
@@ -412,7 +413,7 @@ public:
     newFileName += sFileId;
 
     if ((fileId > filesMax) && (filesMax >= 1)) {
-      theLog.log(InfoLogger::Severity::Info,
+      theLog.log(LogInfoDevel_(3007), 
                  "Maximum number of files reached for this stream");
       return -1;
     }
@@ -420,7 +421,7 @@ public:
     if ((perSourceRecordingFile) && (delayIfSourceId)) {
       // delay file creation to arrival of data... equipmentId is not known yet
       // !
-      theLog.log("Per-source recording file selected, opening of file(s) "
+      theLog.log(LogInfoDevel_(3007), "Per-source recording file selected, opening of file(s) "
                  "delayed (until data available)");
       return 0;
     }

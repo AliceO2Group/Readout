@@ -17,9 +17,7 @@
 
 #include <memory>
 
-#include <InfoLogger/InfoLogger.hxx>
-using namespace AliceO2::InfoLogger;
-extern InfoLogger theLog;
+#include "readoutInfoLogger.h"
 
 class Consumer {
 public:
@@ -38,7 +36,7 @@ public:
   }; // function called just before starting data taking. Data will soon start
      // to flow in.
   virtual int stop() {
-    theLog.log("Push statistics for %s: %llu err / %llu total", this->name.c_str(),
+    theLog.log(LogInfoDevel_(3003), "Push statistics for %s: %llu err / %llu total", this->name.c_str(),
       totalPushError, totalPushError + totalPushSuccess);
     return 0;
   }; // function called just after stopping data taking, after the last call to

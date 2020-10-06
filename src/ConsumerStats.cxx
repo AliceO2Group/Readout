@@ -89,7 +89,7 @@ private:
     try {
       monitoringCollector->send(std::forward<Metric &&>(metric), mode);
     } catch (...) {
-      theLog.log("monitoringCollector->send(%s) failed",
+      theLog.log(LogErrorDevel_(3234), "monitoringCollector->send(%s) failed",
                  metric.getName().c_str());
     }
   }
@@ -113,7 +113,7 @@ private:
       if (monitoringEnabled) {
         sendMetricNoException(
             {fractionCpuUsed * 100, "readout.percentCpuUsed"});
-        // theLog.log("CPU used = %.2f %%",100*fractionCpuUsed);
+        // theLog.log(LogDebugTrace,"CPU used = %.2f %%",100*fractionCpuUsed);
       }
     }
     timePreviousGetrusage = now;
@@ -124,7 +124,7 @@ private:
       if (intervalStartTime) {
         double intervalTime = now - intervalStartTime;
         if (intervalTime > 0) {
-          theLog.log("Last interval (%.2fs): blocksRx=%llu, block rate=%.2lf, "
+          theLog.log(LogInfoOps_(3003), "Last interval (%.2fs): blocksRx=%llu, block rate=%.2lf, "
                      "bytesRx=%llu, rate=%s",
                      intervalTime, (unsigned long long)counterBlocksDiff,
                      counterBlocksDiff / intervalTime,
@@ -214,7 +214,7 @@ public:
       const std::string configURI =
           cfg.getValue<std::string>(cfgEntryPoint + ".monitoringURI");
 
-      theLog.log("Monitoring enabled - period %.2fs - using %s",
+      theLog.log(LogInfoDevel_(3002), "Monitoring enabled - period %.2fs - using %s",
                  monitoringUpdatePeriod, configURI.c_str());
       monitoringCollector = MonitoringFactory::Get(configURI.c_str());
       monitoringCollector->addGlobalTag(tags::Key::Subsystem, tags::Value::Readout);
@@ -237,7 +237,7 @@ public:
     // disabled. |
     cfg.getOptionalValue(cfgEntryPoint + ".consoleUpdate", consoleUpdate, 0);
     if (consoleUpdate) {
-      theLog.log("Periodic console statistics enabled");
+      theLog.log(LogInfoDevel_(3002), "Periodic console statistics enabled");
     }
 
     // make sure to initialize all counters and timers
@@ -287,7 +287,7 @@ public:
 
   int start() {
     Consumer::start();
-    theLog.log("Starting stats clock");
+    theLog.log(LogInfoDevel_(3006), "Starting stats clock");
     reset();
 
     // publish once on start
@@ -299,34 +299,34 @@ public:
 
   int stop() {
     isRunning = false;
-    theLog.log("Stopping stats clock");
+    theLog.log(LogInfoDevel_(3006), "Stopping stats clock");
     elapsedTime = runningTime.getTime();
 
     // publish once more on stop
     publishStats();
 
     if (counterBytesTotal > 0) {
-      theLog.log("Statistics for %s", this->name.c_str());
-      theLog.log("Stats: %llu blocks, %.2f MB, %.2f%% header overhead",
+      theLog.log(LogInfoDevel_(3003), "Statistics for %s", this->name.c_str());
+      theLog.log(LogInfoDevel_(3003), "Stats: %llu blocks, %.2f MB, %.2f%% header overhead",
                  (unsigned long long)counterBlocks,
                  counterBytesTotal / (1024 * 1024.0),
                  counterBytesHeader * 100.0 / counterBytesTotal);
-      theLog.log("Stats: average block size = %llu bytes",
+      theLog.log(LogInfoDevel_(3003), "Stats: average block size = %llu bytes",
                  (unsigned long long)counterBytesTotal / counterBlocks);
-      theLog.log(
+      theLog.log(LogInfoDevel_(3003), 
           "Stats: average block rate = %s",
           NumberOfBytesToString((counterBlocks) / elapsedTime, "Hz", 1000)
               .c_str());
-      theLog.log("Stats: average throughput = %s",
+      theLog.log(LogInfoDevel_(3003), "Stats: average throughput = %s",
                  NumberOfBytesToString(counterBytesTotal / elapsedTime, "B/s")
                      .c_str());
-      theLog.log("Stats: average throughput = %s",
+      theLog.log(LogInfoDevel_(3003), "Stats: average throughput = %s",
                  NumberOfBytesToString(counterBytesTotal * 8 / elapsedTime,
                                        "bits/s", 1000)
                      .c_str());
-      theLog.log("Stats: elapsed time = %.5lfs", elapsedTime);
+      theLog.log(LogInfoDevel_(3003), "Stats: elapsed time = %.5lfs", elapsedTime);
     } else {
-      theLog.log("Stats: no data received");
+      theLog.log(LogInfoDevel_(3003), "Stats: no data received");
     }
 
     Consumer::stop();

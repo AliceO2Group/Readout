@@ -43,7 +43,7 @@ public:
     checkedPages = 0;
   }
   ~ConsumerDataChecker() {
-    theLog.log("Checker detected %llu data errors on %llu DMA pages",
+    theLog.log(LogInfoDevel_(3003), "Checker detected %llu data errors on %llu DMA pages",
                errorCount, checkedPages);
   }
   int pushData(DataBlockContainerReference &b) {
@@ -56,7 +56,7 @@ public:
     }
 
     size = b->getData()->header.dataSize;
-    //    theLog.log("checking container %p data @ %p : %d bytes",(void
+    //    theLog.log(LogDebugTrace, "checking container %p data @ %p : %d bytes",(void
     //    *)b.get(),ptr,(int)size);
 
     unsigned int pageId = 0;
@@ -97,7 +97,7 @@ public:
         if (((unsigned int *)pagePayloadPtr)[w]!=checkValue) {
           errorCount++;
           if ((errorCount<100)||(errorCount%1000==0)) {
-            theLog.log("Error #%llu : Superpage %p Page %d : 32-bit word %d
+            theLog.log(LogDebugTrace, "Error #%llu : Superpage %p Page %d : 32-bit word %d
       mismatch : %X != %X\n",errorCount,ptr,i,w,((unsigned int
       *)pagePayloadPtr)[w],checkValue);
           }
@@ -119,7 +119,7 @@ public:
             (((unsigned int *)pagePayloadPtr)[w + 7] != checkValue)) {
           errorCount++;
           if ((errorCount < 100) || (errorCount % 1000 == 0)) {
-            theLog.log("Error #%llu : Superpage %p Page %d (size %d) : 32-bit "
+            theLog.log(LogErrorDevel_(3004), "Error #%llu : Superpage %p Page %d (size %d) : 32-bit "
                        "word %d mismatch : %X != %X\n",
                        errorCount, ptr, pageId, pagePayloadSize, w,
                        ((unsigned int *)pagePayloadPtr)[w], checkValue);

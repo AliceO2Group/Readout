@@ -9,10 +9,7 @@
 // or submit itself to any jurisdiction.
 
 #include "MemoryBankManager.h"
-
-#include <InfoLogger/InfoLogger.hxx>
-using namespace AliceO2::InfoLogger;
-extern InfoLogger theLog;
+#include "readoutInfoLogger.h"
 
 MemoryBankManager::MemoryBankManager() {}
 
@@ -53,7 +50,7 @@ MemoryBankManager::getPagedPool(size_t pageSize, size_t pageNumber,
     std::unique_lock<std::mutex> lock(bankMutex);
 
     if (banks.size() == 0) {
-      theLog.log(InfoLogger::Severity::Error,
+      theLog.log(LogErrorSupport_(3103),
                  "Can not create memory pool: no memory bank defined");
       return nullptr;
     }
@@ -73,18 +70,18 @@ MemoryBankManager::getPagedPool(size_t pageSize, size_t pageNumber,
       if (banks.size()) {
         ix = 0;
         bankFound = true;
-        theLog.log(InfoLogger::Severity::Info,
+        theLog.log(LogInfoDevel_(3008),
                    "Bank name not specified, using first one (%s)",
                    banks[ix].name.c_str());
       }
     }
     if (!bankFound) {
-      theLog.log(InfoLogger::Severity::Error,
+      theLog.log(LogErrorSupport_(3103),
                  "Can not find specified memory bank '%s'", bankName.c_str());
       return nullptr;
     }
 
-    // theLog.log(InfoLogger::Severity::Info,"Allocating %ld x %ld bytes from
+    // theLog.log(LogDebugTrace_(3008),"Allocating %ld x %ld bytes from
     // memory bank '%s'",pageNumber,pageSize,banks[ix].name.c_str());
 
     // reserve space from big block
@@ -115,8 +112,7 @@ MemoryBankManager::getPagedPool(size_t pageSize, size_t pageNumber,
 
     // check not exceeding bank size
     if (offset + blockSize > banks[ix].bank->getSize()) {
-      theLog.log(
-          InfoLogger::Severity::Error,
+      theLog.log(LogErrorSupport_(3230),
           "Not enough space left in memory bank '%s' (need %ld bytes more)",
           banks[ix].name.c_str(),
           offset + blockSize - banks[ix].bank->getSize());
@@ -153,7 +149,7 @@ void MemoryBankManager::reset() {
   std::unique_lock<std::mutex> lock(bankMutex);
   for (auto &it : banks) {
     int useCount = it.bank.use_count();
-    theLog.log("Releasing bank %s%s", it.name.c_str(),
+    theLog.log(LogInfoDevel_(3008), "Releasing bank %s%s", it.name.c_str(),
                (useCount == 1) ? "" : "warning - still in use elsewhere !");
   }
   banks.clear();

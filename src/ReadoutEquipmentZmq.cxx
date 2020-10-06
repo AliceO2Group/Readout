@@ -16,10 +16,7 @@
 #include <atomic>
 #include <zmq.h>
 #include "ZmqClient.hxx"
-
-#include <InfoLogger/InfoLogger.hxx>
-using namespace AliceO2::InfoLogger;
-extern InfoLogger theLog;
+#include "readoutInfoLogger.h"
 
 class ReadoutEquipmentZmq : public ReadoutEquipment {
 
@@ -65,7 +62,7 @@ ReadoutEquipmentZmq::ReadoutEquipmentZmq(ConfigFile &cfg,
   // configuration parameter: | equipment-zmq-* | address | string | |
   // Address of remote server to connect, eg tcp://remoteHost:12345. |
   cfg.getValue<std::string>(cfgEntryPoint + ".address", cfgAddress);
-  theLog.log("Connecting to %s",cfgAddress.c_str());
+  theLog.log(LogInfoDevel_(3002), "Connecting to %s",cfgAddress.c_str());
 
   int linerr=0;
   int zmqerr=0;
@@ -85,7 +82,7 @@ ReadoutEquipmentZmq::ReadoutEquipmentZmq(ConfigFile &cfg,
   }
 
   if ((zmqerr)||(linerr)) {
-    theLog.log(InfoLogger::Severity::Error,
+    theLog.log(LogErrorSupport_(3236),
                "ZeroMQ error @%d : (%d) %s", linerr, zmqerr, zmq_strerror(zmqerr));
     throw __LINE__;
   }
@@ -97,11 +94,11 @@ ReadoutEquipmentZmq::ReadoutEquipmentZmq(ConfigFile &cfg,
   std::string cfgTimeframeClientUrl;
   cfg.getOptionalValue<std::string>(cfgEntryPoint + ".timeframeClientUrl", cfgTimeframeClientUrl);
   if (cfgTimeframeClientUrl.length()>0) {
-    theLog.log(InfoLogger::Severity::Info, "Creating Timeframe client @ %s",
+    theLog.log(LogInfoDevel_(3002), "Creating Timeframe client @ %s",
                  cfgTimeframeClientUrl.c_str());
     tfClient = std::make_unique<ZmqClient>(cfgTimeframeClientUrl);
     if (tfClient == nullptr) {
-      theLog.log(InfoLogger::Severity::Error, "Failed to create TF client");  
+      theLog.log(LogErrorSupport_(3236), "Failed to create TF client");  
     } else {
       maxTf = 0;
       tfUpdateTime = time(NULL);
@@ -116,7 +113,7 @@ ReadoutEquipmentZmq::ReadoutEquipmentZmq(ConfigFile &cfg,
   snapshotMetadata.timestamp = 0;
   snapshotData = std::make_unique<unsigned char[]>(snapshotMetadata.maxSize);
   if (snapshotData == nullptr) {
-    theLog.log(InfoLogger::Severity::Error, "Failed to allocate memory (%d bytes)", snapshotMetadata.maxSize);
+    theLog.log(LogErrorSupport_(3230), "Failed to allocate memory (%d bytes)", snapshotMetadata.maxSize);
     throw __LINE__;
   }
     
@@ -132,7 +129,7 @@ ReadoutEquipmentZmq::~ReadoutEquipmentZmq() {
 
   // stopping snapshot thread
   if (snapshotThread != nullptr) {
-    theLog.log("Terminating snapshot thread");
+    theLog.log(LogInfoDevel_(3006), "Terminating snapshot thread");
     shutdownSnapshotThread = 1;    
     snapshotThread->join();
     snapshotThread=nullptr;
@@ -180,12 +177,12 @@ void ReadoutEquipmentZmq::loopSnapshot(void) {
 	snapshotMetadata.timestamp = time(NULL);
 	snapshotLock.unlock();
 	if (doLogSnapshot) {
-	  theLog.log(InfoLogger::Severity::Info,
+	  theLog.log(LogInfoDevel_(3003),
             "Received snapshot (%d bytes)", msgSize);
 	  doLogSnapshot = 0;
 	}
       } else {
-        theLog.log(InfoLogger::Severity::Error,
+        theLog.log(LogErrorSupport_(3230),
 	  "Received message bigger than buffer: %d > %d",
 	  msgSize, snapshotMetadata.maxSize);
       }
@@ -197,10 +194,10 @@ void ReadoutEquipmentZmq::loopSnapshot(void) {
 
     if ((zmqerr)||(linerr)) {
       if (zmqerr == 11) {
-        theLog.log(InfoLogger::Severity::Warning,
+        theLog.log(LogWarningDevel_(3236),
         	 "ZeroMQ timeout @%d : (%d) %s", linerr, zmqerr, zmq_strerror(zmqerr));
       } else {
-        theLog.log(InfoLogger::Severity::Error,
+        theLog.log(LogErrorDevel_(3236),
         	 "ZeroMQ error @%d : (%d) %s", linerr, zmqerr, zmq_strerror(zmqerr));
       }
       doLogSnapshot = 1;
@@ -220,7 +217,7 @@ DataBlockContainerReference ReadoutEquipmentZmq::getNextBlock() {
     const int tfTimeout = 5;
     if ((time(NULL)>tfUpdateTime + tfTimeout)&&(!tfUpdateTimeWarning)) {
       tfUpdateTimeWarning = 1;
-      theLog.log(InfoLogger::Severity::Warning,
+      theLog.log(LogWarningSupport_(3236),
         "No TF id received from TF server for the past %d seconds", tfTimeout);
     }
     if (nBlocks>=maxTf) {
@@ -263,7 +260,7 @@ int ReadoutEquipmentZmq::tfClientCallback(void *msg, int msgSize) {
     tfUpdateTime=time(NULL);
     if (tfUpdateTimeWarning) {
       tfUpdateTimeWarning = 0;
-      theLog.log(InfoLogger::Severity::Info,
+      theLog.log(LogInfoSupport_(3236),
         "New TF id received from TF server");
     }
     if (maxTf==0) {

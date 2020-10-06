@@ -11,10 +11,7 @@
 #include "MemoryBankManager.h"
 #include "ReadoutEquipment.h"
 #include "ReadoutUtils.h"
-
-#include <InfoLogger/InfoLogger.hxx>
-using namespace AliceO2::InfoLogger;
-extern InfoLogger theLog;
+#include "readoutInfoLogger.h"
 
 class ReadoutEquipmentDummy : public ReadoutEquipment {
 
@@ -59,12 +56,12 @@ ReadoutEquipmentDummy::ReadoutEquipmentDummy(ConfigFile &cfg,
   cfg.getOptionalValue<int>(cfgEntryPoint + ".fillData", fillData, (int)0);
 
   // log config summary
-  theLog.log("Equipment %s: eventSize: %d -> %d, fillData=%d", name.c_str(),
+  theLog.log(LogInfoDevel_(3002), "Equipment %s: eventSize: %d -> %d, fillData=%d", name.c_str(),
              eventMinSize, eventMaxSize, fillData);
 
   // ensure generated events will fit in blocks allocated from memory pool
   if ((size_t)eventMaxSize > mp->getDataBlockMaxSize()) {
-    theLog.log("memoryPoolPageSize too small, need at least %ld bytes",
+    theLog.log(LogErrorSupport_(3230), "memoryPoolPageSize too small, need at least %ld bytes",
                (long)(eventMaxSize + mp->getPageSize() - mp->getDataBlockMaxSize()));
     throw __LINE__;
   }

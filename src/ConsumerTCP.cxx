@@ -41,7 +41,7 @@ public:
     int cfgNcx = 1; // number of parallel connections (using ports from port to
                     // port+ncx-1
     cfg.getOptionalValue<int>(cfgEntryPoint + ".ncx", cfgNcx);
-    theLog.log("TCP client connecting to %s:%d-%d", cfgHost.c_str(), cfgPort,
+    theLog.log(LogInfoDevel_(3002), "TCP client connecting to %s:%d-%d", cfgHost.c_str(), cfgPort,
                cfgPort + cfgNcx - 1);
 
     for (int i = 0; i < cfgNcx; i++) {
@@ -56,10 +56,10 @@ public:
     }
     tx.clear();
 
-    theLog.log("TCP client:  %llu blocks sent, %llu blocks dropped",
+    theLog.log(LogInfoDevel_(3003), "TCP client:  %llu blocks sent, %llu blocks dropped",
                (unsigned long long)nBlocksSent,
                (unsigned long long)nBlocksDropped);
-    theLog.log("TCP client:  %s sent,%s dropped",
+    theLog.log(LogInfoDevel_(3003), "TCP client:  %s sent,%s dropped",
                NumberOfBytesToString(nBytesSent, "bytes", 1024).c_str(),
                NumberOfBytesToString(nBytesDropped, "bytes", 1024).c_str());
   }

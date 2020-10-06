@@ -25,6 +25,7 @@
 
 #include <Common/Configuration.h>
 #include <InfoLogger/InfoLogger.hxx>
+#include <InfoLogger/InfoLoggerMacros.hxx>
 
 #include "CounterStats.h"
 #include <Common/Timer.h>
@@ -43,7 +44,7 @@ InfoLogger theLog;
 static int ShutdownRequest =
     0; // set to 1 to request termination, e.g. on SIGTERM/SIGQUIT signals
 static void signalHandler(int) {
-  theLog.log("*** break ***");
+  printf("*** break ***");
   if (ShutdownRequest) {
     // immediate exit if pending exit request
     exit(1);
@@ -220,11 +221,11 @@ int main(int argc, const char **argv) {
   cfgEntryPoint = argv[2];
 
   // load configuration file
-  theLog.log("Reading configuration from %s", cfgFileURI);
+  theLog.log(LogInfoDevel_(3002), "Reading configuration from %s", cfgFileURI);
   try {
     cfg.load(cfgFileURI);
   } catch (std::string err) {
-    theLog.log("Error : %s", err.c_str());
+    theLog.log(LogErrorSupport_(3100), "Error : %s", err.c_str());
     return -1;
   }
 
@@ -270,7 +271,7 @@ int main(int argc, const char **argv) {
   } else if (cfgDecodingMode == "stfDatablock") {
     mode = decodingMode::stfDatablock;
   } else {
-    theLog.log(InfoLogger::Severity::Error, "Wrong decoding mode set : %s",
+    theLog.log(LogErrorSupport_(3102), "Wrong decoding mode set : %s",
                cfgDecodingMode.c_str());
   }
 
@@ -285,10 +286,10 @@ int main(int argc, const char **argv) {
   // TF print after the first one. (e.g. 100 would print TF 1, 100, 200, etc). |
   int cfgDumpTF = 0;
   cfg.getOptionalValue<int>(cfgEntryPoint + ".dumpTF", cfgDumpTF, 0);
-  theLog.log("dumpRDH = %d dumpTF = %d", cfgDumpRDH, cfgDumpTF);
+  theLog.log(LogInfoDevel_(3002), "dumpRDH = %d dumpTF = %d", cfgDumpRDH, cfgDumpTF);
 
   // create FMQ receiving channel
-  theLog.log("Creating FMQ RX channel %s type %s @ %s", cfgChannelName.c_str(),
+  theLog.log(LogInfoDevel_(3002), "Creating FMQ RX channel %s type %s @ %s", cfgChannelName.c_str(),
              cfgChannelType.c_str(), cfgChannelAddress.c_str());
   auto factory =
       FairMQTransportFactory::CreateTransportFactory(cfgTransportType);
@@ -321,7 +322,7 @@ int main(int argc, const char **argv) {
     isMultiPart = true;
   }
 
-  theLog.log("Entering receiving loop");
+  theLog.log(LogInfoDevel_(3006), "Entering receiving loop");
 
   for (; !ShutdownRequest;) {
     auto msg = pull.NewMessage();
@@ -343,7 +344,7 @@ int main(int argc, const char **argv) {
           int nPart = msgParts.size();
 	  nMsgParts += nPart;
           if (nPart < 2) {
-            theLog.log(InfoLogger::Severity::Error,
+            theLog.log(LogErrorSupport_(3237),
                        "Only %d parts in message, need at least 2", nPart);
             continue;
           }
@@ -357,7 +358,7 @@ int main(int argc, const char **argv) {
             if (i == 0) {
               // first part is STF header
               if (mm->GetSize() != sizeof(SubTimeframe)) {
-                theLog.log(InfoLogger::Severity::Error,
+                theLog.log(LogErrorSupport_(3237),
                            "Header wrong size %d != %d\n", (int)mm->GetSize(),
                            (int)sizeof(SubTimeframe));
                 break;
@@ -377,7 +378,7 @@ int main(int argc, const char **argv) {
               std::string errorDescription;
               for (size_t pageOffset = 0; pageOffset < dataSize;) {
                 if (pageOffset + sizeof(o2::Header::RAWDataHeader) > dataSize) {
-                  theLog.log("part %d offset 0x%08lX: not enough space for RDH",
+                  theLog.log(LogErrorSupport_(3237), "part %d offset 0x%08lX: not enough space for RDH",
                              i, pageOffset);
                   break;
                 }
@@ -401,7 +402,7 @@ int main(int argc, const char **argv) {
                     // dump RDH if not done already
                     h.dumpRdh(pageOffset, 1);
                   }
-                  theLog.log(InfoLogger::Severity::Error,
+                  theLog.log(LogErrorSupport_(3238),
                              "part %d offset 0x%08lX : %s", i, pageOffset,
                              errorDescription.c_str());
                   errorDescription.clear();
@@ -456,12 +457,12 @@ int main(int argc, const char **argv) {
 	  nMsgParts += msgParts.size();
 	  //printf("parts=%d\n",msgParts.size());
 	  if (msgParts.size()!=2) {
-	    theLog.log(InfoLogger::Severity::Error,
+	    theLog.log(LogErrorSupport_(3237),
                        "%d parts in message, should be 2", (int)msgParts.size());
 	  } else {
 	    int sz = msgParts[0]->GetSize();
 	    if (sz != sizeof(DataBlockHeader)) {
-              theLog.log(InfoLogger::Severity::Error,
+              theLog.log(LogErrorSupport_(3237),
                        "part[0] size = %d, should be %d",sz , (int)sizeof(DataBlock));
 	    } else {
 	      DataBlockHeader *dbhb = (DataBlockHeader *)msgParts[0]->GetData();
@@ -489,10 +490,10 @@ int main(int argc, const char **argv) {
     // print regularly the current throughput
     if (runningTime.isTimeout()) {
       double t = runningTime.getTime();
-      theLog.log("%.3lf msg/s %.3lf parts/s %.3lfMB/s", nMsg / t, nMsgParts / t,
+      theLog.log(LogInfoDevel_(3003), "%.3lf msg/s %.3lf parts/s %.3lfMB/s", nMsg / t, nMsgParts / t,
                  nBytes / (1024.0 * 1024.0 * t));
       if (copyRatioCount) {
-        theLog.log("HBF copy ratio = %.3lf %%",copyRatio*100/copyRatioCount);
+        theLog.log(LogInfoDevel_(3003), "HBF copy ratio = %.3lf %%",copyRatio*100/copyRatioCount);
       }
       runningTime.reset(statsTimeout);
       nMsg = 0;
@@ -501,8 +502,8 @@ int main(int argc, const char **argv) {
     }
   }
 
-  theLog.log("Receiving loop completed");
-  theLog.log(
+  theLog.log(LogInfoDevel_(3006), "Receiving loop completed");
+  theLog.log(LogInfoDevel_(3003), 
       "bytes received: %llu  (avg=%.2lf  min=%llu  max=%llu  count=%llu)",
       (unsigned long long)msgStats.get(), msgStats.getAverage(),
       (unsigned long long)msgStats.getMinimum(),

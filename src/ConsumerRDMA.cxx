@@ -81,7 +81,7 @@ public:
     //    cfg.getOptionalValue<int>(cfgEntryPoint + ".remotePageSize",
     //    cfgRemotePageSize);
 
-    theLog.log("Looking for RDMA device...");
+    theLog.log(LogInfoDevel, "Looking for RDMA device...");
 
     // list devices
     struct ibv_device **device_list = nullptr;
@@ -91,12 +91,12 @@ public:
       throw __LINE__;
     }
     for (int i = 0; i < num_devices; ++i) {
-      theLog.log("RDMA device[%d]: name=%s", i,
+      theLog.log(LogInfoDevel, "RDMA device[%d]: name=%s", i,
                  ibv_get_device_name(device_list[i]));
     }
     ibv_free_device_list(device_list);
     if (num_devices == 0) {
-      theLog.log("no device found");
+      theLog.log(LogErrorDevel, "no device found");
       throw __LINE__;
     }
 
@@ -109,14 +109,14 @@ public:
       throw __LINE__;
     }
 
-    theLog.log("Connecting to %s : %s", cfgHost.c_str(), cfgPort.c_str());
+    theLog.log(LogInfoDevel_(3002), "Connecting to %s : %s", cfgHost.c_str(), cfgPort.c_str());
 
     /*
         if(cfgMaxPages) {
-          theLog.log("Will send %d pages",cfgMaxPages);
+          theLog.log(LogInfoDevel_(3002), "Will send %d pages",cfgMaxPages);
         }
         if(cfgRemotePageSize) {
-          theLog.log("Remote page size:",cfgRemotePageSize);
+          theLog.log(LogInfoDevel_(3002), "Remote page size:",cfgRemotePageSize);
         }
     */
 
@@ -148,7 +148,7 @@ public:
     if (rdma_get_cm_event(cm_channel, &event)) {
       throw __LINE__;
     }
-    // theLog.log("event:%s",rdma_event_str(event->event));
+    // theLog.log(LogDebugTrace, "event:%s",rdma_event_str(event->event));
     if (event->event != RDMA_CM_EVENT_ADDR_RESOLVED) {
       throw __LINE__;
     }
@@ -172,7 +172,7 @@ public:
       throw __LINE__;
     }
     if (port_attr.state != IBV_PORT_ACTIVE) {
-      theLog.log("port state NOT ACTIVE = %d ", port_attr.state);
+      theLog.log(LogInfoDevel, "port state NOT ACTIVE = %d ", port_attr.state);
     }
 
     int c_active_width[] = {1, 1, 2, 4, 4, 8, 12};
@@ -183,23 +183,23 @@ public:
 
     for (unsigned int i = 0; i < sizeof(c_mtu) / sizeof(int); i += 2) {
       if (port_attr.active_mtu == c_mtu[i]) {
-        theLog.log("active_mtu = %d", c_mtu[i + 1]);
+        theLog.log(LogInfoDevel, "active_mtu = %d", c_mtu[i + 1]);
         break;
       }
     }
 
-    theLog.log("RDMA max msg =%d", port_attr.max_msg_sz);
+    theLog.log(LogInfoDevel, "RDMA max msg =%d", port_attr.max_msg_sz);
 
     for (unsigned int i = 0; i < sizeof(c_active_width) / sizeof(int); i += 2) {
       if (port_attr.active_width == c_active_width[i]) {
-        theLog.log("active_width = %dx", c_active_width[i + 1]);
+        theLog.log(LogInfoDevel, "active_width = %dx", c_active_width[i + 1]);
         break;
       }
     }
     for (unsigned int i = 0; i < sizeof(c_active_speed) / sizeof(float);
          i += 2) {
       if (port_attr.active_speed == c_active_speed[i]) {
-        theLog.log("active_speed = %.1f Gbps", c_active_speed[i + 1]);
+        theLog.log(LogInfoDevel, "active_speed = %.1f Gbps", c_active_speed[i + 1]);
         break;
       }
     }
@@ -261,7 +261,7 @@ public:
     }
     if (isContiguous) {
       size_t sz = p1 - p0;
-      theLog.log(
+      theLog.log(LogInfoDevel, 
           "Banks contiguous, registering them in one go: %p - %p (size %lu)",
           p0, p1 - 1, sz);
       mr = ibv_reg_mr(pd, p0, sz, IBV_ACCESS_LOCAL_WRITE);
@@ -269,7 +269,7 @@ public:
         throw __LINE__;
       }
     } else {
-      theLog.log("Banks not contiguous, configuration not supported");
+      theLog.log(LogInfoDevel, "Banks not contiguous, configuration not supported");
       throw __LINE__;
     }
 
@@ -310,7 +310,7 @@ public:
     rdma_ack_cm_event(event);
     printf("remote buf @ %p\n", (void *)server_pdata.buf_va);
 
-    theLog.log("Remote buffer : %lu bytes total, %lu pages x %lu bytes",
+    theLog.log(LogInfoDevel, "Remote buffer : %lu bytes total, %lu pages x %lu bytes",
                server_pdata.buf_pageSize * server_pdata.buf_numberOfPages,
                server_pdata.buf_numberOfPages, server_pdata.buf_pageSize);
 
@@ -421,7 +421,7 @@ public:
 
     if (nPagesSent >= server_pdata.maxPages) {
       if (nPagesSent == server_pdata.maxPages) {
-        theLog.log("Max number of pages sent");
+        theLog.log(LogInfoDevel, "Max number of pages sent");
         nPagesSent++;
       }
       // we have reached quota

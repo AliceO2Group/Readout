@@ -9,10 +9,7 @@
 // or submit itself to any jurisdiction.
 
 #include "DataBlockAggregator.h"
-
-#include <InfoLogger/InfoLogger.hxx>
-using namespace AliceO2::InfoLogger;
-extern InfoLogger theLog;
+#include "readoutInfoLogger.h"
 
 DataBlockAggregator::DataBlockAggregator(
     AliceO2::Common::Fifo<DataSetReference> *v_output, std::string name) {
@@ -62,7 +59,7 @@ void DataBlockAggregator::stop(int waitStop) {
   if (waitStop) {
     aggregateThread->join();
   }
-  theLog.log("Aggregator processed %llu blocks", totalBlocksIn);
+  theLog.log(LogInfoDevel_(3003), "Aggregator processed %llu blocks", totalBlocksIn);
   for (unsigned int i = 0; i < inputs.size(); i++) {
 
     //    printf("aggregator input %d: in=%llu
@@ -169,13 +166,13 @@ Thread::CallbackResult DataBlockAggregator::executeCallback() {
 	uint64_t tfId=db->header.timeframeId;
 	uint64_t sourceId=(((uint64_t)db->header.equipmentId) << 32) | ((uint64_t)db->header.linkId);
 	if (tfId<=lastTimeframeId) {
-		theLog.log(InfoLogger::Severity::Warning, "Discarding late data for TF %lu (source = 0x%lX)",tfId,sourceId);
+		theLog.log(LogWarningSupport_(3235), "Discarding late data for TF %lu (source = 0x%lX)",tfId,sourceId);
 	} else {
 	  tStf &stf=stfBuffer[tfId];
 	  stf.tfId=tfId;
 	  stf.sstf.push_back({sourceId, bcv, now});
 	  stf.updateTime=now;
-	  //theLog.log(InfoLogger::Severity::Info, "aggregate - added tf %lu : source %lX",tfId,sourceId);
+	  //theLog.log(LogDebugTrace, "aggregate - added tf %lu : source %lX",tfId,sourceId);
 	}     
       } else {
         // push directly out completed slices
@@ -218,7 +215,7 @@ Thread::CallbackResult DataBlockAggregator::executeCallback() {
 	lastTimeframeId = it->second.tfId;
 	/*
 	if (lastTimeframeId % 10 == 1) {
-	  theLog.log(InfoLogger::Severity::Info,"LastTimeframeId=%lu deltaT=%f",lastTimeframeId,tmax-tmin);
+	  theLog.log(LogDebugTrace, "LastTimeframeId=%lu deltaT=%f",lastTimeframeId,tmax-tmin);
 	}
 	*/
 	it=stfBuffer.erase(it);
@@ -251,24 +248,24 @@ int DataBlockSlicer::appendBlock(DataBlockContainerReference const &block,
 
   if (sourceId.linkId != undefinedLinkId) {
     if (sourceId.linkId >= maxLinks) {
-      theLog.log(InfoLogger::Severity::Error, "wrong link id %d > %d",
+      theLog.log(LogWarningSupport_(3004), "wrong link id %d > %d",
                  sourceId.linkId, maxLinks - 1);
       return -1;
     }
   }
 
-  // theLog.log("slicer %p append block eq %d link %d for tf %d",
+  // theLog.log(LogDebugTrace, "slicer %p append block eq %d link %d for tf %d",
   //   this,(int)sourceId.equipmentId,(int)sourceId.linkId,(int)tfId);
   PartialSlice &s = partialSlices[sourceId];
 
   if (s.currentDataSet != nullptr) {
-    // theLog.log("slice size = %d
+    // theLog.log(LogDebugTrace, "slice size = %d
     // chunks",partialSlices[linkId].currentDataSet->size()); if
     // ((partialSlices[linkId].tfId!=tfId)||(partialSlices[linkId].currentDataSet->size()>2))
     // {
     if ((s.tfId != tfId) || (tfId == undefinedTimeframeId)) {
       // the current slice is complete
-      // theLog.log("slicer %p TF %d eq %d link %d is complete (%d
+      // theLog.log(LogDebugTrace, "slicer %p TF %d eq %d link %d is complete (%d
       // blocks)",this,
       // (int)s.tfId,(int)sourceId.equipmentId,(int)sourceId.linkId,s.currentDataSet->size());
       slices.push(s.currentDataSet);
