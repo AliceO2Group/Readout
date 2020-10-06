@@ -271,3 +271,4 @@ This file describes the main feature changes for each readout.exe released versi
 ## next version
 - Implementation of the new STF interface (v2). See SubTimeframe.h
 - RDH is handled in the same way for all equipments (RORC, player, emulator). Same RDH configuration parameters apply to all.
+- Log messages level and codes added.
