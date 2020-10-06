@@ -24,10 +24,7 @@
 
 #include "RdhUtils.h"
 #include "ReadoutUtils.h"
-
-#include <InfoLogger/InfoLogger.hxx>
-using namespace AliceO2::InfoLogger;
-extern InfoLogger theLog;
+#include "readoutInfoLogger.h"
 
 class ReadoutEquipmentRORC : public ReadoutEquipment {
 
@@ -121,7 +118,7 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name)
     cfg.getOptionalValue<int>(name + ".cleanPageBeforeUse",
                               cfgCleanPageBeforeUse);
     if (cfgCleanPageBeforeUse) {
-      theLog.log(
+      theLog.log(LogInfoDevel_(3002),
           "Superpages will be cleaned before each DMA - this may be slow!");
     }
 
@@ -132,7 +129,7 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name)
     cfg.getOptionalValue<int>(name + ".firmwareCheckEnabled",
                               cfgFirmwareCheckEnabled);
     if (!cfgFirmwareCheckEnabled) {
-      theLog.log(InfoLogger::Severity::Warning,
+      theLog.log(LogWarningSupport_(3002),
                  "Bypassing RORC firmware compatibility check");
     }
 
@@ -166,7 +163,7 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name)
         pageSpaceReserved; // Keep space at beginning for DataBlock object
     superPageSize -=
         superPageSize % (32 * 1024); // Must be a multiple of 32Kb for ROC
-    theLog.log("Using superpage size %ld", superPageSize);
+    theLog.log(LogInfoDevel_(3008), "Using superpage size %ld", superPageSize);
     if (superPageSize == 0) {
       BOOST_THROW_EXCEPTION(
           ReadoutEquipmentRORCException()
@@ -174,7 +171,7 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name)
     }
 
     // open and configure ROC
-    theLog.log("Opening ROC %s:%d", cardId.c_str(), cfgChannelNumber);
+    theLog.log(LogInfoDevel_(3010), "Opening ROC %s:%d", cardId.c_str(), cfgChannelNumber);
     AliceO2::roc::Parameters params;
     params.setCardId(AliceO2::roc::Parameters::cardIdFromString(cardId));
     params.setChannelNumber(cfgChannelNumber);
@@ -189,7 +186,7 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name)
     // params.setReadoutMode(AliceO2::roc::ReadoutMode::fromString(cfgReadoutMode));
 
     /*
-    theLog.log("Loop DMA block %p:%lu", mp->getBaseBlockAddress(),
+    theLog.log(LogDebugTrace, "Loop DMA block %p:%lu", mp->getBaseBlockAddress(),
     mp->getBaseBlockSize()); char *ptr=(char *)mp->getBaseBlockAddress(); for
     (size_t i=0;i<mp->getBaseBlockSize();i++) { ptr[i]=0;
     }
@@ -198,7 +195,7 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name)
     // register the memory block for DMA
     void *baseAddress = (void *)mp->getBaseBlockAddress();
     size_t blockSize = mp->getBaseBlockSize();
-    theLog.log("Register DMA block %p:%lu", baseAddress, blockSize);
+    theLog.log(LogInfoDevel_(3010), "Register DMA block %p:%lu", baseAddress, blockSize);
     params.setBufferParameters(
         AliceO2::roc::buffer_parameters::Memory{baseAddress, blockSize});
 
@@ -216,7 +213,7 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name)
     std::string infoFirmwareVersion =
         channel->getFirmwareInfo().value_or("unknown");
     std::string infoCardId = channel->getCardId().value_or("unknown");
-    theLog.log("Equipment %s : PCI %s @ NUMA node %d, serial number %s, "
+    theLog.log(LogInfoDevel_(3010), "Equipment %s : PCI %s @ NUMA node %d, serial number %s, "
                "firmware version %s, card id %s",
                name.c_str(), infoPciAddress.c_str(), infoNumaNode,
                infoSerialNumber.c_str(), infoFirmwareVersion.c_str(),
@@ -225,8 +222,8 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name)
     // todo: log parameters ?
 
   } catch (const std::exception &e) {
-    theLog.log(InfoLogger::Severity::Error, "Exception : %s", e.what());
-    theLog.log(InfoLogger::Severity::Error, "%s", boost::diagnostic_information(e).c_str());
+    theLog.log(LogErrorSupport_(3240), "Exception : %s", e.what());
+    theLog.log(LogErrorSupport_(3240), "%s", boost::diagnostic_information(e).c_str());
     throw; // propagate error
     return;
   }
@@ -250,11 +247,11 @@ Thread::CallbackResult ReadoutEquipmentRORC::prepareBlocks() {
     if ((currentPacketDropped != lastPacketDropped) && (!isWaitingFirstLoop)) {
       int32_t newPacketDropped = (currentPacketDropped - lastPacketDropped);
       if (newPacketDropped > 0) {
-        theLog.log(InfoLogger::Severity::Warning,
+        theLog.log(LogWarningSupport_(3235),
                    "Equipment %s: CRU has dropped packets (new=%d total=%d)",
                    name.c_str(), newPacketDropped, currentPacketDropped);
         if (stopOnError) {
-          theLog.log(InfoLogger::Severity::Error,
+          theLog.log(LogErrorSupport_(3235),
                      "Equipment %s: some data has been lost)", name.c_str());
         }
         isError++;
@@ -366,7 +363,7 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
       // printf ("received a page with %d bytes - isFilled=%d isREady=%d\n",
       //(int)superpage.getReceived(),(int)superpage.isFilled(),(int)superpage.isReady());
       if (!mp->isPageValid(mpPageAddress)) {
-        theLog.log(InfoLogger::Severity::Warning,
+        theLog.log(LogWarningSupport_(3008),
                    "Got an invalid page from RORC : %p", mpPageAddress);
       } else {
         try {
@@ -406,12 +403,12 @@ getReadoutEquipmentRORC(ConfigFile &cfg, std::string cfgEntryPoint) {
 void ReadoutEquipmentRORC::setDataOn() {
   if (isInitialized) {
     // start DMA
-    theLog.log("Starting DMA for ROC %s", getName().c_str());
+    theLog.log(LogInfoDevel_(3010), "Starting DMA for ROC %s", getName().c_str());
     channel->startDma();
 
     // get FIFO depth (it should be fully empty when starting)
     RocFifoSize = channel->getTransferQueueAvailable();
-    theLog.log("ROC input queue size = %d pages", RocFifoSize);
+    theLog.log(LogInfoDevel_(3010), "ROC input queue size = %d pages", RocFifoSize);
     if (RocFifoSize == 0) {
       RocFifoSize = 1;
     }
@@ -432,12 +429,12 @@ void ReadoutEquipmentRORC::setDataOff() {
   // if there would be one pending in device thread loop
 
   if (isInitialized) {
-    theLog.log("Stopping DMA for ROC %s", getName().c_str());
+    theLog.log(LogInfoDevel_(3010), "Stopping DMA for ROC %s", getName().c_str());
     try {
       channel->stopDma();
     } catch (const std::exception &e) {
-      theLog.log(InfoLogger::Severity::Error, "Exception : %s", e.what());
-      theLog.log("%s", boost::diagnostic_information(e).c_str());
+      theLog.log(LogErrorSupport_(3240), "Exception : %s", e.what());
+      theLog.log(LogErrorSupport_(3240), "%s", boost::diagnostic_information(e).c_str());
     }
   }
 }
@@ -459,7 +456,7 @@ void ReadoutEquipmentRORC::initCounters() {
 
 void ReadoutEquipmentRORC::finalCounters() {
 
-  theLog.log("Equipment %s : %llu pages (+ %llu lost + %llu empty), %d packets dropped by CRU",
+  theLog.log(LogInfoDevel_(3003), "Equipment %s : %llu pages (+ %llu lost + %llu empty), %d packets dropped by CRU",
                name.c_str(), statsNumberOfPages, statsNumberOfPagesLost,
                statsNumberOfPagesEmpty, lastPacketDropped);
 

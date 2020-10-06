@@ -26,9 +26,7 @@
 #include <unistd.h>
 
 #include "ReadoutUtils.h"
-#include <InfoLogger/InfoLogger.hxx>
-using namespace AliceO2::InfoLogger;
-extern InfoLogger theLog; // hook to global infologger handle
+#include "readoutInfoLogger.h"
 
 SocketTx::SocketTx(std::string name, std::string host, int port) {
   shutdownRequest = 0;
@@ -50,7 +48,7 @@ SocketTx::~SocketTx() {
     th->join();
   }
   if (currentBlock != nullptr) {
-    theLog.log("%s: block sent incomplete : %lu/%u", clientName.c_str(),
+    theLog.log(LogWarningDevel_(3235), "%s: block sent incomplete : %lu/%u", clientName.c_str(),
                currentBlockIndex, currentBlock->getData()->header.dataSize);
     currentBlock = nullptr;
   }
@@ -83,7 +81,7 @@ void SocketTx::run() {
   }
 
   if (connect(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0) {
-    theLog.log("%s: failure connecting: %s", clientName.c_str(),
+    theLog.log(LogErrorSupport_(3239), "%s: failure connecting: %s", clientName.c_str(),
                strerror(errno));
     close(sockfd);
     return;
@@ -93,7 +91,7 @@ void SocketTx::run() {
   gethostname(h, 100);
   clientName += std::string(" @ ") + h + " -> " + serverHost + ":" +
                 std::to_string(serverPort);
-  theLog.log("%s connected", clientName.c_str());
+  theLog.log(LogInfoDevel_(3006), "%s connected", clientName.c_str());
 
   // loop: send current block, if any
   for (;;) {
@@ -127,14 +125,14 @@ void SocketTx::run() {
   // cleanup & log stats
 
   close(sockfd);
-  theLog.log("%s : written %llu bytes", clientName.c_str(), bytesTx);
+  theLog.log(LogInfoDevel_(3003), "%s : written %llu bytes", clientName.c_str(), bytesTx);
 
   double t0 = t.getTime();
   double rate = (bytesTx / t0);
 
-  theLog.log("%s : data: %s in %.2fs", clientName.c_str(),
+  theLog.log(LogInfoDevel_(3003), "%s : data: %s in %.2fs", clientName.c_str(),
              NumberOfBytesToString(bytesTx, "bytes", 1024).c_str(), t0);
-  theLog.log("%s : rate: %s", clientName.c_str(),
+  theLog.log(LogInfoDevel_(3003), "%s : rate: %s", clientName.c_str(),
              NumberOfBytesToString(rate * 8, "bps").c_str());
 }
 

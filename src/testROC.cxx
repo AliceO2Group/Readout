@@ -11,6 +11,7 @@
 // a simple test program to readout ROC card
 
 #include <InfoLogger/InfoLogger.hxx>
+#include <InfoLogger/InfoLoggerMacros.hxx>
 using namespace AliceO2::InfoLogger;
 InfoLogger theLog;
 #include <Common/Timer.h>
@@ -104,7 +105,7 @@ ROCdevice::ROCdevice(std::string id) {
   std::string infoFirmwareVersion =
       channel->getFirmwareInfo().value_or("unknown");
   std::string infoCardId = channel->getCardId().value_or("unknown");
-  theLog.log("ROC PCI %s @ NUMA node %d, serial number %s, firmware version "
+  theLog.log(LogInfoDevel_(3010), "ROC PCI %s @ NUMA node %d, serial number %s, firmware version "
              "%s, card id %s",
              infoPciAddress.c_str(), infoNumaNode, infoSerialNumber.c_str(),
              infoFirmwareVersion.c_str(), infoCardId.c_str());
@@ -114,13 +115,13 @@ ROCdevice::~ROCdevice() {}
 
 void ROCdevice::start() {
   // start DMA
-  theLog.log("Starting DMA for ROC %s:%d", cardId.c_str(), cfgChannelNumber);
+  theLog.log(LogInfoDevel_(3010), "Starting DMA for ROC %s:%d", cardId.c_str(), cfgChannelNumber);
   channel->startDma();
   t.reset();
 
   // get FIFO depth (it should be fully empty when starting)
   int RocFifoSize = channel->getTransferQueueAvailable();
-  theLog.log("ROC input queue size = %d pages", RocFifoSize);
+  theLog.log(LogInfoDevel_(3010), "ROC input queue size = %d pages", RocFifoSize);
 }
 
 void ROCdevice::stop() {

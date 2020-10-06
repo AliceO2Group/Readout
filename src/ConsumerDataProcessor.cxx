@@ -189,7 +189,7 @@ public:
     // used. |
     std::string libraryPath =
         cfg.getValue<std::string>(cfgEntryPoint + ".libraryPath");
-    theLog.log("Using library file = %s", libraryPath.c_str());
+    theLog.log(LogInfoDevel_(3002), "Using library file = %s", libraryPath.c_str());
 
     // dynamically load the user-provided library
     libHandle = dlopen(libraryPath.c_str(), RTLD_LAZY);
@@ -223,7 +223,7 @@ public:
     // 1 | Number of threads running the processBlock() function in parallel. |
     cfg.getOptionalValue<int>(cfgEntryPoint + ".numberOfThreads",
                               numberOfThreads, 1);
-    theLog.log("Using %d thread(s) for processing", numberOfThreads);
+    theLog.log(LogInfoDevel_(3002), "Using %d thread(s) for processing", numberOfThreads);
     for (int i = 0; i < numberOfThreads; i++) {
       threadPool.push_back(std::make_unique<processThread>(
           processBlock, i + 1, cfgFifoSize, cfgIdleSleepTime));
@@ -239,7 +239,7 @@ public:
     if (cfgEnsurePageOrder) {
       idFifo = std::make_unique<AliceO2::Common::Fifo<DataBlockId>>(
           (int)(numberOfThreads * cfgFifoSize * 2));
-      theLog.log("Page ordering enforced for processing output");
+      theLog.log(LogInfoDevel_(3002), "Page ordering enforced for processing output");
     }
     if (fpPagesLog) {
       fpPagesIn = fopen("/tmp/pagesIn.txt", "w");
@@ -257,27 +257,28 @@ public:
   // destructor
   ~ConsumerDataProcessor() {
     // stop processing threads
-    theLog.log("Flushing processing threads");
+    theLog.log(LogInfoDevel, "Flushing processing threads");
     for (auto const &th : threadPool) {
       th->stop();
     }
     // stop collector thread
-    theLog.log("Flushing output thread");
+    theLog.log(LogInfoDevel, "Flushing output thread");
     shutdown = 1;
     outputThread->join();
 
     // release resources
     threadPool.clear();
-    theLog.log("Processing threads completed");
+    theLog.log(LogInfoDevel, "Processing threads completed");
     if (libHandle != nullptr) {
       dlclose(libHandle);
     }
     idFifo = nullptr;
-    theLog.log(
+    theLog.log(LogInfoDevel_(3003), 
         "bytes processed: %llu bytes dropped: %llu acceptance rate: %.2lf%%",
         (unsigned long long)processedBytes, (unsigned long long)dropBytes,
         processedBlocks * 100.0 / (processedBlocks + dropBlocks));
-    theLog.log("bytes accepted in: %llu bytes out: %llu compression %.4lf",
+    theLog.log(LogInfoDevel_(3003),
+        "bytes accepted in: %llu bytes out: %llu compression %.4lf",
                (unsigned long long)processedBytes,
                (unsigned long long)processedBytesOut,
                processedBytesOut * 1.0 / processedBytes);
@@ -303,7 +304,7 @@ public:
     // check we have space to keep track of this page
     if (cfgEnsurePageOrder) {
       if (idFifo->isFull()) {
-        // theLog.log(InfoLogger::Severity::Warning,"Page ordering FIFO full,
+        // theLog.log(LogWarningDevel, "Page ordering FIFO full,
         // discarding data");
         dropBlocks++;
         dropBytes += size;
@@ -345,7 +346,7 @@ public:
 
     if (cfgEnsurePageOrder) {
       if (idFifo->push(newId) != 0) {
-        theLog.log(InfoLogger::Severity::Warning, "Page ordering FIFO full");
+        theLog.log(LogWarningDevel, "Page ordering FIFO full");
       }
     }
 

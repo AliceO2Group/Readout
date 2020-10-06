@@ -10,11 +10,7 @@
 
 #include "ReadoutEquipment.h"
 #include "ReadoutUtils.h"
-
-#include <InfoLogger/InfoLogger.hxx>
-using namespace AliceO2::InfoLogger;
-extern InfoLogger theLog;
-
+#include "readoutInfoLogger.h"
 #include "RAWDataHeader.h"
 #include <Common/Fifo.h>
 #include <Common/Timer.h>
@@ -126,7 +122,7 @@ ReadoutEquipmentCruEmulator::ReadoutEquipmentCruEmulator(
   cfg.getOptionalValue<int>(cfgEntryPoint + ".PayloadSize", cfgPayloadSize);
 
   // log config summary
-  theLog.log("Equipment %s: maxBlocksPerPage=%d cruBlockSize=%d "
+  theLog.log(LogInfoDevel_(3002), "Equipment %s: maxBlocksPerPage=%d cruBlockSize=%d "
              "numberOfLinks=%d feeId=%d linkId=%d HBperiod=%d "
              "EmptyHbRatio=%f PayloadSize=%d",
              name.c_str(), cfgMaxBlocksPerPage, cruBlockSize, cfgNumberOfLinks,
@@ -148,7 +144,7 @@ ReadoutEquipmentCruEmulator::ReadoutEquipmentCruEmulator(
   bcStep = (int)(LHCBCRate *
                  ((cruBlockSize - sizeof(o2::Header::RAWDataHeader)) * 1.0 /
                   (cfgGbtLinkThroughput * 1024 * 1024 * 1024 / 8)));
-  theLog.log("Equipment %s: using block rate = %d BC", name.c_str(), bcStep);
+  theLog.log(LogInfoDevel_(3002), "Equipment %s: using block rate = %d BC", name.c_str(), bcStep);
 }
 
 ReadoutEquipmentCruEmulator::~ReadoutEquipmentCruEmulator() {}

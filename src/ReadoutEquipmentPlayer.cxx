@@ -13,10 +13,7 @@
 #include "ReadoutEquipment.h"
 #include "ReadoutUtils.h"
 #include <string>
-
-#include <InfoLogger/InfoLogger.hxx>
-using namespace AliceO2::InfoLogger;
-extern InfoLogger theLog;
+#include "readoutInfoLogger.h"
 
 class ReadoutEquipmentPlayer : public ReadoutEquipment {
 
@@ -116,7 +113,7 @@ ReadoutEquipmentPlayer::ReadoutEquipmentPlayer(ConfigFile &cfg,
   cfg.getOptionalValue<int>(cfgEntryPoint + ".autoChunkLoop", autoChunkLoop, 0);
 
   // log config summary
-  theLog.log("Equipment %s: using data source file=%s preLoad=%d fillPage=%d "
+  theLog.log(LogInfoDevel_(3002), "Equipment %s: using data source file=%s preLoad=%d fillPage=%d "
              "autoChunk=%d autoChunkLoop=%d",
              name.c_str(), filePath.c_str(), preLoad, fillPage, autoChunk,
              autoChunkLoop);
@@ -146,12 +143,12 @@ ReadoutEquipmentPlayer::ReadoutEquipmentPlayer(ConfigFile &cfg,
 
   if (autoChunk) {
     bytesPerPage = mp->getDataBlockMaxSize();
-    theLog.log("Will load file = %lu bytes in chunks of maximum %lu bytes",
+    theLog.log(LogInfoDevel, "Will load file = %lu bytes in chunks of maximum %lu bytes",
                (unsigned long)fileSize, (unsigned long)bytesPerPage);
     return;
   }
 
-  theLog.log("Loading file = %lu bytes", (unsigned long)fileSize);
+  theLog.log(LogInfoDevel, "Loading file = %lu bytes", (unsigned long)fileSize);
 
   // check memory pool data pages large enough
   size_t usablePageSize = mp->getDataBlockMaxSize();
@@ -181,7 +178,7 @@ ReadoutEquipmentPlayer::ReadoutEquipmentPlayer(ConfigFile &cfg,
   } else {
     bytesPerPage = fileSize;
   }
-  theLog.log("Data page size used = %zu bytes", bytesPerPage);
+  theLog.log(LogInfoDevel, "Data page size used = %zu bytes", bytesPerPage);
 
   // preload data to pages
   if (preLoad) {
@@ -195,7 +192,7 @@ ReadoutEquipmentPlayer::ReadoutEquipmentPlayer(ConfigFile &cfg,
       copyFileDataToPage(ptr);
       dataPages.push_back(nextBlock);
     }
-    theLog.log("%lu pages have been pre-loaded with data from file",
+    theLog.log(LogInfoDevel, "%lu pages have been pre-loaded with data from file",
                dataPages.size());
     dataPages.clear();
   }
@@ -231,20 +228,20 @@ DataBlockContainerReference ReadoutEquipmentPlayer::getNextBlock() {
         if (nBytes == 0) {
           isOk = 0;
           if (ferror(fp)) {
-            theLog.log(InfoLogger::Severity::Error,
+            theLog.log(LogErrorSupport_(3232), 
                        "File %s read error, aborting replay", name.c_str());
           }
           if (feof(fp)) {
 	    if (!autoChunkLoop) {
-              theLog.log("File %s replay completed", name.c_str());
+              theLog.log(LogInfoDevel, "File %s replay completed", name.c_str());
 	    } else {
               // replay file
               if (fseek(fp, 0, SEEK_SET)) {
-                theLog.log(InfoLogger::Severity::Error,
+                theLog.log(LogErrorSupport_(3232),
                          "Failed to rewind file, aborting replay");
 	      } else {
 	        if (loopCount == 0) {
-                  theLog.log("File %s replay - 1st loop completed", name.c_str());
+                  theLog.log(LogInfoDevel, "File %s replay - 1st loop completed", name.c_str());
 		}
                 loopCount++;
                 fileOffset = 0;
@@ -265,7 +262,7 @@ DataBlockContainerReference ReadoutEquipmentPlayer::getNextBlock() {
             std::string errorDescription;
             int nErr = h.validateRdh(errorDescription);
             if (nErr) {
-              theLog.log(InfoLogger::Severity::Error,
+              theLog.log(LogErrorSupport_(3004),
                          "File %s RDH error, aborting replay @ 0x%lX: %s",
                          name.c_str(), (unsigned long)(fileOffset + pageOffset),
                          errorDescription.c_str());
@@ -326,7 +323,7 @@ DataBlockContainerReference ReadoutEquipmentPlayer::getNextBlock() {
           }
 
           if (pageOffset == 0) {
-            theLog.log(InfoLogger::Severity::Error,
+            theLog.log(LogErrorSupport_(3004),
                        "File %s stopping replay @ 0x%lX, last packet invalid",
                        name.c_str(), (unsigned long)(fileOffset + pageOffset));
             isOk = 0;
@@ -340,7 +337,7 @@ DataBlockContainerReference ReadoutEquipmentPlayer::getNextBlock() {
           if (delta > 0) {
             // rewind if necessary
             if (fseek(fp, fileOffset, SEEK_SET)) {
-              theLog.log(InfoLogger::Severity::Error,
+              theLog.log(LogErrorSupport_(3232),
                          "Failed to seek in file, aborting replay");
               isOk = 0;
             }
@@ -370,7 +367,7 @@ void ReadoutEquipmentPlayer::initCounters() {
   fpOk = false;
   if (fp != nullptr) {
     if (fseek(fp, 0L, SEEK_SET) != 0) {
-      theLog.log(InfoLogger::Severity::Error,
+      theLog.log(LogErrorSupport_(3232),
                  "Failed to rewind file, aborting replay");
     } else {
       fpOk = true;
