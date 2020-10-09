@@ -688,6 +688,13 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
         theLog.log(LogWarningSupport_(3101), "Skipping %s: %s - not supported by this build",
                    kName.c_str(), cfgType.c_str());
 #endif
+      } else if (!cfgType.compare("zmq")) {
+#ifdef WITH_ZMQ
+        newConsumer = getUniqueConsumerZMQ(cfg, kName);
+#else
+        theLog.log(LogWarningSupport_(3101), "Skipping %s: %s - not supported by this build",
+                   kName.c_str(), cfgType.c_str());
+#endif
       } else {
         theLog.log(LogErrorSupport_(3102), "Unknown consumer type '%s' for [%s]", cfgType.c_str(),
                    kName.c_str());
@@ -1481,7 +1488,7 @@ int main(int argc, char *argv[]) {
       while (1) {
         err = theReadout->iterateRunning();
         if (err == 1) {
-          theLog.log(LogErrorSupport_(3231), "Readout requesting to stop");
+          theLog.log(LogInfoSupport, "Readout requesting to stop");
           break;
         } else if (err != 0) {
           theLog.log(LogErrorSupport_(3231),

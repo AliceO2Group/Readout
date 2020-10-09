@@ -77,3 +77,5 @@ std::unique_ptr<Consumer> getUniqueConsumerTCP(ConfigFile &cfg,
                                                std::string cfgEntryPoint);
 std::unique_ptr<Consumer> getUniqueConsumerRDMA(ConfigFile &cfg,
                                                 std::string cfgEntryPoint);
+std::unique_ptr<Consumer> getUniqueConsumerZMQ(ConfigFile &cfg,
+                                                std::string cfgEntryPoint);
