@@ -25,7 +25,10 @@
 #include <InfoLogger/InfoLoggerMacros.hxx>
 #include <boost/property_tree/ptree.hpp>
 #include <thread>
+
+#ifdef WITH_ZMQ
 #include "ZmqServer.hxx"
+#endif
 
 #ifdef WITH_CONFIG
 #include <Configuration/ConfigurationFactory.h>
@@ -212,7 +215,10 @@ private:
       logbookTimer; // timer to handle readout logbook publish interval
 
   uint64_t maxTimeframeId;
+
+#ifdef WITH_ZMQ
   std::unique_ptr<ZmqServer> tfServer;
+#endif
 };
 
 void Readout::publishLogbookStats() {
@@ -512,12 +518,17 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
   // readout instances. |
   cfg.getOptionalValue<std::string>("readout.timeframeServerUrl", cfgTimeframeServerUrl);
   if (cfgTimeframeServerUrl.length()>0) {
+    #ifdef WITH_ZMQ
     theLog.log(LogInfoDevel, "Creating Timeframe server @ %s",
-                 cfgTimeframeServerUrl.c_str());
+       cfgTimeframeServerUrl.c_str());
     tfServer = std::make_unique<ZmqServer>(cfgTimeframeServerUrl);
     if (tfServer == nullptr) {
       theLog.log(LogErrorDevel_(3220), "Failed to create TF server");  
     }
+    #else
+      theLog.log(LogWarningSupport_(3101),
+        "Skipping timeframeServer - not supported by this build");
+    #endif
   }
 
   // configuration of memory banks
@@ -684,6 +695,13 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
       } else if (!cfgType.compare("rdma")) {
 #ifdef WITH_RDMA
         newConsumer = getUniqueConsumerRDMA(cfg, kName);
+#else
+        theLog.log(LogWarningSupport_(3101), "Skipping %s: %s - not supported by this build",
+                   kName.c_str(), cfgType.c_str());
+#endif
+      } else if (!cfgType.compare("zmq")) {
+#ifdef WITH_ZMQ
+        newConsumer = getUniqueConsumerZMQ(cfg, kName);
 #else
         theLog.log(LogWarningSupport_(3101), "Skipping %s: %s - not supported by this build",
                    kName.c_str(), cfgType.c_str());
@@ -932,9 +950,11 @@ void Readout::loopRunning() {
           uint64_t newTimeframeId = bc->at(0)->getData()->header.timeframeId;
           if (newTimeframeId > maxTimeframeId) {
             maxTimeframeId = newTimeframeId;
+	    #ifdef WITH_ZMQ
 	    if (tfServer) {
 	      tfServer->publish(&maxTimeframeId, sizeof(maxTimeframeId));
 	    }
+	    #endif
             gReadoutStats.numberOfSubtimeframes++;
           }
         }
@@ -1130,8 +1150,10 @@ int Readout::reset() {
   logbookHandle = nullptr;
 #endif
 
+#ifdef WITH_ZMQ
   // close tfServer
   tfServer = nullptr;
+#endif
 
   theLog.log(LogInfoSupport_(3005), "Readout completed RESET");
   return 0;
@@ -1481,7 +1503,7 @@ int main(int argc, char *argv[]) {
       while (1) {
         err = theReadout->iterateRunning();
         if (err == 1) {
-          theLog.log(LogErrorSupport_(3231), "Readout requesting to stop");
+          theLog.log(LogInfoSupport, "Readout requesting to stop");
           break;
         } else if (err != 0) {
           theLog.log(LogErrorSupport_(3231),

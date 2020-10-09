@@ -229,6 +229,7 @@ target_sources(
         ${SOURCE_DIR}/ConsumerTCP.cxx
 	$<$<BOOL:${FairMQ_FOUND}>:${SOURCE_DIR}/ConsumerFMQ.cxx ${SOURCE_DIR}/ConsumerFMQchannel.cxx ${SOURCE_DIR}/ConsumerDataSampling.cxx>
 	$<$<BOOL:${RDMA_FOUND}>:${SOURCE_DIR}/ConsumerRDMA.cxx>
+        $<$<BOOL:${ZMQ_FOUND}>:${SOURCE_DIR}/ConsumerZmq.cxx>
 )
 target_include_directories(objReadoutConsumers PRIVATE ${READOUT_INCLUDE_DIRS})
 
