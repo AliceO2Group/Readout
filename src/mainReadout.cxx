@@ -487,8 +487,7 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
   if (cfgLogbookEnabled) {
 #ifndef WITH_LOGBOOK
     theLog.log(LogErrorDevel_(3210),
-               "Logbook enabled in configuration, but feature not available in "
-               "this build");
+               "Logbook enabled in configuration, but feature not available in this build");
 #else
     // configuration parameter: | readout | logbookUrl | string | | The address
     // to be used for the logbook API. |

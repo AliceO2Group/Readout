@@ -237,13 +237,11 @@ public:
     if (dropEmptyHBFrames) {
       if (recordWithDataBlockHeader) {
         theLog.log(LogErrorSupport_(3100), 
-                   "Incompatible options dropEmptyHBFrames and "
-                   "dataBlockHeaderEnabled");
+                   "Incompatible options dropEmptyHBFrames and dataBlockHeaderEnabled");
         throw __LINE__;
       }
       theLog.log(LogInfoSupport_(3002), 
-          "Some packets with RDH-only payload will not be recorded to file, "
-          "option dropEmptyHBFrames is enabled");
+          "Some packets with RDH-only payload will not be recorded to file, option dropEmptyHBFrames is enabled");
     }
   }
 
@@ -420,9 +418,7 @@ public:
 
     if ((perSourceRecordingFile) && (delayIfSourceId)) {
       // delay file creation to arrival of data... equipmentId is not known yet
-      // !
-      theLog.log(LogInfoDevel_(3007), "Per-source recording file selected, opening of file(s) "
-                 "delayed (until data available)");
+      theLog.log(LogInfoDevel_(3007), "Per-source recording file selected, opening of file(s) delayed (until data available)");
       return 0;
     }
 

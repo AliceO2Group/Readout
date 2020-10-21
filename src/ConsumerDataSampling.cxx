@@ -127,8 +127,7 @@ public:
     DataBlockContainerReference *ptr = new DataBlockContainerReference(b);
 
     if (sender.GetCurrentState() != fair::mq::State::Running) {
-      LOG(ERROR) << "ConsumerDataSampling: Trying to send data when the device "
-                    "is not in RUN state";
+      LOG(ERROR) << "ConsumerDataSampling: Trying to send data when the device is not in RUN state";
       return -1;
     }
 

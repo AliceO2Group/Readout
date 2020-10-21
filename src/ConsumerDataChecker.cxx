@@ -119,8 +119,7 @@ public:
             (((unsigned int *)pagePayloadPtr)[w + 7] != checkValue)) {
           errorCount++;
           if ((errorCount < 100) || (errorCount % 1000 == 0)) {
-            theLog.log(LogErrorDevel_(3004), "Error #%llu : Superpage %p Page %d (size %d) : 32-bit "
-                       "word %d mismatch : %X != %X\n",
+            theLog.log(LogErrorDevel_(3004), "Error #%llu : Superpage %p Page %d (size %d) : 32-bit word %d mismatch : %X != %X\n",
                        errorCount, ptr, pageId, pagePayloadSize, w,
                        ((unsigned int *)pagePayloadPtr)[w], checkValue);
           }

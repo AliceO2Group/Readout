@@ -77,13 +77,10 @@ int main() {
       }
       if (isFirstStat) {
         isFirstStat = 0;
-        printf("Interval   Messages       Rate      Parts       Rate     "
-               "------- Rx CPU used --------      Tx CPU    Total\n");
-        printf("       s        msg         Hz        msg         Hz     total "
-               "%%   user %%  system %%             %%      msg\n");
+        printf("Interval   Messages       Rate      Parts       Rate     ------- Rx CPU used --------      Tx CPU    Total\n");
+        printf("       s        msg         Hz        msg         Hz     total %%   user %%  system %%             %%      msg\n");
       }
-      printf("%8.1f   %8lu   %8.1lf   %8lu   %8.1lf    %8.1lf %8.1lf  %8.1lf   "
-             "     %6.0lf %8lu\n",
+      printf("%8.1f   %8lu   %8.1lf   %8lu   %8.1lf    %8.1lf %8.1lf  %8.1lf        %6.0lf %8lu\n",
              t, msgNew, msgNew / t, msgNewPart, msgNewPart / t,
              uTimePercent + sTimePercent, uTimePercent, sTimePercent, txCPU,
              msgCount);

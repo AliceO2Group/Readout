@@ -124,8 +124,7 @@ private:
       if (intervalStartTime) {
         double intervalTime = now - intervalStartTime;
         if (intervalTime > 0) {
-          theLog.log(LogInfoOps_(3003), "Last interval (%.2fs): blocksRx=%llu, block rate=%.2lf, "
-                     "bytesRx=%llu, rate=%s",
+          theLog.log(LogInfoOps_(3003), "Last interval (%.2fs): blocksRx=%llu, block rate=%.2lf, bytesRx=%llu, rate=%s",
                      intervalTime, (unsigned long long)counterBlocksDiff,
                      counterBlocksDiff / intervalTime,
                      (unsigned long long)counterBytesDiff,

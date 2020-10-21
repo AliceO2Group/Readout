@@ -113,8 +113,7 @@ ReadoutEquipmentPlayer::ReadoutEquipmentPlayer(ConfigFile &cfg,
   cfg.getOptionalValue<int>(cfgEntryPoint + ".autoChunkLoop", autoChunkLoop, 0);
 
   // log config summary
-  theLog.log(LogInfoDevel_(3002), "Equipment %s: using data source file=%s preLoad=%d fillPage=%d "
-             "autoChunk=%d autoChunkLoop=%d",
+  theLog.log(LogInfoDevel_(3002), "Equipment %s: using data source file=%s preLoad=%d fillPage=%d autoChunk=%d autoChunkLoop=%d",
              name.c_str(), filePath.c_str(), preLoad, fillPage, autoChunk,
              autoChunkLoop);
 

@@ -213,8 +213,7 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name)
     std::string infoFirmwareVersion =
         channel->getFirmwareInfo().value_or("unknown");
     std::string infoCardId = channel->getCardId().value_or("unknown");
-    theLog.log(LogInfoDevel_(3010), "Equipment %s : PCI %s @ NUMA node %d, serial number %s, "
-               "firmware version %s, card id %s",
+    theLog.log(LogInfoDevel_(3010), "Equipment %s : PCI %s @ NUMA node %d, serial number %s, firmware version %s, card id %s",
                name.c_str(), infoPciAddress.c_str(), infoNumaNode,
                infoSerialNumber.c_str(), infoFirmwareVersion.c_str(),
                infoCardId.c_str());

@@ -84,12 +84,10 @@ public:
       theLog.log(LogInfoDevel_(3002), "FMQ message output in raw format - mode 1 : 1 message per data page");
       enableRawFormat = true;
     } else if (cfgEnableRawFormat==2) {
-      theLog.log(LogInfoDevel_(3002), "FMQ message output in raw format - mode 2 : 1 message = "
-      "1 STF header + 1 part per data page");
+      theLog.log(LogInfoDevel_(3002), "FMQ message output in raw format - mode 2 : 1 message = 1 STF header + 1 part per data page");
       enableStfSuperpage = true;
     } else if (cfgEnableRawFormat==3) {
-      theLog.log(LogInfoDevel_(3002), "FMQ message output in raw format - mode 3 : 1 message = "
-      "1 DataBlock header + 1 data page");
+      theLog.log(LogInfoDevel_(3002), "FMQ message output in raw format - mode 3 : 1 message = 1 DataBlock header + 1 data page");
       enableRawFormatDatablock = true;
     }
 

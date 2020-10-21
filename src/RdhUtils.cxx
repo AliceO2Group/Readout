@@ -18,10 +18,8 @@ bool RdhHeaderPrinted = false;
 void RdhHandle::dumpRdh(long offset, bool singleLine) {
   if (singleLine) {
     if (!RdhHeaderPrinted) {
-      printf("    Offset  RDH  Header   Length   Length   Offset    FEE  "
-             " CRU Link         Trigger   Trigger  Pages Stop Packet\n");
-      printf("              v    size     link   memory     next     id  "
-             "  id   id       orbit  BC      type  count  bit  count\n");
+      printf("    Offset  RDH  Header   Length   Length   Offset    FEE   CRU Link         Trigger   Trigger  Pages Stop Packet\n");
+      printf("              v    size     link   memory     next     id    id   id       orbit  BC      type  count  bit  count\n");
       RdhHeaderPrinted = true;
     }
     if (offset == -1) {
@@ -29,8 +27,7 @@ void RdhHandle::dumpRdh(long offset, bool singleLine) {
     } else {
       printf("0x%08lX", offset);
     }
-    printf("   %02d      %02d %8d %8d  %5d  %4d %4d  0x%08X:%03X    "
-           "0x%04X     %2d   %2d    %03d\n",
+    printf("   %02d      %02d %8d %8d  %5d  %4d %4d  0x%08X:%03X    0x%04X     %2d   %2d    %03d\n",
            (int)getHeaderVersion(), (int)getHeaderSize(),
            (int)getMemorySize(), (int)getOffsetNextPacket(), (int)getFeeId(),
            (int)getCruId(), (int)getLinkId(), getTriggerOrbit(), getTriggerBC(),
@@ -148,8 +145,7 @@ int RdhBlockHandle::printSummary() {
 
     // check enough space to go to next offset
     if ((int)bytesLeft < next) {
-      printf("page too small, %zu bytes left! need at least %d bytes for next "
-             "offset\n",
+      printf("page too small, %zu bytes left! need at least %d bytes for next offset\n",
              bytesLeft, (int)rdh.getOffsetNextPacket());
       return -1;
     }

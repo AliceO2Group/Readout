@@ -122,9 +122,7 @@ ReadoutEquipmentCruEmulator::ReadoutEquipmentCruEmulator(
   cfg.getOptionalValue<int>(cfgEntryPoint + ".PayloadSize", cfgPayloadSize);
 
   // log config summary
-  theLog.log(LogInfoDevel_(3002), "Equipment %s: maxBlocksPerPage=%d cruBlockSize=%d "
-             "numberOfLinks=%d feeId=%d linkId=%d HBperiod=%d "
-             "EmptyHbRatio=%f PayloadSize=%d",
+  theLog.log(LogInfoDevel_(3002), "Equipment %s: maxBlocksPerPage=%d cruBlockSize=%d numberOfLinks=%d feeId=%d linkId=%d HBperiod=%d EmptyHbRatio=%f PayloadSize=%d",
              name.c_str(), cfgMaxBlocksPerPage, cruBlockSize, cfgNumberOfLinks,
              cfgFeeId, cfgLinkId, cfgHBperiod, cfgEmptyHbRatio,
              cfgPayloadSize);

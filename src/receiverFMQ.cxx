@@ -213,8 +213,7 @@ int main(int argc, const char **argv) {
   const char *cfgFileURI = "";
   std::string cfgEntryPoint = "";
   if (argc < 3) {
-    printf("Please provide path to configuration file and entry point (section "
-           "name)\n");
+    printf("Please provide path to configuration file and entry point (section name)\n");
     return -1;
   }
   cfgFileURI = argv[1];

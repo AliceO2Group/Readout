@@ -119,8 +119,7 @@ MemoryBankMemoryMappedFile::MemoryBankMemoryMappedFile(
 
   if (hugePageSizeBytes == 0) {
     // no match found
-    theLog.log(LogErrorSupport_(3103), "Memory bank %s : selected size %ld must be multiple of "
-               "available hugepage sizes = %s",
+    theLog.log(LogErrorSupport_(3103), "Memory bank %s : selected size %ld must be multiple of available hugepage sizes = %s",
                v_description.c_str(), v_size, availableSizes.c_str());
     throw __LINE__;
   }

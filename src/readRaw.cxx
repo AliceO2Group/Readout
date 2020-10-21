@@ -45,17 +45,19 @@ int main(int argc, const char *argv[]) {
   // format is a list of key=value pairs
 
   if (argc < 2) {
-    ERRLOG("Usage: %s [rawFilePath] [options]\nList of options:\n \
-    filePath=(string) : path to file.\n \
-    dataBlockEnabled=0|1: specify if file is with/without internal readout data block headers.\n \
-    dumpRDH=0|1 : dump the RDH headers.\n \
-    validateRDH=0|1 : check the RDH headers.\n \
-    checkContinuousTriggerOrder=0|1 : check trigger order.\n \
-    dumpDataBlockHeader=0|1 : dump the data block headers (internal readout headers).\n \
-    dumpData=(int) : dump the data pages. If -1, all bytes. Otherwise, the first bytes only, as specified.\n \
-    dumpDataInline=(int) : if set, each packet raw content is printed (hex dump style). \
-    fileReadVerbose=(int) : if set, more information is printed when reading/decoding file. \
-    \n",
+    ERRLOG(
+    "Usage: %s [rawFilePath] [options]\n"
+    "List of options:\n"
+    "    filePath=(string) : path to file.\n"
+    "    dataBlockEnabled=0|1: specify if file is with/without internal readout data block headers.\n"
+    "    dumpRDH=0|1 : dump the RDH headers.\n"
+    "    validateRDH=0|1 : check the RDH headers.\n"
+    "    checkContinuousTriggerOrder=0|1 : check trigger order.\n"
+    "    dumpDataBlockHeader=0|1 : dump the data block headers (internal readout headers).\n"
+    "    dumpData=(int) : dump the data pages. If -1, all bytes. Otherwise, the first bytes only, as specified.\n"
+    "    dumpDataInline=(int) : if set, each packet raw content is printed (hex dump style).\n"
+    "    fileReadVerbose=(int) : if set, more information is printed when reading/decoding file.\n"
+    "    \n",
            argv[0]);
     return -1;
   }
@@ -115,11 +117,7 @@ int main(int argc, const char *argv[]) {
   }
 
   ERRLOG("Using data file %s\n", filePath.c_str());
-  ERRLOG("dataBlockHeaderEnabled=%d dumpRDH=%d validateRDH=%d "
-         "checkContinuousTriggerOrder=%d "
-         "dumpDataBlockHeader=%d dumpData=%d "
-	 "dumpDataInline=%d fileReadVerbose=%d "
-	 "\n",
+  ERRLOG("dataBlockHeaderEnabled=%d dumpRDH=%d validateRDH=%d checkContinuousTriggerOrder=%d dumpDataBlockHeader=%d dumpData=%d dumpDataInline=%d fileReadVerbose=%d \n",
          (int)dataBlockHeaderEnabled, (int)dumpRDH, (int)validateRDH,
          (int)checkContinuousTriggerOrder, (int)dumpDataBlockHeader, dumpData,
 	 (int)dumpDataInline,(int)fileReadVerbose
@@ -395,8 +393,7 @@ int main(int argc, const char *argv[]) {
           }
           if (!isTriggerOrderOk) {
             ERRLOG(
-                "Trigger order mismatch@ file offset 0x%08lX + %ld : new %08X "
-                ": %03X > previous: %08X : %03X \n",
+                "Trigger order mismatch@ file offset 0x%08lX + %ld : new %08X : %03X > previous: %08X : %03X \n",
                 blockOffset, pageOffset, h.getTriggerOrbit(), h.getTriggerBC(),
                 latestTriggerOrbit, latestTriggerBC);
           }

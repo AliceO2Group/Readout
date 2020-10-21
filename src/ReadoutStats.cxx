@@ -34,8 +34,7 @@ void ReadoutStats::reset() {
 }
 
 void ReadoutStats::print() {
-  theLog.log(LogInfoSupport_(3003), "Readout global stats: numberOfSubtimeframes=%llu  "
-             "bytesReadout=%llu bytesRecorded=%llu bytesFairMQ=%llu",
+  theLog.log(LogInfoSupport_(3003), "Readout global stats: numberOfSubtimeframes=%llu bytesReadout=%llu bytesRecorded=%llu bytesFairMQ=%llu",
              (unsigned long long)numberOfSubtimeframes.load(),
              (unsigned long long)bytesReadout.load(),
              (unsigned long long)bytesRecorded.load(),
