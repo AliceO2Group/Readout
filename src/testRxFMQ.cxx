@@ -21,8 +21,7 @@ int main() {
   std::string cfgChannelType = "pair";
   std::string cfgChannelAddress = "ipc:///tmp/test-pipe";
 
-  auto factory =
-      FairMQTransportFactory::CreateTransportFactory(cfgTransportType);
+  auto factory = FairMQTransportFactory::CreateTransportFactory(cfgTransportType);
   auto pull = FairMQChannel{cfgChannelName, cfgChannelType, factory};
   pull.Connect(cfgChannelAddress);
   int64_t ret;

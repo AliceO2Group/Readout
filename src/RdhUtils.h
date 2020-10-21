@@ -13,9 +13,9 @@
 #ifndef RDHUTILS_H
 #define RDHUTILS_H
 
+#include <string>
 
 #include "RAWDataHeader.h"
-#include <string>
 
 // Some constants
 const unsigned int RdhMaxLinkId = 31; // maximum ID of a linkId in RDH
@@ -52,9 +52,7 @@ public:
   inline uint32_t getHbOrbit() { return (uint32_t)rdhPtr->heartbeatOrbit; }
   inline void incrementHbOrbit(uint32_t offset) { rdhPtr->heartbeatOrbit += offset; }
   inline uint16_t getMemorySize() { return (uint16_t)rdhPtr->memorySize; }
-  inline uint16_t getOffsetNextPacket() {
-    return (uint16_t)rdhPtr->offsetNextPacket;
-  }
+  inline uint16_t getOffsetNextPacket() { return (uint16_t)rdhPtr->offsetNextPacket; }
   inline bool getStopBit() { return (bool)rdhPtr->stopBit; }
   inline uint16_t getPagesCounter() { return (uint16_t)rdhPtr->pagesCounter; }
   inline uint32_t getTriggerOrbit() { return (uint32_t)rdhPtr->triggerOrbit; }
@@ -85,6 +83,5 @@ private:
   void *blockPtr;   // pointer to beginning of memory block
   size_t blockSize; // size of memory block
 };
-
 
 #endif

@@ -8,27 +8,25 @@
 // granted to it by virtue of its status as an Intergovernmental Organization
 // or submit itself to any jurisdiction.
 
-#include "Consumer.h"
-#include "MemoryBankManager.h"
-#include "ReadoutUtils.h"
-
+#include <arpa/inet.h>
+#include <atomic>
 #include <fcntl.h>
+#include <infiniband/verbs.h>
 #include <malloc.h>
+#include <netdb.h>
 #include <poll.h>
+#include <rdma/rdma_cma.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
-
-#include <arpa/inet.h>
-#include <infiniband/verbs.h>
-#include <netdb.h>
-#include <rdma/rdma_cma.h>
 #include <sys/socket.h>
 #include <sys/types.h>
-
-#include <atomic>
 #include <thread>
+#include <unistd.h>
+
+#include "Consumer.h"
+#include "MemoryBankManager.h"
+#include "ReadoutUtils.h"
 
 struct pdata {
   uint64_t buf_va;            // base address of server memory buffer
@@ -55,8 +53,7 @@ public:
   struct ibv_mr *mr = nullptr;
   struct pdata server_pdata;
   bool CQshutdownRequest = false;
-  std::atomic<int>
-      nAvailable; // maximum number of WR that can be issued concurrently
+  std::atomic<int> nAvailable; // maximum number of WR that can be issued concurrently
 
   int nPagesSent = 0; // number of pages sent
                       //  int cfgMaxPages=0; // max number of pages to send
@@ -64,8 +61,7 @@ public:
   //  int cfgRemotePageNumber=1; // number of remote pages // TODO: get this on
   //  connect init
 
-  ConsumerRDMA(ConfigFile &cfg, std::string cfgEntryPoint)
-      : Consumer(cfg, cfgEntryPoint) {
+  ConsumerRDMA(ConfigFile &cfg, std::string cfgEntryPoint) : Consumer(cfg, cfgEntryPoint) {
 
     // configuration parameter: | consumer-rdma-* | port | int | 10001 | Remote
     // server TCP port number to connect to. |
@@ -91,8 +87,7 @@ public:
       throw __LINE__;
     }
     for (int i = 0; i < num_devices; ++i) {
-      theLog.log(LogInfoDevel, "RDMA device[%d]: name=%s", i,
-                 ibv_get_device_name(device_list[i]));
+      theLog.log(LogInfoDevel, "RDMA device[%d]: name=%s", i, ibv_get_device_name(device_list[i]));
     }
     ibv_free_device_list(device_list);
     if (num_devices == 0) {
@@ -126,8 +121,7 @@ public:
     memset(&addr_hints, 0, sizeof(addr_hints));
     addr_hints.ai_family = AF_INET;
     addr_hints.ai_socktype = SOCK_STREAM;
-    if (getaddrinfo(cfgHost.c_str(), cfgPort.c_str(), &addr_hints, &addr_res) <
-        0) {
+    if (getaddrinfo(cfgHost.c_str(), cfgPort.c_str(), &addr_hints, &addr_res) < 0) {
       throw __LINE__;
     }
     bool addr_found = false;
@@ -176,10 +170,8 @@ public:
     }
 
     int c_active_width[] = {1, 1, 2, 4, 4, 8, 12};
-    float c_active_speed[] = {1, 2.5,  2,  5.0,  4,  10.0,
-                              8, 10.0, 16, 14.0, 32, 25.0};
-    int c_mtu[] = {IBV_MTU_256,  256,  IBV_MTU_512,  512, IBV_MTU_1024, 1024,
-                   IBV_MTU_2048, 2048, IBV_MTU_4096, 4096};
+    float c_active_speed[] = {1, 2.5, 2, 5.0, 4, 10.0, 8, 10.0, 16, 14.0, 32, 25.0};
+    int c_mtu[] = {IBV_MTU_256, 256, IBV_MTU_512, 512, IBV_MTU_1024, 1024, IBV_MTU_2048, 2048, IBV_MTU_4096, 4096};
 
     for (unsigned int i = 0; i < sizeof(c_mtu) / sizeof(int); i += 2) {
       if (port_attr.active_mtu == c_mtu[i]) {
@@ -196,8 +188,7 @@ public:
         break;
       }
     }
-    for (unsigned int i = 0; i < sizeof(c_active_speed) / sizeof(float);
-         i += 2) {
+    for (unsigned int i = 0; i < sizeof(c_active_speed) / sizeof(float); i += 2) {
       if (port_attr.active_speed == c_active_speed[i]) {
         theLog.log(LogInfoDevel, "active_speed = %.1f Gbps", c_active_speed[i + 1]);
         break;
@@ -261,9 +252,7 @@ public:
     }
     if (isContiguous) {
       size_t sz = p1 - p0;
-      theLog.log(LogInfoDevel, 
-          "Banks contiguous, registering them in one go: %p - %p (size %lu)",
-          p0, p1 - 1, sz);
+      theLog.log(LogInfoDevel, "Banks contiguous, registering them in one go: %p - %p (size %lu)", p0, p1 - 1, sz);
       mr = ibv_reg_mr(pd, p0, sz, IBV_ACCESS_LOCAL_WRITE);
       if (mr == nullptr) {
         throw __LINE__;
@@ -310,9 +299,7 @@ public:
     rdma_ack_cm_event(event);
     printf("remote buf @ %p\n", (void *)server_pdata.buf_va);
 
-    theLog.log(LogInfoDevel, "Remote buffer : %lu bytes total, %lu pages x %lu bytes",
-               server_pdata.buf_pageSize * server_pdata.buf_numberOfPages,
-               server_pdata.buf_numberOfPages, server_pdata.buf_pageSize);
+    theLog.log(LogInfoDevel, "Remote buffer : %lu bytes total, %lu pages x %lu bytes", server_pdata.buf_pageSize * server_pdata.buf_numberOfPages, server_pdata.buf_numberOfPages, server_pdata.buf_pageSize);
 
     nAvailable = MAX_WR;
     /*
@@ -455,9 +442,7 @@ public:
     wr.sg_list = &sg_list;
     wr.num_sge = 1;
     wr.opcode = IBV_WR_RDMA_WRITE;
-    wr.wr.rdma.remote_addr =
-        server_pdata.buf_va + (nPagesSent % server_pdata.buf_numberOfPages) *
-                                  server_pdata.buf_pageSize;
+    wr.wr.rdma.remote_addr = server_pdata.buf_va + (nPagesSent % server_pdata.buf_numberOfPages) * server_pdata.buf_pageSize;
 
     ptr[0] = size; // first word is the size of message transmitted
     // printf("Write remote @ page[%d]=%p\n",nPagesSent %
@@ -469,8 +454,7 @@ public:
       printf("error data bigger than remote page size\n");
     }
     wr.wr.rdma.rkey = server_pdata.buf_rkey;
-    wr.send_flags =
-        IBV_SEND_SIGNALED; // if not there, nothing happens in completion queue
+    wr.send_flags = IBV_SEND_SIGNALED; // if not there, nothing happens in completion queue
     struct ibv_send_wr *bad_wr;
     // printf("sending %d\n",buf[i*CHUNK_SIZE]);
 
@@ -486,7 +470,4 @@ public:
 private:
 };
 
-std::unique_ptr<Consumer> getUniqueConsumerRDMA(ConfigFile &cfg,
-                                                std::string cfgEntryPoint) {
-  return std::make_unique<ConsumerRDMA>(cfg, cfgEntryPoint);
-}
+std::unique_ptr<Consumer> getUniqueConsumerRDMA(ConfigFile &cfg, std::string cfgEntryPoint) { return std::make_unique<ConsumerRDMA>(cfg, cfgEntryPoint); }

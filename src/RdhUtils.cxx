@@ -27,11 +27,7 @@ void RdhHandle::dumpRdh(long offset, bool singleLine) {
     } else {
       printf("0x%08lX", offset);
     }
-    printf("   %02d      %02d %8d %8d  %5d  %4d %4d  0x%08X:%03X    0x%04X     %2d   %2d    %03d\n",
-           (int)getHeaderVersion(), (int)getHeaderSize(),
-           (int)getMemorySize(), (int)getOffsetNextPacket(), (int)getFeeId(),
-           (int)getCruId(), (int)getLinkId(), getTriggerOrbit(), getTriggerBC(),
-           (int)getTriggerType(), (int)getPagesCounter(), (int)getStopBit(), (int)getPacketCounter());
+    printf("   %02d      %02d %8d %8d  %5d  %4d %4d  0x%08X:%03X    0x%04X     %2d   %2d    %03d\n", (int)getHeaderVersion(), (int)getHeaderSize(), (int)getMemorySize(), (int)getOffsetNextPacket(), (int)getFeeId(), (int)getCruId(), (int)getLinkId(), getTriggerOrbit(), getTriggerBC(), (int)getTriggerType(), (int)getPagesCounter(), (int)getStopBit(), (int)getPacketCounter());
 
   } else {
     if (offset == -1) {
@@ -45,8 +41,7 @@ void RdhHandle::dumpRdh(long offset, bool singleLine) {
     printf("FEE Id        = %d\n", (int)getFeeId());
     printf("Link Id       = %d\n", (int)getLinkId());
     printf("Next block    = %d\n", (int)getOffsetNextPacket());
-    printf("Trigger Orbit / BC = %08X : %03X\n", getTriggerOrbit(),
-           getTriggerBC());
+    printf("Trigger Orbit / BC = %08X : %03X\n", getTriggerOrbit(), getTriggerBC());
     printf("Trigger type       = 0x%04X\n", (int)getTriggerType());
     printf("Stop Bit      = %d\n", (int)getStopBit());
     printf("Pages Counter = %d\n", (int)getPagesCounter());
@@ -74,7 +69,7 @@ int RdhHandle::validateRdh(std::string &err) {
   }
 
   // expecting offset next packet at least the size of the header
-  if ((getOffsetNextPacket()>0) && (getOffsetNextPacket()<sizeof(o2::Header::RAWDataHeader))) {
+  if ((getOffsetNextPacket() > 0) && (getOffsetNextPacket() < sizeof(o2::Header::RAWDataHeader))) {
     err += "Wrong offsetNextPacket\n";
     retCode++;
   }
@@ -91,8 +86,7 @@ int RdhHandle::validateRdh(std::string &err) {
   return retCode;
 }
 
-RdhBlockHandle::RdhBlockHandle(void *ptr, size_t size)
-    : blockPtr(ptr), blockSize(size) {}
+RdhBlockHandle::RdhBlockHandle(void *ptr, size_t size) : blockPtr(ptr), blockSize(size) {}
 
 RdhBlockHandle::~RdhBlockHandle() {}
 
@@ -111,8 +105,7 @@ int RdhBlockHandle::printSummary() {
 
     // check enough space for RDH
     if (bytesLeft < sizeof(o2::Header::RAWDataHeader)) {
-      printf("page too small, %zu bytes left! need at least %d bytes for RDH\n",
-             bytesLeft, (int)sizeof(o2::Header::RAWDataHeader));
+      printf("page too small, %zu bytes left! need at least %d bytes for RDH\n", bytesLeft, (int)sizeof(o2::Header::RAWDataHeader));
       return -1;
     }
 
@@ -125,8 +118,7 @@ int RdhBlockHandle::printSummary() {
 
       // print raw bytes
       // printf("Raw bytes dump (32-bit words):\n");
-      for (unsigned int i = 0;
-           i < sizeof(o2::Header::RAWDataHeader) / sizeof(int32_t); i++) {
+      for (unsigned int i = 0; i < sizeof(o2::Header::RAWDataHeader) / sizeof(int32_t); i++) {
         if (i % 8 == 0) {
           printf("\n");
         }
@@ -145,8 +137,7 @@ int RdhBlockHandle::printSummary() {
 
     // check enough space to go to next offset
     if ((int)bytesLeft < next) {
-      printf("page too small, %zu bytes left! need at least %d bytes for next offset\n",
-             bytesLeft, (int)rdh.getOffsetNextPacket());
+      printf("page too small, %zu bytes left! need at least %d bytes for next offset\n", bytesLeft, (int)rdh.getOffsetNextPacket());
       return -1;
     }
 

@@ -8,14 +8,14 @@
 // granted to it by virtue of its status as an Intergovernmental Organization
 // or submit itself to any jurisdiction.
 
-#include "ReadoutUtils.h"
-#include "DataBlockContainer.h"
 #include <Common/Fifo.h>
 #include <memory>
-#include <string>
-
 #include <mutex>
 #include <stdint.h>
+#include <string>
+
+#include "DataBlockContainer.h"
+#include "ReadoutUtils.h"
 
 struct MemoryRegion {
   unsigned long long size; // size of memory block
@@ -49,15 +49,14 @@ public:
   size_t getPageSize();
 
 private:
-  size_t memorySize;    // total size of buffer
-  size_t pageSize;      // size of each superpage in buffer (not the one of
-                        // getpagesize())
-  size_t numberOfPages; // number of pages allocated
-  uint8_t *baseAddress; // base address of buffer
-  std::unique_ptr<AliceO2::Common::Fifo<long>>
-      pagesAvailable; // a buffer to keep track of individual pages. storing
-                      // offset (with respect to base address) of pages
-                      // available
+  size_t memorySize;                                           // total size of buffer
+  size_t pageSize;                                             // size of each superpage in buffer (not the one of
+                                                               // getpagesize())
+  size_t numberOfPages;                                        // number of pages allocated
+  uint8_t *baseAddress;                                        // base address of buffer
+  std::unique_ptr<AliceO2::Common::Fifo<long>> pagesAvailable; // a buffer to keep track of individual pages. storing
+                                                               // offset (with respect to base address) of pages
+                                                               // available
 };
 
 class DataBlockContainerFromMemoryHandler : public DataBlockContainer {

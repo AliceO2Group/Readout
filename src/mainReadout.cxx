@@ -14,9 +14,6 @@
 ///
 
 #include <Common/Configuration.h>
-#include "DataBlock.h"
-#include "DataBlockContainer.h"
-#include "DataSet.h"
 #include <Common/Fifo.h>
 #include <Common/MemPool.h>
 #include <Common/Thread.h>
@@ -25,6 +22,10 @@
 #include <InfoLogger/InfoLoggerMacros.hxx>
 #include <boost/property_tree/ptree.hpp>
 #include <thread>
+
+#include "DataBlock.h"
+#include "DataBlockContainer.h"
+#include "DataSet.h"
 
 #ifdef WITH_ZMQ
 #include "ZmqServer.hxx"
@@ -40,9 +41,13 @@
 
 #include <atomic>
 #include <chrono>
+#include <fcntl.h>
 #include <map>
 #include <memory>
 #include <signal.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <termios.h>
 #include <vector>
 
 #include "Consumer.h"
@@ -52,11 +57,6 @@
 #include "ReadoutStats.h"
 #include "ReadoutUtils.h"
 #include "ReadoutVersion.h"
-
-#include <fcntl.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <termios.h>
 
 #ifdef WITH_NUMA
 #include <numa.h>
@@ -135,10 +135,9 @@ InfoLogger theLog;
 InfoLoggerContext theLogContext;
 
 // global signal handler to end program
-static int ShutdownRequest =
-    0; // set to 1 to request termination, e.g. on SIGTERM/SIGQUIT signals
+static int ShutdownRequest = 0; // set to 1 to request termination, e.g. on SIGTERM/SIGQUIT signals
 static void signalHandler(int signalId) {
-  theLog.log(LogInfoDevel,"Received signal %d", signalId);
+  theLog.log(LogInfoDevel, "Received signal %d", signalId);
   printf("*** break ***\n");
   if (ShutdownRequest) {
     // immediate exit if pending exit request
@@ -148,9 +147,8 @@ static void signalHandler(int signalId) {
 }
 
 // some globals needed in other components
-std::string occRole;   // OCC role name
-tRunNumber occRunNumber;  // OCC run number
-
+std::string occRole;     // OCC role name
+tRunNumber occRunNumber; // OCC run number
 
 class Readout {
 
@@ -164,7 +162,6 @@ public:
   int iterateCheck();
 
   void loopRunning(); // called in state "running"
-
 
 private:
   ConfigFile cfg;
@@ -182,37 +179,32 @@ private:
   std::string cfgLogbookApiToken;
   int cfgLogbookUpdateInterval;
   std::string cfgTimeframeServerUrl;
-  
+
   // runtime entities
   std::vector<std::unique_ptr<Consumer>> dataConsumers;
-  std::map<Consumer *, std::string>
-      consumersOutput; // for the consumers having an output, keep a reference
-                       // to the consumer and the name of the consumer to which
-                       // to push data
+  std::map<Consumer *, std::string> consumersOutput; // for the consumers having an output, keep a reference
+                                                     // to the consumer and the name of the consumer to which
+                                                     // to push data
   std::vector<std::unique_ptr<ReadoutEquipment>> readoutDevices;
   std::unique_ptr<DataBlockAggregator> agg;
   std::unique_ptr<AliceO2::Common::Fifo<DataSetReference>> agg_output;
 
-  int isRunning =
-      0; // set to 1 when running, 0 when not running (or should stop running)
-  AliceO2::Common::Timer startTimer; // time counter from start()
-  AliceO2::Common::Timer stopTimer;  // time counter from stop()
-  std::unique_ptr<std::thread>
-      runningThread; // the thread active in "running" state
+  int isRunning = 0;                          // set to 1 when running, 0 when not running (or should stop running)
+  AliceO2::Common::Timer startTimer;          // time counter from start()
+  AliceO2::Common::Timer stopTimer;           // time counter from stop()
+  std::unique_ptr<std::thread> runningThread; // the thread active in "running" state
 
   int latencyFd = -1; // file descriptor for the "deep sleep" disabled
 
-  bool isError = 0; // flag set to 1 when error has been detected
+  bool isError = 0;                   // flag set to 1 when error has been detected
   std::vector<std::string> strErrors; // errors backlog
-  std::mutex mutexErrors; // mutex to guard access to error variables
+  std::mutex mutexErrors;             // mutex to guard access to error variables
 
 #ifdef WITH_LOGBOOK
-  std::unique_ptr<jiskefet::JiskefetInterface>
-      logbookHandle; // handle to logbook
+  std::unique_ptr<jiskefet::JiskefetInterface> logbookHandle; // handle to logbook
 #endif
-  void publishLogbookStats(); // publish current readout counters to logbook
-  AliceO2::Common::Timer
-      logbookTimer; // timer to handle readout logbook publish interval
+  void publishLogbookStats();          // publish current readout counters to logbook
+  AliceO2::Common::Timer logbookTimer; // timer to handle readout logbook publish interval
 
   uint64_t maxTimeframeId;
 
@@ -234,18 +226,12 @@ void Readout::publishLogbookStats() {
       // virtual void flpUpdateCounters(int64_t runNumber, std::string flpName,
       // int64_t nSubtimeframes, int64_t nEquipmentBytes, int64_t
       // nRecordingBytes, int64_t nFairMqBytes) override;
-      logbookHandle->flpUpdateCounters(
-          occRunNumber, occRole, (int64_t)gReadoutStats.numberOfSubtimeframes,
-          (int64_t)gReadoutStats.bytesReadout,
-          (int64_t)gReadoutStats.bytesRecorded,
-          (int64_t)gReadoutStats.bytesFairMQ);
+      logbookHandle->flpUpdateCounters(occRunNumber, occRole, (int64_t)gReadoutStats.numberOfSubtimeframes, (int64_t)gReadoutStats.bytesReadout, (int64_t)gReadoutStats.bytesRecorded, (int64_t)gReadoutStats.bytesFairMQ);
       isOk = true;
     } catch (const std::exception &ex) {
-      theLog.log(LogErrorDevel_(3210), "Failed to update logbook: %s",
-                 ex.what());
+      theLog.log(LogErrorDevel_(3210), "Failed to update logbook: %s", ex.what());
     } catch (...) {
-      theLog.log(LogErrorDevel_(3210),
-                 "Failed to update logbook: unknown exception");
+      theLog.log(LogErrorDevel_(3210), "Failed to update logbook: unknown exception");
     }
     if (!isOk) {
       // closing logbook immediately
@@ -277,48 +263,48 @@ int Readout::init(int argc, char *argv[]) {
 
   // log startup and options
   theLog.log(LogInfoSupport_(3001), "Readout " READOUT_VERSION " - process starting, pid %d", getpid());
-  theLog.log(LogInfoDevel,"Optional built features enabled:");
+  theLog.log(LogInfoDevel, "Optional built features enabled:");
 #ifdef WITH_READOUTCARD
-  theLog.log(LogInfoDevel,"READOUTCARD : yes");
+  theLog.log(LogInfoDevel, "READOUTCARD : yes");
 #else
-  theLog.log(LogInfoDevel,"READOUTCARD : no");
+  theLog.log(LogInfoDevel, "READOUTCARD : no");
 #endif
 #ifdef WITH_CONFIG
-  theLog.log(LogInfoDevel,"CONFIG : yes");
+  theLog.log(LogInfoDevel, "CONFIG : yes");
 #else
-  theLog.log(LogInfoDevel,"CONFIG : no");
+  theLog.log(LogInfoDevel, "CONFIG : no");
 #endif
 #ifdef WITH_FAIRMQ
-  theLog.log(LogInfoDevel,"FAIRMQ : yes");
+  theLog.log(LogInfoDevel, "FAIRMQ : yes");
   // redirect FMQ logs to infologger
   setFMQLogsToInfoLogger(&theLog);
 #else
-  theLog.log(LogInfoDevel,"FAIRMQ : no");
+  theLog.log(LogInfoDevel, "FAIRMQ : no");
 #endif
 #ifdef WITH_NUMA
-  theLog.log(LogInfoDevel,"NUMA : yes");
+  theLog.log(LogInfoDevel, "NUMA : yes");
 #else
-  theLog.log(LogInfoDevel,"NUMA : no");
+  theLog.log(LogInfoDevel, "NUMA : no");
 #endif
 #ifdef WITH_RDMA
-  theLog.log(LogInfoDevel,"RDMA : yes");
+  theLog.log(LogInfoDevel, "RDMA : yes");
 #else
-  theLog.log(LogInfoDevel,"RDMA : no");
+  theLog.log(LogInfoDevel, "RDMA : no");
 #endif
 #ifdef WITH_OCC
-  theLog.log(LogInfoDevel,"OCC : yes");
+  theLog.log(LogInfoDevel, "OCC : yes");
 #else
-  theLog.log(LogInfoDevel,"OCC : no");
+  theLog.log(LogInfoDevel, "OCC : no");
 #endif
 #ifdef WITH_LOGBOOK
-  theLog.log(LogInfoDevel,"LOGBOOK : yes");
+  theLog.log(LogInfoDevel, "LOGBOOK : yes");
 #else
-  theLog.log(LogInfoDevel,"LOGBOOK : no");
+  theLog.log(LogInfoDevel, "LOGBOOK : no");
 #endif
 #ifdef WITH_ZMQ
-  theLog.log(LogInfoDevel,"ZMQ : yes");
+  theLog.log(LogInfoDevel, "ZMQ : yes");
 #else
-  theLog.log(LogInfoDevel,"ZMQ : no");
+  theLog.log(LogInfoDevel, "ZMQ : no");
 #endif
 
   return 0;
@@ -330,7 +316,7 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
   theLog.log(LogInfoSupport_(3005), "Readout executing CONFIGURE");
 
   // load configuration file
-  theLog.log(LogInfoSupport,"Reading configuration from %s %s", cfgFileURI, cfgFileEntryPoint);
+  theLog.log(LogInfoSupport, "Reading configuration from %s %s", cfgFileURI, cfgFileEntryPoint);
   try {
     // check URI prefix
     if (!strncmp(cfgFileURI, "file:", 5)) {
@@ -340,9 +326,7 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
 // otherwise use the Configuration module, if available
 #ifdef WITH_CONFIG
       try {
-        std::unique_ptr<o2::configuration::ConfigurationInterface> conf =
-            o2::configuration::ConfigurationFactory::getConfiguration(
-                cfgFileURI);
+        std::unique_ptr<o2::configuration::ConfigurationInterface> conf = o2::configuration::ConfigurationFactory::getConfiguration(cfgFileURI);
         boost::property_tree::ptree t = conf->getRecursive(cfgFileEntryPoint);
         cfg.load(t);
         // cfg.print();
@@ -362,16 +346,14 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
   // over loaded configuration
   // with function to overwrtie configuration tree t1 with (selected) content of
   // t2
-  auto mergeConfig = [&](boost::property_tree::ptree &t1,
-                         const boost::property_tree::ptree &t2) {
-    theLog.log(LogInfoDevel,"Merging selected content of OCC configuration");
+  auto mergeConfig = [&](boost::property_tree::ptree &t1, const boost::property_tree::ptree &t2) {
+    theLog.log(LogInfoDevel, "Merging selected content of OCC configuration");
     try {
       // overwrite fairmq channel parameters
       // get list of channels
       if (t2.get_child_optional("chans")) {
-        boost::property_tree::ptree &ptchannels =
-            (boost::property_tree::ptree &)t2.get_child("chans");
-        theLog.log(LogInfoDevel,"Found OCC FMQ channels configuration");
+        boost::property_tree::ptree &ptchannels = (boost::property_tree::ptree &)t2.get_child("chans");
+        theLog.log(LogInfoDevel, "Found OCC FMQ channels configuration");
         for (auto const &pos : ptchannels) {
           std::string channelName = boost::lexical_cast<std::string>(pos.first);
           // check for a consumer with same fairmq channel
@@ -380,20 +362,17 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
             cfgType = cfg.getValue<std::string>(kName + ".consumerType");
             if (cfgType == "FairMQChannel") {
               std::string cfgChannelName;
-              cfg.getOptionalValue<std::string>(kName + ".fmq-name",
-                                                cfgChannelName);
+              cfg.getOptionalValue<std::string>(kName + ".fmq-name", cfgChannelName);
               if (cfgChannelName == channelName) {
                 // this is matching, let's overwrite t1 with content of t2
-                theLog.log(LogInfoDevel,"Updating %s - FairMQ channel %s :", kName.c_str(),
-                           channelName.c_str());
+                theLog.log(LogInfoDevel, "Updating %s - FairMQ channel %s :", kName.c_str(), channelName.c_str());
                 std::string progOptions;
                 for (auto const &pos2 : pos.second.get_child("0")) {
                   std::string paramName = pos2.first.c_str();
                   std::string paramValue = pos2.second.data();
-                  if ((paramName == "transport") || (paramName == "type") ||
-                      (paramName == "address")) {
+                  if ((paramName == "transport") || (paramName == "type") || (paramName == "address")) {
                     std::string cfgKey = kName + ".fmq-" + paramName;
-                    theLog.log(LogInfoDevel,"%s = %s", cfgKey.c_str(), paramValue.c_str());
+                    theLog.log(LogInfoDevel, "%s = %s", cfgKey.c_str(), paramValue.c_str());
                     t1.put(cfgKey.c_str(), paramValue.c_str());
                   } else {
                     // add it as a program option
@@ -406,7 +385,7 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
                 // set FMQ program options, if any
                 if (progOptions != "") {
                   std::string cfgKey = kName + ".fmq-progOptions";
-                  theLog.log(LogInfoDevel,"%s = %s", cfgKey.c_str(), progOptions.c_str());
+                  theLog.log(LogInfoDevel, "%s = %s", cfgKey.c_str(), progOptions.c_str());
                   t1.put(cfgKey.c_str(), progOptions.c_str());
                 }
               }
@@ -414,7 +393,7 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
           }
         }
       } else {
-        theLog.log(LogInfoDevel,"No OCC FMQ channels configuration found");
+        theLog.log(LogInfoDevel, "No OCC FMQ channels configuration found");
       }
     } catch (std::exception &e) {
       theLog.log(LogErrorSupport_(3100), "%s", e.what());
@@ -429,8 +408,7 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
   if (latencyFd < 0) {
     // theLog.log(LogDebugDevel, "Can not open /dev/cpu_dma_latency");
   } else {
-    if (write(latencyFd, &maxLatency, sizeof(maxLatency)) !=
-        sizeof(maxLatency)) {
+    if (write(latencyFd, &maxLatency, sizeof(maxLatency)) != sizeof(maxLatency)) {
       // theLog.log(LogDebugDevel, "Can not write to /dev/cpu_dma_latency");
     } else {
       deepsleepDisabled = true;
@@ -451,34 +429,29 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
   // Time in seconds to wait for data once the equipments are stopped. 0 means
   // stop immediately. |
   cfgFlushEquipmentTimeout = 1;
-  cfg.getOptionalValue<double>("readout.flushEquipmentTimeout",
-                               cfgFlushEquipmentTimeout);
+  cfg.getOptionalValue<double>("readout.flushEquipmentTimeout", cfgFlushEquipmentTimeout);
   // configuration parameter: | readout | memoryPoolStatsEnabled | int | 0 |
   // Global debugging flag to enable statistics on memory pool usage (printed
   // to stdout when pool released). |
   int cfgMemoryPoolStatsEnabled = 0;
-  cfg.getOptionalValue<int>("readout.memoryPoolStatsEnabled",
-                            cfgMemoryPoolStatsEnabled);
+  cfg.getOptionalValue<int>("readout.memoryPoolStatsEnabled", cfgMemoryPoolStatsEnabled);
   extern int MemoryPagesPoolStatsEnabled;
   MemoryPagesPoolStatsEnabled = cfgMemoryPoolStatsEnabled;
   // configuration parameter: | readout | disableAggregatorSlicing | int | 0 |
   // When set, the aggregator slicing is disabled, data pages are passed through
   // without grouping/slicing. |
   cfgDisableAggregatorSlicing = 0;
-  cfg.getOptionalValue<int>("readout.disableAggregatorSlicing",
-                            cfgDisableAggregatorSlicing);
+  cfg.getOptionalValue<int>("readout.disableAggregatorSlicing", cfgDisableAggregatorSlicing);
   // configuration parameter: | readout | aggregatorSliceTimeout | double | 0 |
   // When set, slices (groups) of pages are flushed if not updated after given
   // timeout (otherwise closed only on beginning of next TF, or on stop). |
   cfgAggregatorSliceTimeout = 0;
-  cfg.getOptionalValue<double>("readout.aggregatorSliceTimeout",
-                               cfgAggregatorSliceTimeout);
+  cfg.getOptionalValue<double>("readout.aggregatorSliceTimeout", cfgAggregatorSliceTimeout);
   // configuration parameter: | readout | aggregatorStfTimeout | double | 0 |
   // When set, subtimeframes are buffered until timeout
   // (otherwise, sent immediately and independently for each data source). |
   cfgAggregatorStfTimeout = 0;
-  cfg.getOptionalValue<double>("readout.aggregatorStfTimeout",
-                               cfgAggregatorStfTimeout);
+  cfg.getOptionalValue<double>("readout.aggregatorStfTimeout", cfgAggregatorStfTimeout);
 
   // configuration parameter: | readout | logbookEnabled | int | 0 | When set,
   // the logbook is enabled and populated with readout stats at runtime. |
@@ -486,28 +459,23 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
   cfg.getOptionalValue<int>("readout.logbookEnabled", cfgLogbookEnabled);
   if (cfgLogbookEnabled) {
 #ifndef WITH_LOGBOOK
-    theLog.log(LogErrorDevel_(3210),
-               "Logbook enabled in configuration, but feature not available in this build");
+    theLog.log(LogErrorDevel_(3210), "Logbook enabled in configuration, but feature not available in this build");
 #else
     // configuration parameter: | readout | logbookUrl | string | | The address
     // to be used for the logbook API. |
     cfg.getOptionalValue<std::string>("readout.logbookUrl", cfgLogbookUrl);
     // configuration parameter: | readout | logbookApiToken | string | | The
     // token to be used for the logbook API. |
-    cfg.getOptionalValue<std::string>("readout.logbookApiToken",
-                                      cfgLogbookApiToken);
+    cfg.getOptionalValue<std::string>("readout.logbookApiToken", cfgLogbookApiToken);
     // configuration parameter: | readout | logbookUpdateInterval | int | 30 |
     // Amount of time (in seconds) between logbook publish updates. |
     cfgLogbookUpdateInterval = 30;
-    cfg.getOptionalValue<int>("readout.logbookUpdateInterval",
-                              cfgLogbookUpdateInterval);
+    cfg.getOptionalValue<int>("readout.logbookUpdateInterval", cfgLogbookUpdateInterval);
 
-    theLog.log(LogInfoDevel, "Logbook enabled, %ds update interval, using URL = %s",
-               cfgLogbookUpdateInterval, cfgLogbookUrl.c_str());
+    theLog.log(LogInfoDevel, "Logbook enabled, %ds update interval, using URL = %s", cfgLogbookUpdateInterval, cfgLogbookUrl.c_str());
     logbookHandle = jiskefet::getApiInstance(cfgLogbookUrl, cfgLogbookApiToken);
     if (logbookHandle == nullptr) {
-      theLog.log(LogErrorSupport_(3210), 
-                 "Failed to create handle to logbook");
+      theLog.log(LogErrorSupport_(3210), "Failed to create handle to logbook");
     }
 #endif
   }
@@ -516,18 +484,16 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
   // to be used to publish current timeframe, e.g. to be used as reference clock for other
   // readout instances. |
   cfg.getOptionalValue<std::string>("readout.timeframeServerUrl", cfgTimeframeServerUrl);
-  if (cfgTimeframeServerUrl.length()>0) {
-    #ifdef WITH_ZMQ
-    theLog.log(LogInfoDevel, "Creating Timeframe server @ %s",
-       cfgTimeframeServerUrl.c_str());
+  if (cfgTimeframeServerUrl.length() > 0) {
+#ifdef WITH_ZMQ
+    theLog.log(LogInfoDevel, "Creating Timeframe server @ %s", cfgTimeframeServerUrl.c_str());
     tfServer = std::make_unique<ZmqServer>(cfgTimeframeServerUrl);
     if (tfServer == nullptr) {
-      theLog.log(LogErrorDevel_(3220), "Failed to create TF server");  
+      theLog.log(LogErrorDevel_(3220), "Failed to create TF server");
     }
-    #else
-      theLog.log(LogWarningSupport_(3101),
-        "Skipping timeframeServer - not supported by this build");
-    #endif
+#else
+    theLog.log(LogWarningSupport_(3101), "Skipping timeframeServer - not supported by this build");
+#endif
   }
 
   // configuration of memory banks
@@ -552,8 +518,7 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
     cfg.getOptionalValue<std::string>(kName + ".size", cfgSize);
     long long mSize = ReadoutUtils::getNumberOfBytesFromString(cfgSize.c_str());
     if (mSize <= 0) {
-      theLog.log(LogErrorSupport_(3100), "Skipping memory bank %s:  wrong size %s", kName.c_str(),
-                 cfgSize.c_str());
+      theLog.log(LogErrorSupport_(3100), "Skipping memory bank %s:  wrong size %s", kName.c_str(), cfgSize.c_str());
       continue;
     }
 
@@ -593,16 +558,14 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
       numaNodeChanged = 1;
 #endif
     }
-    theLog.log(LogInfoDevel, "Creating memory bank %s: type %s size %lld", kName.c_str(),
-               cfgType.c_str(), mSize);
+    theLog.log(LogInfoDevel, "Creating memory bank %s: type %s size %lld", kName.c_str(), cfgType.c_str(), mSize);
     std::shared_ptr<MemoryBank> b = nullptr;
     try {
       b = getMemoryBank(mSize, cfgType, kName);
     } catch (...) {
     }
     if (b == nullptr) {
-      theLog.log(LogErrorSupport_(3230),  "Failed to create memory bank %s",
-                 kName.c_str());
+      theLog.log(LogErrorSupport_(3230), "Failed to create memory bank %s", kName.c_str());
       continue;
     }
     // cleanup the memory range
@@ -666,22 +629,19 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
 #ifdef WITH_FAIRMQ
         newConsumer = getUniqueConsumerFMQ(cfg, kName);
 #else
-        theLog.log(LogWarningSupport_(3101), "Skipping %s: %s - not supported by this build",
-                   kName.c_str(), cfgType.c_str());
+        theLog.log(LogWarningSupport_(3101), "Skipping %s: %s - not supported by this build", kName.c_str(), cfgType.c_str());
 #endif
       } else if (!cfgType.compare("DataSampling")) {
 #ifdef WITH_FAIRMQ
         newConsumer = getUniqueConsumerDataSampling(cfg, kName);
 #else
-        theLog.log(LogWarningSupport_(3101), "Skipping %s: %s - not supported by this build",
-                   kName.c_str(), cfgType.c_str());
+        theLog.log(LogWarningSupport_(3101), "Skipping %s: %s - not supported by this build", kName.c_str(), cfgType.c_str());
 #endif
       } else if (!cfgType.compare("FairMQChannel")) {
 #ifdef WITH_FAIRMQ
         newConsumer = getUniqueConsumerFMQchannel(cfg, kName);
 #else
-        theLog.log(LogWarningSupport_(3101), "Skipping %s: %s - not supported by this build",
-                   kName.c_str(), cfgType.c_str());
+        theLog.log(LogWarningSupport_(3101), "Skipping %s: %s - not supported by this build", kName.c_str(), cfgType.c_str());
 #endif
       } else if (!cfgType.compare("fileRecorder")) {
         newConsumer = getUniqueConsumerFileRecorder(cfg, kName);
@@ -695,40 +655,31 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
 #ifdef WITH_RDMA
         newConsumer = getUniqueConsumerRDMA(cfg, kName);
 #else
-        theLog.log(LogWarningSupport_(3101), "Skipping %s: %s - not supported by this build",
-                   kName.c_str(), cfgType.c_str());
+        theLog.log(LogWarningSupport_(3101), "Skipping %s: %s - not supported by this build", kName.c_str(), cfgType.c_str());
 #endif
       } else if (!cfgType.compare("zmq")) {
 #ifdef WITH_ZMQ
         newConsumer = getUniqueConsumerZMQ(cfg, kName);
 #else
-        theLog.log(LogWarningSupport_(3101), "Skipping %s: %s - not supported by this build",
-                   kName.c_str(), cfgType.c_str());
+        theLog.log(LogWarningSupport_(3101), "Skipping %s: %s - not supported by this build", kName.c_str(), cfgType.c_str());
 #endif
       } else {
-        theLog.log(LogErrorSupport_(3102), "Unknown consumer type '%s' for [%s]", cfgType.c_str(),
-                   kName.c_str());
+        theLog.log(LogErrorSupport_(3102), "Unknown consumer type '%s' for [%s]", cfgType.c_str(), kName.c_str());
       }
     } catch (const std::exception &ex) {
-      theLog.log(LogErrorSupport_(3100), 
-                 "Failed to configure consumer %s : %s", kName.c_str(),
-                 ex.what());
+      theLog.log(LogErrorSupport_(3100), "Failed to configure consumer %s : %s", kName.c_str(), ex.what());
       continue;
     } catch (const std::string &ex) {
-      theLog.log(LogErrorSupport_(3100), 
-                 "Failed to configure consumer %s : %s", kName.c_str(),
-                 ex.c_str());
+      theLog.log(LogErrorSupport_(3100), "Failed to configure consumer %s : %s", kName.c_str(), ex.c_str());
       continue;
     } catch (...) {
-      theLog.log(LogErrorSupport_(3100), "Failed to configure consumer %s",
-                 kName.c_str());
+      theLog.log(LogErrorSupport_(3100), "Failed to configure consumer %s", kName.c_str());
       continue;
     }
 
     if (newConsumer != nullptr) {
       if (cfgOutput.length() > 0) {
-        consumersOutput.insert(
-            std::pair<Consumer *, std::string>(newConsumer.get(), cfgOutput));
+        consumersOutput.insert(std::pair<Consumer *, std::string>(newConsumer.get(), cfgOutput));
       }
       newConsumer->name = kName;
       if (cfgStopOnError) {
@@ -749,8 +700,7 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
           err = "already used";
           break;
         }
-        theLog.log(LogInfoDevel, "Output of %s will be pushed to %s", p.first->name.c_str(),
-                   c->name.c_str());
+        theLog.log(LogInfoDevel, "Output of %s will be pushed to %s", p.first->name.c_str(), c->name.c_str());
         found = true;
         c->isForwardConsumer = true;
         p.first->forwardConsumer = c.get();
@@ -758,9 +708,7 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
       }
     }
     if (!found) {
-      theLog.log(LogErrorSupport_(3100),
-                 "Failed to attach consumer %s to %s (%s)",
-                 p.first->name.c_str(), p.second.c_str(), err.c_str());
+      theLog.log(LogErrorSupport_(3100), "Failed to attach consumer %s to %s (%s)", p.first->name.c_str(), p.second.c_str(), err.c_str());
     }
   }
 
@@ -786,8 +734,7 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
     // type of equipment to be instanciated. One of: dummy, rorc, cruEmulator |
     std::string cfgEquipmentType = "";
     cfgEquipmentType = cfg.getValue<std::string>(kName + ".equipmentType");
-    theLog.log(LogInfoDevel, "Configuring equipment %s: %s", kName.c_str(),
-               cfgEquipmentType.c_str());
+    theLog.log(LogInfoDevel, "Configuring equipment %s: %s", kName.c_str(), cfgEquipmentType.c_str());
 
     std::unique_ptr<ReadoutEquipment> newDevice = nullptr;
     try {
@@ -797,8 +744,7 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
 #ifdef WITH_READOUTCARD
         newDevice = getReadoutEquipmentRORC(cfg, kName);
 #else
-        theLog.log(LogWarningSupport_(3101), "Skipping %s: %s - not supported by this build",
-                   kName.c_str(), cfgEquipmentType.c_str());
+        theLog.log(LogWarningSupport_(3101), "Skipping %s: %s - not supported by this build", kName.c_str(), cfgEquipmentType.c_str());
 #endif
       } else if (!cfgEquipmentType.compare("cruEmulator")) {
         newDevice = getReadoutEquipmentCruEmulator(cfg, kName);
@@ -808,28 +754,21 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
 #ifdef WITH_ZMQ
         newDevice = getReadoutEquipmentZmq(cfg, kName);
 #else
-        theLog.log(LogWarningSupport_(3101), "Skipping %s: %s - not supported by this build",
-                   kName.c_str(), cfgEquipmentType.c_str());
+        theLog.log(LogWarningSupport_(3101), "Skipping %s: %s - not supported by this build", kName.c_str(), cfgEquipmentType.c_str());
 #endif
       } else {
-        theLog.log(LogErrorSupport_(3102), "Unknown equipment type '%s' for [%s]",
-                   cfgEquipmentType.c_str(), kName.c_str());
+        theLog.log(LogErrorSupport_(3102), "Unknown equipment type '%s' for [%s]", cfgEquipmentType.c_str(), kName.c_str());
       }
     } catch (std::string errMsg) {
-      theLog.log(LogErrorSupport_(3100),
-                 "Failed to configure equipment %s : %s", kName.c_str(),
-                 errMsg.c_str());
+      theLog.log(LogErrorSupport_(3100), "Failed to configure equipment %s : %s", kName.c_str(), errMsg.c_str());
       nEquipmentFailures++;
       continue;
     } catch (int errNo) {
-      theLog.log(LogErrorSupport_(3100),
-                 "Failed to configure equipment %s : error #%d", kName.c_str(),
-                 errNo);
+      theLog.log(LogErrorSupport_(3100), "Failed to configure equipment %s : error #%d", kName.c_str(), errNo);
       nEquipmentFailures++;
       continue;
     } catch (...) {
-      theLog.log(LogErrorSupport_(3100),
-                 "Failed to configure equipment %s", kName.c_str());
+      theLog.log(LogErrorSupport_(3100), "Failed to configure equipment %s", kName.c_str());
       nEquipmentFailures++;
       continue;
     }
@@ -841,8 +780,7 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
   }
 
   if (nEquipmentFailures) {
-    theLog.log(LogErrorSupport_(3100),
-               "Some equipments failed to initialize, exiting");
+    theLog.log(LogErrorSupport_(3100), "Some equipments failed to initialize, exiting");
     return -1;
   }
 
@@ -881,15 +819,13 @@ int Readout::start() {
     agg->disableSlicing = 1;
   }
   if (cfgAggregatorSliceTimeout > 0) {
-    theLog.log(LogInfoDevel, "Aggregator slice timeout = %.2lf seconds",
-               cfgAggregatorSliceTimeout);
+    theLog.log(LogInfoDevel, "Aggregator slice timeout = %.2lf seconds", cfgAggregatorSliceTimeout);
     agg->cfgSliceTimeout = cfgAggregatorSliceTimeout;
   }
   if (cfgAggregatorStfTimeout > 0) {
-    theLog.log(LogInfoDevel, "Aggregator subtimeframe timeout = %.2lf seconds",
-               cfgAggregatorStfTimeout);
-    agg->cfgStfTimeout=cfgAggregatorStfTimeout;
-    agg->enableStfBuilding=1;
+    theLog.log(LogInfoDevel, "Aggregator subtimeframe timeout = %.2lf seconds", cfgAggregatorStfTimeout);
+    agg->cfgStfTimeout = cfgAggregatorStfTimeout;
+    agg->enableStfBuilding = 1;
   }
 
   agg->start();
@@ -934,8 +870,7 @@ void Readout::loopRunning() {
 #endif
 
   for (;;) {
-    if ((!isRunning) &&
-        ((cfgFlushEquipmentTimeout <= 0) || (stopTimer.isTimeout()))) {
+    if ((!isRunning) && ((cfgFlushEquipmentTimeout <= 0) || (stopTimer.isTimeout()))) {
       break;
     }
 
@@ -949,11 +884,11 @@ void Readout::loopRunning() {
           uint64_t newTimeframeId = bc->at(0)->getData()->header.timeframeId;
           if (newTimeframeId > maxTimeframeId) {
             maxTimeframeId = newTimeframeId;
-	    #ifdef WITH_ZMQ
-	    if (tfServer) {
-	      tfServer->publish(&maxTimeframeId, sizeof(maxTimeframeId));
-	    }
-	    #endif
+#ifdef WITH_ZMQ
+            if (tfServer) {
+              tfServer->publish(&maxTimeframeId, sizeof(maxTimeframeId));
+            }
+#endif
             gReadoutStats.numberOfSubtimeframes++;
           }
         }
@@ -969,8 +904,7 @@ void Readout::loopRunning() {
         }
         if ((c->isError) && (c->stopOnError)) {
           if (!c->isErrorReported) {
-            theLog.log(LogErrorSupport_(3231), 
-                       "Error detected in consumer %s", c->name.c_str());
+            theLog.log(LogErrorSupport_(3231), "Error detected in consumer %s", c->name.c_str());
             c->isErrorReported = true;
           }
           isError = 1;
@@ -1031,9 +965,8 @@ int Readout::stop() {
   theLog.log(LogInfoSupport_(3005), "Readout executing STOP");
 
   // raise flag
-  stopTimer.reset(cfgFlushEquipmentTimeout *
-                  1000000); // add a delay before stopping aggregator -
-                            // continune to empty FIFOs
+  stopTimer.reset(cfgFlushEquipmentTimeout * 1000000); // add a delay before stopping aggregator -
+                                                       // continune to empty FIFOs
   isRunning = 0;
 
   // disable data producers
@@ -1074,9 +1007,7 @@ int Readout::stop() {
     size_t nPagesTotal = 0, nPagesFree = 0, nPagesUsed = 0;
     if (readoutDevice->getMemoryUsage(nPagesFree, nPagesTotal) == 0) {
       nPagesUsed = nPagesTotal - nPagesFree;
-      theLog.log(LogInfoDevel_(3003), "Equipment %s : %d/%d pages (%.2f%%) still in use",
-                 readoutDevice->getName().c_str(), (int)nPagesUsed,
-                 (int)nPagesTotal, nPagesUsed * 100.0 / nPagesTotal);
+      theLog.log(LogInfoDevel_(3003), "Equipment %s : %d/%d pages (%.2f%%) still in use", readoutDevice->getName().c_str(), (int)nPagesUsed, (int)nPagesTotal, nPagesUsed * 100.0 / nPagesTotal);
     }
   }
 
@@ -1161,8 +1092,7 @@ int Readout::reset() {
 #ifdef WITH_OCC
 class ReadoutOCCStateMachine : public RuntimeControlledObject {
 public:
-  ReadoutOCCStateMachine(std::unique_ptr<Readout> r)
-      : RuntimeControlledObject("Readout Process") {
+  ReadoutOCCStateMachine(std::unique_ptr<Readout> r) : RuntimeControlledObject("Readout Process") {
     theReadout = std::move(r);
     occRole = this->getRole();
   }
@@ -1194,12 +1124,11 @@ public:
     }
     // set run number
     occRunNumber = this->getRunNumber();
-    theLogContext.setField(InfoLoggerContext::FieldName::Run,
-                           std::to_string(occRunNumber));
+    theLogContext.setField(InfoLoggerContext::FieldName::Run, std::to_string(occRunNumber));
     theLog.setContext(theLogContext);
-    if (occRunNumber != 0 ) {
+    if (occRunNumber != 0) {
       setenv(envRunNumber, std::to_string(occRunNumber).c_str(), 1);
-      theLog.log(LogInfoDevel, "Run number %d",(int)occRunNumber);
+      theLog.log(LogInfoDevel, "Run number %d", (int)occRunNumber);
     } else {
       unsetenv(envRunNumber);
       theLog.log(LogInfoDevel, "Run number not defined");
@@ -1300,25 +1229,15 @@ int main(int argc, char *argv[]) {
     OccInstance occ(&csm);
     occ.wait();
 #else
-    theLog.log(LogErrorSupport_(3101),
-               "OCC mode requested but not available in this build");
+    theLog.log(LogErrorSupport_(3101), "OCC mode requested but not available in this build");
     return -1;
 #endif
   } else if (interactiveMode) {
     theLog.log(LogInfoOps, "Readout entering interactive state machine");
-    theLog.log(LogInfoOps, 
-        "(c) configure (s) start (t) stop (r) reset (r) recover (x) quit");
+    theLog.log(LogInfoOps, "(c) configure (s) start (t) stop (r) reset (r) recover (x) quit");
 
     enum class States { Undefined, Standby, Configured, Running, Error };
-    enum class Commands {
-      Undefined,
-      Configure,
-      Reset,
-      Start,
-      Stop,
-      Recover,
-      Exit
-    };
+    enum class Commands { Undefined, Configure, Reset, Start, Stop, Recover, Exit };
 
     auto getStateName = [](States s) {
       switch (s) {
@@ -1472,8 +1391,7 @@ int main(int argc, char *argv[]) {
           theLog.log(LogInfoSupport, "Readout requesting to stop");
           theCommand = Commands::Stop;
         } else if (err != 0) {
-          theLog.log(LogErrorSupport_(3231),
-                     "Readout reported an error while running");
+          theLog.log(LogErrorSupport_(3231), "Readout reported an error while running");
           theCommand = Commands::Stop;
         }
         err = theReadout->iterateCheck();
@@ -1505,8 +1423,7 @@ int main(int argc, char *argv[]) {
           theLog.log(LogInfoSupport, "Readout requesting to stop");
           break;
         } else if (err != 0) {
-          theLog.log(LogErrorSupport_(3231),
-                     "Readout reported an error while running");
+          theLog.log(LogErrorSupport_(3231), "Readout reported an error while running");
           break;
         }
         err = theReadout->iterateCheck();

@@ -1,17 +1,11 @@
-#!/usr/bin/wish
-# This tool allows editing of readout configuration
+#!/ usr / bin / wish
+#This tool allows editing of readout configuration
 
-
-# get config file to be edited
-set configFile [lindex $argv 0]
-if {[string length $configFile]==0} {
-  puts "Please provide a configuration file"
-  exit 1
-}
+#get config file to be edited
+set configFile[lindex $argv 0] if {[string length $configFile] == 0} { puts "Please provide a configuration file" exit 1 }
 #puts "Using configuration $configFile"
 
-
-# Static description of readout configuration parameters, as defined in configurationParameters.md
+#Static description of readout configuration parameters, as defined in configurationParameters.md
 set configurationParametersDescriptor {
 | Section | Parameter name  | Type | Default value | Description |
 |--|--|--|--|--|
@@ -38,7 +32,9 @@ set configurationParametersDescriptor {
 | consumer-fileRecorder-* | bytesMax | bytes | 0 | Maximum number of bytes to write to each file. Data pages are never truncated, so if writing the full page would exceed this limit, no data from that page is written at all and file is closed. If zero (default), no maximum size set.| 
 | consumer-fileRecorder-* | dataBlockHeaderEnabled | int | 0 | Enable (1) or disable (0) the writing to file of the internal readout header (Readout DataBlock.h) between the data pages, to easily navigate through the file without RDH decoding. If disabled, the raw data pages received from CRU are written without further formatting. | 
 | consumer-fileRecorder-* | dropEmptyHBFrames | int | 0 | If 1, memory pages are scanned and empty HBframes are discarded, i.e. couples of packets which contain only RDH, the first one with pagesCounter=0 and the second with stop bit set. This setting does not change the content of in-memory data pages, other consumers would still get full data pages with empty packets. This setting is meant to reduce the amount of data recorded for continuous detectors in triggered mode.| 
-| consumer-fileRecorder-* | fileName | string | | Path to the file where to record data. The following variables are replaced at runtime: ${XXX} -> get variable XXX from environment, %t -> unix timestamp (seconds since epoch), %T -> formatted date/time, %i -> equipment ID of each data chunk (used to write data from different equipments to different output files), %l -> link ID (used to write data from different links to different output files). | 
+| consumer-fileRecorder-* | fileName | string | | Path to the file where to record data. The following variables are replaced at runtime: ${
+  XXX
+} -> get variable XXX from environment, %t -> unix timestamp (seconds since epoch), %T -> formatted date/time, %i -> equipment ID of each data chunk (used to write data from different equipments to different output files), %l -> link ID (used to write data from different links to different output files). | 
 | consumer-fileRecorder-* | filesMax | int | 1 | If 1 (default), file splitting is disabled: file is closed whenever a limit is reached on a given recording stream. Otherwise, file splitting is enabled: whenever the current file reaches a limit, it is closed an new one is created (with an incremental name). If <=0, an unlimited number of incremental chunks can be created. If non-zero, it defines the maximum number of chunks. The file name is suffixed with chunk number (by default, ".001, .002, ..." at the end of the file name. One may use "%c" in the file name to define where this incremental file counter is printed. | 
 | consumer-fileRecorder-* | pagesMax | int | 0 | Maximum number of data pages accepted by recorder. If zero (default), no maximum set.| 
 | consumer-processor-* | ensurePageOrder | int | 0 | If set, ensures that data pages goes out of the processing pool in same order as input (which is not guaranteed with multithreading otherwise). This option adds latency. | 
@@ -119,618 +115,498 @@ set configurationParametersDescriptor {
 | receiverFMQ | decodingMode | string | none | Decoding mode of the readout FMQ output stream. Possible values: none (no decoding), stfHbf, stfSuperpage | 
 | receiverFMQ | dumpRDH | int | 0 | When set, the RDH of data received are printed (needs decodingMode=readout).| 
 | receiverFMQ | dumpTF | int | 0 | When set, a message is printed when a new timeframe is received. If the value is bigger than one, this specifies a periodic interval between TF print after the first one. (e.g. 100 would print TF 1, 100, 200, etc). | 
-| receiverFMQ | transportType | string | shmem | c.f. parameter with same name in consumer-FairMQchannel-* | 
+| receiverFMQ | transportType | string | shmem | c.f. parameter with same name in consumer-FairMQchannel-* |
 }
 
-
-
-# parse config parameters descriptor
+#parse config parameters descriptor
 set sections {}
-set ixLine 0
-set isError 0
-foreach line [split $configurationParametersDescriptor "\n"] {
-  # split descriptor fields
-  set ldef [split $line "|"]
-  
-  # the first lines are headers
-  incr ixLine
-  if {$ixLine==2} {
-    # check this matches expectations
-    set refDef "| Section | Parameter name  | Type | Default value | Description |"
-    if {$line!=$refDef} {
-      set isError 1
-      break
-    }
+set ixLine 0 set isError 0 foreach line[split $configurationParametersDescriptor "\n"] {
+#split descriptor fields
+  set ldef[split $line "|"]
+
+#the first lines are headers
+      incr ixLine if {$ixLine == 2} {
+#check this matches expectations
+    set refDef "| Section | Parameter name  | Type | Default value | Description |" if {$line != $refDef} { set isError 1 break }
   }
-  if {$ixLine<=3} {continue}
-  if {[string length [string trim $line]]==0} {continue}
-      
-  # parse descriptor
-  if {[llength $ldef]!=7} {
-      set isError 1
-      break
-  }  
-  set defSection [string trim [lindex $ldef 1]]
-  set defName [string trim [lindex $ldef 2]]
-  set defType [string trim [lindex $ldef 3]]
-  set defDefault [string trim [lindex $ldef 4]]
-  set defDescr [string trim [lindex $ldef 5]]
-  
-  # populate variables: sections sectionParams
-  if {[lsearch $sections $defSection]<0} {
-    lappend sections $defSection
-  }    
-  lappend sectionParams($defSection) $defName $defType $defDefault $defDescr
+  if {
+    $ixLine <= 3
+  }
+  { continue }
+  if {
+    [string length[string trim $line]] == 0
+  }
+  { continue }
+
+#parse descriptor
+  if {
+    [llength $ldef] != 7
+  }
+  {set isError 1 break} set defSection[string trim[lindex $ldef 1]] set defName[string trim[lindex $ldef 2]] set defType[string trim[lindex $ldef 3]] set defDefault[string trim[lindex $ldef 4]] set defDescr[string trim[lindex $ldef 5]]
+
+#populate variables : sections sectionParams
+      if {[lsearch $sections $defSection] < 0} {lappend sections $defSection} lappend sectionParams($defSection) $defName $defType $defDefault $defDescr
 }
-if {$isError} {
-  puts "unexpected descriptor format line $ixLine: $line"
-  exit 1
+if {
+  $isError
 }
+{ puts "unexpected descriptor format line $ixLine: $line" exit 1 }
 
-
-
-# define hierarchy of types
+#define hierarchy of types
 set types {}
-foreach s $sections {
-  set ss [split $s "-"]
-  set k [string trim [lindex $ss 0]]
-  if {$k=="receiverFMQ"} {continue}
-  if {[lsearch $types $k]<0} {
-    lappend types $k
-    set subtype(${k}) {}
-  }
-  if {[llength $ss>2]} {
-    set st [string trim [lindex $ss 1]]
-    if {[string length $st]>1} {
-      if {[lsearch $subtype(${k}) $st]<0} {
-        lappend subtype(${k}) $st
-      }    
+foreach
+  s $sections {
+    set ss[split $s "-"] set k[string trim[lindex $ss 0]] if {$k == "receiverFMQ"} { continue }
+    if {
+      [lsearch $types $k] < 0
     }
-  }  
-}
-# print types hierarchy
-if {0} {
-  foreach t $types {
-    puts "$t -> $subtype($t)"
-  }
-}
-
-
-
-# read config file
-foreach t $types {
-  set cfg_${t} {}
-  set lsections($t) {}
-}
-if {[file exists $configFile]} {
-  package require inifile
-  set iFile [::ini::open $configFile]
-  foreach s [::ini::sections ${iFile}] {
-    foreach t $types {
-      if {[string match "${t}-*" $s]} {
-	lappend cfg_${t} $s
-	break
-      }
-    }  
-  }
-  if {0} {
-    # print ini file content
-    foreach s [::ini::sections ${iFile}] {
-     puts "\[$s\]"
-     foreach {k v} [::ini::get ${iFile} $s] {
-       puts "\t$k = $v"
-     }
+    {
+      lappend types $k set subtype(${k}) {}
     }
-  }
-
-  # populate in-memory config
-  # variables:
-  # for each type, lsections(type): list of sections belonging to this type
-  # kvsection(section): list of list {key value} pairs belonging to this section
-
-  foreach s [::ini::sections ${iFile}] {
-    # which section does it belong to ?
-    set ixt [lsearch $types [lindex [split $s "-"] 0]]
-    if {$ixt<0} {
-      puts "Unknown type for .ini section $s"
-      continue
+    if {
+      [llength $ss > 2]
     }
-    set t [lindex $types $ixt]
-    lappend lsections($t) $s
-    set kvsection($s) {}
-    foreach {k v} [::ini::get ${iFile} $s] {
-      # discard comments
-      if {[string range $k 0 0]!="#"} {
-	lappend kvsection($s) [list "$k" "$v"]
+    {
+      set st[string trim[lindex $ss 1]] if {[string length $st] > 1} {
+        if {
+          [lsearch $subtype(${k}) $st] < 0
+        }
+        { lappend subtype(${k}) $st }
       }
     }
   }
+#print types hierarchy
+if {
+  0
+}
+{
+  foreach
+    t $types { puts "$t -> $subtype($t)" }
+}
+
+#read config file
+foreach
+  t $types {
+    set cfg_${t} {}
+    set lsections($t) {}
+  }
+if {
+  [file exists $configFile]
+}
+{
+  package require inifile set iFile[::ini::open $configFile] foreach s[::ini::sections ${iFile}] {
+    foreach
+      t $types {
+        if {
+          [string match "${t}-*" $s]
+        }
+        { lappend cfg_${t} $s break }
+      }
+  }
+  if {
+    0
+  }
+  {
+#print ini file content
+    foreach
+      s[::ini::sections ${iFile}] {
+        puts "\[$s\]" foreach{k v}[::ini::get ${iFile} $s] { puts "\t$k = $v" }
+      }
+  }
+
+#populate in - memory config
+#variables:
+#for each type, lsections(type) : list of sections belonging to this type
+#kvsection(section) : list of list{key value } pairs belonging to this section
+
+  foreach
+    s[::ini::sections ${iFile}] {
+#which section does it belong to ?
+      set ixt[lsearch $types[lindex[split $s "-"] 0]] if {$ixt < 0} {puts "Unknown type for .ini section $s" continue} set t[lindex $types $ixt] lappend lsections($t) $s set kvsection($s) {}
+      foreach { k v }
+      [::ini::get ${iFile} $s] {
+#discard comments
+        if {
+          [string range $k 0 0] != "#"
+        }
+        {
+          lappend kvsection($s)[list "$k"
+                                     "$v"]
+        }
+      }
+    }
 
   ::ini::close $iFile
-} else {
-  # create empty config with general params
-  lappend lsections(readout) readout
-  set kvsection(readout) {}
+}
+else {
+#create empty config with general params
+  lappend lsections(readout) readout set kvsection(readout) {}
 }
 
-
 ################################################################
-# Create GUI
-################################################################
+#Create GUI
+    ################################################################
 
-# Create Window
-wm title . "Readout.exe - configuration editor"
-wm protocol . WM_DELETE_WINDOW cmd_Quit
+#Create Window
+    wm title."Readout.exe - configuration editor" wm protocol
+        .WM_DELETE_WINDOW cmd_Quit
 
-set w .
-set width 640
-set height 280
-set x [expr { ( [winfo vrootwidth  $w] - $width  ) / 2 }]
-set y [expr { ( [winfo vrootheight $w] - $height ) / 2 }]
-wm geometry $w ${width}x${height}+${x}+${y}
+            set w.set width 640 set height 280 set x[expr{([winfo vrootwidth $w] - $width) / 2}] set y[expr{([winfo vrootheight $w] - $height) / 2}] wm geometry $w ${width} x${height} +
+    ${x} + $ {
+  y
+}
 
+#Navigation buttons
+frame.frMenu - borderwidth 2 -
+    relief groove
 
-# Navigation buttons
-frame .frMenu -borderwidth 2 -relief groove
-
-# pair of name/label for menu buttons
-# if label empty, same as name
-set mainButtons {"General" "General parameters" "Banks" "Memory" "Equipments" ""  "Consumers" "" "Save" "" "Quit" ""}
-set i 1
-foreach {bt txt} $mainButtons {
-  if {"$txt"==""} {
-    set txt $bt
+#pair of name / label for menu buttons
+#if label empty, same as name
+        set mainButtons{"General"
+                        "General parameters"
+                        "Banks"
+                        "Memory"
+                        "Equipments"
+                        ""
+                        "Consumers"
+                        ""
+                        "Save"
+                        ""
+                        "Quit"
+                        ""} set i 1 foreach{bt txt} $mainButtons {
+  if {
+    "$txt" == ""
   }
-#  grid [button .frMenu.bt${bt} -text "$txt"] -in .frMenu -row 1 -column $i -sticky ew
-  pack [button .frMenu.bt${bt} -text "$txt"] -in .frMenu -expand 1 -side left -fill both
-  set command "
-  .frMenu.bt${bt} configure -command {
-      display_tooltip \"\" 0 0
-      destroy .frMain
-      destroy .boxmsg
-      foreach {bt txt} \$mainButtons {
-	  .frMenu.bt\$bt configure -highlightbackground grey
-      }
-      .frMenu.bt${bt} configure -highlightbackground red
-      frame .frMain      
-      pack .frMain -fill both -padx 2 -pady 2 -expand true
-      cmd_${bt}
-      global current
-      set current .frMenu.bt${bt}
+  { set txt $bt }
+#grid[button.frMenu.bt${bt } - text "$txt"] - in.frMenu - row 1 - column $i - sticky ew
+  pack[button.frMenu.bt${bt} - text "$txt"] - in.frMenu - expand 1 - side left -
+      fill both set command "
+          .frMenu.bt${bt} configure -
+      command {
+    display_tooltip \"\" 0 0
+        destroy.frMain destroy.boxmsg foreach {
+      bt txt
+    }
+    \$mainButtons{.frMenu.bt\$bt configure - highlightbackground grey}.frMenu.bt${bt} configure - highlightbackground red frame.frMain pack.frMain - fill both - padx 2 - pady 2 - expand true cmd_${bt} global current set current.frMenu.bt$ { bt }
   }
   "
-  eval $command
-  incr i
+      eval $command incr i
 }
 
-proc cmd_Quit {} {
-  exit 0
+proc cmd_Quit{} {exit 0}
+
+proc cmd_General{} {cmd_section "readout"}
+
+proc cmd_Banks{} {cmd_instance "bank"}
+
+proc cmd_Equipments{} {cmd_instance "equipment"}
+
+proc cmd_Consumers{} {cmd_instance "consumer"}
+
+proc cmd_instance{type} {
+#create instance selector panel
+
+    labelframe.frMain.fr_aslist - text "${type}-*" - padx 5 - pady 5 frame.frMain.frSub_aslist listbox.frMain.aslist - xscrollcommand ".frMain.scrx_aslist set" - yscrollcommand ".frMain.scry_aslist set" - selectmode extended - exportselection no - height 6 scrollbar.frMain.scrx_aslist - orient horizontal - command ".frMain.aslist xview" - width 10 scrollbar.frMain.scry_aslist - orient vertical - command ".frMain.aslist yview" -
+    width 10 eval "button .frMain.add_aslist -text \"Add\" -command {add_section $type}" eval "button .frMain.rem_aslist -text \"Remove\" -command {rem_section $type}" eval "bind .frMain.aslist <<ListboxSelect>> {display_instance $type}"
+
+    update_instances $type
+
+        pack.frMain.scrx_aslist -
+    in.frMain.frSub_aslist - side bottom - fill x pack.frMain.scry_aslist - in.frMain.frSub_aslist - side right - fill y pack.frMain.aslist - in.frMain.frSub_aslist - fill both - expand 1 pack.frMain.frSub_aslist - in.frMain.fr_aslist - fill both - expand 1 pack.frMain.add_aslist.frMain.rem_aslist - in.frMain.fr_aslist - side left - expand 1 - fill x pack.frMain.fr_aslist - fill y - side left - padx 5 - pady 5 cmd_section ""}
+
+proc update_instances{type} {
+#look for instances of given type and populate listbox
+  global lsections.frMain.aslist delete 0 end foreach s $lsections($type){.frMain.aslist insert end $s} destroy.frMain.frDetails destroy.frMain.scrolly
 }
 
-proc cmd_General {} {
-  cmd_section "readout"
-}
+proc display_instance{type} { set ix[.frMain.aslist curselection] if {[llength $ix] != 1} {return } set name[.frMain.aslist get[lindex $ix 0]] cmd_section $name }
 
-proc cmd_Banks {} {
-  cmd_instance "bank"
-}
+proc rem_section{type} { global lsections set ix[.frMain.aslist curselection] if {[llength $ix] != 1} {return } set name[.frMain.aslist get[lindex $ix 0]] set ix[lsearch $lsections($type) $name] if {$ix < 0} {tk_messageBox - message "Instance not found" - icon error - type ok return } set lsections($type)[lreplace $lsections($type) $ix $ix] update_instances $type }
 
-proc cmd_Equipments {} {
-  cmd_instance "equipment"
-}
+proc add_section{type} {
+#prompt for a new item of given type
+#and add it in table
 
-proc cmd_Consumers {} {
-  cmd_instance "consumer"
-}
-
-proc cmd_instance {type} {
-  # create instance selector panel
-  
-  labelframe .frMain.fr_aslist -text "${type}-*" -padx 5 -pady 5
-  frame .frMain.frSub_aslist
-  listbox .frMain.aslist -xscrollcommand ".frMain.scrx_aslist set" -yscrollcommand ".frMain.scry_aslist set" -selectmode extended -exportselection no -height 6
-  scrollbar .frMain.scrx_aslist -orient horizontal -command ".frMain.aslist xview" -width 10
-  scrollbar .frMain.scry_aslist -orient vertical -command ".frMain.aslist yview" -width 10
-  eval "button .frMain.add_aslist -text \"Add\" -command {add_section $type}"
-  eval "button .frMain.rem_aslist -text \"Remove\" -command {rem_section $type}"
-  eval "bind .frMain.aslist <<ListboxSelect>> {display_instance $type}"
-     
-  update_instances $type  
-  
-  pack .frMain.scrx_aslist -in .frMain.frSub_aslist -side bottom -fill x
-  pack .frMain.scry_aslist -in .frMain.frSub_aslist -side right -fill y
-  pack .frMain.aslist -in .frMain.frSub_aslist -fill both -expand 1
-  pack .frMain.frSub_aslist -in .frMain.fr_aslist -fill both -expand 1
-  pack .frMain.add_aslist .frMain.rem_aslist -in .frMain.fr_aslist -side left -expand 1 -fill x
-  pack .frMain.fr_aslist -fill y -side left -padx 5 -pady 5
-  cmd_section ""
-}
-
-proc update_instances {type} {
-  # look for instances of given type and populate listbox
-  global lsections
-  .frMain.aslist delete 0 end
-  foreach s $lsections($type) {
-    .frMain.aslist insert end $s
+  if {
+    [winfo exists.boxmsg]
   }
-  destroy .frMain.frDetails
-  destroy .frMain.scrolly
+  {return } toplevel.boxmsg label.boxmsg.l1 - text "Name:   ${type}-" entry.boxmsg.e -
+      width 15
+
+#check if subtype needed
+      global subtype if {[llength $subtype($type)] > 0} {
+#create listbox
+    label.boxmsg.l2 - text "Type:" listbox.boxmsg.st - height 4 - yscrollcommand " .boxmsg.scryt set" scrollbar.boxmsg.scryt - orient vertical - command " .boxmsg.st yview" - width 10 foreach s $subtype($type) { .boxmsg.st insert end $s }
+  }
+  scan[wm geometry.] "%dx%d%d%d" ww wh wx wy if {$wx > 0} { set x[expr $wx + 100] }
+  else {
+    set x[expr $wx - 100]
+  }
+  if {
+    $wy > 0
+  }
+  { set y[expr $wy + $wh / 2] }
+  else {set y[expr $wy - $wh / 2]} wm geometry.boxmsg[format "%+d%+d" $x $y] wm title
+          .boxmsg "New $type"
+
+#create new item when button pressed
+      eval "button .boxmsg.ok -text \"Ok\" -width 5 -command { add_section_ok \"$type\" }" pack.boxmsg.l1.boxmsg.e -
+      side left - padx 0 - pady 10 if {[winfo exists.boxmsg.st]} {pack.boxmsg.l2 - side left - padx 10 - pady 10 pack.boxmsg.st.boxmsg.scryt - side left - fill y - expand 1 - pady 10} pack.boxmsg.ok - padx 10 - side right - pady 10 focus.boxmsg.e
 }
 
-proc display_instance {type} {
-  set ix [.frMain.aslist curselection]
-  if {[llength $ix]!=1} {
-    return
-  }
-  set name [.frMain.aslist get [lindex $ix 0]]
-  cmd_section $name
-}
+proc add_section_ok{type} {
 
-
-proc rem_section {type} {
-  global lsections
-  set ix [.frMain.aslist curselection]
-  if {[llength $ix]!=1} {
-    return
-  }
-  set name [.frMain.aslist get [lindex $ix 0]]
-  set ix [lsearch $lsections($type) $name]
-  if {$ix<0} {
-    tk_messageBox -message "Instance not found" -icon error -type ok
-    return
-  }
-  set lsections($type) [lreplace $lsections($type) $ix $ix]
-  update_instances $type
-}
-
-proc add_section {type} {
-  # prompt for a new item of given type
-  # and add it in table
-
-  if {[winfo exists .boxmsg]} {return}
-  toplevel .boxmsg
-  label .boxmsg.l1 -text "Name:   ${type}-"
-  entry .boxmsg.e -width 15
-  
-  # check if subtype needed
-  global subtype
-  if {[llength $subtype($type)]>0} {
-    # create listbox
-    label .boxmsg.l2 -text "Type:"
-    listbox .boxmsg.st -height 4 -yscrollcommand " .boxmsg.scryt set"
-    scrollbar .boxmsg.scryt -orient vertical -command " .boxmsg.st yview" -width 10
-    foreach s $subtype($type) {
-      .boxmsg.st insert end $s
-    }
-  }  
-  scan [wm geometry .] "%dx%d%d%d" ww wh wx wy
-  if {$wx>0} {
-    set x [expr $wx + 100]
-  } else {
-    set x [expr $wx - 100]
-  }
-  if {$wy>0} {
-    set y [expr $wy + $wh/2]
-  } else {
-    set y [expr $wy - $wh/2]
-  }
-  wm geometry .boxmsg [format "%+d%+d" $x $y]
-  wm title .boxmsg "New $type"
-  
-  # create new item when button pressed
-  eval "button .boxmsg.ok -text \"Ok\" -width 5 -command { add_section_ok \"$type\" }"   
-  pack  .boxmsg.l1 .boxmsg.e -side left -padx 0 -pady 10
-  if {[winfo exists .boxmsg.st]} {
-    pack .boxmsg.l2 -side left -padx 10 -pady 10
-    pack .boxmsg.st .boxmsg.scryt -side left -fill y -expand 1 -pady 10
-  }
-  pack .boxmsg.ok -padx 10 -side right -pady 10
-  focus .boxmsg.e
-}
-
-proc add_section_ok {type} {
- 
-  # get name and add prefix
+#get name and add prefix
   set name "${type}-[.boxmsg.e get]"
-  
-  global lsections
-  global kvsection
-  if { [lsearch $lsections($type) $name] >=0 } {
-    tk_messageBox -message "Name already used" -icon error -type ok
-    return
-  }
-  set subtype ""
-  if {[winfo exists .boxmsg.st]} {
-    set subtypeix [.boxmsg.st curselection]
-    if {[llength $subtypeix]==1} {
-      set subtype [.boxmsg.st get [lindex $subtypeix 0]]
+
+      global lsections global kvsection if {[lsearch $lsections($type) $name] >= 0} {tk_messageBox - message "Name already used" - icon error - type ok return } set subtype "" if {[winfo exists.boxmsg.st]} {
+    set subtypeix[.boxmsg.st curselection] if {[llength $subtypeix] == 1} { set subtype[.boxmsg.st get[lindex $subtypeix 0]] }
+    if {
+      "$subtype" == ""
     }
-    if {"$subtype"==""} {
-      tk_messageBox -message "Please select a type" -icon error -type ok
+    { tk_messageBox - message "Please select a type" - icon error - type ok return }
+  }
+
+  lappend lsections($type) $name set kvsection($name) {}
+  if {
+    "$subtype" != ""
+  }
+  {lappend kvsection($name)[list "${type}Type"
+                                 "$subtype"]} update_instances $type.boxmsg.e selection range 0 end focus.boxmsg.e
+
       return
-    }
-  }
-  
-  lappend lsections($type) $name
-  set kvsection($name) {} 
-  if {"$subtype"!=""} {
-    lappend kvsection($name) [list "${type}Type" "$subtype"]
-  }
-  update_instances $type
-  .boxmsg.e selection range 0 end
-  focus .boxmsg.e
-  
-  return 
 }
 
-
-
-proc handle_update {gname name op} {
-    global currentSection
-    global editwidgets
-    set value [$editwidgets($name) get]
-    global kvsection
-    set ixk [lsearch -index 0 $kvsection($currentSection) $name]
-    set item [list "${name}" "${value}"]
-    if {$ixk<0} {
-      lappend kvsection($currentSection) $item
-    } else {
-      set kvsection($currentSection) [lreplace $kvsection($currentSection) $ixk $ixk $item]
-    }
-    if {[string first "Type" $name]>=0} {
-      # the subtype may have changed, update
-      global currentSection
-      global editwidgets
-      set cmd "
-      after 50 {
-        display_instance $currentSection
-	focus $editwidgets($name)
-      }
-      "
-      eval $cmd
-    }
-    if {"$err"!=""} {
-      puts "handle_update error: $err"
-    }
-}
-
-
-proc cmd_section {section} {
-  global sectionParams
-  global lsections
-  global kvsection
-  global currentSection
-
-  destroy .frMain.frDetails
-  destroy .frMain.scrolly
-  #frame .frMain.frDetails
-  canvas .frMain.frDetails -yscrollcommand ".frMain.scrolly set"
-  frame .frMain.frDetails.view
-  pack .frMain.frDetails.view
-  scrollbar .frMain.scrolly -orient vertical -command ".frMain.frDetails yview" -width 10
-  pack .frMain.scrolly -fill y -side right -pady 5  
-  set currentSection "$section"  
-  
-  if {$section==""} {return}
-
-  set ix 1
-  global editvars
-  global editwidgets
-  array unset editvars 
-  
-  foreach { name type default descr } [getMatchingSectionParams $section] {
-    
-    if {$name != ""} {
-    # is it defined in config?
-    set value ""
-    set ixk [lsearch -index 0 $kvsection($section) $name]
-    if {($ixk>=0)} {
-      set value [lindex [lindex $kvsection($section) $ixk] 1]
-    }
-
-    label .frMain.frDetails.view.l${ix} -text "$name"
-    entry .frMain.frDetails.view.e${ix} -textvariable editvars($name)
-    set editwidgets($name) .frMain.frDetails.view.e${ix}
-	
-    if {"$value"!=""} {
-      .frMain.frDetails.view.e${ix} insert 0 "$value"
-    }
-    grid .frMain.frDetails.view.l${ix} -column 1 -row $ix -sticky e
-    grid .frMain.frDetails.view.e${ix} -column 2 -row $ix -sticky ew
-    set tooltipTxt "Name:\t$name\nType:\t${type}\nDefault:\t$default\n\n$descr"
-    set command "
-    bind .frMain.frDetails.view.e${ix} <ButtonPress-3> {
-        # absolute screen position of the click
-        set x \[expr \[winfo rootx %W\] + %x\]
-        set y \[expr \[winfo rooty %W\] + %y\]
-        display_tooltip \"$tooltipTxt\" \$x \$y
-    }
-    bind .frMain.frDetails.view.e${ix} <Leave> {
-        display_tooltip \"\" 0 0
-    }
-    bind .frMain.frDetails.view.e${ix} <FocusOut> {
-        display_tooltip \"\" 0 0
+proc handle_update{gname name op} {
+  global currentSection global editwidgets set value[$editwidgets($name) get] global kvsection set ixk[lsearch - index 0 $kvsection($currentSection) $name] set item[list "${name}"
+                                                                                                                                                                          "${value}"] if {$ixk < 0} {
+    lappend kvsection($currentSection) $item
+  }
+  else {
+    set kvsection($currentSection)[lreplace $kvsection($currentSection) $ixk $ixk $item]
+  }
+  if {
+    [string first "Type" $name] >= 0
+  }
+  {
+#the subtype may have changed, update
+    global currentSection global editwidgets set cmd "
+        after 50 {
+      display_instance $currentSection focus $editwidgets($name)
     }
     "
-    eval $command
-    } else {
-      label .frMain.frDetails.view.l${ix} -text ""
-      grid .frMain.frDetails.view.l${ix} -column 1 -row $ix -sticky e
+        eval $cmd
+  }
+  if {
+    "$err" != ""
+  }
+  { puts "handle_update error: $err" }
+}
+
+proc cmd_section{section} {
+  global sectionParams global lsections global kvsection global currentSection
+
+          destroy.frMain.frDetails destroy.frMain
+              .scrolly
+#frame.frMain.frDetails
+                  canvas.frMain.frDetails -
+      yscrollcommand ".frMain.scrolly set" frame.frMain.frDetails.view pack.frMain.frDetails.view scrollbar.frMain.scrolly - orient vertical - command ".frMain.frDetails yview" - width 10 pack.frMain.scrolly - fill y - side right -
+      pady 5 set currentSection "$section"
+
+      if {$section == ""} {return }
+
+      set ix 1 global editvars global editwidgets array unset editvars
+
+      foreach{name type default descr}[getMatchingSectionParams $section] {
+
+    if {
+      $name != ""
     }
-    
+    {
+#is it defined in config ?
+      set value "" set ixk[lsearch - index 0 $kvsection($section) $name] if {($ixk >= 0)} {set value[lindex[lindex $kvsection($section) $ixk] 1]}
+
+          label.frMain.frDetails.view.l${ix} -
+          text "$name" entry.frMain.frDetails.view.e${ix} - textvariable editvars($name) set editwidgets($name).frMain.frDetails.view.e$ {
+        ix
+      }
+
+      if {
+        "$value" != ""
+      }
+      {.frMain.frDetails.view.e${ix} insert 0 "$value"} grid.frMain.frDetails.view.l${ix} - column 1 - row $ix - sticky e grid.frMain.frDetails.view.e${ix} - column 2 - row $ix -
+          sticky ew set tooltipTxt "Name:\t$name\nType:\t${type}\nDefault:\t$default\n\n$descr" set command "
+          bind.frMain.frDetails.view
+              .e${ix}<ButtonPress - 3>{
+#absolute screen position of the click
+                  set x \[expr \[winfo rootx % W\] + % x\] set y \[expr \[winfo rooty % W\] + % y\] display_tooltip \"$tooltipTxt\" \$x \$y
+              } bind.frMain.frDetails.view
+              .e${ix}<Leave>{display_tooltip \"\" 0 0
+              } bind.frMain.frDetails.view.e${ix}<FocusOut> {
+        display_tooltip \"\" 0 0
+      }
+      "
+          eval $command
+    }
+    else {label.frMain.frDetails.view.l${ix} - text "" grid.frMain.frDetails.view.l${ix} - column 1 - row $ix - sticky e}
+
     incr ix
   }
   trace add variable editvars write handle_update
-      
-  pack .frMain.frDetails -fill both -expand 1 -side right -padx 5 -pady 15
-  
-  update
-  set width [winfo reqwidth .frMain.frDetails.view]
-  set height [winfo reqheight .frMain.frDetails.view] 
-  set w1 [winfo width .frMain.frDetails]
-  set x 0
-  if {$width<$w1} {
-    set x [expr ($w1 - $width)/2]
-  }
-  .frMain.frDetails create window $x 0 -anchor nw -window .frMain.frDetails.view
-  #.frMain.frDetails configure -scrollregion "0 0 1 $height"  
-  .frMain.frDetails configure -scrollregion [.frMain.frDetails bbox all]
+
+          pack.frMain.frDetails -
+      fill both - expand 1 - side right - padx 5 -
+      pady 15
+
+      update set width[winfo reqwidth.frMain.frDetails.view] set height[winfo reqheight.frMain.frDetails.view] set w1[winfo width.frMain.frDetails] set x 0 if {$width < $w1} {set x[expr($w1 - $width) / 2]}
+          .frMain.frDetails create window $x 0 -
+      anchor nw -
+      window.frMain.frDetails
+          .view
+#.frMain.frDetails configure - scrollregion "0 0 1 $height"
+          .frMain.frDetails configure -
+      scrollregion[.frMain.frDetails bbox all]
 }
 
-
-
-# flag to save in file default values:
-# 0 -> not saved, parameter does not appear in file
-# 1 -> save param with default from doc
-# 2 -> same as 1), but commented out
+#flag to save in file default values:
+# 0->not saved, parameter does not appear in file
+# 1->save param with default from doc
+# 2->same as 1), but commented out
 set saveDefaults 2
 
-proc cmd_Save {} {
-  global types
-  global lsections
-  global kvsection
-  global configFile
-  global saveDefaults
-  global sectionParams
-  
-  set iFile [open $configFile "w"]
-  foreach t $types {
-    foreach s $lsections($t) {
-      puts $iFile "\[$s\]"
-      foreach kv $kvsection($s) {
-	puts $iFile "[lindex $kv 0]=[lindex $kv 1]"
+    proc cmd_Save{} {
+  global types global lsections global kvsection global configFile global saveDefaults global sectionParams
+
+      set iFile[open $configFile "w"] foreach t $types {
+    foreach
+      s $lsections($t) {
+        puts $iFile "\[$s\]" foreach kv $kvsection($s) { puts $iFile "[lindex $kv 0]=[lindex $kv 1]" }
+
+#add default parameters
+        set sp[getMatchingSectionParams $s] if {($saveDefaults) && ([llength $sp] > 0)} {
+          foreach { name type default descr }
+          $sp {
+            if {
+              $name == ""
+            }
+            {continue} set ixk[lsearch - index 0 $kvsection($s) $name] if {$ixk < 0} {
+              if {
+                $saveDefaults == 1
+              }
+              {puts $iFile "$name=$default"} elseif{$saveDefaults == 2} { puts $iFile "\#$name=$default" }
+            }
+          }
+        }
+
+        puts $iFile ""
       }
-      
-      # add default parameters
-      set sp [getMatchingSectionParams $s]
-      if {($saveDefaults)&&([llength $sp]>0)} {
-        foreach { name type default descr } $sp {
-	  if {$name==""} {continue}
-          set ixk [lsearch -index 0 $kvsection($s) $name]
-	  if {$ixk<0} {
-	    if {$saveDefaults==1} {
-	      puts $iFile "$name=$default"
-	    } elseif {$saveDefaults==2} {
-	      puts $iFile "\#$name=$default"
-	    }
-	  }
-	}
-      }
-      
-      puts $iFile ""
-    }
-  }  
+  }
   close $iFile
 }
 
+#return "wildcard" name of section from given type
+proc getMatchingSectionParams{section} {
+  global sectionParams global types global kvsection global lsections
 
-
-# return "wildcard" name of section from given type
-proc getMatchingSectionParams {section} {
-  global sectionParams
-  global types
-  global kvsection
-  global lsections
-  
-  # look for section...
-  set sp {}
-  foreach t $types {
-    foreach s $lsections($t) {
-      if {$s==$section} {
-        if {$t!="readout"} {
-	  set xt "-*"
-	} else {
-	  set xt ""
-	}
-	# add all base params for this type
-	catch {	
-          foreach { name type default descr } $sectionParams(${t}${xt}) {
-            set sp [concat $sp [list "$name" "$type" "$default" "$descr"]]
-          }
-	}
-	
-	# add separator
-	set sp [concat $sp [list "" "" "" ""]]
-	
-	# add all params for corresponding sub-type
-	# check if matching subparam type exists
-	set ixk [lsearch -index 0 $kvsection($s) "${t}Type"]
-	if {$ixk>=0} {
-	  set vsubtype [lindex [lindex $kvsection($s) $ixk] 1]
-	  # is this a valid subtype?
-	  global subtype
-	  if {[lsearch $subtype($t) $vsubtype]>=0} {
-            foreach { name type default descr } $sectionParams(${t}-${vsubtype}${xt}) {
-              set sp [concat $sp [list "$name" "$type" "$default" "$descr"]]
-	    }
-	  }
-	}
-		
-	break
-      }
-    }
+#look for section...
+      set sp {
   }
-  
+  foreach
+    t $types {
+      foreach
+        s $lsections($t) {
+          if {
+            $s == $section
+          }
+          {
+            if {
+              $t != "readout"
+            }
+            { set xt "-*" }
+            else {
+              set xt ""
+            }
+#add all base params for this type
+            catch {
+              foreach { name type default descr }
+              $sectionParams(${t} ${xt}) {
+                set sp[concat $sp[list "$name"
+                                       "$type"
+                                       "$default"
+                                       "$descr"]]
+              }
+            }
+
+#add separator
+            set sp[concat $sp[list ""
+                                   ""
+                                   ""
+                                   ""]]
+
+#add all params for corresponding sub - type
+#check if matching subparam type exists
+                set ixk[lsearch - index 0 $kvsection($s) "${t}Type"] if {$ixk >= 0} {
+              set vsubtype[lindex[lindex $kvsection($s) $ixk] 1]
+#is this a valid subtype ?
+                  global subtype if {[lsearch $subtype($t) $vsubtype] >= 0} {
+                foreach { name type default descr }
+                $sectionParams(${t} - ${vsubtype} ${xt}) {
+                  set sp[concat $sp[list "$name"
+                                         "$type"
+                                         "$default"
+                                         "$descr"]]
+                }
+              }
+            }
+
+            break
+          }
+        }
+    }
+
   return $sp
 }
 
+#Display buttons
+pack.frMenu - fill both - padx 2 - pady 2 -
+    side top
 
+    ##############################
+#context help(right click)
+    ##############################
 
-# Display buttons
-pack .frMenu -fill both -padx 2 -pady 2 -side top
+    toplevel.tooltip -
+    bd 1 - background "lightyellow" -
+    relief solid
+#frame.tooltip.fr - width 400 - height 100 - padx 10 - pady 10 - background "lightyellow"
+        label.tooltip.txt -
+    text "" - background "lightyellow" - wraplength 380 - justify left - border 1 pack.tooltip.txt - fill both -
+    expand 1
+#pack.tooltip.fr - expand 1
+    wm geometry.tooltip 600x160 wm state.tooltip withdrawn wm transient.tooltip.wm overrideredirect.tooltip 1
 
+    set tooltip_msg "" proc display_tooltip{msg x y} {
+#if same tooltip already visible, close it
+  global tooltip_msg if {$msg == $tooltip_msg} {set msg ""} set tooltip_msg $msg
 
+#close tooltip when no msg
+      if {$msg == ""} {
+#hide window
+          wm state.tooltip withdrawn.tooltip.txt configure - text "" return }
 
+          .tooltip.txt configure -
+      text "$msg"
 
-##############################
-# context help (right click)
-##############################
+      incr x 15 incr y -
+      15 update
 
-toplevel .tooltip -bd 1 -background "lightyellow" -relief solid
-#frame .tooltip.fr -width 400 -height 100 -padx 10 -pady 10 -background "lightyellow"
-label .tooltip.txt -text "" -background "lightyellow" -wraplength 380 -justify left -border 1
-pack .tooltip.txt -fill both -expand 1
-#pack .tooltip.fr -expand 1
-wm geometry .tooltip 600x160
-wm state .tooltip withdrawn
-wm transient .tooltip .
-wm overrideredirect .tooltip 1
+          set w[expr[winfo reqwidth.tooltip] + 40] set h[expr[winfo reqheight.tooltip] + 40]
 
-set tooltip_msg ""
-proc display_tooltip {msg x y} {
-  # if same tooltip already visible, close it
-  global tooltip_msg
-  if {$msg==$tooltip_msg} {
-    set msg ""
-  }
-  set tooltip_msg $msg
-
-  # close tooltip when no msg
-  if {$msg==""} {
-    # hide window
-    wm state .tooltip withdrawn
-    .tooltip.txt configure -text ""
-    return
-  }
-
-  .tooltip.txt configure -text "$msg"
-  
-  incr x 15
-  incr y -15
-  update
-
-  set w [expr [winfo reqwidth .tooltip] + 40]
-  set h [expr [winfo reqheight .tooltip] + 40]
-  
-  wm geometry .tooltip ${w}x${h}+${x}+${y}
-  wm state .tooltip normal
+      wm geometry.tooltip ${w} x${h} +
+      ${x} + ${y} wm state.tooltip normal
 }
 
-bind .tooltip <ButtonPress-3> {
-  display_tooltip "" 0 0
-}
+bind.tooltip<ButtonPress - 3> { display_tooltip "" 0 0 }
 
-
-
-# startup tab
+#startup tab
 .frMenu.btGeneral invoke

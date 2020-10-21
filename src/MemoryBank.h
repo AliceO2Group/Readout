@@ -31,19 +31,18 @@ public:
 
   virtual ~MemoryBank(); // destructor
 
-  void *getBaseAddress(); // get the (virtual) base address of this memory bank
-  std::size_t getSize();  // get the total size (bytes) of this memory bank
+  void *getBaseAddress();       // get the (virtual) base address of this memory bank
+  std::size_t getSize();        // get the total size (bytes) of this memory bank
   std::string getDescription(); // get the description of this memory bank;
 
   void clear(); // write zeroes into the whole memory range
 
 protected:
-  void *baseAddress;       // base address (virtual) of buffer
-  std::size_t size;        // size of buffer, in bytes
-  std::string description; // description of the memory bank (type/sypport, etc)
-  ReleaseCallback
-      releaseCallback; // an optional user-callback to be called in destructor,
-                       // when overloaded constructor has been used
+  void *baseAddress;               // base address (virtual) of buffer
+  std::size_t size;                // size of buffer, in bytes
+  std::string description;         // description of the memory bank (type/sypport, etc)
+  ReleaseCallback releaseCallback; // an optional user-callback to be called in destructor,
+                                   // when overloaded constructor has been used
 };
 
 // factory function to create a MemoryBank instance of a given type
@@ -51,7 +50,6 @@ protected:
 // support: type of support to be used. Available choices: malloc,
 // MemoryMappedFile description: optional description for the memory bank
 
-std::shared_ptr<MemoryBank> getMemoryBank(size_t size, std::string support,
-                                          std::string description = "");
+std::shared_ptr<MemoryBank> getMemoryBank(size_t size, std::string support, std::string description = "");
 
 #endif // #ifndef _MEMORYBANKMANAGER_H

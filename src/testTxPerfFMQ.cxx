@@ -26,22 +26,18 @@ int main() {
   std::string cfgChannelType = "pair";
   std::string cfgChannelAddress = "ipc:///tmp/test-pipe";
 
-  auto transportFactory =
-      FairMQTransportFactory::CreateTransportFactory(cfgTransportType);
-  auto channel =
-      FairMQChannel{cfgChannelName, cfgChannelType, transportFactory};
+  auto transportFactory = FairMQTransportFactory::CreateTransportFactory(cfgTransportType);
+  auto channel = FairMQChannel{cfgChannelName, cfgChannelType, transportFactory};
   channel.Bind(cfgChannelAddress);
   if (!channel.Validate()) {
     return -1;
   }
 
   const size_t bufferSize = 2000 * 1024L * 1024L;
-  auto memoryBuffer = channel.Transport()->CreateUnmanagedRegion(
-      bufferSize, [](void *data, size_t size, void *hint) {
-        // cleanup callback
-      });
-  printf("Created buffer %p size %ld\n", memoryBuffer->GetData(),
-         memoryBuffer->GetSize());
+  auto memoryBuffer = channel.Transport()->CreateUnmanagedRegion(bufferSize, [](void *data, size_t size, void *hint) {
+    // cleanup callback
+  });
+  printf("Created buffer %p size %ld\n", memoryBuffer->GetData(), memoryBuffer->GetSize());
 
   int statInterval = 1; // interval between stats, in seconds
   AliceO2::Common::Timer runningTime;
@@ -76,9 +72,7 @@ int main() {
   std::vector<FairMQMessagePtr> msgs;
   msgs.reserve(msgParts);
 
-  printf(
-      "starting sequence for %lus : rate = %.0lfHz, %lu parts per message,\n",
-      sequenceTime, msgRate, msgParts);
+  printf("starting sequence for %lus : rate = %.0lfHz, %lu parts per message,\n", sequenceTime, msgRate, msgParts);
   for (size_t i = 0; i < msgMax; i++) {
     msgs.clear();
 
@@ -90,8 +84,7 @@ int main() {
       if (ix >= bufferSize) {
         ix = 0;
       }
-      msgs.emplace_back(
-          std::move(channel.NewMessage(memoryBuffer, dataPtr, msgSize, hint)));
+      msgs.emplace_back(std::move(channel.NewMessage(memoryBuffer, dataPtr, msgSize, hint)));
     }
     channel.Send(msgs);
     msgCount++;

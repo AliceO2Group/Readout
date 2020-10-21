@@ -8,6 +8,7 @@
 // granted to it by virtue of its status as an Intergovernmental Organization
 // or submit itself to any jurisdiction.
 
+#include <Common/Fifo.h>
 #include <Common/Timer.h>
 #include <atomic>
 #include <memory>
@@ -17,7 +18,6 @@
 #include "DataBlock.h"
 #include "DataBlockContainer.h"
 #include "DataSet.h"
-#include <Common/Fifo.h>
 
 // class to send data blocks remotely over a TCP/IP socket
 class SocketTx {
@@ -51,11 +51,10 @@ private:
   int serverPort;         // remote server port
 
 private:
-  std::atomic<int> isSending; // if set, thread busy sending. if not set, new
-                              // block can be pushed
-  DataBlockContainerReference currentBlock =
-      nullptr;                  // current data chunk being sent
-  size_t currentBlockIndex = 0; // number of bytes of chunk already sent
+  std::atomic<int> isSending;                         // if set, thread busy sending. if not set, new
+                                                      // block can be pushed
+  DataBlockContainerReference currentBlock = nullptr; // current data chunk being sent
+  size_t currentBlockIndex = 0;                       // number of bytes of chunk already sent
 
   void run(); // code executed in separate thread
 };

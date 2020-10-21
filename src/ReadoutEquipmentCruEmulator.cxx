@@ -8,19 +8,19 @@
 // granted to it by virtue of its status as an Intergovernmental Organization
 // or submit itself to any jurisdiction.
 
-#include "ReadoutEquipment.h"
-#include "ReadoutUtils.h"
-#include "readoutInfoLogger.h"
-#include "RAWDataHeader.h"
 #include <Common/Fifo.h>
 #include <Common/Timer.h>
 #include <stdlib.h>
 
+#include "RAWDataHeader.h"
+#include "ReadoutEquipment.h"
+#include "ReadoutUtils.h"
+#include "readoutInfoLogger.h"
+
 class ReadoutEquipmentCruEmulator : public ReadoutEquipment {
 
 public:
-  ReadoutEquipmentCruEmulator(ConfigFile &cfg,
-                              std::string name = "CruEmulatorReadout");
+  ReadoutEquipmentCruEmulator(ConfigFile &cfg, std::string name = "CruEmulatorReadout");
   ~ReadoutEquipmentCruEmulator();
   DataBlockContainerReference getNextBlock();
   Thread::CallbackResult prepareBlocks();
@@ -34,24 +34,20 @@ private:
   int cfgNumberOfLinks; // number of links to simulate. Will create data blocks
                         // round-robin.
   int cfgFeeId;         // FEE id to be used
-  int cfgLinkId; // Link id to be used (base number - will be incremented if
-                 // multiple links selected)
+  int cfgLinkId;        // Link id to be used (base number - will be incremented if
+                        // multiple links selected)
 
-  const unsigned int LHCBunches = 3564; // number of bunches in LHC
-  const unsigned int LHCOrbitRate =
-      11246; // LHC orbit rate, in Hz. 299792458 / 26659
-  const unsigned int LHCBCRate =
-      LHCOrbitRate * LHCBunches; // LHC bunch crossing rate, in Hz
+  const unsigned int LHCBunches = 3564;                     // number of bunches in LHC
+  const unsigned int LHCOrbitRate = 11246;                  // LHC orbit rate, in Hz. 299792458 / 26659
+  const unsigned int LHCBCRate = LHCOrbitRate * LHCBunches; // LHC bunch crossing rate, in Hz
 
   int cruBlockSize; // size of 1 data block (RDH+payload)
-  int bcStep; // interval in BC clocks between two CRU block transfers, based on
-              // link input data rate
+  int bcStep;       // interval in BC clocks between two CRU block transfers, based on
+                    // link input data rate
 
-  int cfgHBperiod =
-      1; // interval between 2 HeartBeat triggers, in number of LHC orbits
-  double cfgGbtLinkThroughput =
-      3.2; // input link data rate in Gigabits/s per second, for one link
-           // (GBT=3.2 or 4.8 gbps)
+  int cfgHBperiod = 1;               // interval between 2 HeartBeat triggers, in number of LHC orbits
+  double cfgGbtLinkThroughput = 3.2; // input link data rate in Gigabits/s per second, for one link
+                                     // (GBT=3.2 or 4.8 gbps)
 
   int cfgMaxBlocksPerPage; // max number of CRU blocks per page (0 => fill the
                            // page)
@@ -73,15 +69,11 @@ private:
   Timer elapsedTime; // elapsed time since equipment started
   double t0 = 0;     // time of first block generated
 
-  std::unique_ptr<AliceO2::Common::Fifo<DataBlockContainerReference>>
-      readyBlocks; // pages ready to be retrieved by getNextBlock()
-  std::vector<DataBlockContainerReference>
-      pendingBlocks; // pages being filled (1 per link)
+  std::unique_ptr<AliceO2::Common::Fifo<DataBlockContainerReference>> readyBlocks; // pages ready to be retrieved by getNextBlock()
+  std::vector<DataBlockContainerReference> pendingBlocks;                          // pages being filled (1 per link)
 };
 
-ReadoutEquipmentCruEmulator::ReadoutEquipmentCruEmulator(
-    ConfigFile &cfg, std::string cfgEntryPoint)
-    : ReadoutEquipment(cfg, cfgEntryPoint) {
+ReadoutEquipmentCruEmulator::ReadoutEquipmentCruEmulator(ConfigFile &cfg, std::string cfgEntryPoint) : ReadoutEquipment(cfg, cfgEntryPoint) {
 
   // declare RDH equipment
   initRdhEquipment();
@@ -108,40 +100,29 @@ ReadoutEquipmentCruEmulator::ReadoutEquipmentCruEmulator(
   // 64k | Maximum payload size for each trigger. Actual size is randomized, and
   // then split in a number of (cruBlockSize) packets. |
 
-  cfg.getOptionalValue<int>(cfgEntryPoint + ".maxBlocksPerPage",
-                            cfgMaxBlocksPerPage, (int)0);
-  cfg.getOptionalValue<int>(cfgEntryPoint + ".cruBlockSize", cruBlockSize,
-                            (int)8192);
-  cfg.getOptionalValue<int>(cfgEntryPoint + ".numberOfLinks", cfgNumberOfLinks,
-                            (int)1);
+  cfg.getOptionalValue<int>(cfgEntryPoint + ".maxBlocksPerPage", cfgMaxBlocksPerPage, (int)0);
+  cfg.getOptionalValue<int>(cfgEntryPoint + ".cruBlockSize", cruBlockSize, (int)8192);
+  cfg.getOptionalValue<int>(cfgEntryPoint + ".numberOfLinks", cfgNumberOfLinks, (int)1);
   cfg.getOptionalValue<int>(cfgEntryPoint + ".feeId", cfgFeeId, (int)0);
   cfg.getOptionalValue<int>(cfgEntryPoint + ".linkId", cfgLinkId, (int)0);
   cfg.getOptionalValue<int>(cfgEntryPoint + ".HBperiod", cfgHBperiod);
-  cfg.getOptionalValue<double>(cfgEntryPoint + ".EmptyHbRatio",
-                               cfgEmptyHbRatio);
+  cfg.getOptionalValue<double>(cfgEntryPoint + ".EmptyHbRatio", cfgEmptyHbRatio);
   cfg.getOptionalValue<int>(cfgEntryPoint + ".PayloadSize", cfgPayloadSize);
 
   // log config summary
-  theLog.log(LogInfoDevel_(3002), "Equipment %s: maxBlocksPerPage=%d cruBlockSize=%d numberOfLinks=%d feeId=%d linkId=%d HBperiod=%d EmptyHbRatio=%f PayloadSize=%d",
-             name.c_str(), cfgMaxBlocksPerPage, cruBlockSize, cfgNumberOfLinks,
-             cfgFeeId, cfgLinkId, cfgHBperiod, cfgEmptyHbRatio,
-             cfgPayloadSize);
+  theLog.log(LogInfoDevel_(3002), "Equipment %s: maxBlocksPerPage=%d cruBlockSize=%d numberOfLinks=%d feeId=%d linkId=%d HBperiod=%d EmptyHbRatio=%f PayloadSize=%d", name.c_str(), cfgMaxBlocksPerPage, cruBlockSize, cfgNumberOfLinks, cfgFeeId, cfgLinkId, cfgHBperiod, cfgEmptyHbRatio, cfgPayloadSize);
 
   // initialize array of pending blocks (to be filled with data)
   pendingBlocks.resize(cfgNumberOfLinks);
 
   // output queue: 1 block per link
-  readyBlocks =
-      std::make_unique<AliceO2::Common::Fifo<DataBlockContainerReference>>(
-          cfgNumberOfLinks);
+  readyBlocks = std::make_unique<AliceO2::Common::Fifo<DataBlockContainerReference>>(cfgNumberOfLinks);
   if (readyBlocks == nullptr) {
     throw __LINE__;
   }
 
   // init parameters
-  bcStep = (int)(LHCBCRate *
-                 ((cruBlockSize - sizeof(o2::Header::RAWDataHeader)) * 1.0 /
-                  (cfgGbtLinkThroughput * 1024 * 1024 * 1024 / 8)));
+  bcStep = (int)(LHCBCRate * ((cruBlockSize - sizeof(o2::Header::RAWDataHeader)) * 1.0 / (cfgGbtLinkThroughput * 1024 * 1024 * 1024 / 8)));
   theLog.log(LogInfoDevel_(3002), "Equipment %s: using block rate = %d BC", name.c_str(), bcStep);
 }
 
@@ -211,15 +192,13 @@ Thread::CallbackResult ReadoutEquipmentCruEmulator::prepareBlocks() {
     uint64_t nowId = getCurrentTimeframe();
 
     int linkId = cfgLinkId + currentLink;
-    int bytesAvailableInPage =
-        b->header.dataSize; // a bit less than memoryPoolPageSize;
+    int bytesAvailableInPage = b->header.dataSize; // a bit less than memoryPoolPageSize;
     // printf("bytes available: %d bytes\n",bytesAvailableInPage);
 
     linkState &ls = perLinkState[linkId];
     // printf("link %d: %d\n",linkId,ls.payloadBytesLeft);
 
-    for (offset = 0; offset + cruBlockSize <= bytesAvailableInPage;
-         offset += cruBlockSize) {
+    for (offset = 0; offset + cruBlockSize <= bytesAvailableInPage; offset += cruBlockSize) {
 
       if ((ls.payloadBytesLeft < 0)) {
         // this is a new HB frame
@@ -267,8 +246,7 @@ Thread::CallbackResult ReadoutEquipmentCruEmulator::prepareBlocks() {
       // rdh as defined in:
       // https://docs.google.com/document/d/1KUoLnEw5PndVcj4FKR5cjV-MBN3Bqfx_B0e6wQOIuVE/edit#heading=h.5q65he8hp62c
 
-      o2::Header::RAWDataHeader *rdh =
-          (o2::Header::RAWDataHeader *)&b->data[offset];
+      o2::Header::RAWDataHeader *rdh = (o2::Header::RAWDataHeader *)&b->data[offset];
       // printf("rdh=%p block=%p delta=%d\n",rdh,b->data,(int)((char *)rdh-(char
       // *)b->data));
 
@@ -365,7 +343,4 @@ void ReadoutEquipmentCruEmulator::finalCounters() {
   }
 }
 
-std::unique_ptr<ReadoutEquipment>
-getReadoutEquipmentCruEmulator(ConfigFile &cfg, std::string cfgEntryPoint) {
-  return std::make_unique<ReadoutEquipmentCruEmulator>(cfg, cfgEntryPoint);
-}
+std::unique_ptr<ReadoutEquipment> getReadoutEquipmentCruEmulator(ConfigFile &cfg, std::string cfgEntryPoint) { return std::make_unique<ReadoutEquipmentCruEmulator>(cfg, cfgEntryPoint); }

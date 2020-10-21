@@ -10,9 +10,10 @@
 
 // simple test program to exercise the classes related to memory banks
 
+#include <memory>
+
 #include "MemoryBank.h"
 #include "MemoryBankManager.h"
-#include <memory>
 
 int main() {
   MemoryBankManager bm;
@@ -50,8 +51,7 @@ int main() {
       printf("Pool %d : failed to alloc\n", j);
       continue;
     }
-    printf("Pool %d : %d pages available\n", j,
-           (int)p->getNumberOfPagesAvailable());
+    printf("Pool %d : %d pages available\n", j, (int)p->getNumberOfPagesAvailable());
   }
 
   int nTestPages = 5;
@@ -63,16 +63,13 @@ int main() {
   if (thePool == nullptr) {
     printf("Failed to create test pool\n");
   } else {
-    printf("test pool %d pages available\n",
-           (int)thePool->getNumberOfPagesAvailable());
+    printf("test pool %d pages available\n", (int)thePool->getNumberOfPagesAvailable());
   }
   std::vector<void *> thePages;
   for (int i = 0; i <= nTestPages; i++) {
     void *newPage = thePool->getPage();
     if (newPage != nullptr) {
-      printf("Got page #%d = %p, %d/%d available\n", i, newPage,
-             (int)thePool->getNumberOfPagesAvailable(),
-             (int)thePool->getTotalNumberOfPages());
+      printf("Got page #%d = %p, %d/%d available\n", i, newPage, (int)thePool->getNumberOfPagesAvailable(), (int)thePool->getTotalNumberOfPages());
       thePages.push_back(newPage);
     } else {
       printf("Failed to get page #%d\n", i);
@@ -81,16 +78,13 @@ int main() {
   printf("releasing pages\n");
   for (auto p : thePages) {
     thePool->releasePage(p);
-    printf("Pool: %d/%d available\n", (int)thePool->getNumberOfPagesAvailable(),
-           (int)thePool->getTotalNumberOfPages());
+    printf("Pool: %d/%d available\n", (int)thePool->getNumberOfPagesAvailable(), (int)thePool->getTotalNumberOfPages());
   }
   for (int i = 0; i <= nTestPages; i++) {
     void *newPage = thePool->getPage();
     if (newPage != nullptr) {
       printf("Got page #%d = %p\n", i, newPage);
-      printf("Got page #%d = %p, %d/%d available\n", i, newPage,
-             (int)thePool->getNumberOfPagesAvailable(),
-             (int)thePool->getTotalNumberOfPages());
+      printf("Got page #%d = %p, %d/%d available\n", i, newPage, (int)thePool->getNumberOfPagesAvailable(), (int)thePool->getTotalNumberOfPages());
       thePages.push_back(newPage);
     } else {
       printf("Failed to get page #%d\n", i);

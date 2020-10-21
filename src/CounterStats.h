@@ -34,8 +34,7 @@ public:
   CounterValue getMaximum();
   CounterValue getCount();
 
-  void enableHistogram(unsigned int nbins, CounterValue vmin, CounterValue vmax,
-                       int logScale = 1);
+  void enableHistogram(unsigned int nbins, CounterValue vmin, CounterValue vmax, int logScale = 1);
   void getHisto(std::vector<double> &x, std::vector<CounterValue> &count);
 
 private:

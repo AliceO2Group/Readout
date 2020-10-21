@@ -10,13 +10,11 @@
 
 #include <Common/Configuration.h>
 #include <Common/Fifo.h>
+#include <memory>
 
 #include "DataBlock.h"
 #include "DataBlockContainer.h"
 #include "DataSet.h"
-
-#include <memory>
-
 #include "readoutInfoLogger.h"
 
 class Consumer {
@@ -36,46 +34,31 @@ public:
   }; // function called just before starting data taking. Data will soon start
      // to flow in.
   virtual int stop() {
-    theLog.log(LogInfoDevel_(3003), "Push statistics for %s: %llu err / %llu total", this->name.c_str(),
-      totalPushError, totalPushError + totalPushSuccess);
+    theLog.log(LogInfoDevel_(3003), "Push statistics for %s: %llu err / %llu total", this->name.c_str(), totalPushError, totalPushError + totalPushSuccess);
     return 0;
   }; // function called just after stopping data taking, after the last call to
      // pushData(). Not called before input FIFO empty.
 
 public:
-  Consumer *forwardConsumer =
-      nullptr; // consumer where to push output data, if any
-  bool isForwardConsumer =
-      false; // this consumer will get data from output of another consumer
-  std::string name; // name of this consumer
-  bool stopOnError =
-      false; // if set, readout will stop when this consumer reports an error
-             // (isError flag or pushData() failing)
-  int isError = 0; // flag which might be used to count number of errors
-                   // occuring in the consumer
-  bool isErrorReported =
-      false; // flag to keep track of error reports for this consumer
+  Consumer *forwardConsumer = nullptr; // consumer where to push output data, if any
+  bool isForwardConsumer = false;      // this consumer will get data from output of another consumer
+  std::string name;                    // name of this consumer
+  bool stopOnError = false;            // if set, readout will stop when this consumer reports an error
+                                       // (isError flag or pushData() failing)
+  int isError = 0;                     // flag which might be used to count number of errors
+                                       // occuring in the consumer
+  bool isErrorReported = false;        // flag to keep track of error reports for this consumer
   unsigned long long totalPushSuccess = 0;
   unsigned long long totalPushError = 0;
 };
 
-std::unique_ptr<Consumer> getUniqueConsumerStats(ConfigFile &cfg,
-                                                 std::string cfgEntryPoint);
-std::unique_ptr<Consumer> getUniqueConsumerFMQ(ConfigFile &cfg,
-                                               std::string cfgEntryPoint);
-std::unique_ptr<Consumer>
-getUniqueConsumerFMQchannel(ConfigFile &cfg, std::string cfgEntryPoint);
-std::unique_ptr<Consumer>
-getUniqueConsumerFileRecorder(ConfigFile &cfg, std::string cfgEntryPoint);
-std::unique_ptr<Consumer>
-getUniqueConsumerDataChecker(ConfigFile &cfg, std::string cfgEntryPoint);
-std::unique_ptr<Consumer>
-getUniqueConsumerDataProcessor(ConfigFile &cfg, std::string cfgEntryPoint);
-std::unique_ptr<Consumer>
-getUniqueConsumerDataSampling(ConfigFile &cfg, std::string cfgEntryPoint);
-std::unique_ptr<Consumer> getUniqueConsumerTCP(ConfigFile &cfg,
-                                               std::string cfgEntryPoint);
-std::unique_ptr<Consumer> getUniqueConsumerRDMA(ConfigFile &cfg,
-                                                std::string cfgEntryPoint);
-std::unique_ptr<Consumer> getUniqueConsumerZMQ(ConfigFile &cfg,
-                                                std::string cfgEntryPoint);
+std::unique_ptr<Consumer> getUniqueConsumerStats(ConfigFile &cfg, std::string cfgEntryPoint);
+std::unique_ptr<Consumer> getUniqueConsumerFMQ(ConfigFile &cfg, std::string cfgEntryPoint);
+std::unique_ptr<Consumer> getUniqueConsumerFMQchannel(ConfigFile &cfg, std::string cfgEntryPoint);
+std::unique_ptr<Consumer> getUniqueConsumerFileRecorder(ConfigFile &cfg, std::string cfgEntryPoint);
+std::unique_ptr<Consumer> getUniqueConsumerDataChecker(ConfigFile &cfg, std::string cfgEntryPoint);
+std::unique_ptr<Consumer> getUniqueConsumerDataProcessor(ConfigFile &cfg, std::string cfgEntryPoint);
+std::unique_ptr<Consumer> getUniqueConsumerDataSampling(ConfigFile &cfg, std::string cfgEntryPoint);
+std::unique_ptr<Consumer> getUniqueConsumerTCP(ConfigFile &cfg, std::string cfgEntryPoint);
+std::unique_ptr<Consumer> getUniqueConsumerRDMA(ConfigFile &cfg, std::string cfgEntryPoint);
+std::unique_ptr<Consumer> getUniqueConsumerZMQ(ConfigFile &cfg, std::string cfgEntryPoint);

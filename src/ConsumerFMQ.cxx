@@ -55,8 +55,7 @@ private:
   std::thread deviceThread;
 
 public:
-  ConsumerFMQ(ConfigFile &cfg, std::string cfgEntryPoint)
-      : Consumer(cfg, cfgEntryPoint), channels(1) {
+  ConsumerFMQ(ConfigFile &cfg, std::string cfgEntryPoint) : Consumer(cfg, cfgEntryPoint), channels(1) {
 
     channels[0].UpdateType("pair"); // pub or push?
     channels[0].UpdateMethod("bind");
@@ -72,8 +71,7 @@ public:
     m.emplace(std::string("data-out"), channels);
 
     for (auto it : m) {
-      std::cout << it.first << " = " << it.second.size() << " channels  "
-                << std::endl;
+      std::cout << it.first << " = " << it.second.size() << " channels  " << std::endl;
       for (auto ch : it.second) {
         std::cout << ch.GetAddress() << std::endl;
       }
@@ -120,13 +118,8 @@ public:
     // reference is kept alive until this new object is destroyed in the
     // cleanupCallback
     DataBlockContainerReference *ptr = new DataBlockContainerReference(b);
-    std::unique_ptr<FairMQMessage> msgHeader(transportFactory->CreateMessage(
-        (void *)&(b->getData()->header),
-        (size_t)(b->getData()->header.headerSize), cleanupCallback,
-        (void *)nullptr));
-    std::unique_ptr<FairMQMessage> msgBody(transportFactory->CreateMessage(
-        (void *)(b->getData()->data), (size_t)(b->getData()->header.dataSize),
-        cleanupCallback, (void *)(ptr)));
+    std::unique_ptr<FairMQMessage> msgHeader(transportFactory->CreateMessage((void *)&(b->getData()->header), (size_t)(b->getData()->header.headerSize), cleanupCallback, (void *)nullptr));
+    std::unique_ptr<FairMQMessage> msgBody(transportFactory->CreateMessage((void *)(b->getData()->data), (size_t)(b->getData()->header.dataSize), cleanupCallback, (void *)(ptr)));
 
     sender.fChannels.at("data-out").at(0).Send(msgHeader);
     sender.fChannels.at("data-out").at(0).Send(msgBody);
@@ -147,9 +140,6 @@ private:
   void runDevice() { sender.RunStateMachine(); }
 };
 
-std::unique_ptr<Consumer> getUniqueConsumerFMQ(ConfigFile &cfg,
-                                               std::string cfgEntryPoint) {
-  return std::make_unique<ConsumerFMQ>(cfg, cfgEntryPoint);
-}
+std::unique_ptr<Consumer> getUniqueConsumerFMQ(ConfigFile &cfg, std::string cfgEntryPoint) { return std::make_unique<ConsumerFMQ>(cfg, cfgEntryPoint); }
 
 #endif

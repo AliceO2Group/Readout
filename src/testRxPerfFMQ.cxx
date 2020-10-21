@@ -27,15 +27,12 @@ int main() {
   std::string cfgChannelType = "pair";
   std::string cfgChannelAddress = "ipc:///tmp/test-pipe";
 
-  auto factory =
-      FairMQTransportFactory::CreateTransportFactory(cfgTransportType);
+  auto factory = FairMQTransportFactory::CreateTransportFactory(cfgTransportType);
   auto pull = FairMQChannel{cfgChannelName, cfgChannelType, factory};
   pull.Connect(cfgChannelAddress);
   int64_t ret;
 
-  printf("Starting FMQ multi-part receiver '%s' %s %s @ %s\n",
-         cfgChannelName.c_str(), cfgTransportType.c_str(),
-         cfgChannelType.c_str(), cfgChannelAddress.c_str());
+  printf("Starting FMQ multi-part receiver '%s' %s %s @ %s\n", cfgChannelName.c_str(), cfgTransportType.c_str(), cfgChannelType.c_str(), cfgChannelAddress.c_str());
 
   int statInterval = 1; // interval between stats, in seconds
   AliceO2::Common::Timer timerStats;
@@ -80,10 +77,7 @@ int main() {
         printf("Interval   Messages       Rate      Parts       Rate     ------- Rx CPU used --------      Tx CPU    Total\n");
         printf("       s        msg         Hz        msg         Hz     total %%   user %%  system %%             %%      msg\n");
       }
-      printf("%8.1f   %8lu   %8.1lf   %8lu   %8.1lf    %8.1lf %8.1lf  %8.1lf        %6.0lf %8lu\n",
-             t, msgNew, msgNew / t, msgNewPart, msgNewPart / t,
-             uTimePercent + sTimePercent, uTimePercent, sTimePercent, txCPU,
-             msgCount);
+      printf("%8.1f   %8lu   %8.1lf   %8lu   %8.1lf    %8.1lf %8.1lf  %8.1lf        %6.0lf %8lu\n", t, msgNew, msgNew / t, msgNewPart, msgNewPart / t, uTimePercent + sTimePercent, uTimePercent, sTimePercent, txCPU, msgCount);
       msgNew = 0;
       msgNewPart = 0;
       while (timerStats.isTimeout()) {

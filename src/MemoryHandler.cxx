@@ -9,6 +9,7 @@
 // or submit itself to any jurisdiction.
 
 #include "MemoryHandler.h"
+
 #include "readoutInfoLogger.h"
 
 std::unique_ptr<MemoryRegion> bigBlock = nullptr;
@@ -22,15 +23,13 @@ MemoryHandler::MemoryHandler(int vPageSize, int vNumberOfPages) {
 
   size_t bytesReserved = pageSize * numberOfPages;
 
-  theLog.log(LogInfoDevel_(3008), "Creating pool of %lu pages of size %lu, total %lu bytes",
-             numberOfPages, pageSize, bytesReserved);
+  theLog.log(LogInfoDevel_(3008), "Creating pool of %lu pages of size %lu, total %lu bytes", numberOfPages, pageSize, bytesReserved);
 
   bigBlockMutex.lock();
   size_t bytesFree = bigBlock->size - bigBlock->usedSize;
   if (bytesReserved > bytesFree) {
     bigBlockMutex.unlock();
-    theLog.log(LogErrorSupport_(3230), "No space left in memory bank: available %lu < %lu needed",
-               bytesFree, bytesReserved);
+    theLog.log(LogErrorSupport_(3230), "No space left in memory bank: available %lu < %lu needed", bytesFree, bytesReserved);
     throw __LINE__;
   }
   baseAddress = &(((uint8_t *)bigBlock->ptr)[bigBlock->usedSize]);
@@ -49,8 +48,7 @@ MemoryHandler::MemoryHandler(int vPageSize, int vNumberOfPages) {
     pagesAvailable->push(offset);
   }
   memorySize = bytesReserved;
-  theLog.log(LogInfoDevel_(3008), "%lu pages added, base address=%p size=%lu", numberOfPages,
-             baseAddress, memorySize);
+  theLog.log(LogInfoDevel_(3008), "%lu pages added, base address=%p size=%lu", numberOfPages, baseAddress, memorySize);
 }
 
 MemoryHandler::~MemoryHandler() {}

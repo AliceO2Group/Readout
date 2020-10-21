@@ -28,9 +28,7 @@ private:
   int fillData;     // if set, data pages filled with incremental values
 };
 
-ReadoutEquipmentDummy::ReadoutEquipmentDummy(ConfigFile &cfg,
-                                             std::string cfgEntryPoint)
-    : ReadoutEquipment(cfg, cfgEntryPoint) {
+ReadoutEquipmentDummy::ReadoutEquipmentDummy(ConfigFile &cfg, std::string cfgEntryPoint) : ReadoutEquipment(cfg, cfgEntryPoint) {
 
   // get configuration values
   // configuration parameter: | equipment-dummy-* | eventMaxSize | bytes | 128k
@@ -45,24 +43,20 @@ ReadoutEquipmentDummy::ReadoutEquipmentDummy(ConfigFile &cfg,
   std::string sBytes;
   eventMaxSize = (int)128 * 1024;
   eventMinSize = (int)128 * 1024;
-  if (cfg.getOptionalValue<std::string>(cfgEntryPoint + ".eventMaxSize",
-                                        sBytes) == 0) {
+  if (cfg.getOptionalValue<std::string>(cfgEntryPoint + ".eventMaxSize", sBytes) == 0) {
     eventMaxSize = ReadoutUtils::getNumberOfBytesFromString(sBytes.c_str());
   }
-  if (cfg.getOptionalValue<std::string>(cfgEntryPoint + ".eventMinSize",
-                                        sBytes) == 0) {
+  if (cfg.getOptionalValue<std::string>(cfgEntryPoint + ".eventMinSize", sBytes) == 0) {
     eventMinSize = ReadoutUtils::getNumberOfBytesFromString(sBytes.c_str());
   }
   cfg.getOptionalValue<int>(cfgEntryPoint + ".fillData", fillData, (int)0);
 
   // log config summary
-  theLog.log(LogInfoDevel_(3002), "Equipment %s: eventSize: %d -> %d, fillData=%d", name.c_str(),
-             eventMinSize, eventMaxSize, fillData);
+  theLog.log(LogInfoDevel_(3002), "Equipment %s: eventSize: %d -> %d, fillData=%d", name.c_str(), eventMinSize, eventMaxSize, fillData);
 
   // ensure generated events will fit in blocks allocated from memory pool
   if ((size_t)eventMaxSize > mp->getDataBlockMaxSize()) {
-    theLog.log(LogErrorSupport_(3230), "memoryPoolPageSize too small, need at least %ld bytes",
-               (long)(eventMaxSize + mp->getPageSize() - mp->getDataBlockMaxSize()));
+    theLog.log(LogErrorSupport_(3230), "memoryPoolPageSize too small, need at least %ld bytes", (long)(eventMaxSize + mp->getPageSize() - mp->getDataBlockMaxSize()));
     throw __LINE__;
   }
 }
@@ -87,8 +81,7 @@ DataBlockContainerReference ReadoutEquipmentDummy::getNextBlock() {
     DataBlock *b = nextBlock->getData();
 
     // set size
-    int dSize = (int)(eventMinSize + (int)((eventMaxSize - eventMinSize) *
-                                           (rand() * 1.0 / RAND_MAX)));
+    int dSize = (int)(eventMinSize + (int)((eventMaxSize - eventMinSize) * (rand() * 1.0 / RAND_MAX)));
 
     // no need to fill header defaults, this is done by getNewDataBlockContainer()
     // only adjust payload size
@@ -114,7 +107,4 @@ DataBlockContainerReference ReadoutEquipmentDummy::getNextBlock() {
   return nextBlock;
 }
 
-std::unique_ptr<ReadoutEquipment>
-getReadoutEquipmentDummy(ConfigFile &cfg, std::string cfgEntryPoint) {
-  return std::make_unique<ReadoutEquipmentDummy>(cfg, cfgEntryPoint);
-}
+std::unique_ptr<ReadoutEquipment> getReadoutEquipmentDummy(ConfigFile &cfg, std::string cfgEntryPoint) { return std::make_unique<ReadoutEquipmentDummy>(cfg, cfgEntryPoint); }

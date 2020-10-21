@@ -9,6 +9,7 @@
 // or submit itself to any jurisdiction.
 
 #include "ReadoutUtils.h"
+
 #include <math.h>
 #include <sstream>
 #include <stdio.h>
@@ -50,8 +51,7 @@ long long ReadoutUtils::getNumberOfBytesFromString(const char *inputString) {
 // macro to get number of element in static array
 #define STATIC_ARRAY_ELEMENT_COUNT(x) sizeof(x) / sizeof(x[0])
 
-std::string ReadoutUtils::NumberOfBytesToString(double value,
-                                                const char *suffix) {
+std::string ReadoutUtils::NumberOfBytesToString(double value, const char *suffix) {
   const char *prefixes[] = {"", "k", "M", "G", "T", "P"};
   int maxPrefixIndex = STATIC_ARRAY_ELEMENT_COUNT(prefixes) - 1;
   int prefixIndex = log(value) / log(1024);
@@ -75,20 +75,17 @@ std::string ReadoutUtils::NumberOfBytesToString(double value,
   } else {
     l = 0;
   }
-  snprintf(bufStr, sizeof(bufStr) - 1, "%.*lf %s%s", l, scaledValue,
-           prefixes[prefixIndex], suffix);
+  snprintf(bufStr, sizeof(bufStr) - 1, "%.*lf %s%s", l, scaledValue, prefixes[prefixIndex], suffix);
   return std::string(bufStr);
 }
 
 void dumpRDH(o2::Header::RAWDataHeader *rdh) {
-  printf("RDH:\tversion=%d\theader size=%d\n",
-         (int)rdh->version, (int)rdh->headerSize);
+  printf("RDH:\tversion=%d\theader size=%d\n", (int)rdh->version, (int)rdh->headerSize);
   printf("\torbit=%d bc=%d\n", (int)rdh->triggerOrbit, (int)rdh->triggerBC);
   printf("\tfeeId=%d\tlinkId=%d\n", (int)rdh->feeId, (int)rdh->linkId);
 }
 
-int getKeyValuePairsFromString(const std::string &input,
-                               std::map<std::string, std::string> &output) {
+int getKeyValuePairsFromString(const std::string &input, std::map<std::string, std::string> &output) {
   output.clear();
   std::size_t ix0 = 0;                 // begin of pair in string
   std::size_t ix1 = std::string::npos; // end of pair in string
@@ -100,13 +97,11 @@ int getKeyValuePairsFromString(const std::string &input,
       break;
     } // end of string
     if (ix1 == std::string::npos) {
-      output.insert(std::pair<std::string, std::string>(
-          input.substr(ix0, ix2 - ix0), input.substr(ix2 + 1)));
+      output.insert(std::pair<std::string, std::string>(input.substr(ix0, ix2 - ix0), input.substr(ix2 + 1)));
 
       break;
     }
-    output.insert(std::pair<std::string, std::string>(
-        input.substr(ix0, ix2 - ix0), input.substr(ix2 + 1, ix1 - (ix2 + 1))));
+    output.insert(std::pair<std::string, std::string>(input.substr(ix0, ix2 - ix0), input.substr(ix2 + 1, ix1 - (ix2 + 1))));
     ix0 = ix1 + 1;
   }
   return 0;
@@ -127,8 +122,7 @@ std::string NumberOfBytesToString(double value, const char *suffix, int base) {
   if (suffix == nullptr) {
     suffix = "";
   }
-  snprintf(bufStr, sizeof(bufStr) - 1, "%.03lf %s%s", scaledValue,
-           prefixes[prefixIndex], suffix);
+  snprintf(bufStr, sizeof(bufStr) - 1, "%.03lf %s%s", scaledValue, prefixes[prefixIndex], suffix);
   return std::string(bufStr);
 }
 
@@ -147,9 +141,7 @@ int getProcessStats(double &uTime, double &sTime) {
       unsigned int u;
       unsigned long lu;
       unsigned long utime, stime;
-      int n = sscanf(buf, "%d %s %c %d %d %d %d %d %u %lu %lu %lu %lu %lu %lu",
-                     &i, &s[0], &c, &i, &i, &i, &i, &i, &u, &lu, &lu, &lu, &lu,
-                     &utime, &stime);
+      int n = sscanf(buf, "%d %s %c %d %d %d %d %d %u %lu %lu %lu %lu %lu %lu", &i, &s[0], &c, &i, &i, &i, &i, &i, &u, &lu, &lu, &lu, &lu, &utime, &stime);
       if (n == 15) {
         uTime = utime * 1.0 / sysconf(_SC_CLK_TCK);
         sTime = stime * 1.0 / sysconf(_SC_CLK_TCK);

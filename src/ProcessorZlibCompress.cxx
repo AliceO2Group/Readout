@@ -8,16 +8,16 @@
 // granted to it by virtue of its status as an Intergovernmental Organization
 // or submit itself to any jurisdiction.
 
-#include "DataBlock.h"
-#include "DataBlockContainer.h"
-#include "DataSet.h"
 #include <string.h>
 #include <zlib.h>
 
+#include "DataBlock.h"
+#include "DataBlockContainer.h"
+#include "DataSet.h"
+
 extern "C" {
 
-int processBlock(DataBlockContainerReference &input,
-                 DataBlockContainerReference &output) {
+int processBlock(DataBlockContainerReference &input, DataBlockContainerReference &output) {
 
   void *ptr = input->getData()->data; // data input
   if (ptr == NULL) {
@@ -33,9 +33,8 @@ int processBlock(DataBlockContainerReference &input,
   defstream.zfree = Z_NULL;
   defstream.opaque = Z_NULL;
 
-  deflateInit(&defstream, Z_BEST_SPEED); // or Z_BEST_COMPRESSION
-  size_t maxSizeOut =
-      deflateBound(&defstream, (uInt)size); // maximum size of output
+  deflateInit(&defstream, Z_BEST_SPEED);                    // or Z_BEST_COMPRESSION
+  size_t maxSizeOut = deflateBound(&defstream, (uInt)size); // maximum size of output
 
   // in-place compression does not work completely, just few first bytes are
   // wrong, too bad we have to create a temporary output buffer

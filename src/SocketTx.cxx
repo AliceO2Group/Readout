@@ -10,12 +10,10 @@
 
 #include "SocketTx.hxx"
 
-#include <functional>
-#include <unistd.h>
-
 #include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <functional>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
@@ -48,8 +46,7 @@ SocketTx::~SocketTx() {
     th->join();
   }
   if (currentBlock != nullptr) {
-    theLog.log(LogWarningDevel_(3235), "%s: block sent incomplete : %lu/%u", clientName.c_str(),
-               currentBlockIndex, currentBlock->getData()->header.dataSize);
+    theLog.log(LogWarningDevel_(3235), "%s: block sent incomplete : %lu/%u", clientName.c_str(), currentBlockIndex, currentBlock->getData()->header.dataSize);
     currentBlock = nullptr;
   }
 }
@@ -81,24 +78,21 @@ void SocketTx::run() {
   }
 
   if (connect(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0) {
-    theLog.log(LogErrorSupport_(3239), "%s: failure connecting: %s", clientName.c_str(),
-               strerror(errno));
+    theLog.log(LogErrorSupport_(3239), "%s: failure connecting: %s", clientName.c_str(), strerror(errno));
     close(sockfd);
     return;
   }
 
   char h[100];
   gethostname(h, 100);
-  clientName += std::string(" @ ") + h + " -> " + serverHost + ":" +
-                std::to_string(serverPort);
+  clientName += std::string(" @ ") + h + " -> " + serverHost + ":" + std::to_string(serverPort);
   theLog.log(LogInfoDevel_(3006), "%s connected", clientName.c_str());
 
   // loop: send current block, if any
   for (;;) {
     if (isSending) {
       size_t cs = currentBlock->getData()->header.dataSize - currentBlockIndex;
-      int n =
-          write(sockfd, &currentBlock->getData()->data[currentBlockIndex], cs);
+      int n = write(sockfd, &currentBlock->getData()->data[currentBlockIndex], cs);
       if (n == 0) {
         break;
       }
@@ -130,10 +124,8 @@ void SocketTx::run() {
   double t0 = t.getTime();
   double rate = (bytesTx / t0);
 
-  theLog.log(LogInfoDevel_(3003), "%s : data: %s in %.2fs", clientName.c_str(),
-             NumberOfBytesToString(bytesTx, "bytes", 1024).c_str(), t0);
-  theLog.log(LogInfoDevel_(3003), "%s : rate: %s", clientName.c_str(),
-             NumberOfBytesToString(rate * 8, "bps").c_str());
+  theLog.log(LogInfoDevel_(3003), "%s : data: %s in %.2fs", clientName.c_str(), NumberOfBytesToString(bytesTx, "bytes", 1024).c_str(), t0);
+  theLog.log(LogInfoDevel_(3003), "%s : rate: %s", clientName.c_str(), NumberOfBytesToString(rate * 8, "bps").c_str());
 }
 
 int SocketTx::pushData(DataBlockContainerReference &b) {

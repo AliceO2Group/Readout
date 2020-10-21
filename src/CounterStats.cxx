@@ -9,6 +9,7 @@
 // or submit itself to any jurisdiction.
 
 #include "CounterStats.h"
+
 #include <math.h>
 
 CounterStats::CounterStats() { reset(); }
@@ -93,8 +94,7 @@ CounterValue CounterStats::getMaximum() {
 
 CounterValue CounterStats::getCount() { return nValues; }
 
-void CounterStats::enableHistogram(unsigned int nbin, CounterValue vmin,
-                                   CounterValue vmax, int logScale) {
+void CounterStats::enableHistogram(unsigned int nbin, CounterValue vmin, CounterValue vmax, int logScale) {
   histoCounts.clear();
   histoVmin = vmin;
   histoVmax = vmax;
@@ -120,8 +120,7 @@ void CounterStats::enableHistogram(unsigned int nbin, CounterValue vmin,
   histoCounts.resize(nbin, 0);
 }
 
-void CounterStats::getHisto(std::vector<double> &x,
-                            std::vector<CounterValue> &count) {
+void CounterStats::getHisto(std::vector<double> &x, std::vector<CounterValue> &count) {
   if (histoNbin) {
     x.resize(histoNbin);
     count.resize(histoNbin);

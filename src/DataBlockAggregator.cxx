@@ -9,13 +9,12 @@
 // or submit itself to any jurisdiction.
 
 #include "DataBlockAggregator.h"
+
 #include "readoutInfoLogger.h"
 
-DataBlockAggregator::DataBlockAggregator(
-    AliceO2::Common::Fifo<DataSetReference> *v_output, std::string name) {
+DataBlockAggregator::DataBlockAggregator(AliceO2::Common::Fifo<DataSetReference> *v_output, std::string name) {
   output = v_output;
-  aggregateThread = std::make_unique<Thread>(
-      DataBlockAggregator::threadCallback, this, name, 1000);
+  aggregateThread = std::make_unique<Thread>(DataBlockAggregator::threadCallback, this, name, 1000);
   isIncompletePending = 0;
 }
 
@@ -23,8 +22,7 @@ DataBlockAggregator::~DataBlockAggregator() {
   // todo: flush out FIFOs ?
 }
 
-int DataBlockAggregator::addInput(
-    std::shared_ptr<AliceO2::Common::Fifo<DataBlockContainerReference>> input) {
+int DataBlockAggregator::addInput(std::shared_ptr<AliceO2::Common::Fifo<DataBlockContainerReference>> input) {
   // inputs.push_back(input);
   inputs.push_back(input);
   slicers.push_back(DataBlockSlicer());
@@ -131,11 +129,11 @@ Thread::CallbackResult DataBlockAggregator::executeCallback() {
       inputs[i]->pop(b);
       nBlocksIn++;
       totalBlocksIn++;
-//       printf("Got block %d from dev %d eq %d link %d tf %d\n",
-//        (int)(b->getData()->header.blockId), i,
-//        (int)(b->getData()->header.equipmentId),
-//        (int)(b->getData()->header.linkId),
-//        (int)(b->getData()->header.timeframeId));
+      //       printf("Got block %d from dev %d eq %d link %d tf %d\n",
+      //        (int)(b->getData()->header.blockId), i,
+      //        (int)(b->getData()->header.equipmentId),
+      //        (int)(b->getData()->header.linkId),
+      //        (int)(b->getData()->header.timeframeId));
       if (slicers[i].appendBlock(b, now) <= 0) {
         return Thread::CallbackResult::Error;
       }
@@ -160,26 +158,26 @@ Thread::CallbackResult DataBlockAggregator::executeCallback() {
         break;
       }
 
-      if (enableStfBuilding) {     
+      if (enableStfBuilding) {
         // buffer timeframes
-	DataBlock *db = bcv->at(0)->getData();
-	uint64_t tfId=db->header.timeframeId;
-	uint64_t sourceId=(((uint64_t)db->header.equipmentId) << 32) | ((uint64_t)db->header.linkId);
-	if (tfId<=lastTimeframeId) {
-		theLog.log(LogWarningSupport_(3235), "Discarding late data for TF %lu (source = 0x%lX)",tfId,sourceId);
-	} else {
-	  tStf &stf=stfBuffer[tfId];
-	  stf.tfId=tfId;
-	  stf.sstf.push_back({sourceId, bcv, now});
-	  stf.updateTime=now;
-	  //theLog.log(LogDebugTrace, "aggregate - added tf %lu : source %lX",tfId,sourceId);
-	}     
+        DataBlock *db = bcv->at(0)->getData();
+        uint64_t tfId = db->header.timeframeId;
+        uint64_t sourceId = (((uint64_t)db->header.equipmentId) << 32) | ((uint64_t)db->header.linkId);
+        if (tfId <= lastTimeframeId) {
+          theLog.log(LogWarningSupport_(3235), "Discarding late data for TF %lu (source = 0x%lX)", tfId, sourceId);
+        } else {
+          tStf &stf = stfBuffer[tfId];
+          stf.tfId = tfId;
+          stf.sstf.push_back({sourceId, bcv, now});
+          stf.updateTime = now;
+          // theLog.log(LogDebugTrace, "aggregate - added tf %lu : source %lX",tfId,sourceId);
+        }
       } else {
         // push directly out completed slices
         output->push(bcv);
       }
 
-      nSlicesOut++;      
+      nSlicesOut++;
       nextIndex = i + 1;
       // printf("Pushed STF : %d chunks\n",(int)bcv->size());
     }
@@ -187,38 +185,42 @@ Thread::CallbackResult DataBlockAggregator::executeCallback() {
 
   // in TF buffering mode, are there some complete timeframes?
   if (enableStfBuilding) {
-    int nDataSetPushed=0;
-    int nStfPushed=0;
-    auto it=stfBuffer.begin();
-    while (it!=stfBuffer.end()) {
-      double age=now-it->second.updateTime;      
-      if (age>=cfgStfTimeout) {
-        //printf("pushing age %.3f tf %d -> %d sources\n",age,it->second.tfId,it->second.sstf.size());
-	double tmin=it->second.updateTime;
-	double tmax=it->second.updateTime;
-	int ix=0;	
-	for (auto const &ss: it->second.sstf) {
-	  ix++;
-	  if (ix==(int)it->second.sstf.size()) {
-	    // this is the last piece of this TF, mark last block as such
-	    ss.data->back()->getData()->header.flagEndOfTimeframe=1;
-	  }
-	  output->push(ss.data);
+    int nDataSetPushed = 0;
+    int nStfPushed = 0;
+    auto it = stfBuffer.begin();
+    while (it != stfBuffer.end()) {
+      double age = now - it->second.updateTime;
+      if (age >= cfgStfTimeout) {
+        // printf("pushing age %.3f tf %d -> %d sources\n",age,it->second.tfId,it->second.sstf.size());
+        double tmin = it->second.updateTime;
+        double tmax = it->second.updateTime;
+        int ix = 0;
+        for (auto const &ss : it->second.sstf) {
+          ix++;
+          if (ix == (int)it->second.sstf.size()) {
+            // this is the last piece of this TF, mark last block as such
+            ss.data->back()->getData()->header.flagEndOfTimeframe = 1;
+          }
+          output->push(ss.data);
           nDataSetPushed++;
-	  if (ss.updateTime<tmin) {tmin=ss.updateTime;}
-	  if (ss.updateTime<tmax) {tmax=ss.updateTime;}	  
-	}
-	if (it->second.tfId == 1) {
-	    nSources=it->second.sstf.size(); // keep track of number of sources in first TF
-	}
-	nStfPushed++;
-	lastTimeframeId = it->second.tfId;
-	/*
-	if (lastTimeframeId % 10 == 1) {
-	  theLog.log(LogDebugTrace, "LastTimeframeId=%lu deltaT=%f",lastTimeframeId,tmax-tmin);
-	}
-	*/
-	it=stfBuffer.erase(it);
+          if (ss.updateTime < tmin) {
+            tmin = ss.updateTime;
+          }
+          if (ss.updateTime < tmax) {
+            tmax = ss.updateTime;
+          }
+        }
+        if (it->second.tfId == 1) {
+          nSources = it->second.sstf.size(); // keep track of number of sources in first TF
+        }
+        nStfPushed++;
+        lastTimeframeId = it->second.tfId;
+        /*
+        if (lastTimeframeId % 10 == 1) {
+          theLog.log(LogDebugTrace, "LastTimeframeId=%lu deltaT=%f",lastTimeframeId,tmax-tmin);
+        }
+        */
+        it = stfBuffer.erase(it);
       } else {
         break;
       }
@@ -226,7 +228,7 @@ Thread::CallbackResult DataBlockAggregator::executeCallback() {
   }
 
   if ((nBlocksIn == 0) && (nSlicesOut == 0)) {
-    if ((doFlush)&&(stfBuffer.size()==0)) {
+    if ((doFlush) && (stfBuffer.size() == 0)) {
       doFlush = 0; // flushing is complete if we are now idle
     }
     return Thread::CallbackResult::Idle;
@@ -239,8 +241,7 @@ DataBlockSlicer::DataBlockSlicer() {}
 
 DataBlockSlicer::~DataBlockSlicer() {}
 
-int DataBlockSlicer::appendBlock(DataBlockContainerReference const &block,
-                                 double timestamp) {
+int DataBlockSlicer::appendBlock(DataBlockContainerReference const &block, double timestamp) {
   uint64_t tfId = block->getData()->header.timeframeId;
   DataSourceId sourceId;
   sourceId.linkId = block->getData()->header.linkId;
@@ -248,8 +249,7 @@ int DataBlockSlicer::appendBlock(DataBlockContainerReference const &block,
 
   if (sourceId.linkId != undefinedLinkId) {
     if (sourceId.linkId >= maxLinks) {
-      theLog.log(LogWarningSupport_(3004), "wrong link id %d > %d",
-                 sourceId.linkId, maxLinks - 1);
+      theLog.log(LogWarningSupport_(3004), "wrong link id %d > %d", sourceId.linkId, maxLinks - 1);
       return -1;
     }
   }

@@ -15,19 +15,16 @@
 using namespace AliceO2::InfoLogger;
 InfoLogger theLog;
 #include <Common/Timer.h>
-
-#include "MemoryBankManager.h"
-
 #include <ReadoutCard/ChannelFactory.h>
 #include <ReadoutCard/DmaChannelInterface.h>
 #include <ReadoutCard/Exception.h>
 #include <ReadoutCard/MemoryMappedFile.h>
 #include <ReadoutCard/Parameters.h>
-
+#include <sys/mman.h>
 #include <time.h>
 #include <vector>
 
-#include <sys/mman.h>
+#include "MemoryBankManager.h"
 
 #ifdef WITH_NUMA
 #include <numa.h>
@@ -78,20 +75,17 @@ ROCdevice::ROCdevice(std::string id) {
 
   bank = getMemoryBank(bankSize, "MemoryMappedFile", bankId);
   theMemoryBankManager.addBank(bank);
-  mp = theMemoryBankManager.getPagedPool(
-      memoryPoolPageSize, memoryPoolNumberOfPages, bankId); // pool of pages
+  mp = theMemoryBankManager.getPagedPool(memoryPoolPageSize, memoryPoolNumberOfPages, bankId); // pool of pages
 
   superPageSize = mp->getPageSize();
-  superPageSize -=
-      superPageSize % (32 * 1024); // must be a multiple of 32Kb for ROC
+  superPageSize -= superPageSize % (32 * 1024); // must be a multiple of 32Kb for ROC
 
   cardId = id;
   params.setCardId(AliceO2::roc::Parameters::cardIdFromString(cardId));
   params.setChannelNumber(cfgChannelNumber);
   params.setDataSource(AliceO2::roc::DataSource::fromString(cfgDataSource));
 
-  params.setBufferParameters(AliceO2::roc::buffer_parameters::Memory{
-      mp->getBaseBlockAddress(), mp->getBaseBlockSize()});
+  params.setBufferParameters(AliceO2::roc::buffer_parameters::Memory{mp->getBaseBlockAddress(), mp->getBaseBlockSize()});
 
   channel = AliceO2::roc::ChannelFactory().getDmaChannel(params);
 
@@ -102,12 +96,9 @@ ROCdevice::ROCdevice(std::string id) {
   if (v_infoSerialNumber) {
     infoSerialNumber = std::to_string(v_infoSerialNumber.get());
   }
-  std::string infoFirmwareVersion =
-      channel->getFirmwareInfo().value_or("unknown");
+  std::string infoFirmwareVersion = channel->getFirmwareInfo().value_or("unknown");
   std::string infoCardId = channel->getCardId().value_or("unknown");
-  theLog.log(LogInfoDevel_(3010), "ROC PCI %s @ NUMA node %d, serial number %s, firmware version %s, card id %s",
-             infoPciAddress.c_str(), infoNumaNode, infoSerialNumber.c_str(),
-             infoFirmwareVersion.c_str(), infoCardId.c_str());
+  theLog.log(LogInfoDevel_(3010), "ROC PCI %s @ NUMA node %d, serial number %s, firmware version %s, card id %s", infoPciAddress.c_str(), infoNumaNode, infoSerialNumber.c_str(), infoFirmwareVersion.c_str(), infoCardId.c_str());
 }
 
 ROCdevice::~ROCdevice() {}
@@ -345,7 +336,6 @@ int main(int argc, char **argv) {
   for (auto &d : devices) {
     d.stop();
   }
-  printf("nloop=%llu nsleep=%llu ratio=%.3f\n", nloop, nsleep,
-         nsleep * 1.0 / nloop);
+  printf("nloop=%llu nsleep=%llu ratio=%.3f\n", nloop, nsleep, nsleep * 1.0 / nloop);
   return 0;
 }

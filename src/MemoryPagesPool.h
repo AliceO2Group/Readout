@@ -11,13 +11,14 @@
 #ifndef _MEMORYPAGESPOOL_H
 #define _MEMORYPAGESPOOL_H
 
-#include "CounterStats.h"
-#include "DataBlockContainer.h"
 #include <Common/Fifo.h>
 #include <Common/Timer.h>
 #include <functional>
 #include <map>
 #include <memory>
+
+#include "CounterStats.h"
+#include "DataBlockContainer.h"
 
 // This class creates a pool of data pages from a memory block
 // Optimized for 1-1 consumers (1 thread to get the page, 1 thread to release
@@ -44,9 +45,7 @@ public:
   // control alignment. All pages are created contiguous from this point.
   //   If non-zero, this may reduce number of pages created compared to request
   //   (as to fit in base size)
-  MemoryPagesPool(size_t pageSize, size_t numberOfPages, void *baseAddress,
-                  size_t baseSize = 0, ReleaseCallback callback = nullptr,
-                  size_t firstPageOffset = 0);
+  MemoryPagesPool(size_t pageSize, size_t numberOfPages, void *baseAddress, size_t baseSize = 0, ReleaseCallback callback = nullptr, size_t firstPageOffset = 0);
 
   // destructor
   ~MemoryPagesPool();
@@ -54,8 +53,7 @@ public:
   // methods to get and release page
   // the two functions can be called concurrently without locking
   // (but a lock is needed if calling the same function concurrently)
-  void *
-  getPage(); // get a new page from the pool (if available, nullptr if none)
+  void *getPage();                 // get a new page from the pool (if available, nullptr if none)
   void releasePage(void *address); // insert back page to the pool after use, to
                                    // make it available again
 
@@ -63,19 +61,18 @@ public:
   size_t getPageSize();               // get the page size
   size_t getTotalNumberOfPages();     // get number of pages in pool
   size_t getNumberOfPagesAvailable(); // get number of pages currently available
-  void *getBaseBlockAddress(); // get the base address of memory pool block
-  size_t getBaseBlockSize();   // get the  size of memory pool block. All pages
-                             // guaranteed to be within &baseBlockAddress[0] and
-                             // &baseBlockAddress[baseBlockSize]
+  void *getBaseBlockAddress();        // get the base address of memory pool block
+  size_t getBaseBlockSize();          // get the  size of memory pool block. All pages
+                                      // guaranteed to be within &baseBlockAddress[0] and
+                                      // &baseBlockAddress[baseBlockSize]
 
-  std::shared_ptr<DataBlockContainer> getNewDataBlockContainer(
-      void *page = nullptr); // returns an empty data block container (with data
-                             // = a given page, retrieved previously by
-                             // getPage(), or new page if null) from the pool.
-                             // Page will be put back in pool after use.
-                             // The base header is filled, in particular
-                             // block->header.dataSize has usable page size and
-                             // block->data points to it.
+  std::shared_ptr<DataBlockContainer> getNewDataBlockContainer(void *page = nullptr); // returns an empty data block container (with data
+                                                                                      // = a given page, retrieved previously by
+                                                                                      // getPage(), or new page if null) from the pool.
+                                                                                      // Page will be put back in pool after use.
+                                                                                      // The base header is filled, in particular
+                                                                                      // block->header.dataSize has usable page size and
+                                                                                      // block->data points to it.
 
   size_t getDataBlockMaxSize(); // returns usable payload size of blocks
                                 // returned by getNewDataBlockContainer()
@@ -83,8 +80,7 @@ public:
   bool isPageValid(void *page); // check to see if a page address is valid
 
 private:
-  std::unique_ptr<AliceO2::Common::Fifo<void *>>
-      pagesAvailable; // a buffer to keep track of individual pages
+  std::unique_ptr<AliceO2::Common::Fifo<void *>> pagesAvailable; // a buffer to keep track of individual pages
 
   size_t numberOfPages;                           // number of pages
   size_t pageSize;                                // size of each page, in bytes
@@ -96,9 +92,8 @@ private:
   void *firstPageAddress; // address of first page
   void *lastPageAddress;  // address of last page
 
-  ReleaseCallback
-      releaseBaseBlockCallback; // the user function called in destructor,
-                                // typically to release the baseAddress block.
+  ReleaseCallback releaseBaseBlockCallback; // the user function called in destructor,
+                                            // typically to release the baseAddress block.
 
   AliceO2::Common::Timer clock; // a global clock
 

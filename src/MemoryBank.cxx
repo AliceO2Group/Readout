@@ -9,6 +9,7 @@
 // or submit itself to any jurisdiction.
 
 #include "MemoryBank.h"
+
 #include <cstring>
 #include <memory>
 #include <new>
@@ -31,10 +32,7 @@ MemoryBank::MemoryBank(std::string v_description) {
   description = v_description;
 }
 
-MemoryBank::MemoryBank(void *v_baseAddress, std::size_t v_size,
-                       ReleaseCallback v_callback, std::string v_description)
-    : baseAddress(v_baseAddress), size(v_size), description(v_description),
-      releaseCallback(v_callback) {}
+MemoryBank::MemoryBank(void *v_baseAddress, std::size_t v_size, ReleaseCallback v_callback, std::string v_description) : baseAddress(v_baseAddress), size(v_size), description(v_description), releaseCallback(v_callback) {}
 
 MemoryBank::~MemoryBank() {
   if (releaseCallback != nullptr) {
@@ -61,8 +59,7 @@ public:
   ~MemoryBankMalloc();
 };
 
-MemoryBankMalloc::MemoryBankMalloc(size_t v_size, std::string v_description)
-    : MemoryBank(v_description) {
+MemoryBankMalloc::MemoryBankMalloc(size_t v_size, std::string v_description) : MemoryBank(v_description) {
   baseAddress = malloc(v_size);
   if (baseAddress == nullptr) {
     throw std::bad_alloc();
@@ -90,17 +87,13 @@ private:
   std::unique_ptr<AliceO2::roc::MemoryMappedFile> mMemoryMappedFile;
 };
 
-MemoryBankMemoryMappedFile::MemoryBankMemoryMappedFile(
-    size_t v_size, std::string v_description)
-    : MemoryBank(v_description) {
+MemoryBankMemoryMappedFile::MemoryBankMemoryMappedFile(size_t v_size, std::string v_description) : MemoryBank(v_description) {
 
   // declare available huge page size types and path suffix
-  std::vector<std::pair<int, std::string>> hpt = {{1024 * 1024 * 1024, "1GB"},
-                                                  {2 * 1024 * 1024, "2MB"}};
+  std::vector<std::pair<int, std::string>> hpt = {{1024 * 1024 * 1024, "1GB"}, {2 * 1024 * 1024, "2MB"}};
 
   // sort them from biggest to smallest page size
-  std::sort(hpt.begin(), hpt.end(),
-            [](auto &v1, auto &v2) { return v1.first > v2.first; });
+  std::sort(hpt.begin(), hpt.end(), [](auto &v1, auto &v2) { return v1.first > v2.first; });
 
   // select huge page size as big as possible so that target size is a multiple
   // of it
@@ -119,8 +112,7 @@ MemoryBankMemoryMappedFile::MemoryBankMemoryMappedFile(
 
   if (hugePageSizeBytes == 0) {
     // no match found
-    theLog.log(LogErrorSupport_(3103), "Memory bank %s : selected size %ld must be multiple of available hugepage sizes = %s",
-               v_description.c_str(), v_size, availableSizes.c_str());
+    theLog.log(LogErrorSupport_(3103), "Memory bank %s : selected size %ld must be multiple of available hugepage sizes = %s", v_description.c_str(), v_size, availableSizes.c_str());
     throw __LINE__;
   }
 
@@ -128,12 +120,10 @@ MemoryBankMemoryMappedFile::MemoryBankMemoryMappedFile(
   std::string memoryMapFilePath = hugePagePath + "/readout-" + v_description;
 
   // log settings
-  theLog.log(LogInfoDevel_(3008), "Creating shared memory block for bank %s : size %ld using %s",
-             v_description.c_str(), v_size, memoryMapFilePath.c_str());
+  theLog.log(LogInfoDevel_(3008), "Creating shared memory block for bank %s : size %ld using %s", v_description.c_str(), v_size, memoryMapFilePath.c_str());
 
   try {
-    mMemoryMappedFile = std::make_unique<AliceO2::roc::MemoryMappedFile>(
-        memoryMapFilePath, v_size, true); // delete on destruction
+    mMemoryMappedFile = std::make_unique<AliceO2::roc::MemoryMappedFile>(memoryMapFilePath, v_size, true); // delete on destruction
   } catch (const AliceO2::roc::MemoryMapException &e) {
     theLog.log(LogErrorSupport_(3230), "Failed to allocate memory buffer : %s", e.what());
     throw __LINE__;
@@ -150,19 +140,17 @@ MemoryBankMemoryMappedFile::~MemoryBankMemoryMappedFile() {}
 #endif
 
 /// MemoryBank factory based on type
-std::shared_ptr<MemoryBank> getMemoryBank(size_t size, std::string type,
-                                          std::string description) {
+std::shared_ptr<MemoryBank> getMemoryBank(size_t size, std::string type, std::string description) {
 
   if (type == "malloc") {
     return std::make_shared<MemoryBankMalloc>(size, description);
   } else if (type == "MemoryMappedFile") {
-    #ifdef WITH_READOUTCARD
+#ifdef WITH_READOUTCARD
     return std::make_shared<MemoryBankMemoryMappedFile>(size, description);
-    #else
+#else
     theLog.log(LogWarningSupport_(3101), "MemoryMappedFile not supported by this build");
     return nullptr;
-    #endif
+#endif
   }
   return nullptr;
 }
-

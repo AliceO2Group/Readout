@@ -12,17 +12,14 @@
 #include <Common/Fifo.h>
 #include <Common/Thread.h>
 #include <Common/Timer.h>
-
-#include "DataBlock.h"
-#include "DataBlockContainer.h"
-#include "DataSet.h"
-
 #include <memory>
 
 #include "CounterStats.h"
-#include "MemoryHandler.h"
-
+#include "DataBlock.h"
+#include "DataBlockContainer.h"
+#include "DataSet.h"
 #include "MemoryBankManager.h"
+#include "MemoryHandler.h"
 #include "RdhUtils.h"
 
 using namespace AliceO2::Common;
@@ -48,16 +45,15 @@ public:
 
   bool stopOnError = false; // if set, readout will stop when this equipment
                             // reports an error (isError flag)
-  int isError = 0; // flag which might be used to count number of errors
-                   // occuring in the equipment
+  int isError = 0;          // flag which might be used to count number of errors
+                            // occuring in the equipment
 
   // protected:
   // todo: give direct access to output FIFO?
   std::shared_ptr<AliceO2::Common::Fifo<DataBlockContainerReference>> dataOut;
 
   // get current memory pool usage (available and total)
-  int getMemoryUsage(size_t &numberOfPagesAvailable,
-                     size_t &numberOfPagesInPool);
+  int getMemoryUsage(size_t &numberOfPagesAvailable, size_t &numberOfPagesInPool);
 
 private:
   std::unique_ptr<Thread> readoutThread;
@@ -68,9 +64,7 @@ private:
   // calling sequence: prepareBlocks() + iterate getNextBlock()
   // The return value gives a hint about if it should be called soon again or
   // not. If idle, can wait a bit
-  virtual Thread::CallbackResult prepareBlocks() {
-    return Thread::CallbackResult::Idle;
-  };
+  virtual Thread::CallbackResult prepareBlocks() { return Thread::CallbackResult::Idle; };
   virtual DataBlockContainerReference getNextBlock() { return nullptr; };
 
   DataBlockId currentBlockId; // current block id
@@ -91,12 +85,10 @@ protected:
     nOutputFull = 3,
     nIdle = 4,
     nLoop = 5,
-    nThrottle = 6, // when rate throtthling was done
-    nFifoUpEmpty =
-        7, // we call fifoUP the one where we push upstream pages to be filled
-    nFifoReadyFull =
-        8,         // we call fifoReady the one where ROC pushes ready pages
-    nPushedUp = 9, // free pages pushed upstream
+    nThrottle = 6,      // when rate throtthling was done
+    nFifoUpEmpty = 7,   // we call fifoUP the one where we push upstream pages to be filled
+    nFifoReadyFull = 8, // we call fifoReady the one where ROC pushes ready pages
+    nPushedUp = 9,      // free pages pushed upstream
     fifoOccupancyFreeBlocks = 10,
     fifoOccupancyReadyBlocks = 11,
     fifoOccupancyOutBlocks = 12,
@@ -107,39 +99,19 @@ protected:
 
   // Display names of the performance counters.
   // Should be in same order as in enum.
-  const char *EquipmentStatsNames[EquipmentStatsIndexes::maxIndex] = {
-      "nBlocksOut",
-      "nBytesOut",
-      "nMemoryLow",
-      "nOutputFull",
-      "nIdle",
-      "nLoop",
-      "nThrottle",
-      "nFifoUpEmpty",
-      "nFifoReadyFull",
-      "nPushedUp",
-      "fifoOccupancyFreeBlocks",
-      "fifoOccupancyReadyBlocks",
-      "fifoOccupancyOutBlocks",
-      "nPagesUsed",
-      "nPagesFree"};
+  const char *EquipmentStatsNames[EquipmentStatsIndexes::maxIndex] = {"nBlocksOut", "nBytesOut", "nMemoryLow", "nOutputFull", "nIdle", "nLoop", "nThrottle", "nFifoUpEmpty", "nFifoReadyFull", "nPushedUp", "fifoOccupancyFreeBlocks", "fifoOccupancyReadyBlocks", "fifoOccupancyOutBlocks", "nPagesUsed", "nPagesFree"};
 
   // check consistency (size) of EquipmentStatsNames with EquipmentStatsIndexes
-  static_assert((sizeof(EquipmentStatsNames) /
-                 sizeof(EquipmentStatsNames[0])) ==
-                    EquipmentStatsIndexes::maxIndex,
-                "EquipmentStatsNames size mismatch EquipmentStatsIndexes::");
+  static_assert((sizeof(EquipmentStatsNames) / sizeof(EquipmentStatsNames[0])) == EquipmentStatsIndexes::maxIndex, "EquipmentStatsNames size mismatch EquipmentStatsIndexes::");
 
   // Counter values, updated at runtime
   std::vector<CounterStats> equipmentStats;
   std::vector<CounterValue> equipmentStatsLast;
 
-  double cfgConsoleStatsUpdateTime =
-      0; // number of seconds between regular printing of statistics on console
-         // (if zero, only on stop)
-  AliceO2::Common::Timer
-      consoleStatsTimer; // timer to keep track of elapsed time between console
-                         // statistics updates
+  double cfgConsoleStatsUpdateTime = 0;     // number of seconds between regular printing of statistics on console
+                                            // (if zero, only on stop)
+  AliceO2::Common::Timer consoleStatsTimer; // timer to keep track of elapsed time between console
+                                            // statistics updates
 
   AliceO2::Common::Timer clk;
   AliceO2::Common::Timer clk0;
@@ -150,95 +122,71 @@ protected:
   uint16_t id = undefinedEquipmentId; // id of equipment (optional, used to tag
                                       // data blocks)
 
-  std::shared_ptr<MemoryPagesPool>
-      mp;                     // a memory pool from which to allocate data pages
-  int memoryPoolPageSize = 0; // size if each page in pool
-  int memoryPoolNumberOfPages = 0; // number of pages in pool
-  std::string memoryBankName = ""; // memory bank to be used. by default, this
-                                   // uses the first memory bank available
+  std::shared_ptr<MemoryPagesPool> mp; // a memory pool from which to allocate data pages
+  int memoryPoolPageSize = 0;          // size if each page in pool
+  int memoryPoolNumberOfPages = 0;     // number of pages in pool
+  std::string memoryBankName = "";     // memory bank to be used. by default, this
+                                       // uses the first memory bank available
 
-  int disableOutput =
-      0; // when set true, data are dropped before pushing to output queue
+  int disableOutput = 0; // when set true, data are dropped before pushing to output queue
 
-  size_t pageSpaceReserved =
-      0; // amount of space reserved (in bytes) at beginning of each data page,
-         // possibly to store header
+  size_t pageSpaceReserved = 0; // amount of space reserved (in bytes) at beginning of each data page,
+                                // possibly to store header
 
   int debugFirstPages = 0; // print debug info on first number of pages read
 
 private:
-  
   int tagDatablockFromRdh(RdhHandle &RDH, DataBlockHeader &h);
-  unsigned long long statsNumberOfTimeframes =
-      0; // number of timeframes read out
-  uint32_t currentTimeframeHbOrbitBegin =
-      0; // HbOrbit of beginning of timeframe
-  uint32_t firstTimeframeHbOrbitBegin =
-      0; // HbOrbit of beginning of first timeframe
+  unsigned long long statsNumberOfTimeframes = 0; // number of timeframes read out
+  uint32_t currentTimeframeHbOrbitBegin = 0;      // HbOrbit of beginning of timeframe
+  uint32_t firstTimeframeHbOrbitBegin = 0;        // HbOrbit of beginning of first timeframe
   bool isDefinedFirstTimeframeHbOrbitBegin = 0;
 
-  AliceO2::Common::Timer
-      timeframeClock; // timeframe id should be increased at each clock cycle
-  uint64_t currentTimeframe = 0; // id of current timeframe
-  bool usingSoftwareClock =
-      false; // if set, using internal software clock to generate timeframe id
+  AliceO2::Common::Timer timeframeClock; // timeframe id should be increased at each clock cycle
+  uint64_t currentTimeframe = 0;         // id of current timeframe
+  bool usingSoftwareClock = false;       // if set, using internal software clock to generate timeframe id
 
-  const unsigned int LHCBunches = 3564; // number of bunches in LHC
-  const unsigned int LHCOrbitRate =
-      11246; // LHC orbit rate, in Hz. 299792458 / 26659
-  uint32_t timeframePeriodOrbits =
-      256; // timeframe interval duration in number of LHC orbits
-  double timeframeRate = 0; // timeframe rate, when generated internally
+  const unsigned int LHCBunches = 3564;    // number of bunches in LHC
+  const unsigned int LHCOrbitRate = 11246; // LHC orbit rate, in Hz. 299792458 / 26659
+  uint32_t timeframePeriodOrbits = 256;    // timeframe interval duration in number of LHC orbits
+  double timeframeRate = 0;                // timeframe rate, when generated internally
 
   // RDH-related configuration parameters
-  
-  int cfgRdhCheckEnabled = 0;     // flag to enable RDH check at runtime
-  int cfgRdhDumpEnabled = 0;      // flag to enable RDH dump at runtime
-  int cfgRdhDumpErrorEnabled = 1; // flag to enable RDH error log at runtime
-  int cfgRdhDumpWarningEnabled = 0; // flag to enable RDH warning log at runtime
-  int cfgRdhUseFirstInPageEnabled = 0; // flag to enable reading of first RDH in
-                                       // page to populate readout headers
-  int cfgRdhCheckPacketCounterContiguous =
-      1; // flag to enable checking if RDH packetCounter value contiguous (done
-         // link-by-link)
+
+  int cfgRdhCheckEnabled = 0;                 // flag to enable RDH check at runtime
+  int cfgRdhDumpEnabled = 0;                  // flag to enable RDH dump at runtime
+  int cfgRdhDumpErrorEnabled = 1;             // flag to enable RDH error log at runtime
+  int cfgRdhDumpWarningEnabled = 0;           // flag to enable RDH warning log at runtime
+  int cfgRdhUseFirstInPageEnabled = 0;        // flag to enable reading of first RDH in
+                                              // page to populate readout headers
+  int cfgRdhCheckPacketCounterContiguous = 1; // flag to enable checking if RDH packetCounter value contiguous (done
+                                              // link-by-link)
 
   bool isRdhEquipment = false; // to be set true for RDH equipments
-  
+
   int processRdh(DataBlockContainerReference &nextBlock);
-  
+
 protected:
   // get timeframe from orbit
   // orbit of TF 1 is set on first call
   uint64_t getTimeframeFromOrbit(uint32_t orbit);
   uint64_t getCurrentTimeframe();
-  
-  uint32_t getTimeframePeriodOrbits() {
-    return timeframePeriodOrbits;
-  }
+
+  uint32_t getTimeframePeriodOrbits() { return timeframePeriodOrbits; }
 
   // compute range of orbits for given timeframe
   void getTimeframeOrbitRange(uint64_t tfId, uint32_t &hbOrbitMin, uint32_t &hbOrbitMax);
 
   void initRdhEquipment(); // to be called by equipments producing RDH-formatted data
-  
-  unsigned long long statsRdhCheckOk =
-      0; // number of RDH structs which have passed check ok
-  unsigned long long statsRdhCheckErr =
-      0; // number of RDH structs which have not passed check
-  unsigned long long statsRdhCheckStreamErr =
-      0; // number of inconsistencies in RDH stream (e.g. ids/timing compared to
-         // previous RDH)
 
-
+  unsigned long long statsRdhCheckOk = 0;        // number of RDH structs which have passed check ok
+  unsigned long long statsRdhCheckErr = 0;       // number of RDH structs which have not passed check
+  unsigned long long statsRdhCheckStreamErr = 0; // number of inconsistencies in RDH stream (e.g. ids/timing compared to
+                                                 // previous RDH)
 };
 
-std::unique_ptr<ReadoutEquipment>
-getReadoutEquipmentDummy(ConfigFile &cfg, std::string cfgEntryPoint);
-std::unique_ptr<ReadoutEquipment>
-getReadoutEquipmentRORC(ConfigFile &cfg, std::string cfgEntryPoint);
-std::unique_ptr<ReadoutEquipment>
-getReadoutEquipmentCruEmulator(ConfigFile &cfg, std::string cfgEntryPoint);
-std::unique_ptr<ReadoutEquipment>
-getReadoutEquipmentPlayer(ConfigFile &cfg, std::string cfgEntryPoint);
-std::unique_ptr<ReadoutEquipment>
-getReadoutEquipmentZmq(ConfigFile &cfg, std::string cfgEntryPoint);
+std::unique_ptr<ReadoutEquipment> getReadoutEquipmentDummy(ConfigFile &cfg, std::string cfgEntryPoint);
+std::unique_ptr<ReadoutEquipment> getReadoutEquipmentRORC(ConfigFile &cfg, std::string cfgEntryPoint);
+std::unique_ptr<ReadoutEquipment> getReadoutEquipmentCruEmulator(ConfigFile &cfg, std::string cfgEntryPoint);
+std::unique_ptr<ReadoutEquipment> getReadoutEquipmentPlayer(ConfigFile &cfg, std::string cfgEntryPoint);
+std::unique_ptr<ReadoutEquipment> getReadoutEquipmentZmq(ConfigFile &cfg, std::string cfgEntryPoint);

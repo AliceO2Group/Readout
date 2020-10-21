@@ -56,13 +56,11 @@ private:
   std::shared_ptr<FairMQTransportFactory> transportFactory;
 
 public:
-  ConsumerDataSampling(ConfigFile &cfg, std::string cfgEntryPoint)
-      : Consumer(cfg, cfgEntryPoint), channels(1) {
+  ConsumerDataSampling(ConfigFile &cfg, std::string cfgEntryPoint) : Consumer(cfg, cfgEntryPoint), channels(1) {
     std::string address;
     // configuration parameter: | consumer-data-sampling-* | address | string |
     // ipc:///tmp/readout-pipe-1 | Address of the data sampling. |
-    cfg.getOptionalValue<std::string>(cfgEntryPoint + ".address", address,
-                                      "ipc:///tmp/readout-pipe-1");
+    cfg.getOptionalValue<std::string>(cfgEntryPoint + ".address", address, "ipc:///tmp/readout-pipe-1");
     channels[0].UpdateName("data-out");
     channels[0].UpdateType("pub"); // pub or push?
     channels[0].UpdateMethod("bind");
@@ -78,8 +76,7 @@ public:
     m.emplace(std::string("data-out"), channels);
 
     for (auto it : m) {
-      std::cout << it.first << " = " << it.second.size() << " channels  "
-                << std::endl;
+      std::cout << it.first << " = " << it.second.size() << " channels  " << std::endl;
       for (auto ch : it.second) {
         std::cout << ch.GetAddress() << std::endl;
       }
@@ -131,13 +128,8 @@ public:
       return -1;
     }
 
-    std::unique_ptr<FairMQMessage> msgHeader(transportFactory->CreateMessage(
-        (void *)&(b->getData()->header),
-        (size_t)(b->getData()->header.headerSize), cleanupCallback,
-        (void *)nullptr));
-    std::unique_ptr<FairMQMessage> msgBody(transportFactory->CreateMessage(
-        (void *)(b->getData()->data), (size_t)(b->getData()->header.dataSize),
-        cleanupCallback, (void *)(ptr)));
+    std::unique_ptr<FairMQMessage> msgHeader(transportFactory->CreateMessage((void *)&(b->getData()->header), (size_t)(b->getData()->header.headerSize), cleanupCallback, (void *)nullptr));
+    std::unique_ptr<FairMQMessage> msgBody(transportFactory->CreateMessage((void *)(b->getData()->data), (size_t)(b->getData()->header.dataSize), cleanupCallback, (void *)(ptr)));
 
     FairMQParts message;
     message.AddPart(std::move(msgHeader));
@@ -152,9 +144,6 @@ private:
   void runDevice() { sender.RunStateMachine(); }
 };
 
-std::unique_ptr<Consumer>
-getUniqueConsumerDataSampling(ConfigFile &cfg, std::string cfgEntryPoint) {
-  return std::make_unique<ConsumerDataSampling>(cfg, cfgEntryPoint);
-}
+std::unique_ptr<Consumer> getUniqueConsumerDataSampling(ConfigFile &cfg, std::string cfgEntryPoint) { return std::make_unique<ConsumerDataSampling>(cfg, cfgEntryPoint); }
 
 #endif

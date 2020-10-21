@@ -18,11 +18,12 @@
 #ifndef _MEMORYBANKMANAGER_H
 #define _MEMORYBANKMANAGER_H
 
-#include "MemoryBank.h"
-#include "MemoryPagesPool.h"
 #include <map>
 #include <memory>
 #include <mutex>
+
+#include "MemoryBank.h"
+#include "MemoryPagesPool.h"
 
 class MemoryBankManager {
 
@@ -30,10 +31,9 @@ public:
   MemoryBankManager();  // constructor
   ~MemoryBankManager(); // destructor
 
-  int addBank(
-      std::shared_ptr<MemoryBank> bankPtr,
-      std::string name = ""); // add a named memory bank to the manager. By
-                              // default, takes name from bank description
+  int addBank(std::shared_ptr<MemoryBank> bankPtr,
+              std::string name = ""); // add a named memory bank to the manager. By
+                                      // default, takes name from bank description
 
   // get a pool of pages from the manager, using the banks available
   // parameters:
@@ -48,9 +48,7 @@ public:
   // implementation, once a region from a bank has been used, it can not be
   // reused after the corresponding pool of pages has been release
   //    ... don't want to deal with fragmentation etc
-  std::shared_ptr<MemoryPagesPool>
-  getPagedPool(size_t pageSize, size_t pageNumber, std::string bankName = "",
-               size_t firstPageOffset = 0, size_t blockAlign = 0);
+  std::shared_ptr<MemoryPagesPool> getPagedPool(size_t pageSize, size_t pageNumber, std::string bankName = "", size_t firstPageOffset = 0, size_t blockAlign = 0);
 
   // a struct to define a memory range
   struct memoryRange {
@@ -61,11 +59,10 @@ public:
 
   // a struct to hold bank parameters
   struct bankDescriptor {
-    std::string name;                 // bank name
-    std::shared_ptr<MemoryBank> bank; // reference to bank instance
-    std::vector<memoryRange>
-        rangesInUse; // list of ranges (with reference to bank base address)
-                     // currently used in the bank
+    std::string name;                     // bank name
+    std::shared_ptr<MemoryBank> bank;     // reference to bank instance
+    std::vector<memoryRange> rangesInUse; // list of ranges (with reference to bank base address)
+                                          // currently used in the bank
   };
 
   // get list of memory regions currently registered
@@ -76,8 +73,7 @@ public:
 
 private:
   std::vector<bankDescriptor> banks; // list of registered memory banks
-  std::mutex
-      bankMutex; // instance mutex to handle concurrent access to public methods
+  std::mutex bankMutex;              // instance mutex to handle concurrent access to public methods
 };
 
 // a global MemoryBankManager instance
