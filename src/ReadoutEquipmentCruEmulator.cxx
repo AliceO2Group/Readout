@@ -17,15 +17,16 @@
 #include "ReadoutUtils.h"
 #include "readoutInfoLogger.h"
 
-class ReadoutEquipmentCruEmulator : public ReadoutEquipment {
+class ReadoutEquipmentCruEmulator : public ReadoutEquipment
+{
 
-public:
-  ReadoutEquipmentCruEmulator(ConfigFile &cfg, std::string name = "CruEmulatorReadout");
+ public:
+  ReadoutEquipmentCruEmulator(ConfigFile& cfg, std::string name = "CruEmulatorReadout");
   ~ReadoutEquipmentCruEmulator();
   DataBlockContainerReference getNextBlock();
   Thread::CallbackResult prepareBlocks();
 
-private:
+ private:
   void initCounters();
   void finalCounters();
 
@@ -50,8 +51,9 @@ private:
   double cfgEmptyHbRatio = 0.0;   // amount of empty HB frames
   int cfgPayloadSize = 64 * 1024; // maximum payload size, randomized
 
-  class linkState {
-  public:
+  class linkState
+  {
+   public:
     int HBpagecount = 0;
     int isEmpty = 0;
     int payloadBytesLeft = -1;
@@ -68,12 +70,13 @@ private:
   std::vector<DataBlockContainerReference> pendingBlocks;                          // pages being filled (1 per link)
 };
 
-ReadoutEquipmentCruEmulator::ReadoutEquipmentCruEmulator(ConfigFile &cfg, std::string cfgEntryPoint) : ReadoutEquipment(cfg, cfgEntryPoint) {
+ReadoutEquipmentCruEmulator::ReadoutEquipmentCruEmulator(ConfigFile& cfg, std::string cfgEntryPoint) : ReadoutEquipment(cfg, cfgEntryPoint)
+{
 
   // declare RDH equipment
   initRdhEquipment();
 
-  // get configuration values 
+  // get configuration values
   // configuration parameter: | equipment-cruemulator-* | maxBlocksPerPage | int | 0 | [obsolete- not used]. Maximum number of blocks per page. |
   // configuration parameter: | equipment-cruemulator-* | cruBlockSize | int | 8192 | Size of a RDH block. |
   // configuration parameter: | equipment-cruemulator-* | numberOfLinks | int | 1 | Number of GBT links simulated by equipment. |
@@ -110,7 +113,8 @@ ReadoutEquipmentCruEmulator::ReadoutEquipmentCruEmulator(ConfigFile &cfg, std::s
 
 ReadoutEquipmentCruEmulator::~ReadoutEquipmentCruEmulator() {}
 
-Thread::CallbackResult ReadoutEquipmentCruEmulator::prepareBlocks() {
+Thread::CallbackResult ReadoutEquipmentCruEmulator::prepareBlocks()
+{
 
   // cru emulator creates a set of data pages for each link and put them in the fifo to be retrieve by getNextBlock
 
@@ -160,7 +164,7 @@ Thread::CallbackResult ReadoutEquipmentCruEmulator::prepareBlocks() {
   for (int currentLink = 0; currentLink < cfgNumberOfLinks; currentLink++) {
 
     // fill the new data page for this link
-    DataBlock *b = pendingBlocks[currentLink]->getData();
+    DataBlock* b = pendingBlocks[currentLink]->getData();
 
     // printf ("data block %p data=%p\n",b,b->data);
 
@@ -175,7 +179,7 @@ Thread::CallbackResult ReadoutEquipmentCruEmulator::prepareBlocks() {
     int bytesAvailableInPage = b->header.dataSize; // a bit less than memoryPoolPageSize;
     // printf("bytes available: %d bytes\n",bytesAvailableInPage);
 
-    linkState &ls = perLinkState[linkId];
+    linkState& ls = perLinkState[linkId];
     // printf("link %d: %d\n",linkId,ls.payloadBytesLeft);
 
     for (offset = 0; offset + cruBlockSize <= bytesAvailableInPage; offset += cruBlockSize) {
@@ -226,7 +230,7 @@ Thread::CallbackResult ReadoutEquipmentCruEmulator::prepareBlocks() {
       // rdh as defined in:
       // https://docs.google.com/document/d/1KUoLnEw5PndVcj4FKR5cjV-MBN3Bqfx_B0e6wQOIuVE/edit#heading=h.5q65he8hp62c
 
-      o2::Header::RAWDataHeader *rdh = (o2::Header::RAWDataHeader *)&b->data[offset];
+      o2::Header::RAWDataHeader* rdh = (o2::Header::RAWDataHeader*)&b->data[offset];
       // printf("rdh=%p block=%p delta=%d\n",rdh,b->data,(int)((char *)rdh-(char *)b->data));
 
       *rdh = defaultRDH; // reset fields to defaults
@@ -283,16 +287,18 @@ Thread::CallbackResult ReadoutEquipmentCruEmulator::prepareBlocks() {
   return Thread::CallbackResult::Ok;
 }
 
-DataBlockContainerReference ReadoutEquipmentCruEmulator::getNextBlock() {
+DataBlockContainerReference ReadoutEquipmentCruEmulator::getNextBlock()
+{
 
   DataBlockContainerReference nextBlock = nullptr;
   readyBlocks->pop(nextBlock);
   return nextBlock;
 }
 
-void ReadoutEquipmentCruEmulator::initCounters() {
+void ReadoutEquipmentCruEmulator::initCounters()
+{
   // init variables
-  for (auto &b : pendingBlocks) {
+  for (auto& b : pendingBlocks) {
     b = nullptr;
   }
 
@@ -304,14 +310,15 @@ void ReadoutEquipmentCruEmulator::initCounters() {
   LHCorbit = 0;
   LHCbc = 0;
 
-  for (auto &ls : perLinkState) {
+  for (auto& ls : perLinkState) {
     ls.second.HBpagecount = 0;
     ls.second.isEmpty = 0;
     ls.second.payloadBytesLeft = -1;
   }
 }
 
-void ReadoutEquipmentCruEmulator::finalCounters() {
+void ReadoutEquipmentCruEmulator::finalCounters()
+{
   // flush queue of prepared blocks
   DataBlockContainerReference nextBlock = nullptr;
   for (;;) {
@@ -321,4 +328,4 @@ void ReadoutEquipmentCruEmulator::finalCounters() {
   }
 }
 
-std::unique_ptr<ReadoutEquipment> getReadoutEquipmentCruEmulator(ConfigFile &cfg, std::string cfgEntryPoint) { return std::make_unique<ReadoutEquipmentCruEmulator>(cfg, cfgEntryPoint); }
+std::unique_ptr<ReadoutEquipment> getReadoutEquipmentCruEmulator(ConfigFile& cfg, std::string cfgEntryPoint) { return std::make_unique<ReadoutEquipmentCruEmulator>(cfg, cfgEntryPoint); }

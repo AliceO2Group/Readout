@@ -3,7 +3,8 @@
 #include <functional>
 #include <zmq.h>
 
-ZmqClient::ZmqClient(const std::string &url) {
+ZmqClient::ZmqClient(const std::string& url)
+{
 
   cfgAddress = url;
 
@@ -23,7 +24,7 @@ ZmqClient::ZmqClient(const std::string &url) {
       break;
     }
     int timeout = 1000;
-    zmqerr = zmq_setsockopt(zh, ZMQ_RCVTIMEO, (void *)&timeout, sizeof(int));
+    zmqerr = zmq_setsockopt(zh, ZMQ_RCVTIMEO, (void*)&timeout, sizeof(int));
     if (zmqerr) {
       linerr = __LINE__;
       break;
@@ -53,7 +54,8 @@ ZmqClient::ZmqClient(const std::string &url) {
   th = std::make_unique<std::thread>(l);
 }
 
-ZmqClient::~ZmqClient() {
+ZmqClient::~ZmqClient()
+{
   shutdownRequest = 1;
   if (th != nullptr) {
     th->join();
@@ -67,12 +69,14 @@ int ZmqClient::publish(void *msgBody, int msgSize){
 }
 */
 
-int ZmqClient::setCallback(std::function<int(void *msg, int msgSize)> cb) {
+int ZmqClient::setCallback(std::function<int(void* msg, int msgSize)> cb)
+{
   callback = cb;
   return 0;
 }
 
-void ZmqClient::run() {
+void ZmqClient::run()
+{
   for (; !shutdownRequest;) {
     int linerr = 0, zmqerr = 0;
     for (;;) {
@@ -90,7 +94,7 @@ void ZmqClient::run() {
 
       uint64_t tf;
       if (nb == sizeof(tf)) {
-        printf("TF %lu\n", *((uint64_t *)buffer));
+        printf("TF %lu\n", *((uint64_t*)buffer));
       }
       break;
       if (nb == 0) {

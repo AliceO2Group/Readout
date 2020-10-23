@@ -15,7 +15,8 @@
 
 extern tRunNumber occRunNumber;
 
-ReadoutEquipment::ReadoutEquipment(ConfigFile &cfg, std::string cfgEntryPoint) {
+ReadoutEquipment::ReadoutEquipment(ConfigFile& cfg, std::string cfgEntryPoint)
+{
 
   // example: browse config keys
   // for (auto cfgKey : ConfigFileBrowser (&cfg,"",cfgEntryPoint)) {
@@ -169,9 +170,10 @@ ReadoutEquipment::ReadoutEquipment(ConfigFile &cfg, std::string cfgEntryPoint) {
   }
 }
 
-const std::string &ReadoutEquipment::getName() { return name; }
+const std::string& ReadoutEquipment::getName() { return name; }
 
-void ReadoutEquipment::start() {
+void ReadoutEquipment::start()
+{
   // reset counters
   for (int i = 0; i < (int)EquipmentStatsIndexes::maxIndex; i++) {
     equipmentStats[i].reset();
@@ -197,7 +199,8 @@ void ReadoutEquipment::start() {
   readoutThread->start();
 }
 
-void ReadoutEquipment::stop() {
+void ReadoutEquipment::stop()
+{
 
   // just in case this was not done yet
   isDataOn = false;
@@ -223,21 +226,24 @@ void ReadoutEquipment::stop() {
   theLog.log(LogInfoDevel_(3003), "Average data throughput: %s", ReadoutUtils::NumberOfBytesToString(equipmentStats[EquipmentStatsIndexes::nBytesOut].get() / runningTime, "B/s").c_str());
 }
 
-ReadoutEquipment::~ReadoutEquipment() {
+ReadoutEquipment::~ReadoutEquipment()
+{
   // check if mempool still referenced
   if (!mp.unique()) {
     theLog.log(LogInfoDevel_(3008), "Equipment %s :  mempool still has %d references\n", name.c_str(), (int)mp.use_count());
   }
 }
 
-DataBlockContainerReference ReadoutEquipment::getBlock() {
+DataBlockContainerReference ReadoutEquipment::getBlock()
+{
   DataBlockContainerReference b = nullptr;
   dataOut->pop(b);
   return b;
 }
 
-Thread::CallbackResult ReadoutEquipment::threadCallback(void *arg) {
-  ReadoutEquipment *ptr = static_cast<ReadoutEquipment *>(arg);
+Thread::CallbackResult ReadoutEquipment::threadCallback(void* arg)
+{
+  ReadoutEquipment* ptr = static_cast<ReadoutEquipment*>(arg);
 
   // flag to identify if something was done in this iteration
   bool isActive = false;
@@ -340,7 +346,7 @@ Thread::CallbackResult ReadoutEquipment::threadCallback(void *arg) {
 
       // print block debug info
       if (ptr->debugFirstPages > 0) {
-        DataBlockHeader *h = &(nextBlock->getData()->header);
+        DataBlockHeader* h = &(nextBlock->getData()->header);
         theLog.log(LogDebugDevel_(3009), "Equipment %s (%d) page %lu link %d tf %lu size %d", ptr->name.c_str(), h->equipmentId, h->blockId, h->linkId, h->timeframeId, h->dataSize);
         ptr->debugFirstPages--;
       }
@@ -356,14 +362,14 @@ Thread::CallbackResult ReadoutEquipment::threadCallback(void *arg) {
     if (ptr->isDataOn) {
       Thread::CallbackResult statusPrepare = ptr->prepareBlocks();
       switch (statusPrepare) {
-      case (Thread::CallbackResult::Ok):
-        isActive = true;
-        break;
-      case (Thread::CallbackResult::Idle):
-        break;
-      default:
-        // this is an abnormal situation, return corresponding status
-        return statusPrepare;
+        case (Thread::CallbackResult::Ok):
+          isActive = true;
+          break;
+        case (Thread::CallbackResult::Idle):
+          break;
+        default:
+          // this is an abnormal situation, return corresponding status
+          return statusPrepare;
       }
     }
 
@@ -404,7 +410,8 @@ void ReadoutEquipment::setDataOn() { isDataOn = true; }
 
 void ReadoutEquipment::setDataOff() { isDataOn = false; }
 
-int ReadoutEquipment::getMemoryUsage(size_t &numberOfPagesAvailable, size_t &numberOfPagesInPool) {
+int ReadoutEquipment::getMemoryUsage(size_t& numberOfPagesAvailable, size_t& numberOfPagesInPool)
+{
   numberOfPagesAvailable = 0;
   numberOfPagesInPool = 0;
   if (mp == nullptr) {
@@ -415,7 +422,8 @@ int ReadoutEquipment::getMemoryUsage(size_t &numberOfPagesAvailable, size_t &num
   return 0;
 }
 
-void ReadoutEquipment::initCounters() {
+void ReadoutEquipment::initCounters()
+{
 
   statsRdhCheckOk = 0;
   statsRdhCheckErr = 0;
@@ -433,7 +441,8 @@ void ReadoutEquipment::initCounters() {
   isDefinedFirstTimeframeHbOrbitBegin = 0;
 };
 
-void ReadoutEquipment::finalCounters() {
+void ReadoutEquipment::finalCounters()
+{
   if (cfgRdhCheckEnabled) {
     theLog.log(LogInfoDevel_(3003), "Equipment %s : %llu timeframes, RDH checks %llu ok, %llu errors, %llu stream inconsistencies", name.c_str(), statsNumberOfTimeframes, statsRdhCheckOk, statsRdhCheckErr, statsRdhCheckStreamErr);
   }
@@ -441,7 +450,8 @@ void ReadoutEquipment::finalCounters() {
 
 void ReadoutEquipment::initRdhEquipment() { isRdhEquipment = true; }
 
-uint64_t ReadoutEquipment::getTimeframeFromOrbit(uint32_t hbOrbit) {
+uint64_t ReadoutEquipment::getTimeframeFromOrbit(uint32_t hbOrbit)
+{
   if (!isDefinedFirstTimeframeHbOrbitBegin) {
     firstTimeframeHbOrbitBegin = hbOrbit;
     isDefinedFirstTimeframeHbOrbitBegin = 1;
@@ -462,7 +472,8 @@ uint64_t ReadoutEquipment::getTimeframeFromOrbit(uint32_t hbOrbit) {
   return tfId;
 }
 
-void ReadoutEquipment::getTimeframeOrbitRange(uint64_t tfId, uint32_t &hbOrbitMin, uint32_t &hbOrbitMax) {
+void ReadoutEquipment::getTimeframeOrbitRange(uint64_t tfId, uint32_t& hbOrbitMin, uint32_t& hbOrbitMax)
+{
   hbOrbitMin = undefinedOrbit;
   hbOrbitMax = undefinedOrbit;
   if (tfId == undefinedTimeframeId)
@@ -475,7 +486,8 @@ void ReadoutEquipment::getTimeframeOrbitRange(uint64_t tfId, uint32_t &hbOrbitMi
 
 uint64_t ReadoutEquipment::getCurrentTimeframe() { return currentTimeframe; }
 
-int ReadoutEquipment::tagDatablockFromRdh(RdhHandle &h, DataBlockHeader &bh) {
+int ReadoutEquipment::tagDatablockFromRdh(RdhHandle& h, DataBlockHeader& bh)
+{
 
   uint64_t tfId = undefinedTimeframeId;
   uint8_t systemId = undefinedSystemId;
@@ -522,10 +534,11 @@ int ReadoutEquipment::tagDatablockFromRdh(RdhHandle &h, DataBlockHeader &bh) {
   return isError;
 }
 
-int ReadoutEquipment::processRdh(DataBlockContainerReference &block) {
+int ReadoutEquipment::processRdh(DataBlockContainerReference& block)
+{
 
-  DataBlockHeader &blockHeader = block->getData()->header;
-  void *blockData = block->getData()->data;
+  DataBlockHeader& blockHeader = block->getData()->header;
+  void* blockData = block->getData()->data;
   if (blockData == nullptr) {
     return -1;
   }
@@ -553,7 +566,7 @@ int ReadoutEquipment::processRdh(DataBlockContainerReference &block) {
   if (cfgRdhCheckEnabled) {
     std::string errorDescription;
     size_t blockSize = blockHeader.dataSize;
-    uint8_t *baseAddress = (uint8_t *)(blockData);
+    uint8_t* baseAddress = (uint8_t*)(blockData);
     int rdhIndexInPage = 0;
     int linkId = undefinedLinkId;
 
@@ -566,10 +579,10 @@ int ReadoutEquipment::processRdh(DataBlockContainerReference &block) {
       if (h.validateRdh(errorDescription)) {
         if ((cfgRdhDumpEnabled) || (cfgRdhDumpErrorEnabled)) {
           for (int i = 0; i < 16; i++) {
-            printf("%08X ", (int)(((uint32_t *)baseAddress)[i]));
+            printf("%08X ", (int)(((uint32_t*)baseAddress)[i]));
           }
           printf("\n");
-          printf("Page 0x%p + %ld\n%s", (void *)baseAddress, pageOffset, errorDescription.c_str());
+          printf("Page 0x%p + %ld\n%s", (void*)baseAddress, pageOffset, errorDescription.c_str());
           h.dumpRdh(pageOffset, 1);
           errorDescription.clear();
         }
@@ -582,7 +595,7 @@ int ReadoutEquipment::processRdh(DataBlockContainerReference &block) {
         if (cfgRdhDumpEnabled) {
           h.dumpRdh(pageOffset, 1);
           for (int i = 0; i < 16; i++) {
-            printf("%08X ", (int)(((uint32_t *)baseAddress + pageOffset)[i]));
+            printf("%08X ", (int)(((uint32_t*)baseAddress + pageOffset)[i]));
           }
           printf("\n");
         }

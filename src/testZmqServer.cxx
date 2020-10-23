@@ -2,7 +2,8 @@
 
 #include "ZmqServer.hxx"
 
-int main() {
+int main()
+{
   try {
     ZmqServer s("tcp://127.0.0.1:50001");
     for (;;) {

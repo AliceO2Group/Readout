@@ -20,8 +20,9 @@
 #include "DataSet.h"
 
 // class to send data blocks remotely over a TCP/IP socket
-class SocketTx {
-public:
+class SocketTx
+{
+ public:
   // constructor
   // name: name given to this client, for logging purpose
   // serverHost: IP of remote server to connect to
@@ -33,9 +34,9 @@ public:
 
   // push a new piece of data to output socket
   // returns 0 on success, or -1 on error (e.g. when already busy sending something)
-  int pushData(DataBlockContainerReference &b);
+  int pushData(DataBlockContainerReference& b);
 
-private:
+ private:
   std::unique_ptr<std::thread> th;  // thread pushing data to socket
   std::atomic<int> shutdownRequest; // flag to be set to 1 to stop thread
 
@@ -49,7 +50,7 @@ private:
   std::string serverHost; // remote server IP
   int serverPort;         // remote server port
 
-private:
+ private:
   std::atomic<int> isSending;                         // if set, thread busy sending. if not set, new block can be pushed
   DataBlockContainerReference currentBlock = nullptr; // current data chunk being sent
   size_t currentBlockIndex = 0;                       // number of bytes of chunk already sent

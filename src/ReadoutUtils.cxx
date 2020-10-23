@@ -20,7 +20,8 @@
 // function to convert a string to a 64-bit integer value
 // allowing usual "base units" in suffix (k,M,G,T)
 // input can be decimal (1.5M is valid, will give 1.5*1024*1024)
-long long ReadoutUtils::getNumberOfBytesFromString(const char *inputString) {
+long long ReadoutUtils::getNumberOfBytesFromString(const char* inputString)
+{
   double v = 0;
   char c = '?';
   int n = sscanf(inputString, "%lf%c", &v, &c);
@@ -51,8 +52,9 @@ long long ReadoutUtils::getNumberOfBytesFromString(const char *inputString) {
 // macro to get number of element in static array
 #define STATIC_ARRAY_ELEMENT_COUNT(x) sizeof(x) / sizeof(x[0])
 
-std::string ReadoutUtils::NumberOfBytesToString(double value, const char *suffix) {
-  const char *prefixes[] = {"", "k", "M", "G", "T", "P"};
+std::string ReadoutUtils::NumberOfBytesToString(double value, const char* suffix)
+{
+  const char* prefixes[] = { "", "k", "M", "G", "T", "P" };
   int maxPrefixIndex = STATIC_ARRAY_ELEMENT_COUNT(prefixes) - 1;
   int prefixIndex = log(value) / log(1024);
   if (prefixIndex > maxPrefixIndex) {
@@ -79,13 +81,15 @@ std::string ReadoutUtils::NumberOfBytesToString(double value, const char *suffix
   return std::string(bufStr);
 }
 
-void dumpRDH(o2::Header::RAWDataHeader *rdh) {
+void dumpRDH(o2::Header::RAWDataHeader* rdh)
+{
   printf("RDH:\tversion=%d\theader size=%d\n", (int)rdh->version, (int)rdh->headerSize);
   printf("\torbit=%d bc=%d\n", (int)rdh->triggerOrbit, (int)rdh->triggerBC);
   printf("\tfeeId=%d\tlinkId=%d\n", (int)rdh->feeId, (int)rdh->linkId);
 }
 
-int getKeyValuePairsFromString(const std::string &input, std::map<std::string, std::string> &output) {
+int getKeyValuePairsFromString(const std::string& input, std::map<std::string, std::string>& output)
+{
   output.clear();
   std::size_t ix0 = 0;                 // begin of pair in string
   std::size_t ix1 = std::string::npos; // end of pair in string
@@ -107,8 +111,9 @@ int getKeyValuePairsFromString(const std::string &input, std::map<std::string, s
   return 0;
 }
 
-std::string NumberOfBytesToString(double value, const char *suffix, int base) {
-  const char *prefixes[] = {"", "k", "M", "G", "T", "P"};
+std::string NumberOfBytesToString(double value, const char* suffix, int base)
+{
+  const char* prefixes[] = { "", "k", "M", "G", "T", "P" };
   int maxPrefixIndex = STATIC_ARRAY_ELEMENT_COUNT(prefixes) - 1;
   int prefixIndex = log(value) / log(base);
   if (prefixIndex > maxPrefixIndex) {
@@ -126,9 +131,10 @@ std::string NumberOfBytesToString(double value, const char *suffix, int base) {
   return std::string(bufStr);
 }
 
-int getProcessStats(double &uTime, double &sTime) {
+int getProcessStats(double& uTime, double& sTime)
+{
   int err = -1;
-  FILE *fp;
+  FILE* fp;
   fp = fopen("/proc/self/stat", "r");
   if (fp != NULL) {
     char buf[256];

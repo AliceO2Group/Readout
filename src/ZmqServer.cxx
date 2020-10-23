@@ -5,7 +5,8 @@
 #include <unistd.h>
 #include <zmq.h>
 
-void ZmqServer::init() {
+void ZmqServer::init()
+{
   int linerr = 0;
   int zmqerr = 0;
   for (;;) {
@@ -46,7 +47,8 @@ void ZmqServer::init() {
   th = std::make_unique<std::thread>(l);
 }
 
-ZmqServer::~ZmqServer() {
+ZmqServer::~ZmqServer()
+{
   shutdownRequest = 1;
   if (th != nullptr) {
     th->join();
@@ -54,13 +56,15 @@ ZmqServer::~ZmqServer() {
   }
 }
 
-int ZmqServer::publish(void *msgBody, int msgSize) {
+int ZmqServer::publish(void* msgBody, int msgSize)
+{
   int err = zmq_send(zh, msgBody, msgSize, 0);
   // printf("publish %d bytes = %d\n",msgSize,err);
   return err;
 }
 
-void ZmqServer::run() {
+void ZmqServer::run()
+{
   return;
   uint64_t i = 0;
   for (; !shutdownRequest;) {

@@ -14,8 +14,9 @@
 #include "ReadoutUtils.h"
 #include "ZmqClient.hxx"
 
-class ConsumerZMQ : public Consumer {
-public:
+class ConsumerZMQ : public Consumer
+{
+ public:
   uint64_t block_ix = 0;
   int txIx = 0;
   uint64_t nBlocksDropped = 0;
@@ -24,7 +25,8 @@ public:
   uint64_t nBlocksSent = 0;
   std::string cfgAddress = "tcp://127.0.0.1:50001";
 
-  ConsumerZMQ(ConfigFile &cfg, std::string cfgEntryPoint) : Consumer(cfg, cfgEntryPoint) {
+  ConsumerZMQ(ConfigFile& cfg, std::string cfgEntryPoint) : Consumer(cfg, cfgEntryPoint)
+  {
 
     cfg.getOptionalValue<std::string>(cfgEntryPoint + ".address", cfgAddress);
     theLog.log(LogInfoDevel_(3002), "ZeroMQ server @ %s", cfgAddress.c_str());
@@ -64,7 +66,8 @@ public:
     }
   }
 
-  ~ConsumerZMQ() {
+  ~ConsumerZMQ()
+  {
     if (zh != nullptr) {
       zmq_close(zh);
     }
@@ -73,11 +76,12 @@ public:
     }
   }
 
-  int pushData(DataBlockContainerReference &b) {
+  int pushData(DataBlockContainerReference& b)
+  {
     bool isOk = 0;
 
     int nBytes = b->getData()->header.dataSize;
-    void *data = b->getData()->data;
+    void* data = b->getData()->data;
     int err = zmq_send(zh, data, nBytes, 0);
     err = 0;
     if (err) {
@@ -109,9 +113,9 @@ public:
     return 0;
   }
 
-private:
-  void *context = nullptr;
-  void *zh = nullptr;
+ private:
+  void* context = nullptr;
+  void* zh = nullptr;
 };
 
-std::unique_ptr<Consumer> getUniqueConsumerZMQ(ConfigFile &cfg, std::string cfgEntryPoint) { return std::make_unique<ConsumerZMQ>(cfg, cfgEntryPoint); }
+std::unique_ptr<Consumer> getUniqueConsumerZMQ(ConfigFile& cfg, std::string cfgEntryPoint) { return std::make_unique<ConsumerZMQ>(cfg, cfgEntryPoint); }

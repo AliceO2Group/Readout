@@ -21,13 +21,14 @@ const bool debug = false;
 // input: input block
 // output: output block (can be the same as input block
 // preliminary interface - will likely be replaced by a class
-int processBlock(DataBlockContainerReference &input, DataBlockContainerReference &output);
+int processBlock(DataBlockContainerReference& input, DataBlockContainerReference& output);
 using PtrProcessFunction = decltype(&processBlock);
 
 // A class to implement a processsing thread
-class processThread {
+class processThread
+{
 
-public:
+ public:
   std::unique_ptr<AliceO2::Common::Fifo<DataBlockContainerReference>> inputFifo;  // fifo for input data. This should be filled externally to provide data blocks.
   std::unique_ptr<AliceO2::Common::Fifo<DataBlockContainerReference>> outputFifo; // fifo for output data. This should be emptied externally, to dispose of processed data blocks.
 
@@ -38,7 +39,8 @@ public:
   // - idleSleepTime: idle sleep time (in microseconds), when input fifo empty or output fifo full, before retrying.
   //
   // The constructor initialize the member variables and create the processing thread.
-  processThread(PtrProcessFunction f, int id, unsigned int fifoSize = 10, unsigned int idleSleepTime = 100) {
+  processThread(PtrProcessFunction f, int id, unsigned int fifoSize = 10, unsigned int idleSleepTime = 100)
+  {
     shutdown = 0;
     fProcess = f;
     cfgIdleSleepTime = idleSleepTime;
@@ -50,7 +52,8 @@ public:
   }
 
   // stop the thread
-  void stop() {
+  void stop()
+  {
     if (th == nullptr) {
       return;
     }
@@ -66,12 +69,14 @@ public:
   }
 
   // destructor
-  ~processThread() {
+  ~processThread()
+  {
     stop(); // stop thread
   }
 
   // the loop which runs in a separate thread and calls fProcess() for each block in input fifo, until stop() is called
-  void loop() {
+  void loop()
+  {
     // printf("starting thread %d input=%p
     // output=%p\n",threadId,inputFifo.get(),outputFifo.get());
     // printf("processing thread %d starting\n",threadId);
@@ -104,7 +109,7 @@ public:
     // printf("processing thread %d completed\n",threadId);
   }
 
-private:
+ private:
   std::atomic<int> shutdown;             // flag set to 1 to request thread termination
   std::unique_ptr<std::thread> th;       // the thread
   unsigned int cfgIdleSleepTime = 0;     // idle sleep time (in microseconds), when fifos empty or full, before retrying
@@ -114,10 +119,11 @@ private:
 
 // A consumer class allowing to call a function from a dynamically loaded
 // library for each datablock
-class ConsumerDataProcessor : public Consumer {
+class ConsumerDataProcessor : public Consumer
+{
 
-private:
-  void *libHandle = nullptr;                              // handle to dynamic library
+ private:
+  void* libHandle = nullptr;                              // handle to dynamic library
   PtrProcessFunction processBlock = nullptr;              // pointer to processBlock() function
   int numberOfThreads = 0;                                // number of threads used for processing
   std::vector<std::unique_ptr<processThread>> threadPool; // the pool of processing threads
@@ -142,12 +148,13 @@ private:
   DataBlockId currentId = 1000000000000ULL; // a global counter to tag pages being processed. We don't start from zero just to make this id a bit more unique.
 
   const bool fpPagesLog = false; // if set, this allows to save input/output ids to file for debugging
-  FILE *fpPagesIn = nullptr;
-  FILE *fpPagesOut = nullptr;
+  FILE* fpPagesIn = nullptr;
+  FILE* fpPagesOut = nullptr;
 
-public:
+ public:
   // constructor
-  ConsumerDataProcessor(ConfigFile &cfg, std::string cfgEntryPoint) : Consumer(cfg, cfgEntryPoint) {
+  ConsumerDataProcessor(ConfigFile& cfg, std::string cfgEntryPoint) : Consumer(cfg, cfgEntryPoint)
+  {
 
     // configuration parameter: | consumer-processor-* | libraryPath | string | | Path to the library file providing the processBlock() function to be used. |
     std::string libraryPath = cfg.getValue<std::string>(cfgEntryPoint + ".libraryPath");
@@ -199,10 +206,11 @@ public:
   }
 
   // destructor
-  ~ConsumerDataProcessor() {
+  ~ConsumerDataProcessor()
+  {
     // stop processing threads
     theLog.log(LogInfoDevel, "Flushing processing threads");
-    for (auto const &th : threadPool) {
+    for (auto const& th : threadPool) {
       th->stop();
     }
     // stop collector thread
@@ -229,10 +237,11 @@ public:
   }
 
   // function called when new data available from readout
-  int pushData(DataBlockContainerReference &b) {
+  int pushData(DataBlockContainerReference& b)
+  {
 
     // get input data
-    void *ptr = b->getData()->data;
+    void* ptr = b->getData()->data;
     if (ptr == NULL) {
       return -1;
     }
@@ -292,7 +301,8 @@ public:
   }
 
   // collector thread loop: handle the output of processing threads
-  void loopOutput(void) {
+  void loopOutput(void)
+  {
 
     bool isActive = 0;
 
@@ -368,4 +378,4 @@ public:
   }
 };
 
-std::unique_ptr<Consumer> getUniqueConsumerDataProcessor(ConfigFile &cfg, std::string cfgEntryPoint) { return std::make_unique<ConsumerDataProcessor>(cfg, cfgEntryPoint); }
+std::unique_ptr<Consumer> getUniqueConsumerDataProcessor(ConfigFile& cfg, std::string cfgEntryPoint) { return std::make_unique<ConsumerDataProcessor>(cfg, cfgEntryPoint); }

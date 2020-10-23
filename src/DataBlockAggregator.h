@@ -23,22 +23,21 @@
 
 using namespace AliceO2::Common;
 
-
 // DataBlockAggregator
 //
 // One "slicer" per equipment: data blocks with same sourceId are grouped in a "slice" of blocks having the same TF id.
 
-
 // a class to group blocks with same ID in slices
-class DataBlockSlicer {
+class DataBlockSlicer
+{
 
-public:
+ public:
   DataBlockSlicer();
   ~DataBlockSlicer();
 
   // append a new block to curent slice of corresponding link a timestamp may be given
   // returns the number of blocks in slice used
-  int appendBlock(DataBlockContainerReference const &block, double timestamp = 0);
+  int appendBlock(DataBlockContainerReference const& block, double timestamp = 0);
 
   // get a slice, if available
   // if includeIncomplete is true, also retrieves current slice, even if incomplete otherwise, only a complete slice is returned, if any when iterated, returned in order of creation, older first
@@ -51,7 +50,7 @@ public:
 
   int slicerId = -1;
 
-private:
+ private:
   // data source id used to group data
   struct DataSourceId {
     uint16_t equipmentId = undefinedEquipmentId;
@@ -65,7 +64,8 @@ private:
   };
 
   struct CompareDataSourceId {
-    inline bool operator()(const DataSourceId &id1, const DataSourceId &id2) const {
+    inline bool operator()(const DataSourceId& id1, const DataSourceId& id2) const
+    {
       if (id1.equipmentId != id2.equipmentId) {
         return id1.equipmentId < id2.equipmentId;
       } else {
@@ -82,9 +82,10 @@ private:
   std::queue<DataSetReference> slices; // data sets which have been built and are complete
 };
 
-class DataBlockAggregator {
-public:
-  DataBlockAggregator(AliceO2::Common::Fifo<DataSetReference> *output, std::string name = "Aggregator");
+class DataBlockAggregator
+{
+ public:
+  DataBlockAggregator(AliceO2::Common::Fifo<DataSetReference>* output, std::string name = "Aggregator");
   ~DataBlockAggregator();
 
   int addInput(std::shared_ptr<AliceO2::Common::Fifo<DataBlockContainerReference>> input); // add a FIFO to be used as input
@@ -96,7 +97,7 @@ public:
 
   double cfgSliceTimeout = 0; // when set, slices not updated after timeout (seconds) are considered completed and are flushed
 
-  static Thread::CallbackResult threadCallback(void *arg);
+  static Thread::CallbackResult threadCallback(void* arg);
 
   Thread::CallbackResult executeCallback();
 
@@ -106,9 +107,9 @@ public:
   double cfgStfTimeout = 0;   // timeout used with enableStfBuilding
   int nSources = 0;           // accounted number of sources, on first timeframe
 
-private:
+ private:
   std::vector<std::shared_ptr<AliceO2::Common::Fifo<DataBlockContainerReference>>> inputs;
-  AliceO2::Common::Fifo<DataSetReference> *output; // todo: unique_ptr
+  AliceO2::Common::Fifo<DataSetReference>* output; // todo: unique_ptr
 
   std::unique_ptr<Thread> aggregateThread;
   AliceO2::Common::Timer incompletePendingTimer;

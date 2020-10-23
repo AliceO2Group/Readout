@@ -17,8 +17,9 @@
 
 #include <atomic>
 
-class ReadoutStats {
-public:
+class ReadoutStats
+{
+ public:
   ReadoutStats();
   ~ReadoutStats();
   void reset();

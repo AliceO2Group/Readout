@@ -16,14 +16,15 @@
 #include "ReadoutUtils.h"
 #include "readoutInfoLogger.h"
 
-class ReadoutEquipmentPlayer : public ReadoutEquipment {
+class ReadoutEquipmentPlayer : public ReadoutEquipment
+{
 
-public:
-  ReadoutEquipmentPlayer(ConfigFile &cfg, std::string name = "filePlayerReadout");
+ public:
+  ReadoutEquipmentPlayer(ConfigFile& cfg, std::string name = "filePlayerReadout");
   ~ReadoutEquipmentPlayer();
   DataBlockContainerReference getNextBlock();
 
-private:
+ private:
   void initCounters();
 
   Thread::CallbackResult populateFifoOut(); // iterative callback
@@ -38,7 +39,7 @@ private:
   int autoChunkLoop; // if set, file is replayed in loop
 
   size_t bytesPerPage = 0;      // number of bytes per data page
-  FILE *fp = nullptr;           // file handle
+  FILE* fp = nullptr;           // file handle
   bool fpOk = false;            // flag to say if fp can be used
   unsigned long fileOffset = 0; // current file offset
   uint64_t loopCount = 0;       // number of file reading loops so far
@@ -52,10 +53,11 @@ private:
 
   uint32_t orbitOffset = 0; // to be applied to orbit after 1st loop
 
-  void copyFileDataToPage(void *page); // fill given page with file data according to current settings
+  void copyFileDataToPage(void* page); // fill given page with file data according to current settings
 };
 
-void ReadoutEquipmentPlayer::copyFileDataToPage(void *page) {
+void ReadoutEquipmentPlayer::copyFileDataToPage(void* page)
+{
   if (page == nullptr)
     return;
   if (fileData == nullptr)
@@ -66,19 +68,20 @@ void ReadoutEquipmentPlayer::copyFileDataToPage(void *page) {
   if (fillPage) {
     nCopy = bytesPerPage / fileSize;
   }
-  char *ptr = (char *)page;
+  char* ptr = (char*)page;
   for (int i = 0; i < nCopy; i++) {
     memcpy(ptr, fileData.get(), fileSize);
     ptr += fileSize;
   }
 }
 
-ReadoutEquipmentPlayer::ReadoutEquipmentPlayer(ConfigFile &cfg, std::string cfgEntryPoint) : ReadoutEquipment(cfg, cfgEntryPoint) {
+ReadoutEquipmentPlayer::ReadoutEquipmentPlayer(ConfigFile& cfg, std::string cfgEntryPoint) : ReadoutEquipment(cfg, cfgEntryPoint)
+{
 
   // declare RDH equipment
   initRdhEquipment();
 
-  auto errorHandler = [&](const std::string &err) {
+  auto errorHandler = [&](const std::string& err) {
     if (fp != nullptr) {
       fclose(fp);
     }
@@ -167,7 +170,7 @@ ReadoutEquipmentPlayer::ReadoutEquipmentPlayer(ConfigFile &cfg, std::string cfgE
       if (nextBlock == nullptr) {
         break;
       }
-      char *ptr = nextBlock->getData()->data;
+      char* ptr = nextBlock->getData()->data;
       copyFileDataToPage(ptr);
       dataPages.push_back(nextBlock);
     }
@@ -176,13 +179,15 @@ ReadoutEquipmentPlayer::ReadoutEquipmentPlayer(ConfigFile &cfg, std::string cfgE
   }
 }
 
-ReadoutEquipmentPlayer::~ReadoutEquipmentPlayer() {
+ReadoutEquipmentPlayer::~ReadoutEquipmentPlayer()
+{
   if (fp != nullptr) {
     fclose(fp);
   }
 }
 
-DataBlockContainerReference ReadoutEquipmentPlayer::getNextBlock() {
+DataBlockContainerReference ReadoutEquipmentPlayer::getNextBlock()
+{
   // query memory pool for a free block
   DataBlockContainerReference nextBlock = nullptr;
   try {
@@ -192,7 +197,7 @@ DataBlockContainerReference ReadoutEquipmentPlayer::getNextBlock() {
 
   // format data block
   if (nextBlock != nullptr) {
-    DataBlock *b = nextBlock->getData();
+    DataBlock* b = nextBlock->getData();
 
     // no need to fill header defaults, this is done by getNewDataBlockContainer()
     // only adjust payload size
@@ -234,7 +239,7 @@ DataBlockContainerReference ReadoutEquipmentPlayer::getNextBlock() {
             if (pageOffset + sizeof(o2::Header::RAWDataHeader) > nBytes) {
               break;
             }
-            RdhHandle h(((uint8_t *)b->data) + pageOffset);
+            RdhHandle h(((uint8_t*)b->data) + pageOffset);
             std::string errorDescription;
             int nErr = h.validateRdh(errorDescription);
             if (nErr) {
@@ -326,7 +331,8 @@ DataBlockContainerReference ReadoutEquipmentPlayer::getNextBlock() {
   return nextBlock;
 }
 
-void ReadoutEquipmentPlayer::initCounters() {
+void ReadoutEquipmentPlayer::initCounters()
+{
   fpOk = false;
   if (fp != nullptr) {
     if (fseek(fp, 0L, SEEK_SET) != 0) {
@@ -341,4 +347,4 @@ void ReadoutEquipmentPlayer::initCounters() {
   lastPacketHeader.equipmentId = undefinedEquipmentId;
 }
 
-std::unique_ptr<ReadoutEquipment> getReadoutEquipmentPlayer(ConfigFile &cfg, std::string cfgEntryPoint) { return std::make_unique<ReadoutEquipmentPlayer>(cfg, cfgEntryPoint); }
+std::unique_ptr<ReadoutEquipment> getReadoutEquipmentPlayer(ConfigFile& cfg, std::string cfgEntryPoint) { return std::make_unique<ReadoutEquipmentPlayer>(cfg, cfgEntryPoint); }

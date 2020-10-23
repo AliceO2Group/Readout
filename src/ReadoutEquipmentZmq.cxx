@@ -19,18 +19,19 @@
 #include "ZmqClient.hxx"
 #include "readoutInfoLogger.h"
 
-class ReadoutEquipmentZmq : public ReadoutEquipment {
+class ReadoutEquipmentZmq : public ReadoutEquipment
+{
 
-public:
-  ReadoutEquipmentZmq(ConfigFile &cfg, std::string name = "zmq");
+ public:
+  ReadoutEquipmentZmq(ConfigFile& cfg, std::string name = "zmq");
   ~ReadoutEquipmentZmq();
   DataBlockContainerReference getNextBlock();
 
-private:
+ private:
   Thread::CallbackResult populateFifoOut(); // iterative callback
 
-  void *context = nullptr;
-  void *zh = nullptr;
+  void* context = nullptr;
+  void* zh = nullptr;
 
   std::atomic<int> shutdownSnapshotThread = 0;
   std::unique_ptr<std::thread> snapshotThread;
@@ -47,14 +48,15 @@ private:
   std::mutex snapshotLock; // to access snapshotData/Metadata
 
   std::unique_ptr<ZmqClient> tfClient;
-  int tfClientCallback(void *msg, int msgSize);
+  int tfClientCallback(void* msg, int msgSize);
   std::atomic<int> maxTf = -1;
   std::atomic<int> tfUpdateTime = 0;
   std::atomic<int> tfUpdateTimeWarning = 0;
   int nBlocks = 0;
 };
 
-ReadoutEquipmentZmq::ReadoutEquipmentZmq(ConfigFile &cfg, std::string cfgEntryPoint) : ReadoutEquipment(cfg, cfgEntryPoint) {
+ReadoutEquipmentZmq::ReadoutEquipmentZmq(ConfigFile& cfg, std::string cfgEntryPoint) : ReadoutEquipment(cfg, cfgEntryPoint)
+{
 
   std::string cfgAddress = "";
   // configuration parameter: | equipment-zmq-* | address | string | | Address of remote server to connect, eg tcp://remoteHost:12345. |
@@ -77,7 +79,7 @@ ReadoutEquipmentZmq::ReadoutEquipmentZmq(ConfigFile &cfg, std::string cfgEntryPo
       break;
     }
     int timeout = 5000;
-    zmqerr = zmq_setsockopt(zh, ZMQ_RCVTIMEO, (void *)&timeout, sizeof(int));
+    zmqerr = zmq_setsockopt(zh, ZMQ_RCVTIMEO, (void*)&timeout, sizeof(int));
     if (zmqerr) {
       linerr = __LINE__;
       break;
@@ -108,7 +110,7 @@ ReadoutEquipmentZmq::ReadoutEquipmentZmq(ConfigFile &cfg, std::string cfgEntryPo
     } else {
       maxTf = 0;
       tfUpdateTime = time(NULL);
-      std::function<int(void *, int)> cb = std::bind(&ReadoutEquipmentZmq::tfClientCallback, this, std::placeholders::_1, std::placeholders::_2);
+      std::function<int(void*, int)> cb = std::bind(&ReadoutEquipmentZmq::tfClientCallback, this, std::placeholders::_1, std::placeholders::_2);
       tfClient->setCallback(cb);
     }
   }
@@ -131,7 +133,8 @@ ReadoutEquipmentZmq::ReadoutEquipmentZmq(ConfigFile &cfg, std::string cfgEntryPo
   // wait that we have at least one snapshot with success
 }
 
-ReadoutEquipmentZmq::~ReadoutEquipmentZmq() {
+ReadoutEquipmentZmq::~ReadoutEquipmentZmq()
+{
 
   // stopping snapshot thread
   if (snapshotThread != nullptr) {
@@ -157,7 +160,8 @@ ReadoutEquipmentZmq::~ReadoutEquipmentZmq() {
   tfClient = nullptr;
 }
 
-void ReadoutEquipmentZmq::loopSnapshot(void) {
+void ReadoutEquipmentZmq::loopSnapshot(void)
+{
 
   int linerr = 0, zmqerr = 0;
   bool doLogSnapshot = 1; // flag to display message on next successful snapshot (1st on start or after error)
@@ -210,7 +214,8 @@ void ReadoutEquipmentZmq::loopSnapshot(void) {
   }
 }
 
-DataBlockContainerReference ReadoutEquipmentZmq::getNextBlock() {
+DataBlockContainerReference ReadoutEquipmentZmq::getNextBlock()
+{
 
   if (!isDataOn) {
     return nullptr;
@@ -237,7 +242,7 @@ DataBlockContainerReference ReadoutEquipmentZmq::getNextBlock() {
 
   // format data block
   if (nextBlock != nullptr) {
-    DataBlock *b = nextBlock->getData();
+    DataBlock* b = nextBlock->getData();
 
     snapshotLock.lock();
     if ((time(NULL) - snapshotMetadata.timestamp < 5) && (snapshotMetadata.currentSize < (int)b->header.dataSize)) {
@@ -254,10 +259,11 @@ DataBlockContainerReference ReadoutEquipmentZmq::getNextBlock() {
   return nextBlock;
 }
 
-int ReadoutEquipmentZmq::tfClientCallback(void *msg, int msgSize) {
+int ReadoutEquipmentZmq::tfClientCallback(void* msg, int msgSize)
+{
   uint64_t tf;
   if (msgSize == sizeof(tf)) {
-    int tf = (int)*((uint64_t *)msg);
+    int tf = (int)*((uint64_t*)msg);
     // printf("TF %d\n",(int)tf);
     tfUpdateTime = time(NULL);
     if (tfUpdateTimeWarning) {
@@ -274,4 +280,4 @@ int ReadoutEquipmentZmq::tfClientCallback(void *msg, int msgSize) {
   return -1;
 }
 
-std::unique_ptr<ReadoutEquipment> getReadoutEquipmentZmq(ConfigFile &cfg, std::string cfgEntryPoint) { return std::make_unique<ReadoutEquipmentZmq>(cfg, cfgEntryPoint); }
+std::unique_ptr<ReadoutEquipment> getReadoutEquipmentZmq(ConfigFile& cfg, std::string cfgEntryPoint) { return std::make_unique<ReadoutEquipmentZmq>(cfg, cfgEntryPoint); }

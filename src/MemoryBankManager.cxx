@@ -16,7 +16,8 @@ MemoryBankManager::MemoryBankManager() {}
 
 MemoryBankManager::~MemoryBankManager() {}
 
-int MemoryBankManager::addBank(std::shared_ptr<MemoryBank> bankPtr, std::string name) {
+int MemoryBankManager::addBank(std::shared_ptr<MemoryBank> bankPtr, std::string name)
+{
 
   // disable concurrent execution of this function
   std::unique_lock<std::mutex> lock(bankMutex);
@@ -25,7 +26,7 @@ int MemoryBankManager::addBank(std::shared_ptr<MemoryBank> bankPtr, std::string 
     if (name.length() == 0) {
       name = bankPtr->getDescription();
     }
-    banks.push_back({name, bankPtr, {}});
+    banks.push_back({ name, bankPtr, {} });
   } catch (...) {
     return -1;
   }
@@ -33,9 +34,10 @@ int MemoryBankManager::addBank(std::shared_ptr<MemoryBank> bankPtr, std::string 
   return 0;
 }
 
-std::shared_ptr<MemoryPagesPool> MemoryBankManager::getPagedPool(size_t pageSize, size_t pageNumber, std::string bankName, size_t firstPageOffset, size_t blockAlign) {
+std::shared_ptr<MemoryPagesPool> MemoryBankManager::getPagedPool(size_t pageSize, size_t pageNumber, std::string bankName, size_t firstPageOffset, size_t blockAlign)
+{
 
-  void *baseAddress = nullptr; // base address of bank from which the block is taken
+  void* baseAddress = nullptr; // base address of bank from which the block is taken
   size_t offset = 0;           // offset of new block (relative to baseAddress)
   size_t blockSize = 0;        // size of new block (in bytes)
 
@@ -105,18 +107,19 @@ std::shared_ptr<MemoryPagesPool> MemoryBankManager::getPagedPool(size_t pageSize
     }
 
     // keep track of this new block
-    banks[ix].rangesInUse.push_back({offset, blockSize});
+    banks[ix].rangesInUse.push_back({ offset, blockSize });
   }
   // end of locked block
 
   // create pool of pages from new block
-  return std::make_shared<MemoryPagesPool>(pageSize, pageNumber, &(((char *)baseAddress)[offset]), blockSize, nullptr, firstPageOffset);
+  return std::make_shared<MemoryPagesPool>(pageSize, pageNumber, &(((char*)baseAddress)[offset]), blockSize, nullptr, firstPageOffset);
 }
 
 // a global MemoryBankManager instance
 MemoryBankManager theMemoryBankManager;
 
-int MemoryBankManager::getMemoryRegions(std::vector<memoryRange> &ranges) {
+int MemoryBankManager::getMemoryRegions(std::vector<memoryRange>& ranges)
+{
   std::unique_lock<std::mutex> lock(bankMutex);
   ranges.clear();
   for (unsigned int ix = 0; ix < banks.size(); ix++) {
@@ -128,9 +131,10 @@ int MemoryBankManager::getMemoryRegions(std::vector<memoryRange> &ranges) {
   return 0;
 }
 
-void MemoryBankManager::reset() {
+void MemoryBankManager::reset()
+{
   std::unique_lock<std::mutex> lock(bankMutex);
-  for (auto &it : banks) {
+  for (auto& it : banks) {
     int useCount = it.bank.use_count();
     theLog.log(LogInfoDevel_(3008), "Releasing bank %s%s", it.name.c_str(), (useCount == 1) ? "" : "warning - still in use elsewhere !");
   }

@@ -19,7 +19,8 @@
 
 #include "ReadoutUtils.h"
 
-int main() {
+int main()
+{
 
   std::string cfgTransportType = "shmem";
   std::string cfgChannelName = "test";
@@ -27,14 +28,14 @@ int main() {
   std::string cfgChannelAddress = "ipc:///tmp/test-pipe";
 
   auto transportFactory = FairMQTransportFactory::CreateTransportFactory(cfgTransportType);
-  auto channel = FairMQChannel{cfgChannelName, cfgChannelType, transportFactory};
+  auto channel = FairMQChannel{ cfgChannelName, cfgChannelType, transportFactory };
   channel.Bind(cfgChannelAddress);
   if (!channel.Validate()) {
     return -1;
   }
 
   const size_t bufferSize = 2000 * 1024L * 1024L;
-  auto memoryBuffer = channel.Transport()->CreateUnmanagedRegion(bufferSize, [](void *data, size_t size, void *hint) {
+  auto memoryBuffer = channel.Transport()->CreateUnmanagedRegion(bufferSize, [](void* data, size_t size, void* hint) {
     // cleanup callback
   });
   printf("Created buffer %p size %ld\n", memoryBuffer->GetData(), memoryBuffer->GetSize());
@@ -51,7 +52,7 @@ int main() {
   double msgRate = 3168;
   size_t sequenceTime = 15; // duration of each sequence
 
-  char *buf = (char *)memoryBuffer->GetData();
+  char* buf = (char*)memoryBuffer->GetData();
   size_t ix = 0;
 
   double lastCPUu = 0;
@@ -78,8 +79,8 @@ int main() {
 
     for (size_t im = 0; im < msgParts; im++) {
       msgSize = 100 + (size_t)CPUt;
-      void *dataPtr = (void *)(&buf[ix]);
-      void *hint = (void *)i;
+      void* dataPtr = (void*)(&buf[ix]);
+      void* hint = (void*)i;
       ix += msgSize;
       if (ix >= bufferSize) {
         ix = 0;

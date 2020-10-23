@@ -20,24 +20,25 @@
 // constructor/destructor to be overloaded for different types of support.
 // destructor should release the associated memory
 
-class MemoryBank {
-public:
+class MemoryBank
+{
+ public:
   MemoryBank(std::string description = ""); // constructor
 
   using ReleaseCallback = std::function<void(void)>;
-  MemoryBank(void *baseAddress, std::size_t size, ReleaseCallback callback,
+  MemoryBank(void* baseAddress, std::size_t size, ReleaseCallback callback,
              std::string description); // constructor, given a memory chunk and mean to release it
 
   virtual ~MemoryBank(); // destructor
 
-  void *getBaseAddress();       // get the (virtual) base address of this memory bank
+  void* getBaseAddress();       // get the (virtual) base address of this memory bank
   std::size_t getSize();        // get the total size (bytes) of this memory bank
   std::string getDescription(); // get the description of this memory bank;
 
   void clear(); // write zeroes into the whole memory range
 
-protected:
-  void *baseAddress;               // base address (virtual) of buffer
+ protected:
+  void* baseAddress;               // base address (virtual) of buffer
   std::size_t size;                // size of buffer, in bytes
   std::string description;         // description of the memory bank (type/sypport, etc)
   ReleaseCallback releaseCallback; // an optional user-callback to be called in destructor, when overloaded constructor has been used

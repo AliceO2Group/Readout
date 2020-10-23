@@ -10,10 +10,11 @@
 
 #include "Consumer.h"
 
-int Consumer::pushData(DataSetReference &bc) {
+int Consumer::pushData(DataSetReference& bc)
+{
   int success = 0;
   int error = 0;
-  for (auto &b : *bc) {
+  for (auto& b : *bc) {
     if (!pushData(b)) {
       success++;
     } else {

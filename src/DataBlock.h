@@ -56,17 +56,17 @@ struct DataBlockHeader {
 const uint32_t DataBlockVersion = 0x0001DBDB;
 
 // DataBlockHeader instance with all default fields
-const DataBlockHeader defaultDataBlockHeader = {.headerVersion = DataBlockVersion, .headerSize = sizeof(DataBlockHeader), .dataSize = 0, .blockId = undefinedBlockId, .pipelineId = undefinedBlockId, .timeframeId = undefinedTimeframeId, .runNumber = undefinedRunNumber, .systemId = undefinedSystemId, .feeId = undefinedFeeId, .equipmentId = undefinedEquipmentId, .linkId = undefinedLinkId, .timeframeOrbitFirst = undefinedOrbit, .timeframeOrbitLast = undefinedOrbit, .flagEndOfTimeframe = 0, .isRdhFormat = 1};
+const DataBlockHeader defaultDataBlockHeader = { .headerVersion = DataBlockVersion, .headerSize = sizeof(DataBlockHeader), .dataSize = 0, .blockId = undefinedBlockId, .pipelineId = undefinedBlockId, .timeframeId = undefinedTimeframeId, .runNumber = undefinedRunNumber, .systemId = undefinedSystemId, .feeId = undefinedFeeId, .equipmentId = undefinedEquipmentId, .linkId = undefinedLinkId, .timeframeOrbitFirst = undefinedOrbit, .timeframeOrbitLast = undefinedOrbit, .flagEndOfTimeframe = 0, .isRdhFormat = 1 };
 
 // DataBlock
 // Pair of header + payload data
 typedef struct {
   DataBlockHeader header; ///< Data header
-  char *data;             ///< Pointer to data. May or may not immediately follow this struct.
+  char* data;             ///< Pointer to data. May or may not immediately follow this struct.
 } DataBlock;
 
 // DataBlock instance with all default fields
-const DataBlock defaultDataBlock = {.header = defaultDataBlockHeader, .data = nullptr};
+const DataBlock defaultDataBlock = { .header = defaultDataBlockHeader, .data = nullptr };
 
 // compile-time checks
 static_assert(std::is_pod<DataBlockHeader>::value, "DataBlockHeader is not a POD");

@@ -14,7 +14,8 @@
 #include <memory>
 #include <vector>
 
-int main() {
+int main()
+{
 
   std::string cfgTransportType = "shmem";
   std::string cfgChannelName = "test";
@@ -22,7 +23,7 @@ int main() {
   std::string cfgChannelAddress = "ipc:///tmp/test-pipe";
 
   auto factory = FairMQTransportFactory::CreateTransportFactory(cfgTransportType);
-  auto pull = FairMQChannel{cfgChannelName, cfgChannelType, factory};
+  auto pull = FairMQChannel{ cfgChannelName, cfgChannelType, factory };
   pull.Connect(cfgChannelAddress);
   int64_t ret;
 
@@ -31,9 +32,9 @@ int main() {
 
     ret = pull.Receive(msgs);
     if (ret > 0) {
-      for (auto &msg : msgs) {
+      for (auto& msg : msgs) {
         int sz = (int)msg->GetSize();
-        void *data = msg->GetData();
+        void* data = msg->GetData();
         printf("Received message %p size %d\n", data, sz);
         printf("Releasing message %p size %d\n", data, sz);
       }

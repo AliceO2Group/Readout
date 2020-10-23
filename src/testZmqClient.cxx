@@ -5,7 +5,8 @@
 unsigned long long totalBytes = 0;
 unsigned long long intervalBytes = 0;
 
-int callback(void *msg, int msgSize) {
+int callback(void* msg, int msgSize)
+{
   //  printf("Block = %d\n",msgSize);
   totalBytes += msgSize;
   intervalBytes += msgSize;
@@ -13,13 +14,14 @@ int callback(void *msg, int msgSize) {
   uint64_t tf;
 
   if (msgSize == sizeof(tf)) {
-    printf("TF %lu\n", *((uint64_t *)msg));
+    printf("TF %lu\n", *((uint64_t*)msg));
     return 0;
   }
   return -1;
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv)
+{
   int id = 0;
 
   if (argc >= 2) {

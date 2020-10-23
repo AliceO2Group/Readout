@@ -16,8 +16,9 @@
 
 typedef uint64_t CounterValue;
 
-class CounterStats {
-public:
+class CounterStats
+{
+ public:
   CounterStats();
   ~CounterStats();
 
@@ -35,9 +36,9 @@ public:
   CounterValue getCount();
 
   void enableHistogram(unsigned int nbins, CounterValue vmin, CounterValue vmax, int logScale = 1);
-  void getHisto(std::vector<double> &x, std::vector<CounterValue> &count);
+  void getHisto(std::vector<double>& x, std::vector<CounterValue>& count);
 
-private:
+ private:
   CounterValue value; // last value set
 
   // derived statistics

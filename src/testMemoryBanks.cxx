@@ -15,7 +15,8 @@
 #include "MemoryBank.h"
 #include "MemoryBankManager.h"
 
-int main() {
+int main()
+{
   MemoryBankManager bm;
 
   size_t poolPages = 100;
@@ -34,7 +35,7 @@ int main() {
       continue;
     }
     printf("Create [%d]=%s\n", j, b->getDescription().c_str());
-    char *ptr = (char *)b->getBaseAddress();
+    char* ptr = (char*)b->getBaseAddress();
     for (size_t i = 0; i < b->getSize(); i++) {
       ptr[i] = i % 100;
     }
@@ -65,9 +66,9 @@ int main() {
   } else {
     printf("test pool %d pages available\n", (int)thePool->getNumberOfPagesAvailable());
   }
-  std::vector<void *> thePages;
+  std::vector<void*> thePages;
   for (int i = 0; i <= nTestPages; i++) {
-    void *newPage = thePool->getPage();
+    void* newPage = thePool->getPage();
     if (newPage != nullptr) {
       printf("Got page #%d = %p, %d/%d available\n", i, newPage, (int)thePool->getNumberOfPagesAvailable(), (int)thePool->getTotalNumberOfPages());
       thePages.push_back(newPage);
@@ -81,7 +82,7 @@ int main() {
     printf("Pool: %d/%d available\n", (int)thePool->getNumberOfPagesAvailable(), (int)thePool->getTotalNumberOfPages());
   }
   for (int i = 0; i <= nTestPages; i++) {
-    void *newPage = thePool->getPage();
+    void* newPage = thePool->getPage();
     if (newPage != nullptr) {
       printf("Got page #%d = %p\n", i, newPage);
       printf("Got page #%d = %p, %d/%d available\n", i, newPage, (int)thePool->getNumberOfPagesAvailable(), (int)thePool->getTotalNumberOfPages());

@@ -9,13 +9,14 @@
 // or submit itself to any jurisdiction.
 
 #include "RdhUtils.h"
-RdhHandle::RdhHandle(void *data) { rdhPtr = (o2::Header::RAWDataHeader *)data; }
+RdhHandle::RdhHandle(void* data) { rdhPtr = (o2::Header::RAWDataHeader*)data; }
 
 RdhHandle::~RdhHandle() {}
 
 bool RdhHeaderPrinted = false;
 
-void RdhHandle::dumpRdh(long offset, bool singleLine) {
+void RdhHandle::dumpRdh(long offset, bool singleLine)
+{
   if (singleLine) {
     if (!RdhHeaderPrinted) {
       printf("    Offset  RDH  Header   Length   Length   Offset    FEE   CRU Link         Trigger   Trigger  Pages Stop Packet\n");
@@ -23,7 +24,7 @@ void RdhHandle::dumpRdh(long offset, bool singleLine) {
       RdhHeaderPrinted = true;
     }
     if (offset == -1) {
-      printf("0x%p", (void *)rdhPtr);
+      printf("0x%p", (void*)rdhPtr);
     } else {
       printf("0x%08lX", offset);
     }
@@ -31,7 +32,7 @@ void RdhHandle::dumpRdh(long offset, bool singleLine) {
 
   } else {
     if (offset == -1) {
-      printf("RDH @ 0x%p\n", (void *)rdhPtr);
+      printf("RDH @ 0x%p\n", (void*)rdhPtr);
     } else {
       printf("RDH @ 0x%08lX\n", offset);
     }
@@ -50,7 +51,8 @@ void RdhHandle::dumpRdh(long offset, bool singleLine) {
   }
 }
 
-int RdhHandle::validateRdh(std::string &err) {
+int RdhHandle::validateRdh(std::string& err)
+{
   int retCode = 0;
   // expecting RDH v5 or v6
   if ((getHeaderVersion() != 5) && (getHeaderVersion() != 6)) {
@@ -86,16 +88,17 @@ int RdhHandle::validateRdh(std::string &err) {
   return retCode;
 }
 
-RdhBlockHandle::RdhBlockHandle(void *ptr, size_t size) : blockPtr(ptr), blockSize(size) {}
+RdhBlockHandle::RdhBlockHandle(void* ptr, size_t size) : blockPtr(ptr), blockSize(size) {}
 
 RdhBlockHandle::~RdhBlockHandle() {}
 
-int RdhBlockHandle::printSummary() {
+int RdhBlockHandle::printSummary()
+{
   printf("\n\n************************\n");
   printf("Start of page %p (%zu bytes)\n\n", blockPtr, blockSize);
 
   // intialize start of block
-  uint8_t *ptr = (uint8_t *)(blockPtr);
+  uint8_t* ptr = (uint8_t*)(blockPtr);
   size_t bytesLeft = blockSize;
 
   int rdhcount = 0;
@@ -110,7 +113,7 @@ int RdhBlockHandle::printSummary() {
     }
 
     rdhcount++;
-    int offset = ptr - (uint8_t *)blockPtr;
+    int offset = ptr - (uint8_t*)blockPtr;
 
     const bool dumpRaw = false;
     if (dumpRaw) {
@@ -122,7 +125,7 @@ int RdhBlockHandle::printSummary() {
         if (i % 8 == 0) {
           printf("\n");
         }
-        printf("%08X ", (int)(((uint32_t *)ptr)[i]));
+        printf("%08X ", (int)(((uint32_t*)ptr)[i]));
       }
       printf("\n\n");
     }

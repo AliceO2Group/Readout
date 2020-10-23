@@ -24,16 +24,17 @@
 
 using namespace AliceO2::Common;
 
-class ReadoutEquipment {
-public:
-  ReadoutEquipment(ConfigFile &cfg, std::string cfgEntryPoint);
+class ReadoutEquipment
+{
+ public:
+  ReadoutEquipment(ConfigFile& cfg, std::string cfgEntryPoint);
   virtual ~ReadoutEquipment();
 
   DataBlockContainerReference getBlock();
 
   void start();
   void stop();
-  const std::string &getName();
+  const std::string& getName();
 
   // enable / disable data production by the equipment
   virtual void setDataOn();
@@ -51,11 +52,11 @@ public:
   std::shared_ptr<AliceO2::Common::Fifo<DataBlockContainerReference>> dataOut;
 
   // get current memory pool usage (available and total)
-  int getMemoryUsage(size_t &numberOfPagesAvailable, size_t &numberOfPagesInPool);
+  int getMemoryUsage(size_t& numberOfPagesAvailable, size_t& numberOfPagesInPool);
 
-private:
+ private:
   std::unique_ptr<Thread> readoutThread;
-  static Thread::CallbackResult threadCallback(void *arg);
+  static Thread::CallbackResult threadCallback(void* arg);
 
   // Function called iteratively in dedicated thread to populate FIFO.
   // The equipmentStats member variable should be updated.
@@ -66,7 +67,7 @@ private:
 
   DataBlockId currentBlockId; // current block id
 
-protected:
+ protected:
   // data enabled ? controlled by setDataOn/setDataOff
   bool isDataOn = false;
 
@@ -95,7 +96,7 @@ protected:
 
   // Display names of the performance counters.
   // Should be in same order as in enum.
-  const char *EquipmentStatsNames[EquipmentStatsIndexes::maxIndex] = {"nBlocksOut", "nBytesOut", "nMemoryLow", "nOutputFull", "nIdle", "nLoop", "nThrottle", "nFifoUpEmpty", "nFifoReadyFull", "nPushedUp", "fifoOccupancyFreeBlocks", "fifoOccupancyReadyBlocks", "fifoOccupancyOutBlocks", "nPagesUsed", "nPagesFree"};
+  const char* EquipmentStatsNames[EquipmentStatsIndexes::maxIndex] = { "nBlocksOut", "nBytesOut", "nMemoryLow", "nOutputFull", "nIdle", "nLoop", "nThrottle", "nFifoUpEmpty", "nFifoReadyFull", "nPushedUp", "fifoOccupancyFreeBlocks", "fifoOccupancyReadyBlocks", "fifoOccupancyOutBlocks", "nPagesUsed", "nPagesFree" };
 
   // check consistency (size) of EquipmentStatsNames with EquipmentStatsIndexes
   static_assert((sizeof(EquipmentStatsNames) / sizeof(EquipmentStatsNames[0])) == EquipmentStatsIndexes::maxIndex, "EquipmentStatsNames size mismatch EquipmentStatsIndexes::");
@@ -126,8 +127,8 @@ protected:
 
   int debugFirstPages = 0; // print debug info on first number of pages read
 
-private:
-  int tagDatablockFromRdh(RdhHandle &RDH, DataBlockHeader &h);
+ private:
+  int tagDatablockFromRdh(RdhHandle& RDH, DataBlockHeader& h);
   unsigned long long statsNumberOfTimeframes = 0; // number of timeframes read out
   uint32_t currentTimeframeHbOrbitBegin = 0;      // HbOrbit of beginning of timeframe
   uint32_t firstTimeframeHbOrbitBegin = 0;        // HbOrbit of beginning of first timeframe
@@ -153,9 +154,9 @@ private:
 
   bool isRdhEquipment = false; // to be set true for RDH equipments
 
-  int processRdh(DataBlockContainerReference &nextBlock);
+  int processRdh(DataBlockContainerReference& nextBlock);
 
-protected:
+ protected:
   // get timeframe from orbit
   // orbit of TF 1 is set on first call
   uint64_t getTimeframeFromOrbit(uint32_t orbit);
@@ -164,7 +165,7 @@ protected:
   uint32_t getTimeframePeriodOrbits() { return timeframePeriodOrbits; }
 
   // compute range of orbits for given timeframe
-  void getTimeframeOrbitRange(uint64_t tfId, uint32_t &hbOrbitMin, uint32_t &hbOrbitMax);
+  void getTimeframeOrbitRange(uint64_t tfId, uint32_t& hbOrbitMin, uint32_t& hbOrbitMax);
 
   void initRdhEquipment(); // to be called by equipments producing RDH-formatted data
 
@@ -173,8 +174,8 @@ protected:
   unsigned long long statsRdhCheckStreamErr = 0; // number of inconsistencies in RDH stream (e.g. ids/timing compared to previous RDH)
 };
 
-std::unique_ptr<ReadoutEquipment> getReadoutEquipmentDummy(ConfigFile &cfg, std::string cfgEntryPoint);
-std::unique_ptr<ReadoutEquipment> getReadoutEquipmentRORC(ConfigFile &cfg, std::string cfgEntryPoint);
-std::unique_ptr<ReadoutEquipment> getReadoutEquipmentCruEmulator(ConfigFile &cfg, std::string cfgEntryPoint);
-std::unique_ptr<ReadoutEquipment> getReadoutEquipmentPlayer(ConfigFile &cfg, std::string cfgEntryPoint);
-std::unique_ptr<ReadoutEquipment> getReadoutEquipmentZmq(ConfigFile &cfg, std::string cfgEntryPoint);
+std::unique_ptr<ReadoutEquipment> getReadoutEquipmentDummy(ConfigFile& cfg, std::string cfgEntryPoint);
+std::unique_ptr<ReadoutEquipment> getReadoutEquipmentRORC(ConfigFile& cfg, std::string cfgEntryPoint);
+std::unique_ptr<ReadoutEquipment> getReadoutEquipmentCruEmulator(ConfigFile& cfg, std::string cfgEntryPoint);
+std::unique_ptr<ReadoutEquipment> getReadoutEquipmentPlayer(ConfigFile& cfg, std::string cfgEntryPoint);
+std::unique_ptr<ReadoutEquipment> getReadoutEquipmentZmq(ConfigFile& cfg, std::string cfgEntryPoint);

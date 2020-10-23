@@ -89,16 +89,18 @@ using namespace AliceO2::InfoLogger;
 using namespace AliceO2::Common;
 
 // some constants
-const char *envRunNumber = "O2_RUN"; // env var name for run number store
+const char* envRunNumber = "O2_RUN"; // env var name for run number store
 
 // set log environment before theLog is initialized
-class TtyChecker {
-private:
+class TtyChecker
+{
+ private:
   bool isInteractive = false;
   struct termios initial_settings;
 
-public:
-  TtyChecker() {
+ public:
+  TtyChecker()
+  {
     // if launched from terminal, force logs to terminal
     if (isatty(fileno(stdin))) {
       if (getenv("INFOLOGGER_MODE") == nullptr) {
@@ -121,7 +123,8 @@ public:
       tcsetattr(0, TCSANOW, &new_settings);
     }
   };
-  ~TtyChecker() {
+  ~TtyChecker()
+  {
     if (isInteractive) {
       // restore term settings
       tcsetattr(0, TCSANOW, &initial_settings);
@@ -136,7 +139,8 @@ InfoLoggerContext theLogContext;
 
 // global signal handler to end program
 static int ShutdownRequest = 0; // set to 1 to request termination, e.g. on SIGTERM/SIGQUIT signals
-static void signalHandler(int signalId) {
+static void signalHandler(int signalId)
+{
   theLog.log(LogInfoDevel, "Received signal %d", signalId);
   printf("*** break ***\n");
   if (ShutdownRequest) {
@@ -150,11 +154,12 @@ static void signalHandler(int signalId) {
 std::string occRole;     // OCC role name
 tRunNumber occRunNumber; // OCC run number
 
-class Readout {
+class Readout
+{
 
-public:
-  int init(int argc, char *argv[]);
-  int configure(const boost::property_tree::ptree &properties);
+ public:
+  int init(int argc, char* argv[]);
+  int configure(const boost::property_tree::ptree& properties);
   int reset(); // as opposed to configure()
   int start();
   int stop(); // as opposed to start()
@@ -163,10 +168,10 @@ public:
 
   void loopRunning(); // called in state "running"
 
-private:
+ private:
   ConfigFile cfg;
-  const char *cfgFileURI = "";
-  const char *cfgFileEntryPoint = ""; // where in the config tree to look for
+  const char* cfgFileURI = "";
+  const char* cfgFileEntryPoint = ""; // where in the config tree to look for
 
   // configuration parameters
   double cfgExitTimeout;
@@ -182,9 +187,9 @@ private:
 
   // runtime entities
   std::vector<std::unique_ptr<Consumer>> dataConsumers;
-  std::map<Consumer *, std::string> consumersOutput; // for the consumers having an output, keep a reference
-                                                     // to the consumer and the name of the consumer to which
-                                                     // to push data
+  std::map<Consumer*, std::string> consumersOutput; // for the consumers having an output, keep a reference
+                                                    // to the consumer and the name of the consumer to which
+                                                    // to push data
   std::vector<std::unique_ptr<ReadoutEquipment>> readoutDevices;
   std::unique_ptr<DataBlockAggregator> agg;
   std::unique_ptr<AliceO2::Common::Fifo<DataSetReference>> agg_output;
@@ -213,7 +218,8 @@ private:
 #endif
 };
 
-void Readout::publishLogbookStats() {
+void Readout::publishLogbookStats()
+{
 #ifdef WITH_LOGBOOK
   if (logbookHandle != nullptr) {
     bool isOk = false;
@@ -222,7 +228,7 @@ void Readout::publishLogbookStats() {
       // virtual void flpUpdateCounters(int64_t runNumber, std::string flpName, int64_t nSubtimeframes, int64_t nEquipmentBytes, int64_t nRecordingBytes, int64_t nFairMqBytes) override;
       logbookHandle->flpUpdateCounters(occRunNumber, occRole, (int64_t)gReadoutStats.numberOfSubtimeframes, (int64_t)gReadoutStats.bytesReadout, (int64_t)gReadoutStats.bytesRecorded, (int64_t)gReadoutStats.bytesFairMQ);
       isOk = true;
-    } catch (const std::exception &ex) {
+    } catch (const std::exception& ex) {
       theLog.log(LogErrorDevel_(3210), "Failed to update logbook: %s", ex.what());
     } catch (...) {
       theLog.log(LogErrorDevel_(3210), "Failed to update logbook: unknown exception");
@@ -237,7 +243,8 @@ void Readout::publishLogbookStats() {
 #endif
 }
 
-int Readout::init(int argc, char *argv[]) {
+int Readout::init(int argc, char* argv[])
+{
   if (argc < 2) {
     printf("Please provide path to configuration file\n");
     return -1;
@@ -306,7 +313,8 @@ int Readout::init(int argc, char *argv[]) {
 
 #include <boost/property_tree/json_parser.hpp>
 
-int Readout::configure(const boost::property_tree::ptree &properties) {
+int Readout::configure(const boost::property_tree::ptree& properties)
+{
   theLog.log(LogInfoSupport_(3005), "Readout executing CONFIGURE");
 
   // load configuration file
@@ -324,7 +332,7 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
         boost::property_tree::ptree t = conf->getRecursive(cfgFileEntryPoint);
         cfg.load(t);
         // cfg.print();
-      } catch (std::exception &e) {
+      } catch (std::exception& e) {
         throw std::string(e.what());
       }
 #else
@@ -338,15 +346,15 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
 
   // apply provided occ properties over loaded configuration
   // with function to overwrtie configuration tree t1 with (selected) content of t2
-  auto mergeConfig = [&](boost::property_tree::ptree &t1, const boost::property_tree::ptree &t2) {
+  auto mergeConfig = [&](boost::property_tree::ptree& t1, const boost::property_tree::ptree& t2) {
     theLog.log(LogInfoDevel, "Merging selected content of OCC configuration");
     try {
       // overwrite fairmq channel parameters
       // get list of channels
       if (t2.get_child_optional("chans")) {
-        boost::property_tree::ptree &ptchannels = (boost::property_tree::ptree &)t2.get_child("chans");
+        boost::property_tree::ptree& ptchannels = (boost::property_tree::ptree&)t2.get_child("chans");
         theLog.log(LogInfoDevel, "Found OCC FMQ channels configuration");
-        for (auto const &pos : ptchannels) {
+        for (auto const& pos : ptchannels) {
           std::string channelName = boost::lexical_cast<std::string>(pos.first);
           // check for a consumer with same fairmq channel
           for (auto kName : ConfigFileBrowser(&cfg, "consumer-")) {
@@ -359,7 +367,7 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
                 // this is matching, let's overwrite t1 with content of t2
                 theLog.log(LogInfoDevel, "Updating %s - FairMQ channel %s :", kName.c_str(), channelName.c_str());
                 std::string progOptions;
-                for (auto const &pos2 : pos.second.get_child("0")) {
+                for (auto const& pos2 : pos.second.get_child("0")) {
                   std::string paramName = pos2.first.c_str();
                   std::string paramValue = pos2.second.data();
                   if ((paramName == "transport") || (paramName == "type") || (paramName == "address")) {
@@ -387,7 +395,7 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
       } else {
         theLog.log(LogInfoDevel, "No OCC FMQ channels configuration found");
       }
-    } catch (std::exception &e) {
+    } catch (std::exception& e) {
       theLog.log(LogErrorSupport_(3100), "%s", e.what());
     }
   };
@@ -516,7 +524,7 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
     // instanciate new memory pool
     if (cfgNumaNode >= 0) {
 #ifdef WITH_NUMA
-      struct bitmask *nodemask;
+      struct bitmask* nodemask;
       nodemask = numa_allocate_nodemask();
       if (nodemask == NULL) {
         return -1;
@@ -549,7 +557,7 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
   // releasing memory bind policy
   if (numaNodeChanged) {
 #ifdef WITH_NUMA
-    struct bitmask *nodemask;
+    struct bitmask* nodemask;
     nodemask = numa_get_mems_allowed();
     numa_set_membind(nodemask);
     // is this needed? not specified in doc...
@@ -631,10 +639,10 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
       } else {
         theLog.log(LogErrorSupport_(3102), "Unknown consumer type '%s' for [%s]", cfgType.c_str(), kName.c_str());
       }
-    } catch (const std::exception &ex) {
+    } catch (const std::exception& ex) {
       theLog.log(LogErrorSupport_(3100), "Failed to configure consumer %s : %s", kName.c_str(), ex.what());
       continue;
-    } catch (const std::string &ex) {
+    } catch (const std::string& ex) {
       theLog.log(LogErrorSupport_(3100), "Failed to configure consumer %s : %s", kName.c_str(), ex.c_str());
       continue;
     } catch (...) {
@@ -644,7 +652,7 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
 
     if (newConsumer != nullptr) {
       if (cfgOutput.length() > 0) {
-        consumersOutput.insert(std::pair<Consumer *, std::string>(newConsumer.get(), cfgOutput));
+        consumersOutput.insert(std::pair<Consumer*, std::string>(newConsumer.get(), cfgOutput));
       }
       newConsumer->name = kName;
       if (cfgStopOnError) {
@@ -655,11 +663,11 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
   }
 
   // try to link consumers with output
-  for (auto const &p : consumersOutput) {
+  for (auto const& p : consumersOutput) {
     // search for consumer with this name
     bool found = false;
     std::string err = "not found";
-    for (auto const &c : dataConsumers) {
+    for (auto const& c : dataConsumers) {
       if (c->name == p.second) {
         if (c->isForwardConsumer) {
           err = "already used";
@@ -753,7 +761,7 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
   int nEquipmentsAggregated = 0;
   agg = std::make_unique<DataBlockAggregator>(agg_output.get(), "Aggregator");
 
-  for (auto &&readoutDevice : readoutDevices) {
+  for (auto&& readoutDevice : readoutDevices) {
     // theLog.log(LogInfoDevel, "Adding equipment: %s",readoutDevice->getName().c_str());
     agg->addInput(readoutDevice->dataOut);
     nEquipmentsAggregated++;
@@ -764,7 +772,8 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
   return 0;
 }
 
-int Readout::start() {
+int Readout::start()
+{
   theLog.log(LogInfoSupport_(3005), "Readout executing START");
 
   // publish initial logbook statistics
@@ -794,16 +803,16 @@ int Readout::start() {
   agg->start();
 
   // notify consumers of imminent data flow start
-  for (auto &c : dataConsumers) {
+  for (auto& c : dataConsumers) {
     c->start();
   }
 
   theLog.log(LogInfoDevel, "Starting readout equipments");
-  for (auto &&readoutDevice : readoutDevices) {
+  for (auto&& readoutDevice : readoutDevices) {
     readoutDevice->start();
   }
 
-  for (auto &&readoutDevice : readoutDevices) {
+  for (auto&& readoutDevice : readoutDevices) {
     readoutDevice->setDataOn();
   }
 
@@ -824,7 +833,8 @@ int Readout::start() {
   return 0;
 }
 
-void Readout::loopRunning() {
+void Readout::loopRunning()
+{
 
   theLog.log(LogInfoDevel, "Entering main loop");
 #ifdef CALLGRIND
@@ -857,7 +867,7 @@ void Readout::loopRunning() {
         }
       }
 
-      for (auto &c : dataConsumers) {
+      for (auto& c : dataConsumers) {
         // push only to "prime" consumers, not to those getting data directly forwarded from another consumer
         if (c->isForwardConsumer == false) {
           if (c->pushData(bc) < 0) {
@@ -887,9 +897,10 @@ void Readout::loopRunning() {
   theLog.log(LogInfoDevel, "Exiting main loop");
 }
 
-int Readout::iterateCheck() {
+int Readout::iterateCheck()
+{
   usleep(100000);
-  for (auto &&readoutDevice : readoutDevices) {
+  for (auto&& readoutDevice : readoutDevices) {
     if ((readoutDevice->isError) && (readoutDevice->stopOnError)) {
       isError = 1;
     }
@@ -900,7 +911,8 @@ int Readout::iterateCheck() {
   return 0;
 }
 
-int Readout::iterateRunning() {
+int Readout::iterateRunning()
+{
   usleep(100000);
   // printf("running time: %.2f\n",startTimer.getTime());
   if (ShutdownRequest) {
@@ -922,7 +934,8 @@ int Readout::iterateRunning() {
   return 0;
 }
 
-int Readout::stop() {
+int Readout::stop()
+{
 
   theLog.log(LogInfoSupport_(3005), "Readout executing STOP");
 
@@ -931,7 +944,7 @@ int Readout::stop() {
   isRunning = 0;
 
   // disable data producers
-  for (auto &&readoutDevice : readoutDevices) {
+  for (auto&& readoutDevice : readoutDevices) {
     readoutDevice->setDataOff();
   }
 
@@ -947,7 +960,7 @@ int Readout::stop() {
   }
   runningThread = nullptr;
 
-  for (auto &&readoutDevice : readoutDevices) {
+  for (auto&& readoutDevice : readoutDevices) {
     readoutDevice->stop();
   }
   theLog.log(LogInfoDevel, "Readout stopped");
@@ -957,14 +970,14 @@ int Readout::stop() {
 
   theLog.log(LogInfoDevel, "Stopping consumers");
   // notify consumers of imminent data flow stop
-  for (auto &c : dataConsumers) {
+  for (auto& c : dataConsumers) {
     c->stop();
   }
 
   // ensure output buffers empty ?
 
   // check status of memory pools
-  for (auto &&readoutDevice : readoutDevices) {
+  for (auto&& readoutDevice : readoutDevices) {
     size_t nPagesTotal = 0, nPagesFree = 0, nPagesUsed = 0;
     if (readoutDevice->getMemoryUsage(nPagesFree, nPagesTotal) == 0) {
       nPagesUsed = nPagesTotal - nPagesFree;
@@ -980,7 +993,8 @@ int Readout::stop() {
   return 0;
 }
 
-int Readout::reset() {
+int Readout::reset()
+{
 
   theLog.log(LogInfoSupport_(3005), "Readout executing RESET");
 
@@ -1008,7 +1022,7 @@ int Readout::reset() {
   }
 
   // todo: check nothing in the input pipeline flush & stop equipments
-  for (auto &&readoutDevice : readoutDevices) {
+  for (auto&& readoutDevice : readoutDevices) {
     // ensure nothing left in output FIFO to allow releasing memory
     // printf("readout: in=%llu out=%llu\n",readoutDevice->dataOut->getNumberIn(),readoutDevice->dataOut->getNumberOut());
     theLog.log(LogInfoDevel, "Releasing equipment %s", readoutDevice->getName().c_str());
@@ -1048,35 +1062,41 @@ int Readout::reset() {
 }
 
 #ifdef WITH_OCC
-class ReadoutOCCStateMachine : public RuntimeControlledObject {
-public:
-  ReadoutOCCStateMachine(std::unique_ptr<Readout> r) : RuntimeControlledObject("Readout Process") {
+class ReadoutOCCStateMachine : public RuntimeControlledObject
+{
+ public:
+  ReadoutOCCStateMachine(std::unique_ptr<Readout> r) : RuntimeControlledObject("Readout Process")
+  {
     theReadout = std::move(r);
     occRole = this->getRole();
   }
 
-  int executeConfigure(const boost::property_tree::ptree &properties) {
+  int executeConfigure(const boost::property_tree::ptree& properties)
+  {
     if (theReadout == nullptr) {
       return -1;
     }
     return theReadout->configure(properties);
   }
 
-  int executeReset() {
+  int executeReset()
+  {
     if (theReadout == nullptr) {
       return -1;
     }
     return theReadout->reset();
   }
 
-  int executeRecover() {
+  int executeRecover()
+  {
     if (theReadout == nullptr) {
       return -1;
     }
     return -1;
   }
 
-  int executeStart() {
+  int executeStart()
+  {
     if (theReadout == nullptr) {
       return -1;
     }
@@ -1094,7 +1114,8 @@ public:
     return theReadout->start();
   }
 
-  int executeStop() {
+  int executeStop()
+  {
     if (theReadout == nullptr) {
       return -1;
     }
@@ -1107,21 +1128,24 @@ public:
     return ret;
   }
 
-  int executePause() {
+  int executePause()
+  {
     if (theReadout == nullptr) {
       return -1;
     }
     return -1;
   }
 
-  int executeResume() {
+  int executeResume()
+  {
     if (theReadout == nullptr) {
       return -1;
     }
     return -1;
   }
 
-  int executeExit() {
+  int executeExit()
+  {
     if (theReadout == nullptr) {
       return -1;
     }
@@ -1129,14 +1153,16 @@ public:
     return 0;
   }
 
-  int iterateRunning() {
+  int iterateRunning()
+  {
     if (theReadout == nullptr) {
       return -1;
     }
     return theReadout->iterateRunning();
   }
 
-  int iterateCheck() {
+  int iterateCheck()
+  {
     //    printf("iterateCheck\n");
     if (theReadout == nullptr) {
       return 0;
@@ -1144,16 +1170,17 @@ public:
     return theReadout->iterateCheck();
   }
 
-private:
+ private:
   std::unique_ptr<Readout> theReadout = nullptr;
 };
 #endif
 
 // the main program loop
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[])
+{
 
   // check environment settings
-  
+
   // OCC control port. If set, use OCClib to handle Readout states.
   bool occMode = false;
   if (getenv("OCC_CONTROL_PORT") != nullptr) {
@@ -1195,45 +1222,55 @@ int main(int argc, char *argv[]) {
     theLog.log(LogInfoOps, "Readout entering interactive state machine");
     theLog.log(LogInfoOps, "(c) configure (s) start (t) stop (r) reset (r) recover (x) quit");
 
-    enum class States { Undefined, Standby, Configured, Running, Error };
-    enum class Commands { Undefined, Configure, Reset, Start, Stop, Recover, Exit };
+    enum class States { Undefined,
+                        Standby,
+                        Configured,
+                        Running,
+                        Error };
+    enum class Commands { Undefined,
+                          Configure,
+                          Reset,
+                          Start,
+                          Stop,
+                          Recover,
+                          Exit };
 
     auto getStateName = [](States s) {
       switch (s) {
-      case States::Undefined:
-        return "undefined";
-      case States::Standby:
-        return "standby";
-      case States::Configured:
-        return "configured";
-      case States::Running:
-        return "running";
-      case States::Error:
-        return "error";
-      default:
-        break;
+        case States::Undefined:
+          return "undefined";
+        case States::Standby:
+          return "standby";
+        case States::Configured:
+          return "configured";
+        case States::Running:
+          return "running";
+        case States::Error:
+          return "error";
+        default:
+          break;
       }
       return "undefined";
     };
 
     auto getCommandName = [](Commands c) {
       switch (c) {
-      case Commands::Undefined:
-        return "undefined";
-      case Commands::Configure:
-        return "configure";
-      case Commands::Start:
-        return "start";
-      case Commands::Stop:
-        return "stop";
-      case Commands::Reset:
-        return "reset";
-      case Commands::Recover:
-        return "recover";
-      case Commands::Exit:
-        return "exit";
-      default:
-        break;
+        case Commands::Undefined:
+          return "undefined";
+        case Commands::Configure:
+          return "configure";
+        case Commands::Start:
+          return "start";
+        case Commands::Stop:
+          return "stop";
+        case Commands::Reset:
+          return "reset";
+        case Commands::Recover:
+          return "recover";
+        case Commands::Exit:
+          return "exit";
+        default:
+          break;
       }
       return "undefined";
     };
@@ -1246,26 +1283,26 @@ int main(int argc, char *argv[]) {
         int c = getchar();
         if (c > 0) {
           switch (c) {
-          case 'c':
-            theCommand = Commands::Configure;
-            break;
-          case 's':
-            theCommand = Commands::Start;
-            break;
-          case 't':
-            theCommand = Commands::Stop;
-            break;
-          case 'r':
-            theCommand = Commands::Reset;
-            break;
-          case 'v':
-            theCommand = Commands::Recover;
-            break;
-          case 'x':
-            theCommand = Commands::Exit;
-            break;
-          default:
-            break;
+            case 'c':
+              theCommand = Commands::Configure;
+              break;
+            case 's':
+              theCommand = Commands::Start;
+              break;
+            case 't':
+              theCommand = Commands::Stop;
+              break;
+            case 'r':
+              theCommand = Commands::Reset;
+              break;
+            case 'v':
+              theCommand = Commands::Recover;
+              break;
+            case 'x':
+              theCommand = Commands::Exit;
+              break;
+            default:
+              break;
           }
         }
       }

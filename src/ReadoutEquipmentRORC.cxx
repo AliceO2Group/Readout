@@ -23,13 +23,14 @@
 #include "ReadoutUtils.h"
 #include "readoutInfoLogger.h"
 
-class ReadoutEquipmentRORC : public ReadoutEquipment {
+class ReadoutEquipmentRORC : public ReadoutEquipment
+{
 
-public:
-  ReadoutEquipmentRORC(ConfigFile &cfg, std::string name = "rorcReadout");
+ public:
+  ReadoutEquipmentRORC(ConfigFile& cfg, std::string name = "rorcReadout");
   ~ReadoutEquipmentRORC();
 
-private:
+ private:
   Thread::CallbackResult prepareBlocks();
   DataBlockContainerReference getNextBlock();
   void setDataOn();
@@ -65,9 +66,11 @@ private:
 
 // std::mutex readoutEquipmentRORCLock;
 
-struct ReadoutEquipmentRORCException : virtual Exception {};
+struct ReadoutEquipmentRORCException : virtual Exception {
+};
 
-ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : ReadoutEquipment(cfg, name) {
+ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile& cfg, std::string name) : ReadoutEquipment(cfg, name)
+{
 
   // declare RDH equipment
   initRdhEquipment();
@@ -106,13 +109,13 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : 
     // configuration parameter: | equipment-rorc-* | debugStatsEnabled | int | 0 | If set, enable extra statistics about internal buffers status. (printed to stdout when stopping) |
     cfg.getOptionalValue<int>(name + ".debugStatsEnabled", cfgDebugStatsEnabled);
 
-      // get readout memory buffer parameters
-      // std::string sMemorySize=cfg.getValue<std::string>(name + ".memoryBufferSize");
-      // std::string sPageSize=cfg.getValue<std::string>(name + ".memoryPageSize"); long long
-      // mMemorySize=ReadoutUtils::getNumberOfBytesFromString(sMemorySize.c_str());
-      // long long mPageSize=ReadoutUtils::getNumberOfBytesFromString(sPageSize.c_str());
-      // std::string cfgHugePageSize="1GB";
-      // cfg.getOptionalValue<std::string>(name + ".memoryHugePageSize",cfgHugePageSize);
+    // get readout memory buffer parameters
+    // std::string sMemorySize=cfg.getValue<std::string>(name + ".memoryBufferSize");
+    // std::string sPageSize=cfg.getValue<std::string>(name + ".memoryPageSize"); long long
+    // mMemorySize=ReadoutUtils::getNumberOfBytesFromString(sMemorySize.c_str());
+    // long long mPageSize=ReadoutUtils::getNumberOfBytesFromString(sPageSize.c_str());
+    // std::string cfgHugePageSize="1GB";
+    // cfg.getOptionalValue<std::string>(name + ".memoryHugePageSize",cfgHugePageSize);
 
     // unique identifier based on card ID
     std::string uid = "readout." + cardId + "." + std::to_string(cfgChannelNumber);
@@ -150,10 +153,10 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : 
     */
 
     // register the memory block for DMA
-    void *baseAddress = (void *)mp->getBaseBlockAddress();
+    void* baseAddress = (void*)mp->getBaseBlockAddress();
     size_t blockSize = mp->getBaseBlockSize();
     theLog.log(LogInfoDevel_(3010), "Register DMA block %p:%lu", baseAddress, blockSize);
-    params.setBufferParameters(AliceO2::roc::buffer_parameters::Memory{baseAddress, blockSize});
+    params.setBufferParameters(AliceO2::roc::buffer_parameters::Memory{ baseAddress, blockSize });
 
     // open channel with above parameters
     channel = AliceO2::roc::ChannelFactory().getDmaChannel(params);
@@ -172,7 +175,7 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : 
 
     // todo: log parameters ?
 
-  } catch (const std::exception &e) {
+  } catch (const std::exception& e) {
     theLog.log(LogErrorSupport_(3240), "Exception : %s", e.what());
     theLog.log(LogErrorSupport_(3240), "%s", boost::diagnostic_information(e).c_str());
     throw; // propagate error
@@ -183,7 +186,8 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : 
 
 ReadoutEquipmentRORC::~ReadoutEquipmentRORC() {}
 
-Thread::CallbackResult ReadoutEquipmentRORC::prepareBlocks() {
+Thread::CallbackResult ReadoutEquipmentRORC::prepareBlocks()
+{
   if (!isInitialized)
     return Thread::CallbackResult::Error;
   if (!isDataOn)
@@ -228,7 +232,7 @@ Thread::CallbackResult ReadoutEquipmentRORC::prepareBlocks() {
   // give free pages to the driver
   int nPushed = 0; // number of free pages pushed this iteration
   while (channel->getTransferQueueAvailable() != 0) {
-    void *newPage = mp->getPage();
+    void* newPage = mp->getPage();
     if (newPage != nullptr) {
       // todo: check page is aligned as expected
       // optionnaly, cleanup page before use
@@ -236,7 +240,7 @@ Thread::CallbackResult ReadoutEquipmentRORC::prepareBlocks() {
         std::memset(newPage, 0, mp->getPageSize());
       }
       AliceO2::roc::Superpage superpage;
-      superpage.setOffset((char *)newPage - (char *)mp->getBaseBlockAddress() + pageSpaceReserved);
+      superpage.setOffset((char*)newPage - (char*)mp->getBaseBlockAddress() + pageSpaceReserved);
       superpage.setSize(superPageSize);
       // printf("pushed page %d\n",(int)superPageSize);
       superpage.setUserData(newPage);
@@ -286,7 +290,8 @@ Thread::CallbackResult ReadoutEquipmentRORC::prepareBlocks() {
   return Thread::CallbackResult::Ok;
 }
 
-DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
+DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock()
+{
 
   DataBlockContainerReference nextBlock = nullptr;
 
@@ -300,7 +305,7 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
   if ((channel->getReadyQueueSize() > 0)) {
     // get next page from FIFO
     auto superpage = channel->popSuperpage();
-    void *mpPageAddress = (void *)(superpage.getUserData());
+    void* mpPageAddress = (void*)(superpage.getUserData());
     if (superpage.isReady()) {
       std::shared_ptr<DataBlockContainer> d = nullptr;
       // printf ("received a page with %d bytes - isFilled=%d isREady=%d\n", (int)superpage.getReceived(),(int)superpage.isFilled(),(int)superpage.isReady());
@@ -336,9 +341,10 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
   return nextBlock;
 }
 
-std::unique_ptr<ReadoutEquipment> getReadoutEquipmentRORC(ConfigFile &cfg, std::string cfgEntryPoint) { return std::make_unique<ReadoutEquipmentRORC>(cfg, cfgEntryPoint); }
+std::unique_ptr<ReadoutEquipment> getReadoutEquipmentRORC(ConfigFile& cfg, std::string cfgEntryPoint) { return std::make_unique<ReadoutEquipmentRORC>(cfg, cfgEntryPoint); }
 
-void ReadoutEquipmentRORC::setDataOn() {
+void ReadoutEquipmentRORC::setDataOn()
+{
   if (isInitialized) {
     // start DMA
     theLog.log(LogInfoDevel_(3010), "Starting DMA for ROC %s", getName().c_str());
@@ -359,7 +365,8 @@ void ReadoutEquipmentRORC::setDataOn() {
   ReadoutEquipment::setDataOn();
 }
 
-void ReadoutEquipmentRORC::setDataOff() {
+void ReadoutEquipmentRORC::setDataOff()
+{
   // ensure we don't push pages any more
   ReadoutEquipment::setDataOff();
 
@@ -370,14 +377,15 @@ void ReadoutEquipmentRORC::setDataOff() {
     theLog.log(LogInfoDevel_(3010), "Stopping DMA for ROC %s", getName().c_str());
     try {
       channel->stopDma();
-    } catch (const std::exception &e) {
+    } catch (const std::exception& e) {
       theLog.log(LogErrorSupport_(3240), "Exception : %s", e.what());
       theLog.log(LogErrorSupport_(3240), "%s", boost::diagnostic_information(e).c_str());
     }
   }
 }
 
-void ReadoutEquipmentRORC::initCounters() {
+void ReadoutEquipmentRORC::initCounters()
+{
   isWaitingFirstLoop = true;
   RocFifoSize = 0;
 
@@ -392,7 +400,8 @@ void ReadoutEquipmentRORC::initCounters() {
   }
 }
 
-void ReadoutEquipmentRORC::finalCounters() {
+void ReadoutEquipmentRORC::finalCounters()
+{
 
   theLog.log(LogInfoDevel_(3003), "Equipment %s : %llu pages (+ %llu lost + %llu empty), %d packets dropped by CRU", name.c_str(), statsNumberOfPages, statsNumberOfPagesLost, statsNumberOfPagesEmpty, lastPacketDropped);
 

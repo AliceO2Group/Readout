@@ -15,7 +15,8 @@
 std::unique_ptr<MemoryRegion> bigBlock = nullptr;
 std::mutex bigBlockMutex;
 
-MemoryHandler::MemoryHandler(int vPageSize, int vNumberOfPages) {
+MemoryHandler::MemoryHandler(int vPageSize, int vNumberOfPages)
+{
   pagesAvailable = nullptr;
 
   pageSize = vPageSize;
@@ -32,7 +33,7 @@ MemoryHandler::MemoryHandler(int vPageSize, int vNumberOfPages) {
     theLog.log(LogErrorSupport_(3230), "No space left in memory bank: available %lu < %lu needed", bytesFree, bytesReserved);
     throw __LINE__;
   }
-  baseAddress = &(((uint8_t *)bigBlock->ptr)[bigBlock->usedSize]);
+  baseAddress = &(((uint8_t*)bigBlock->ptr)[bigBlock->usedSize]);
   bigBlock->usedSize += bytesReserved;
   bigBlockMutex.unlock();
 
@@ -52,19 +53,21 @@ MemoryHandler::MemoryHandler(int vPageSize, int vNumberOfPages) {
 
 MemoryHandler::~MemoryHandler() {}
 
-void *MemoryHandler::getPage() {
+void* MemoryHandler::getPage()
+{
   long offset = 0;
   int res = pagesAvailable->pop(offset);
   if (res == 0) {
-    uint8_t *pagePtr = &baseAddress[offset];
+    uint8_t* pagePtr = &baseAddress[offset];
     // theLog.log(LogDebugTrace, "%p Using page @ offset %d = %p",this,(int)offset,pagePtr);
     return pagePtr;
   }
   return nullptr;
 }
 
-void MemoryHandler::freePage(void *p) {
-  int64_t offset = ((uint8_t *)p) - baseAddress;
+void MemoryHandler::freePage(void* p)
+{
+  int64_t offset = ((uint8_t*)p) - baseAddress;
   // theLog.log(LogDebugTrace, "Releasing page @ offset %d (p=%p)",(int)offset,p);
   if ((offset < 0) || (offset > (int64_t)memorySize)) {
     throw __LINE__;
@@ -73,6 +76,6 @@ void MemoryHandler::freePage(void *p) {
   pagesAvailable->push(offset);
 }
 
-void *MemoryHandler::getBaseAddress() { return baseAddress; }
+void* MemoryHandler::getBaseAddress() { return baseAddress; }
 size_t MemoryHandler::getSize() { return memorySize; }
 size_t MemoryHandler::getPageSize() { return pageSize; }

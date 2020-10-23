@@ -14,7 +14,8 @@
 
 int MemoryPagesPoolStatsEnabled = 0; // flag to control memory stats
 
-MemoryPagesPool::MemoryPagesPool(size_t vPageSize, size_t vNumberOfPages, void *vBaseAddress, size_t vBaseSize, ReleaseCallback vCallback, size_t firstPageOffset) {
+MemoryPagesPool::MemoryPagesPool(size_t vPageSize, size_t vNumberOfPages, void* vBaseAddress, size_t vBaseSize, ReleaseCallback vCallback, size_t firstPageOffset)
+{
   // initialize members from parameters
   pageSize = vPageSize;
   numberOfPages = vNumberOfPages;
@@ -43,11 +44,11 @@ MemoryPagesPool::MemoryPagesPool(size_t vPageSize, size_t vNumberOfPages, void *
   }
 
   // create a fifo and store list of pages available
-  pagesAvailable = std::make_unique<AliceO2::Common::Fifo<void *>>(numberOfPages);
-  void *ptr = nullptr;
+  pagesAvailable = std::make_unique<AliceO2::Common::Fifo<void*>>(numberOfPages);
+  void* ptr = nullptr;
   int id = 0;
   for (size_t i = 0; i < numberOfPages; i++) {
-    ptr = &((char *)baseBlockAddress)[firstPageOffset + i * pageSize];
+    ptr = &((char*)baseBlockAddress)[firstPageOffset + i * pageSize];
     pagesAvailable->push(ptr);
     if (i == 0) {
       firstPageAddress = ptr;
@@ -75,7 +76,8 @@ MemoryPagesPool::MemoryPagesPool(size_t vPageSize, size_t vNumberOfPages, void *
   }
 }
 
-MemoryPagesPool::~MemoryPagesPool() {
+MemoryPagesPool::~MemoryPagesPool()
+{
   if (MemoryPagesPoolStatsEnabled) {
     printf("memory pool statistics: \n");
     printf("getpage->getdatablock");
@@ -120,7 +122,7 @@ MemoryPagesPool::~MemoryPagesPool() {
     }
 
     int nNeverUsed = 0;
-    for (auto &p : pagesMap) {
+    for (auto& p : pagesMap) {
       // printf("page id %d used %d\n",p.second.id,p.second.nTimeUsed);
       if (p.second.nTimeUsed <= 10) {
         nNeverUsed++;
@@ -135,9 +137,10 @@ MemoryPagesPool::~MemoryPagesPool() {
   }
 }
 
-void *MemoryPagesPool::getPage() {
+void* MemoryPagesPool::getPage()
+{
   // get a page from fifo, if available
-  void *ptr = nullptr;
+  void* ptr = nullptr;
   pagesAvailable->pop(ptr);
 
   // stats
@@ -159,7 +162,8 @@ void *MemoryPagesPool::getPage() {
   return ptr;
 }
 
-void MemoryPagesPool::releasePage(void *address) {
+void MemoryPagesPool::releasePage(void* address)
+{
   // safety check on address provided
   if (!isPageValid(address)) {
     throw __LINE__;
@@ -186,10 +190,11 @@ void MemoryPagesPool::releasePage(void *address) {
 size_t MemoryPagesPool::getPageSize() { return pageSize; }
 size_t MemoryPagesPool::getTotalNumberOfPages() { return numberOfPages; }
 size_t MemoryPagesPool::getNumberOfPagesAvailable() { return pagesAvailable->getNumberOfUsedSlots(); }
-void *MemoryPagesPool::getBaseBlockAddress() { return baseBlockAddress; }
+void* MemoryPagesPool::getBaseBlockAddress() { return baseBlockAddress; }
 size_t MemoryPagesPool::getBaseBlockSize() { return baseBlockSize; }
 
-std::shared_ptr<DataBlockContainer> MemoryPagesPool::getNewDataBlockContainer(void *newPage) {
+std::shared_ptr<DataBlockContainer> MemoryPagesPool::getNewDataBlockContainer(void* newPage)
+{
   // get a new page if none provided
   if (newPage == nullptr) {
     // get a new page from the pool
@@ -216,10 +221,10 @@ std::shared_ptr<DataBlockContainer> MemoryPagesPool::getNewDataBlockContainer(vo
   }
 
   // fill header at beginning of page assuming payload is contiguous after header
-  DataBlock *b = (DataBlock *)newPage;
+  DataBlock* b = (DataBlock*)newPage;
   b->header = defaultDataBlockHeader;
   b->header.dataSize = getDataBlockMaxSize();
-  b->data = &(((char *)b)[headerReservedSpace]);
+  b->data = &(((char*)b)[headerReservedSpace]);
 
   // define a function to put it back in pool after use
   auto releaseCallback = [this, newPage](void) -> void {
@@ -228,7 +233,7 @@ std::shared_ptr<DataBlockContainer> MemoryPagesPool::getNewDataBlockContainer(vo
   };
 
   // create a container and associate data page and release callback
-  std::shared_ptr<DataBlockContainer> bc = std::make_shared<DataBlockContainer>(releaseCallback, (DataBlock *)newPage, pageSize);
+  std::shared_ptr<DataBlockContainer> bc = std::make_shared<DataBlockContainer>(releaseCallback, (DataBlock*)newPage, pageSize);
   if (bc == nullptr) {
     releaseCallback();
     return nullptr;
@@ -239,14 +244,15 @@ std::shared_ptr<DataBlockContainer> MemoryPagesPool::getNewDataBlockContainer(vo
   return bc;
 }
 
-bool MemoryPagesPool::isPageValid(void *pagePtr) {
+bool MemoryPagesPool::isPageValid(void* pagePtr)
+{
   if (pagePtr < firstPageAddress) {
     return false;
   }
   if (pagePtr > lastPageAddress) {
     return false;
   }
-  if ((((char *)pagePtr - (char *)firstPageAddress) % pageSize) != 0) {
+  if ((((char*)pagePtr - (char*)firstPageAddress) % pageSize) != 0) {
     return false;
   }
   return true;

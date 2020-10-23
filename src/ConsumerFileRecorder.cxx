@@ -17,9 +17,11 @@
 #include "ReadoutUtils.h"
 
 // a struct to store info related to one file
-class FileHandle {
-public:
-  FileHandle(std::string &_path, InfoLogger *_theLog = nullptr, unsigned long long _maxFileSize = 0, int _maxPages = 0) {
+class FileHandle
+{
+ public:
+  FileHandle(std::string& _path, InfoLogger* _theLog = nullptr, unsigned long long _maxFileSize = 0, int _maxPages = 0)
+  {
     theLog = _theLog;
     path = _path;
     counterBytesTotal = 0;
@@ -40,7 +42,8 @@ public:
 
   ~FileHandle() { close(); }
 
-  void close() {
+  void close()
+  {
     if (fp != NULL) {
       if (theLog != nullptr) {
         theLog->log(LogInfoDevel_(3007), "Closing file %s : %llu bytes (~%s)", path.c_str(), counterBytesTotal, ReadoutUtils::NumberOfBytesToString(counterBytesTotal, "B").c_str());
@@ -55,8 +58,11 @@ public:
   // data given by 'ptr', number of bytes given by 'size'
   // isPage is a flag telling if the data belongs to a page (for the 'number of pages written' counter)
   // remainingBlockSize is taken into account not to exceed max file size, to avoid starting writing anything if the next write would reach limit return one of the status code below
-  enum Status { Success = 0, Error = -1, FileLimitsReached = 1 };
-  FileHandle::Status write(void *ptr, size_t size, bool isPage = false, size_t remainingBlockSize = 0) {
+  enum Status { Success = 0,
+                Error = -1,
+                FileLimitsReached = 1 };
+  FileHandle::Status write(void* ptr, size_t size, bool isPage = false, size_t remainingBlockSize = 0)
+  {
     lastWriteBytes = 0; // reset last bytes written
     if (isFull) {
       // report only first occurence of FileLimitsReached
@@ -99,19 +105,19 @@ public:
 
   bool isFileOk() { return isOk; }
 
-private:
+ private:
   std::string path = "";                    // path to the file (final, after variables substitution)
   unsigned long long counterBytesTotal = 0; // number of bytes written to file
   unsigned long long maxFileSize = 0;       // max number of bytes to write to file (0=no limit)
   int counterPages = 0;                     // number of pages received so far
   int maxPages = 0;                         // max number of pages accepted by recorder (0=no limit)
-  FILE *fp = NULL;                          // handle to file for I/O
-  InfoLogger *theLog = nullptr;             // handle to infoLogger for messages
+  FILE* fp = NULL;                          // handle to file for I/O
+  InfoLogger* theLog = nullptr;             // handle to infoLogger for messages
   bool isFull = false;                      // flag set when maximum file size reached
   bool isOk = false;                        // flag set when file ready for writing
   size_t lastWriteBytes = 0;                // number of bytes last written with success
 
-public:
+ public:
   int fileId = 0; // a placeholder for an incremental counter to identify current file Id (when file splitting enabled)
 };
 
@@ -122,17 +128,19 @@ struct DataSourceId {
 };
 
 // constant for undefined data source
-const DataSourceId undefinedDataSourceId = {undefinedLinkId, undefinedEquipmentId};
+const DataSourceId undefinedDataSourceId = { undefinedLinkId, undefinedEquipmentId };
 
 // comparison operator
-bool operator==(const DataSourceId &a, const DataSourceId &b) { return ((a.linkId == b.linkId) && (a.equipmentId == b.equipmentId)); }
+bool operator==(const DataSourceId& a, const DataSourceId& b) { return ((a.linkId == b.linkId) && (a.equipmentId == b.equipmentId)); }
 
 // less operator
-bool operator<(const DataSourceId &a, const DataSourceId &b) { return (a.equipmentId < b.equipmentId) || ((a.equipmentId == b.equipmentId) && (a.linkId < b.linkId)); }
+bool operator<(const DataSourceId& a, const DataSourceId& b) { return (a.equipmentId < b.equipmentId) || ((a.equipmentId == b.equipmentId) && (a.linkId < b.linkId)); }
 
-class ConsumerFileRecorder : public Consumer {
-public:
-  ConsumerFileRecorder(ConfigFile &cfg, std::string cfgEntryPoint) : Consumer(cfg, cfgEntryPoint) {
+class ConsumerFileRecorder : public Consumer
+{
+ public:
+  ConsumerFileRecorder(ConfigFile& cfg, std::string cfgEntryPoint) : Consumer(cfg, cfgEntryPoint)
+  {
 
     // configuration parameter: | consumer-fileRecorder-* | fileName | string | | Path to the file where to record data. The following variables are replaced at runtime: ${XXX} -> get variable XXX from environment, %t -> unix timestamp (seconds since epoch), %T -> formatted date/time, %i -> equipment ID of each data chunk (used to write data from different equipments to different output files), %l -> link ID (used to write data from different links to different output files). |
     fileName = cfg.getValue<std::string>(cfgEntryPoint + ".fileName");
@@ -186,13 +194,14 @@ public:
 
   ~ConsumerFileRecorder() {}
 
-  void resetCounters() {
+  void resetCounters()
+  {
     if (defaultFile != nullptr) {
       defaultFile->close();
       defaultFile = nullptr;
     }
 
-    for (auto &kv : filePerSourceMap) {
+    for (auto& kv : filePerSourceMap) {
       kv.second->close();
       kv.second = nullptr;
     }
@@ -206,7 +215,8 @@ public:
     packetsRecorded = 0;
   }
 
-  int start() {
+  int start()
+  {
     Consumer::start();
     resetCounters();
 
@@ -222,7 +232,8 @@ public:
     return 0;
   };
 
-  int stop() {
+  int stop()
+  {
     theLog.log(LogInfoDevel_(3006), "Stopping file recorder");
     if (dropEmptyHBFrames) {
       theLog.log(LogInfoDevel_(3003), "Packets recorded=%lld discarded(empty)=%lld", packetsRecorded, emptyPacketsDropped);
@@ -238,14 +249,15 @@ public:
   // equipmentID: use given equipment Id
   // delayIfSourceId: when set, file is not created immediately
   // getNewFp: if not null, function will copy handle to created file in the given variable
-  int createFile(std::shared_ptr<FileHandle> *getNewHandle = nullptr, const DataSourceId &sourceId = undefinedDataSourceId, bool delayIfSourceId = true, int fileId = 1) {
+  int createFile(std::shared_ptr<FileHandle>* getNewHandle = nullptr, const DataSourceId& sourceId = undefinedDataSourceId, bool delayIfSourceId = true, int fileId = 1)
+  {
 
     // create the file name according to specified path
     // parse the string, and subst variables:
     // ${XXX} -> get variable XXX from environment
     // %t -> unix timestamp (seconds since epoch)
     // %T -> formatted date/time
-    // %i -> equipment ID of each data chunk (used to write data from different equipments to different output files). 
+    // %i -> equipment ID of each data chunk (used to write data from different equipments to different output files).
     // %l -> link ID of each data chunk (used to write data from different links to different output files).
     // %f -> file number (incremental), when file splitting enabled (empty otherwise)
     std::string newFileName;
@@ -275,7 +287,7 @@ public:
               }
             }
             if (varNameComplete) {
-              const char *val = getenv(varName.c_str());
+              const char* val = getenv(varName.c_str());
               if (val != nullptr) {
                 newFileName += val;
                 // theLog.log(LogDebugTrace, (varName + " = " + val).c_str());
@@ -377,7 +389,8 @@ public:
     return 0;
   }
 
-  int pushData(DataBlockContainerReference &b) {
+  int pushData(DataBlockContainerReference& b)
+  {
 
     // do nothing if recording disabled
     if (!recordingEnabled) {
@@ -414,7 +427,7 @@ public:
 
     bool countPage = true; // the first write will increment the page counter for this file
 
-    auto writeToFile = [&](void *ptr, size_t size, size_t remainingBlockSize) {
+    auto writeToFile = [&](void* ptr, size_t size, size_t remainingBlockSize) {
       // two attempts, in case file needs to be incremented
       for (int i = 0; i < 2; i++) {
 
@@ -451,7 +464,7 @@ public:
     };
 
     // basic RDH check
-    auto checkRdh = [&](RdhHandle &h) {
+    auto checkRdh = [&](RdhHandle& h) {
       std::string errorDescription;
       if (h.validateRdh(errorDescription)) {
         invalidRDH++;
@@ -460,14 +473,14 @@ public:
       return;
     };
 
-    auto isEmptyHBstop = [&](RdhHandle &h) {
+    auto isEmptyHBstop = [&](RdhHandle& h) {
       if ((h.getStopBit()) && (h.getHeaderSize() == h.getMemorySize())) {
         return true;
       }
       return false;
     };
 
-    auto isEmptyHBstart = [&](RdhHandle &h) {
+    auto isEmptyHBstart = [&](RdhHandle& h) {
       if ((h.getPagesCounter() == 0) && (h.getHeaderSize() == h.getMemorySize())) {
         return true;
       }
@@ -482,7 +495,7 @@ public:
 
       // get handle to stored state for this link
       int linkId = b->getData()->header.linkId;
-      Packet &previousPacket = perLinkPreviousPacket[linkId];
+      Packet& previousPacket = perLinkPreviousPacket[linkId];
 
       // write datablock header, if wanted
       if (recordWithDataBlockHeader) {
@@ -500,7 +513,7 @@ public:
       } else {
         // we have to check packet by packet and discard empty HBstart/HBstop pairs
         size_t blockSize = b->getData()->header.dataSize;
-        uint8_t *baseAddress = (uint8_t *)(b->getData()->data);
+        uint8_t* baseAddress = (uint8_t*)(b->getData()->data);
         for (size_t pageOffset = 0; pageOffset < blockSize;) {
           // validate RDH
           RdhHandle h(baseAddress + pageOffset);
@@ -577,7 +590,7 @@ public:
     return 0;
   }
 
-private:
+ private:
   std::shared_ptr<FileHandle> defaultFile; // the file to be used by default
 
   typedef std::map<DataSourceId, std::shared_ptr<FileHandle>> FilePerSourceMap;
@@ -598,13 +611,15 @@ private:
   int filesMax = 0;                   // maximum number of files to write (for each stream)
   int dropEmptyHBFrames = 0;          // if set, some empty packets are discarded (see logic in code)
 
-  class Packet {
-  public:
+  class Packet
+  {
+   public:
     bool isEmptyHBStart = false;
-    void *address = nullptr;
+    void* address = nullptr;
     size_t size = 0;
     bool isCopy = false;
-    void clear() {
+    void clear()
+    {
       isEmptyHBStart = false;
       if ((address != nullptr) && (isCopy)) {
         free(address);
@@ -623,4 +638,4 @@ private:
   unsigned long long packetsRecorded = 0;     // number of packets recorded
 };
 
-std::unique_ptr<Consumer> getUniqueConsumerFileRecorder(ConfigFile &cfg, std::string cfgEntryPoint) { return std::make_unique<ConsumerFileRecorder>(cfg, cfgEntryPoint); }
+std::unique_ptr<Consumer> getUniqueConsumerFileRecorder(ConfigFile& cfg, std::string cfgEntryPoint) { return std::make_unique<ConsumerFileRecorder>(cfg, cfgEntryPoint); }

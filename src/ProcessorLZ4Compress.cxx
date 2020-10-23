@@ -8,7 +8,6 @@
 // granted to it by virtue of its status as an Intergovernmental Organization
 // or submit itself to any jurisdiction.
 
-
 //  This processor compresses data with LZ4 algorithm https://lz4.github.io/lz4/
 
 #include <stdint.h>
@@ -30,7 +29,8 @@
 
 extern "C" {
 
-int processBlock(DataBlockContainerReference &input, DataBlockContainerReference &output) {
+int processBlock(DataBlockContainerReference& input, DataBlockContainerReference& output)
+{
 
   output = nullptr;
 
@@ -52,10 +52,10 @@ int processBlock(DataBlockContainerReference &input, DataBlockContainerReference
   // Magic number (4b) FLG (1b) BD (1b) HC (1b) BlockCompressedSize (4b) Data (xxx) EndMark (4b)
 
   const char header[] = {
-      0x04, 0x22, 0x4D, 0x18, // Magic Number
-      0x60,                   // FLG b01100000 = 0x60 -> Version=01 (bits 6-7), Block Independence flag=1 (bit 5)
-      0x70,                   // BD  b01110000 = 0x70 -> Block Maximum Size=111 (bits 4-5-6) 7 -> 4MB
-      0x73,                   // HC header checksum (xxh32()>>8) & 0xFF (do not include Magic Number!)
+    0x04, 0x22, 0x4D, 0x18, // Magic Number
+    0x60,                   // FLG b01100000 = 0x60 -> Version=01 (bits 6-7), Block Independence flag=1 (bit 5)
+    0x70,                   // BD  b01110000 = 0x70 -> Block Maximum Size=111 (bits 4-5-6) 7 -> 4MB
+    0x73,                   // HC header checksum (xxh32()>>8) & 0xFF (do not include Magic Number!)
   };
 
   // to get header checksum:
@@ -65,7 +65,7 @@ int processBlock(DataBlockContainerReference &input, DataBlockContainerReference
   uint32_t blockSize = 0; // size of compressed block, 4 bytes little endian after header
 
   const char trailer[] = {
-      0x00, 0x00, 0x00, 0x00 // EndMark
+    0x00, 0x00, 0x00, 0x00 // EndMark
   };
 
   const int lz4FrameFormatBytes = sizeof(header) + sizeof(blockSize) + sizeof(trailer); // number of bytes needed for LZ4 frame formatting
@@ -76,8 +76,8 @@ int processBlock(DataBlockContainerReference &input, DataBlockContainerReference
   int64_t maxCompressedSize = LZ4_compressBound(sizeIn);
   int64_t maxFormattedSize = maxCompressedSize + lz4FrameFormatBytes;
 
-  char *ptrCompressed = nullptr; // buffer for compressed data
-  char *ptrFormatted = nullptr;  // buffer for formatted compressed data with header/trailer
+  char* ptrCompressed = nullptr; // buffer for compressed data
+  char* ptrFormatted = nullptr;  // buffer for formatted compressed data with header/trailer
 
   size_t ptrCompressedSize = 0; // allocated buffer size
   size_t ptrFormattedSize = 0;  // allocated buffer size
@@ -86,15 +86,15 @@ int processBlock(DataBlockContainerReference &input, DataBlockContainerReference
     // create a new data block + container from malloc()
     // (not using a predefined memory bank, which are not readily available from consumers)
     size_t pageSize = sizeof(DataBlock) + maxFormattedSize;
-    void *newPage = malloc(pageSize);
+    void* newPage = malloc(pageSize);
     if (newPage == nullptr) {
       return ERR_MALLOC;
     }
 
     // fill header at beginning of page assuming payload is contiguous after header
-    DataBlock *b = (DataBlock *)newPage;
+    DataBlock* b = (DataBlock*)newPage;
     b->header = input->getData()->header;
-    b->data = &(((char *)b)[sizeof(DataBlock)]);
+    b->data = &(((char*)b)[sizeof(DataBlock)]);
 
     auto releaseCallback = [newPage](void) -> void {
       free(newPage);
@@ -102,13 +102,13 @@ int processBlock(DataBlockContainerReference &input, DataBlockContainerReference
     };
 
     // create a container and associate data page and release callback
-    std::shared_ptr<DataBlockContainer> bc = std::make_shared<DataBlockContainer>(releaseCallback, (DataBlock *)newPage, pageSize);
+    std::shared_ptr<DataBlockContainer> bc = std::make_shared<DataBlockContainer>(releaseCallback, (DataBlock*)newPage, pageSize);
     if (bc == nullptr) {
       releaseCallback();
       return ERR_MALLOC;
     }
 
-    ptrFormatted = (char *)b->data;
+    ptrFormatted = (char*)b->data;
     ptrCompressed = &(ptrFormatted[sizeof(header) + sizeof(blockSize)]); // leave suitable space in front
     ptrCompressedSize = maxCompressedSize;
     ptrFormattedSize = maxFormattedSize;
@@ -118,11 +118,11 @@ int processBlock(DataBlockContainerReference &input, DataBlockContainerReference
 
     // create a temporary buffer for compression
     // will be copied back to existing input DataBlock
-    ptrCompressed = (char *)malloc(maxCompressedSize);
+    ptrCompressed = (char*)malloc(maxCompressedSize);
     ptrCompressedSize = maxCompressedSize;
-    ptrFormatted = (char *)input->getData()->data;
-    ptrFormattedSize = (char *)input->getData() + input->getDataBufferSize() - (char *)input->getData()->data; // remaining buffer size available after data ptr
-    output = input;                                                                                            // reuse existing data block as output (might be wrong: other consumers will see modified data)
+    ptrFormatted = (char*)input->getData()->data;
+    ptrFormattedSize = (char*)input->getData() + input->getDataBufferSize() - (char*)input->getData()->data; // remaining buffer size available after data ptr
+    output = input;                                                                                          // reuse existing data block as output (might be wrong: other consumers will see modified data)
   }
 
   if ((ptrCompressed == nullptr) || (ptrFormatted == nullptr)) {
@@ -147,8 +147,8 @@ int processBlock(DataBlockContainerReference &input, DataBlockContainerReference
 
       // let's build a formatted output back in provided input buffer
       int ptrSize = 0;
-      auto push = [&ptrSize, &ptrFormatted](const void *source, size_t size) {
-        void *dest = &ptrFormatted[ptrSize];
+      auto push = [&ptrSize, &ptrFormatted](const void* source, size_t size) {
+        void* dest = &ptrFormatted[ptrSize];
         // copy only if needed
         if (dest != source) {
           memcpy(dest, source, size);

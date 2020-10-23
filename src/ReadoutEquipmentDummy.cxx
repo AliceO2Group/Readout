@@ -13,14 +13,15 @@
 #include "ReadoutUtils.h"
 #include "readoutInfoLogger.h"
 
-class ReadoutEquipmentDummy : public ReadoutEquipment {
+class ReadoutEquipmentDummy : public ReadoutEquipment
+{
 
-public:
-  ReadoutEquipmentDummy(ConfigFile &cfg, std::string name = "dummyReadout");
+ public:
+  ReadoutEquipmentDummy(ConfigFile& cfg, std::string name = "dummyReadout");
   ~ReadoutEquipmentDummy();
   DataBlockContainerReference getNextBlock();
 
-private:
+ private:
   Thread::CallbackResult populateFifoOut(); // iterative callback
 
   int eventMaxSize; // maximum data block size
@@ -28,7 +29,8 @@ private:
   int fillData;     // if set, data pages filled with incremental values
 };
 
-ReadoutEquipmentDummy::ReadoutEquipmentDummy(ConfigFile &cfg, std::string cfgEntryPoint) : ReadoutEquipment(cfg, cfgEntryPoint) {
+ReadoutEquipmentDummy::ReadoutEquipmentDummy(ConfigFile& cfg, std::string cfgEntryPoint) : ReadoutEquipment(cfg, cfgEntryPoint)
+{
 
   // get configuration values
   // configuration parameter: | equipment-dummy-* | eventMaxSize | bytes | 128k | Maximum size of randomly generated event. |
@@ -57,7 +59,8 @@ ReadoutEquipmentDummy::ReadoutEquipmentDummy(ConfigFile &cfg, std::string cfgEnt
 
 ReadoutEquipmentDummy::~ReadoutEquipmentDummy() {}
 
-DataBlockContainerReference ReadoutEquipmentDummy::getNextBlock() {
+DataBlockContainerReference ReadoutEquipmentDummy::getNextBlock()
+{
 
   if (!isDataOn) {
     return nullptr;
@@ -72,7 +75,7 @@ DataBlockContainerReference ReadoutEquipmentDummy::getNextBlock() {
 
   // format data block
   if (nextBlock != nullptr) {
-    DataBlock *b = nextBlock->getData();
+    DataBlock* b = nextBlock->getData();
 
     // set size
     int dSize = (int)(eventMinSize + (int)((eventMaxSize - eventMinSize) * (rand() * 1.0 / RAND_MAX)));
@@ -89,7 +92,7 @@ DataBlockContainerReference ReadoutEquipmentDummy::getNextBlock() {
       }
     } else if (fillData == 2) {
       // incremental word pattern, with one random word out of 5
-      int *pi = (int *)b->data;
+      int* pi = (int*)b->data;
       for (unsigned int k = 0; k < dSize / sizeof(int); k++) {
         pi[k] = k;
         if (k % 5 == 0)
@@ -101,4 +104,4 @@ DataBlockContainerReference ReadoutEquipmentDummy::getNextBlock() {
   return nextBlock;
 }
 
-std::unique_ptr<ReadoutEquipment> getReadoutEquipmentDummy(ConfigFile &cfg, std::string cfgEntryPoint) { return std::make_unique<ReadoutEquipmentDummy>(cfg, cfgEntryPoint); }
+std::unique_ptr<ReadoutEquipment> getReadoutEquipmentDummy(ConfigFile& cfg, std::string cfgEntryPoint) { return std::make_unique<ReadoutEquipmentDummy>(cfg, cfgEntryPoint); }

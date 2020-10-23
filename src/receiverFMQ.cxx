@@ -38,7 +38,8 @@ InfoLogger theLog;
 
 // signal handlers
 static int ShutdownRequest = 0; // set to 1 to request termination, e.g. on SIGTERM/SIGQUIT signals
-static void signalHandler(int) {
+static void signalHandler(int)
+{
   printf("*** break ***");
   if (ShutdownRequest) {
     // immediate exit if pending exit request
@@ -47,31 +48,33 @@ static void signalHandler(int) {
   ShutdownRequest = 1;
 }
 
-class ReadoutStfDecoder {
-public:
+class ReadoutStfDecoder
+{
+ public:
   ReadoutStfDecoder(std::vector<FairMQMessagePtr> inMsgParts);
   ~ReadoutStfDecoder();
 
   struct Part {
-    void *data;
+    void* data;
     size_t size;
   };
 
-  std::vector<Part> &getHbf() { return hbf; }
+  std::vector<Part>& getHbf() { return hbf; }
 
   double getCopyRatio() { return nPartsRepacked * 1.0 / (nPartsRepacked + nPartsReused); }
 
-private:
+ private:
   std::vector<FairMQMessagePtr> msgParts; // keep ownership of FMQ messages for this object lifetime
-  std::vector<void *> allocatedParts;     // keep ownership of data copied
+  std::vector<void*> allocatedParts;      // keep ownership of data copied
   std::vector<Part> hbf;                  // list of HBFs
-  SubTimeframe *stf = nullptr;            // STF header
+  SubTimeframe* stf = nullptr;            // STF header
 
   size_t nPartsReused = 0;
   size_t nPartsRepacked = 0;
 };
 
-ReadoutStfDecoder::ReadoutStfDecoder(std::vector<FairMQMessagePtr> inMsgParts) {
+ReadoutStfDecoder::ReadoutStfDecoder(std::vector<FairMQMessagePtr> inMsgParts)
+{
   msgParts = std::move(inMsgParts);
 
   // expected format of received messages : (header + superpage + superpage ...)
@@ -83,7 +86,7 @@ ReadoutStfDecoder::ReadoutStfDecoder(std::vector<FairMQMessagePtr> inMsgParts) {
 
   std::vector<Part> pendingHbf; // current HBF, completed contiguous parts
   // last chunk of current HBF
-  Part lastPart = {nullptr, 0};
+  Part lastPart = { nullptr, 0 };
 
   auto pendingHbfCollect = [&](bool isLast) {
     // move last piece, if any
@@ -104,19 +107,19 @@ ReadoutStfDecoder::ReadoutStfDecoder(std::vector<FairMQMessagePtr> inMsgParts) {
       } else if (pendingHbf.size() > 1) {
         // create a copy
         size_t size = 0;
-        for (auto const &p : pendingHbf) {
+        for (auto const& p : pendingHbf) {
           size += p.size;
         }
-        char *newHbf = (char *)malloc(size);
+        char* newHbf = (char*)malloc(size);
         if (newHbf == NULL) {
           throw;
         }
         Part newPart;
-        newPart.data = (void *)newHbf;
+        newPart.data = (void*)newHbf;
         newPart.size = size;
         hbf.push_back(newPart);
         allocatedParts.push_back(newHbf); // keep track for later delete
-        for (auto const &p : pendingHbf) {
+        for (auto const& p : pendingHbf) {
           memcpy(newHbf, p.data, p.size);
           newHbf += p.size;
           nPartsRepacked++;
@@ -130,17 +133,17 @@ ReadoutStfDecoder::ReadoutStfDecoder(std::vector<FairMQMessagePtr> inMsgParts) {
     lastPart.size = 0;
   };
 
-  for (auto const &mm : msgParts) {
+  for (auto const& mm : msgParts) {
     if (i == 0) {
       // first part is STF header
       if (mm->GetSize() != sizeof(SubTimeframe)) {
         throw;
       }
-      stf = (SubTimeframe *)mm->GetData();
+      stf = (SubTimeframe*)mm->GetData();
     } else {
       // then 1 part per superpage
       size_t dataSize = mm->GetSize();
-      void *data = mm->GetData();
+      void* data = mm->GetData();
 
       // printf ("Page %d size %d\n",i,(int)dataSize);
       std::string errorDescription;
@@ -150,7 +153,7 @@ ReadoutStfDecoder::ReadoutStfDecoder(std::vector<FairMQMessagePtr> inMsgParts) {
           throw;
         }
 
-        RdhHandle h(((uint8_t *)data) + pageOffset);
+        RdhHandle h(((uint8_t*)data) + pageOffset);
         int nErr = h.validateRdh(errorDescription);
 
         uint16_t offsetNextPacket = h.getOffsetNextPacket();
@@ -167,12 +170,12 @@ ReadoutStfDecoder::ReadoutStfDecoder(std::vector<FairMQMessagePtr> inMsgParts) {
           pendingHbfCollect(1);
 
           // start new HBF
-          lastPart.data = ((uint8_t *)data) + pageOffset;
+          lastPart.data = ((uint8_t*)data) + pageOffset;
           lastPart.size = offsetNextPacket;
         } else {
           // check if beginning of new page
           if (lastPart.data == nullptr) {
-            lastPart.data = ((uint8_t *)data) + pageOffset;
+            lastPart.data = ((uint8_t*)data) + pageOffset;
           }
           lastPart.size += offsetNextPacket;
         }
@@ -189,18 +192,20 @@ ReadoutStfDecoder::ReadoutStfDecoder(std::vector<FairMQMessagePtr> inMsgParts) {
   pendingHbfCollect(1);
 }
 
-ReadoutStfDecoder::~ReadoutStfDecoder() {
+ReadoutStfDecoder::~ReadoutStfDecoder()
+{
   // release data copied
-  for (auto const &p : allocatedParts) {
+  for (auto const& p : allocatedParts) {
     free(p);
   }
 }
 
 // program main
-int main(int argc, const char **argv) {
+int main(int argc, const char** argv)
+{
 
   ConfigFile cfg;
-  const char *cfgFileURI = "";
+  const char* cfgFileURI = "";
   std::string cfgEntryPoint = "";
   if (argc < 3) {
     printf("Please provide path to configuration file and entry point (section name)\n");
@@ -237,7 +242,10 @@ int main(int argc, const char **argv) {
   // configuration parameter: | receiverFMQ | decodingMode | string | none | Decoding mode of the readout FMQ output stream. Possible values: none (no decoding), stfHbf, stfSuperpage |
   std::string cfgDecodingMode = "none";
   cfg.getOptionalValue<std::string>(cfgEntryPoint + ".decodingMode", cfgDecodingMode);
-  enum decodingMode { none = 0, stfHbf = 1, stfSuperpage = 2, stfDatablock = 3 };
+  enum decodingMode { none = 0,
+                      stfHbf = 1,
+                      stfSuperpage = 2,
+                      stfDatablock = 3 };
   decodingMode mode = decodingMode::none;
   if (cfgDecodingMode == "none") {
     mode = decodingMode::none;
@@ -263,7 +271,7 @@ int main(int argc, const char **argv) {
   // create FMQ receiving channel
   theLog.log(LogInfoDevel_(3002), "Creating FMQ RX channel %s type %s @ %s", cfgChannelName.c_str(), cfgChannelType.c_str(), cfgChannelAddress.c_str());
   auto factory = FairMQTransportFactory::CreateTransportFactory(cfgTransportType);
-  auto pull = FairMQChannel{cfgChannelName, cfgChannelType, factory};
+  auto pull = FairMQChannel{ cfgChannelName, cfgChannelType, factory };
   pull.Connect(cfgChannelAddress);
   // pull.InitCommandInterface();
 
@@ -320,9 +328,9 @@ int main(int argc, const char **argv) {
 
           int i = 0;
           bool dumpNext = false;
-          SubTimeframe *stf = nullptr;
+          SubTimeframe* stf = nullptr;
           int numberOfHBF = nPart - 1;
-          for (auto const &mm : msgParts) {
+          for (auto const& mm : msgParts) {
 
             if (i == 0) {
               // first part is STF header
@@ -330,7 +338,7 @@ int main(int argc, const char **argv) {
                 theLog.log(LogErrorSupport_(3237), "Header wrong size %d != %d\n", (int)mm->GetSize(), (int)sizeof(SubTimeframe));
                 break;
               }
-              stf = (SubTimeframe *)mm->GetData();
+              stf = (SubTimeframe*)mm->GetData();
               if (cfgDumpTF) {
                 if ((stf->timeframeId == 1) || (stf->timeframeId % cfgDumpTF == 0)) {
                   dumpNext = true;
@@ -340,14 +348,14 @@ int main(int argc, const char **argv) {
               if ((numberOfHBF != 0) && (stf->isRdhFormat)) {
                 // then we have 1 part per HBF
                 size_t dataSize = mm->GetSize();
-                void *data = mm->GetData();
+                void* data = mm->GetData();
                 std::string errorDescription;
                 for (size_t pageOffset = 0; pageOffset < dataSize;) {
                   if (pageOffset + sizeof(o2::Header::RAWDataHeader) > dataSize) {
                     theLog.log(LogErrorSupport_(3237), "part %d offset 0x%08lX: not enough space for RDH", i, pageOffset);
                     break;
                   }
-                  RdhHandle h(((uint8_t *)data) + pageOffset);
+                  RdhHandle h(((uint8_t*)data) + pageOffset);
 
                   if (dumpNext) {
                     printf("Receiving TF %d CRU %d.%d link %d : %d HBf\n", (int)stf->timeframeId, (int)h.getCruId(), (int)h.getEndPointId(), (int)stf->linkId, numberOfHBF);
@@ -395,10 +403,10 @@ int main(int argc, const char **argv) {
 
           if (cfgDumpRDH) {
             int i = 0;
-            for (auto const &p : decoder.getHbf()) {
+            for (auto const& p : decoder.getHbf()) {
               printf("HBF %d\n", i);
               for (size_t offset = 0; offset < p.size;) {
-                RdhHandle h(((uint8_t *)p.data) + offset);
+                RdhHandle h(((uint8_t*)p.data) + offset);
                 if (cfgDumpRDH) {
                   h.dumpRdh(offset, 1);
                 }
@@ -422,7 +430,7 @@ int main(int argc, const char **argv) {
             if (sz != sizeof(DataBlockHeader)) {
               theLog.log(LogErrorSupport_(3237), "part[0] size = %d, should be %d", sz, (int)sizeof(DataBlock));
             } else {
-              DataBlockHeader *dbhb = (DataBlockHeader *)msgParts[0]->GetData();
+              DataBlockHeader* dbhb = (DataBlockHeader*)msgParts[0]->GetData();
               // printf("rx datablock size: header %d ?= msgpart %d\n",(int)dbhb->dataSize,(int)msgParts[1]->GetSize());
             }
           }
@@ -531,7 +539,8 @@ int main(int argc, const char **argv) {
 
 // replacement implementation when FMQ not available
 #include <stdio.h>
-int main() {
+int main()
+{
   printf("Not compiled with FMQ, exiting\n");
   return 0;
 }

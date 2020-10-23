@@ -27,7 +27,8 @@ ReadoutStats::ReadoutStats() { reset(); }
 
 ReadoutStats::~ReadoutStats() {}
 
-void ReadoutStats::reset() {
+void ReadoutStats::reset()
+{
   numberOfSubtimeframes = 0;
   bytesReadout = 0;
   bytesRecorded = 0;

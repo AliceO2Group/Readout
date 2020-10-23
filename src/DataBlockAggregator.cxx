@@ -12,25 +12,29 @@
 
 #include "readoutInfoLogger.h"
 
-DataBlockAggregator::DataBlockAggregator(AliceO2::Common::Fifo<DataSetReference> *v_output, std::string name) {
+DataBlockAggregator::DataBlockAggregator(AliceO2::Common::Fifo<DataSetReference>* v_output, std::string name)
+{
   output = v_output;
   aggregateThread = std::make_unique<Thread>(DataBlockAggregator::threadCallback, this, name, 1000);
   isIncompletePending = 0;
 }
 
-DataBlockAggregator::~DataBlockAggregator() {
+DataBlockAggregator::~DataBlockAggregator()
+{
   // todo: flush out FIFOs ?
 }
 
-int DataBlockAggregator::addInput(std::shared_ptr<AliceO2::Common::Fifo<DataBlockContainerReference>> input) {
+int DataBlockAggregator::addInput(std::shared_ptr<AliceO2::Common::Fifo<DataBlockContainerReference>> input)
+{
   // inputs.push_back(input);
   inputs.push_back(input);
   slicers.push_back(DataBlockSlicer());
   return 0;
 }
 
-Thread::CallbackResult DataBlockAggregator::threadCallback(void *arg) {
-  DataBlockAggregator *dPtr = (DataBlockAggregator *)arg;
+Thread::CallbackResult DataBlockAggregator::threadCallback(void* arg)
+{
+  DataBlockAggregator* dPtr = (DataBlockAggregator*)arg;
   if (dPtr == NULL) {
     return Thread::CallbackResult::Error;
   }
@@ -42,7 +46,8 @@ Thread::CallbackResult DataBlockAggregator::threadCallback(void *arg) {
   return dPtr->executeCallback();
 }
 
-void DataBlockAggregator::start() {
+void DataBlockAggregator::start()
+{
   for (unsigned int ix = 0; ix < inputs.size(); ix++) {
     slicers[ix].slicerId = ix;
   }
@@ -51,7 +56,8 @@ void DataBlockAggregator::start() {
   aggregateThread->start();
 }
 
-void DataBlockAggregator::stop(int waitStop) {
+void DataBlockAggregator::stop(int waitStop)
+{
   doFlush = 0;
   aggregateThread->stop();
   if (waitStop) {
@@ -75,7 +81,8 @@ void DataBlockAggregator::stop(int waitStop) {
   output->clear();
 }
 
-Thread::CallbackResult DataBlockAggregator::executeCallback() {
+Thread::CallbackResult DataBlockAggregator::executeCallback()
+{
 
   if (output->isFull()) {
     return Thread::CallbackResult::Idle;
@@ -153,15 +160,15 @@ Thread::CallbackResult DataBlockAggregator::executeCallback() {
 
       if (enableStfBuilding) {
         // buffer timeframes
-        DataBlock *db = bcv->at(0)->getData();
+        DataBlock* db = bcv->at(0)->getData();
         uint64_t tfId = db->header.timeframeId;
         uint64_t sourceId = (((uint64_t)db->header.equipmentId) << 32) | ((uint64_t)db->header.linkId);
         if (tfId <= lastTimeframeId) {
           theLog.log(LogWarningSupport_(3235), "Discarding late data for TF %lu (source = 0x%lX)", tfId, sourceId);
         } else {
-          tStf &stf = stfBuffer[tfId];
+          tStf& stf = stfBuffer[tfId];
           stf.tfId = tfId;
-          stf.sstf.push_back({sourceId, bcv, now});
+          stf.sstf.push_back({ sourceId, bcv, now });
           stf.updateTime = now;
           // theLog.log(LogDebugTrace, "aggregate - added tf %lu : source %lX",tfId,sourceId);
         }
@@ -188,7 +195,7 @@ Thread::CallbackResult DataBlockAggregator::executeCallback() {
         double tmin = it->second.updateTime;
         double tmax = it->second.updateTime;
         int ix = 0;
-        for (auto const &ss : it->second.sstf) {
+        for (auto const& ss : it->second.sstf) {
           ix++;
           if (ix == (int)it->second.sstf.size()) {
             // this is the last piece of this TF, mark last block as such
@@ -234,7 +241,8 @@ DataBlockSlicer::DataBlockSlicer() {}
 
 DataBlockSlicer::~DataBlockSlicer() {}
 
-int DataBlockSlicer::appendBlock(DataBlockContainerReference const &block, double timestamp) {
+int DataBlockSlicer::appendBlock(DataBlockContainerReference const& block, double timestamp)
+{
   uint64_t tfId = block->getData()->header.timeframeId;
   DataSourceId sourceId;
   sourceId.linkId = block->getData()->header.linkId;
@@ -249,7 +257,7 @@ int DataBlockSlicer::appendBlock(DataBlockContainerReference const &block, doubl
 
   // theLog.log(LogDebugTrace, "slicer %p append block eq %d link %d for tf %d",
   //   this,(int)sourceId.equipmentId,(int)sourceId.linkId,(int)tfId);
-  PartialSlice &s = partialSlices[sourceId];
+  PartialSlice& s = partialSlices[sourceId];
 
   if (s.currentDataSet != nullptr) {
     // theLog.log(LogDebugTrace, "slice size = %d chunks",partialSlices[linkId].currentDataSet->size()); if ((partialSlices[linkId].tfId!=tfId)||(partialSlices[linkId].currentDataSet->size()>2))
@@ -275,12 +283,13 @@ int DataBlockSlicer::appendBlock(DataBlockContainerReference const &block, doubl
   return s.currentDataSet->size();
 }
 
-DataSetReference DataBlockSlicer::getSlice(bool includeIncomplete) {
+DataSetReference DataBlockSlicer::getSlice(bool includeIncomplete)
+{
   // get a slice. get oldest from queue, or possibly currentDataSet when queue empty and includeIncomplete is true
   DataSetReference bcv = nullptr;
   if (slices.empty()) {
     if (includeIncomplete) {
-      for (auto &s : partialSlices) {
+      for (auto& s : partialSlices) {
         bcv = s.second.currentDataSet;
         if (bcv != nullptr) {
           s.second.currentDataSet = nullptr;
@@ -297,9 +306,10 @@ DataSetReference DataBlockSlicer::getSlice(bool includeIncomplete) {
   return bcv;
 }
 
-int DataBlockSlicer::completeSliceOnTimeout(double timestamp) {
+int DataBlockSlicer::completeSliceOnTimeout(double timestamp)
+{
   int nFlushed = 0;
-  for (auto &s : partialSlices) {
+  for (auto& s : partialSlices) {
     // check if current data set needs to be flushed
     if (s.second.currentDataSet != nullptr) {
       if (s.second.lastUpdateTime <= timestamp) {

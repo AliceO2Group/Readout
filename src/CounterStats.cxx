@@ -15,7 +15,8 @@
 CounterStats::CounterStats() { reset(); }
 CounterStats::~CounterStats() {}
 
-void CounterStats::reset() {
+void CounterStats::reset()
+{
   value = 0;
   sum = 0;
   nValues = 0;
@@ -25,7 +26,8 @@ void CounterStats::reset() {
   histoCounts.clear();
 }
 
-void CounterStats::set(CounterValue newValue) {
+void CounterStats::set(CounterValue newValue)
+{
   value = newValue;
   sum += newValue;
   if (value < min) {
@@ -54,7 +56,8 @@ void CounterStats::set(CounterValue newValue) {
   }
 }
 
-void CounterStats::increment(CounterValue increment) {
+void CounterStats::increment(CounterValue increment)
+{
   value += increment;
   sum += increment;
   if (increment < min) {
@@ -70,7 +73,8 @@ CounterValue CounterStats::get() { return value; }
 
 CounterValue CounterStats::getTotal() { return sum; }
 
-double CounterStats::getAverage() {
+double CounterStats::getAverage()
+{
   if (nValues) {
     return sum * 1.0 / nValues;
   } else {
@@ -78,14 +82,16 @@ double CounterStats::getAverage() {
   }
 }
 
-CounterValue CounterStats::getMinimum() {
+CounterValue CounterStats::getMinimum()
+{
   if (nValues) {
     return min;
   }
   return 0;
 }
 
-CounterValue CounterStats::getMaximum() {
+CounterValue CounterStats::getMaximum()
+{
   if (nValues) {
     return max;
   }
@@ -94,7 +100,8 @@ CounterValue CounterStats::getMaximum() {
 
 CounterValue CounterStats::getCount() { return nValues; }
 
-void CounterStats::enableHistogram(unsigned int nbin, CounterValue vmin, CounterValue vmax, int logScale) {
+void CounterStats::enableHistogram(unsigned int nbin, CounterValue vmin, CounterValue vmax, int logScale)
+{
   histoCounts.clear();
   histoVmin = vmin;
   histoVmax = vmax;
@@ -120,7 +127,8 @@ void CounterStats::enableHistogram(unsigned int nbin, CounterValue vmin, Counter
   histoCounts.resize(nbin, 0);
 }
 
-void CounterStats::getHisto(std::vector<double> &x, std::vector<CounterValue> &count) {
+void CounterStats::getHisto(std::vector<double>& x, std::vector<CounterValue>& count)
+{
   if (histoNbin) {
     x.resize(histoNbin);
     count.resize(histoNbin);

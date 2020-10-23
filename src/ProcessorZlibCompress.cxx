@@ -17,9 +17,10 @@
 
 extern "C" {
 
-int processBlock(DataBlockContainerReference &input, DataBlockContainerReference &output) {
+int processBlock(DataBlockContainerReference& input, DataBlockContainerReference& output)
+{
 
-  void *ptr = input->getData()->data; // data input
+  void* ptr = input->getData()->data; // data input
   if (ptr == NULL) {
     return -1;
   }
@@ -37,16 +38,16 @@ int processBlock(DataBlockContainerReference &input, DataBlockContainerReference
   size_t maxSizeOut = deflateBound(&defstream, (uInt)size); // maximum size of output
 
   // in-place compression does not work completely, just few first bytes are wrong, too bad we have to create a temporary output buffer
-  void *out;
+  void* out;
   out = malloc(maxSizeOut);
   if (out == nullptr)
     return -1;
 
   // deflate data page in one go
-  defstream.avail_in = (uInt)size;   // size of input
-  defstream.next_in = (Bytef *)ptr;  // input
-  defstream.avail_out = (uInt)size;  // size of output
-  defstream.next_out = (Bytef *)out; // output
+  defstream.avail_in = (uInt)size;  // size of input
+  defstream.next_in = (Bytef*)ptr;  // input
+  defstream.avail_out = (uInt)size; // size of output
+  defstream.next_out = (Bytef*)out; // output
   deflate(&defstream, Z_FINISH);
   deflateEnd(&defstream);
 
