@@ -24,7 +24,7 @@ int main()
   auto transportFactory = FairMQTransportFactory::CreateTransportFactory(cfgTransportType);
   auto channel = FairMQChannel{ cfgChannelName, cfgChannelType, transportFactory };
   channel.Bind(cfgChannelAddress);
-  if (!channel.ValidateChannel()) {
+  if (!channel.Validate()) {
     return -1;
   }
 
