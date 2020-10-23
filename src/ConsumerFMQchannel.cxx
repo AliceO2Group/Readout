@@ -160,7 +160,9 @@ public:
       theLog.log(LogInfoDevel_(3008), "Bank %s added", memoryBankName.c_str());
     }
 
-    // allocate a pool of pages for headers and data frame copies configuration parameter: | consumer-FairMQChannel-* | memoryPoolPageSize | bytes | 128k | c.f. same parameter in bank-*. | configuration parameter: | consumer-FairMQChannel-* | memoryPoolNumberOfPages | int | 100 | c.f. same parameter in bank-*. |
+    // allocate a pool of pages for headers and data frame copies
+    // configuration parameter: | consumer-FairMQChannel-* | memoryPoolPageSize | bytes | 128k | c.f. same parameter in bank-*. |
+    // configuration parameter: | consumer-FairMQChannel-* | memoryPoolNumberOfPages | int | 100 | c.f. same parameter in bank-*. |
     memoryPoolPageSize = 0;
     memoryPoolNumberOfPages = 100;
     std::string cfgMemoryPoolPageSize = "128k";
