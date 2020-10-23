@@ -15,19 +15,16 @@
 using namespace AliceO2::InfoLogger;
 InfoLogger theLog;
 #include <Common/Timer.h>
-
-#include "MemoryBankManager.h"
-
 #include <ReadoutCard/ChannelFactory.h>
 #include <ReadoutCard/DmaChannelInterface.h>
 #include <ReadoutCard/Exception.h>
 #include <ReadoutCard/MemoryMappedFile.h>
 #include <ReadoutCard/Parameters.h>
-
+#include <sys/mman.h>
 #include <time.h>
 #include <vector>
 
-#include <sys/mman.h>
+#include "MemoryBankManager.h"
 
 #ifdef WITH_NUMA
 #include <numa.h>
@@ -39,9 +36,10 @@ InfoLogger theLog;
 #include <sys/stat.h>
 #include <sys/types.h>
 
-class ROCdevice {
+class ROCdevice
+{
 
-public:
+ public:
   ROCdevice(std::string id);
   ~ROCdevice();
 
@@ -52,7 +50,7 @@ public:
 
   size_t nBytes = 0;
 
-private:
+ private:
   std::string bankId = "testROC";
   size_t bankSize = 2 * 1024 * 1024 * 1024L;
 
@@ -72,26 +70,24 @@ private:
   AliceO2::Common::Timer t;
 };
 
-ROCdevice::ROCdevice(std::string id) {
+ROCdevice::ROCdevice(std::string id)
+{
 
   bankId += id;
 
   bank = getMemoryBank(bankSize, "MemoryMappedFile", bankId);
   theMemoryBankManager.addBank(bank);
-  mp = theMemoryBankManager.getPagedPool(
-      memoryPoolPageSize, memoryPoolNumberOfPages, bankId); // pool of pages
+  mp = theMemoryBankManager.getPagedPool(memoryPoolPageSize, memoryPoolNumberOfPages, bankId); // pool of pages
 
   superPageSize = mp->getPageSize();
-  superPageSize -=
-      superPageSize % (32 * 1024); // must be a multiple of 32Kb for ROC
+  superPageSize -= superPageSize % (32 * 1024); // must be a multiple of 32Kb for ROC
 
   cardId = id;
   params.setCardId(AliceO2::roc::Parameters::cardIdFromString(cardId));
   params.setChannelNumber(cfgChannelNumber);
   params.setDataSource(AliceO2::roc::DataSource::fromString(cfgDataSource));
 
-  params.setBufferParameters(AliceO2::roc::buffer_parameters::Memory{
-      mp->getBaseBlockAddress(), mp->getBaseBlockSize()});
+  params.setBufferParameters(AliceO2::roc::buffer_parameters::Memory{ mp->getBaseBlockAddress(), mp->getBaseBlockSize() });
 
   channel = AliceO2::roc::ChannelFactory().getDmaChannel(params);
 
@@ -102,18 +98,15 @@ ROCdevice::ROCdevice(std::string id) {
   if (v_infoSerialNumber) {
     infoSerialNumber = std::to_string(v_infoSerialNumber.get());
   }
-  std::string infoFirmwareVersion =
-      channel->getFirmwareInfo().value_or("unknown");
+  std::string infoFirmwareVersion = channel->getFirmwareInfo().value_or("unknown");
   std::string infoCardId = channel->getCardId().value_or("unknown");
-  theLog.log(LogInfoDevel_(3010), "ROC PCI %s @ NUMA node %d, serial number %s, firmware version "
-             "%s, card id %s",
-             infoPciAddress.c_str(), infoNumaNode, infoSerialNumber.c_str(),
-             infoFirmwareVersion.c_str(), infoCardId.c_str());
+  theLog.log(LogInfoDevel_(3010), "ROC PCI %s @ NUMA node %d, serial number %s, firmware version %s, card id %s", infoPciAddress.c_str(), infoNumaNode, infoSerialNumber.c_str(), infoFirmwareVersion.c_str(), infoCardId.c_str());
 }
 
 ROCdevice::~ROCdevice() {}
 
-void ROCdevice::start() {
+void ROCdevice::start()
+{
   // start DMA
   theLog.log(LogInfoDevel_(3010), "Starting DMA for ROC %s:%d", cardId.c_str(), cfgChannelNumber);
   channel->startDma();
@@ -124,7 +117,8 @@ void ROCdevice::start() {
   theLog.log(LogInfoDevel_(3010), "ROC input queue size = %d pages", RocFifoSize);
 }
 
-void ROCdevice::stop() {
+void ROCdevice::stop()
+{
   double runningTime = t.getTime();
 
   // stop DMA
@@ -139,13 +133,13 @@ void ROCdevice::stop() {
 
 //#define LOGDEBUG
 
-int ROCdevice::doLoop() {
+int ROCdevice::doLoop()
+{
 
   // first empty fifo from available pages
   int nPop = 0;
   while ((channel->getReadyQueueSize() > 0)) {
-    auto superpage = channel->getSuperpage(); // this is the first superpage in
-                                              // FIFO ... let's check its state
+    auto superpage = channel->getSuperpage(); // this is the first superpage in FIFO ... let's check its state
     if (superpage.isFilled()) {
       mp->releasePage(superpage.getUserData());
       channel->popSuperpage();
@@ -162,10 +156,10 @@ int ROCdevice::doLoop() {
   // give free pages to the driver
   int nPush = 0;
   while (channel->getTransferQueueAvailable() != 0) {
-    void *newPage = mp->getPage();
+    void* newPage = mp->getPage();
     if (newPage != nullptr) {
       AliceO2::roc::Superpage superpage;
-      superpage.setOffset((char *)newPage - (char *)mp->getBaseBlockAddress());
+      superpage.setOffset((char*)newPage - (char*)mp->getBaseBlockAddress());
       superpage.setSize(superPageSize);
       superpage.setUserData(newPage);
       channel->pushSuperpage(superpage);
@@ -187,12 +181,14 @@ int ROCdevice::doLoop() {
   return nPush + nPop;
 }
 
-void ROCdevice::poll() {
+void ROCdevice::poll()
+{
   // call periodic function
   channel->fillSuperpages();
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv)
+{
 
   mlockall(MCL_CURRENT | MCL_FUTURE);
 
@@ -218,7 +214,7 @@ int main(int argc, char **argv) {
   // bind alloc/exec on numa node
   if (numaNodeId >= 0) {
 #ifdef WITH_NUMA
-    struct bitmask *nodemask;
+    struct bitmask* nodemask;
     nodemask = numa_allocate_nodemask();
     if (nodemask == NULL) {
       return -1;
@@ -264,7 +260,7 @@ int main(int argc, char **argv) {
     usleep(1000);
   }
 
-  for (auto &d : devices) {
+  for (auto& d : devices) {
     d.start();
   }
 
@@ -275,7 +271,7 @@ int main(int argc, char **argv) {
   for (;;) {
     nloop++;
     int n = 0;
-    for (auto &d : devices) {
+    for (auto& d : devices) {
       n += d.doLoop();
     }
     int minItems = 0;
@@ -343,10 +339,9 @@ int main(int argc, char **argv) {
     }
   }
 
-  for (auto &d : devices) {
+  for (auto& d : devices) {
     d.stop();
   }
-  printf("nloop=%llu nsleep=%llu ratio=%.3f\n", nloop, nsleep,
-         nsleep * 1.0 / nloop);
+  printf("nloop=%llu nsleep=%llu ratio=%.3f\n", nloop, nsleep, nsleep * 1.0 / nloop);
   return 0;
 }

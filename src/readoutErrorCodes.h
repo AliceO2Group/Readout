@@ -13,7 +13,7 @@
   { 3007, "Trace for readout file I/O", nullptr},
   { 3008, "Trace for readout memory", nullptr},
   { 3009, "Trace for readout data dump", nullptr},
-  { 3010, "Trace for readout hardware operations and status", nullptr},  
+  { 3010, "Trace for readout hardware operations and status", nullptr},
 
   { 3100, "Configuration problem", nullptr},
   { 3101, "A feature is configured but not supported by this readout build.", nullptr},
@@ -24,7 +24,7 @@
   { 3220, "Timeframe server problem", nullptr},
   { 3230, "Memory problem", nullptr},
   { 3231, "Runtime problem", nullptr},
-  { 3232, "File I/O problem", nullptr},  
+  { 3232, "File I/O problem", nullptr},
   { 3233, "FMQ I/O problem", nullptr},
   { 3234, "Monitoring lib problem", nullptr},
   { 3235, "Some data have been discarded", nullptr},

@@ -9,14 +9,13 @@
 // or submit itself to any jurisdiction.
 
 #include "MemoryPagesPool.h"
+
 #include <assert.h>
 
 int MemoryPagesPoolStatsEnabled = 0; // flag to control memory stats
 
-MemoryPagesPool::MemoryPagesPool(size_t vPageSize, size_t vNumberOfPages,
-                                 void *vBaseAddress, size_t vBaseSize,
-                                 ReleaseCallback vCallback,
-                                 size_t firstPageOffset) {
+MemoryPagesPool::MemoryPagesPool(size_t vPageSize, size_t vNumberOfPages, void* vBaseAddress, size_t vBaseSize, ReleaseCallback vCallback, size_t firstPageOffset)
+{
   // initialize members from parameters
   pageSize = vPageSize;
   numberOfPages = vNumberOfPages;
@@ -28,15 +27,13 @@ MemoryPagesPool::MemoryPagesPool(size_t vPageSize, size_t vNumberOfPages,
   assert(headerReservedSpace >= sizeof(DataBlock));
   assert(headerReservedSpace <= pageSize);
 
-  // if not specified, assuming base block size big enough to fit number of
-  // pages * page size
+  // if not specified, assuming base block size big enough to fit number of pages * page size
   if (baseBlockSize == 0) {
     baseBlockSize = pageSize * numberOfPages;
   }
 
   // check validity of parameters
-  if ((firstPageOffset >= vBaseSize) || (vBaseSize == 0) ||
-      (vNumberOfPages == 0) || (vPageSize == 0) || (baseBlockSize == 0)) {
+  if ((firstPageOffset >= vBaseSize) || (vBaseSize == 0) || (vNumberOfPages == 0) || (vPageSize == 0) || (baseBlockSize == 0)) {
     throw __LINE__;
   }
 
@@ -47,12 +44,11 @@ MemoryPagesPool::MemoryPagesPool(size_t vPageSize, size_t vNumberOfPages,
   }
 
   // create a fifo and store list of pages available
-  pagesAvailable =
-      std::make_unique<AliceO2::Common::Fifo<void *>>(numberOfPages);
-  void *ptr = nullptr;
+  pagesAvailable = std::make_unique<AliceO2::Common::Fifo<void*>>(numberOfPages);
+  void* ptr = nullptr;
   int id = 0;
   for (size_t i = 0; i < numberOfPages; i++) {
-    ptr = &((char *)baseBlockAddress)[firstPageOffset + i * pageSize];
+    ptr = &((char*)baseBlockAddress)[firstPageOffset + i * pageSize];
     pagesAvailable->push(ptr);
     if (i == 0) {
       firstPageAddress = ptr;
@@ -80,29 +76,18 @@ MemoryPagesPool::MemoryPagesPool(size_t vPageSize, size_t vNumberOfPages,
   }
 }
 
-MemoryPagesPool::~MemoryPagesPool() {
+MemoryPagesPool::~MemoryPagesPool()
+{
   if (MemoryPagesPoolStatsEnabled) {
     printf("memory pool statistics: \n");
     printf("getpage->getdatablock");
-    printf(": avg=%.0lf  min=%llu  max=%llu  count=%llu \n", t1.getAverage(),
-           (unsigned long long)t1.getMinimum(),
-           (unsigned long long)t1.getMaximum(),
-           (unsigned long long)t1.getCount());
+    printf(": avg=%.0lf  min=%llu  max=%llu  count=%llu \n", t1.getAverage(), (unsigned long long)t1.getMinimum(), (unsigned long long)t1.getMaximum(), (unsigned long long)t1.getCount());
     printf("getdatablock->releasepage");
-    printf(": avg=%.0lf  min=%llu  max=%llu  count=%llu \n", t2.getAverage(),
-           (unsigned long long)t2.getMinimum(),
-           (unsigned long long)t2.getMaximum(),
-           (unsigned long long)t2.getCount());
+    printf(": avg=%.0lf  min=%llu  max=%llu  count=%llu \n", t2.getAverage(), (unsigned long long)t2.getMinimum(), (unsigned long long)t2.getMaximum(), (unsigned long long)t2.getCount());
     printf("releasepage->getpage");
-    printf(": avg=%.0lf  min=%llu  max=%llu  count=%llu \n", t3.getAverage(),
-           (unsigned long long)t3.getMinimum(),
-           (unsigned long long)t3.getMaximum(),
-           (unsigned long long)t3.getCount());
+    printf(": avg=%.0lf  min=%llu  max=%llu  count=%llu \n", t3.getAverage(), (unsigned long long)t3.getMinimum(), (unsigned long long)t3.getMaximum(), (unsigned long long)t3.getCount());
     printf("getpage->releasepage");
-    printf(": avg=%.0lf  min=%llu  max=%llu  count=%llu \n", t4.getAverage(),
-           (unsigned long long)t4.getMinimum(),
-           (unsigned long long)t4.getMaximum(),
-           (unsigned long long)t4.getCount());
+    printf(": avg=%.0lf  min=%llu  max=%llu  count=%llu \n", t4.getAverage(), (unsigned long long)t4.getMinimum(), (unsigned long long)t4.getMaximum(), (unsigned long long)t4.getCount());
 
     std::vector<double> tx;
     std::vector<CounterValue> tv1, tv2, tv3, tv4;
@@ -137,7 +122,7 @@ MemoryPagesPool::~MemoryPagesPool() {
     }
 
     int nNeverUsed = 0;
-    for (auto &p : pagesMap) {
+    for (auto& p : pagesMap) {
       // printf("page id %d used %d\n",p.second.id,p.second.nTimeUsed);
       if (p.second.nTimeUsed <= 10) {
         nNeverUsed++;
@@ -152,9 +137,10 @@ MemoryPagesPool::~MemoryPagesPool() {
   }
 }
 
-void *MemoryPagesPool::getPage() {
+void* MemoryPagesPool::getPage()
+{
   // get a page from fifo, if available
-  void *ptr = nullptr;
+  void* ptr = nullptr;
   pagesAvailable->pop(ptr);
 
   // stats
@@ -164,9 +150,7 @@ void *MemoryPagesPool::getPage() {
       if (search != pagesMap.end()) {
         search->second.timeGetPage = clock.getTime();
         if (search->second.timeReleasePage > 0) {
-          t3.set((uint64_t)(
-              (search->second.timeGetPage - search->second.timeReleasePage) *
-              1000000));
+          t3.set((uint64_t)((search->second.timeGetPage - search->second.timeReleasePage) * 1000000));
         }
         search->second.timeGetDataBlock = 0;
         search->second.timeReleasePage = 0;
@@ -178,7 +162,8 @@ void *MemoryPagesPool::getPage() {
   return ptr;
 }
 
-void MemoryPagesPool::releasePage(void *address) {
+void MemoryPagesPool::releasePage(void* address)
+{
   // safety check on address provided
   if (!isPageValid(address)) {
     throw __LINE__;
@@ -190,14 +175,10 @@ void MemoryPagesPool::releasePage(void *address) {
     if (search != pagesMap.end()) {
       search->second.timeReleasePage = clock.getTime();
       if (search->second.timeGetDataBlock > 0) {
-        t2.set((uint64_t)(
-            (search->second.timeReleasePage - search->second.timeGetDataBlock) *
-            1000000));
+        t2.set((uint64_t)((search->second.timeReleasePage - search->second.timeGetDataBlock) * 1000000));
       }
       if (search->second.timeGetPage > 0) {
-        t4.set((uint64_t)(
-            (search->second.timeReleasePage - search->second.timeGetPage) *
-            1000000));
+        t4.set((uint64_t)((search->second.timeReleasePage - search->second.timeGetPage) * 1000000));
       }
     }
   }
@@ -207,18 +188,13 @@ void MemoryPagesPool::releasePage(void *address) {
 }
 
 size_t MemoryPagesPool::getPageSize() { return pageSize; }
-
 size_t MemoryPagesPool::getTotalNumberOfPages() { return numberOfPages; }
-
-size_t MemoryPagesPool::getNumberOfPagesAvailable() {
-  return pagesAvailable->getNumberOfUsedSlots();
-}
-
-void *MemoryPagesPool::getBaseBlockAddress() { return baseBlockAddress; }
+size_t MemoryPagesPool::getNumberOfPagesAvailable() { return pagesAvailable->getNumberOfUsedSlots(); }
+void* MemoryPagesPool::getBaseBlockAddress() { return baseBlockAddress; }
 size_t MemoryPagesPool::getBaseBlockSize() { return baseBlockSize; }
 
-std::shared_ptr<DataBlockContainer>
-MemoryPagesPool::getNewDataBlockContainer(void *newPage) {
+std::shared_ptr<DataBlockContainer> MemoryPagesPool::getNewDataBlockContainer(void* newPage)
+{
   // get a new page if none provided
   if (newPage == nullptr) {
     // get a new page from the pool
@@ -239,19 +215,16 @@ MemoryPagesPool::getNewDataBlockContainer(void *newPage) {
     if (search != pagesMap.end()) {
       search->second.timeGetDataBlock = clock.getTime();
       if (search->second.timeGetPage > 0) {
-        t1.set((uint64_t)(
-            (search->second.timeGetDataBlock - search->second.timeGetPage) *
-            1000000));
+        t1.set((uint64_t)((search->second.timeGetDataBlock - search->second.timeGetPage) * 1000000));
       }
     }
   }
 
-  // fill header at beginning of page
-  // assuming payload is contiguous after header
-  DataBlock *b = (DataBlock *)newPage;
+  // fill header at beginning of page assuming payload is contiguous after header
+  DataBlock* b = (DataBlock*)newPage;
   b->header = defaultDataBlockHeader;
   b->header.dataSize = getDataBlockMaxSize();
-  b->data = &(((char *)b)[headerReservedSpace]);
+  b->data = &(((char*)b)[headerReservedSpace]);
 
   // define a function to put it back in pool after use
   auto releaseCallback = [this, newPage](void) -> void {
@@ -260,8 +233,7 @@ MemoryPagesPool::getNewDataBlockContainer(void *newPage) {
   };
 
   // create a container and associate data page and release callback
-  std::shared_ptr<DataBlockContainer> bc = std::make_shared<DataBlockContainer>(
-      releaseCallback, (DataBlock *)newPage, pageSize);
+  std::shared_ptr<DataBlockContainer> bc = std::make_shared<DataBlockContainer>(releaseCallback, (DataBlock*)newPage, pageSize);
   if (bc == nullptr) {
     releaseCallback();
     return nullptr;
@@ -272,19 +244,18 @@ MemoryPagesPool::getNewDataBlockContainer(void *newPage) {
   return bc;
 }
 
-bool MemoryPagesPool::isPageValid(void *pagePtr) {
+bool MemoryPagesPool::isPageValid(void* pagePtr)
+{
   if (pagePtr < firstPageAddress) {
     return false;
   }
   if (pagePtr > lastPageAddress) {
     return false;
   }
-  if ((((char *)pagePtr - (char *)firstPageAddress) % pageSize) != 0) {
+  if ((((char*)pagePtr - (char*)firstPageAddress) % pageSize) != 0) {
     return false;
   }
   return true;
 }
 
-size_t MemoryPagesPool::getDataBlockMaxSize() {
-  return pageSize - headerReservedSpace;
-}
+size_t MemoryPagesPool::getDataBlockMaxSize() { return pageSize - headerReservedSpace; }

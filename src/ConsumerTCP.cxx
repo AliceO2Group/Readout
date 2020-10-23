@@ -12,8 +12,9 @@
 #include "ReadoutUtils.h"
 #include "SocketTx.hxx"
 
-class ConsumerTCP : public Consumer {
-public:
+class ConsumerTCP : public Consumer
+{
+ public:
   std::vector<std::unique_ptr<SocketTx>> tx;
   uint64_t block_ix = 0;
   int txIx = 0;
@@ -22,48 +23,40 @@ public:
   uint64_t nBytesSent = 0;
   uint64_t nBlocksSent = 0;
 
-  ConsumerTCP(ConfigFile &cfg, std::string cfgEntryPoint)
-      : Consumer(cfg, cfgEntryPoint) {
+  ConsumerTCP(ConfigFile& cfg, std::string cfgEntryPoint) : Consumer(cfg, cfgEntryPoint)
+  {
 
-    // configuration parameter: | consumer-tcp-* | port | int | 10001 | Remote
-    // server TCP port number to connect to. |
+    // configuration parameter: | consumer-tcp-* | port | int | 10001 | Remote server TCP port number to connect to. |
     int cfgPort = 10001; // remote server port
     cfg.getOptionalValue<int>(cfgEntryPoint + ".port", cfgPort);
 
-    // configuration parameter: | consumer-tcp-* | host | string | localhost |
-    // Remote server IP name to connect to. |
+    // configuration parameter: | consumer-tcp-* | host | string | localhost | Remote server IP name to connect to. |
     std::string cfgHost = "localhost"; // remote server address
     cfg.getOptionalValue<std::string>(cfgEntryPoint + ".host", cfgHost);
 
-    // configuration parameter: | consumer-tcp-* | ncx | int | 1 | Number of
-    // parallel streams (and threads) to use. The port number specified in
-    // 'port' parameter will be increased by 1 for each extra connection. |
-    int cfgNcx = 1; // number of parallel connections (using ports from port to
-                    // port+ncx-1
+    // configuration parameter: | consumer-tcp-* | ncx | int | 1 | Number of parallel streams (and threads) to use. The port number specified in 'port' parameter will be increased by 1 for each extra connection. |
+    int cfgNcx = 1; // number of parallel connections (using ports from port to port+ncx-1
     cfg.getOptionalValue<int>(cfgEntryPoint + ".ncx", cfgNcx);
-    theLog.log(LogInfoDevel_(3002), "TCP client connecting to %s:%d-%d", cfgHost.c_str(), cfgPort,
-               cfgPort + cfgNcx - 1);
+    theLog.log(LogInfoDevel_(3002), "TCP client connecting to %s:%d-%d", cfgHost.c_str(), cfgPort, cfgPort + cfgNcx - 1);
 
     for (int i = 0; i < cfgNcx; i++) {
       int p = cfgPort + i;
       tx.push_back(std::make_unique<SocketTx>("Readout", cfgHost.c_str(), p));
     }
   }
-  ~ConsumerTCP() {
+  ~ConsumerTCP()
+  {
     int nc = tx.size();
     for (int i = 0; i < nc; i++) {
       tx[i] = nullptr;
     }
     tx.clear();
 
-    theLog.log(LogInfoDevel_(3003), "TCP client:  %llu blocks sent, %llu blocks dropped",
-               (unsigned long long)nBlocksSent,
-               (unsigned long long)nBlocksDropped);
-    theLog.log(LogInfoDevel_(3003), "TCP client:  %s sent,%s dropped",
-               NumberOfBytesToString(nBytesSent, "bytes", 1024).c_str(),
-               NumberOfBytesToString(nBytesDropped, "bytes", 1024).c_str());
+    theLog.log(LogInfoDevel_(3003), "TCP client:  %llu blocks sent, %llu blocks dropped", (unsigned long long)nBlocksSent, (unsigned long long)nBlocksDropped);
+    theLog.log(LogInfoDevel_(3003), "TCP client:  %s sent,%s dropped", NumberOfBytesToString(nBytesSent, "bytes", 1024).c_str(), NumberOfBytesToString(nBytesDropped, "bytes", 1024).c_str());
   }
-  int pushData(DataBlockContainerReference &b) {
+  int pushData(DataBlockContainerReference& b)
+  {
     bool isOk = 0;
     int nc = tx.size();
     for (int i = 0; i < nc; i++) {
@@ -83,10 +76,7 @@ public:
     return 0;
   }
 
-private:
+ private:
 };
 
-std::unique_ptr<Consumer> getUniqueConsumerTCP(ConfigFile &cfg,
-                                               std::string cfgEntryPoint) {
-  return std::make_unique<ConsumerTCP>(cfg, cfgEntryPoint);
-}
+std::unique_ptr<Consumer> getUniqueConsumerTCP(ConfigFile& cfg, std::string cfgEntryPoint) { return std::make_unique<ConsumerTCP>(cfg, cfgEntryPoint); }

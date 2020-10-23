@@ -13,14 +13,15 @@
 #include "ReadoutUtils.h"
 #include "readoutInfoLogger.h"
 
-class ReadoutEquipmentDummy : public ReadoutEquipment {
+class ReadoutEquipmentDummy : public ReadoutEquipment
+{
 
-public:
-  ReadoutEquipmentDummy(ConfigFile &cfg, std::string name = "dummyReadout");
+ public:
+  ReadoutEquipmentDummy(ConfigFile& cfg, std::string name = "dummyReadout");
   ~ReadoutEquipmentDummy();
   DataBlockContainerReference getNextBlock();
 
-private:
+ private:
   Thread::CallbackResult populateFifoOut(); // iterative callback
 
   int eventMaxSize; // maximum data block size
@@ -28,48 +29,38 @@ private:
   int fillData;     // if set, data pages filled with incremental values
 };
 
-ReadoutEquipmentDummy::ReadoutEquipmentDummy(ConfigFile &cfg,
-                                             std::string cfgEntryPoint)
-    : ReadoutEquipment(cfg, cfgEntryPoint) {
+ReadoutEquipmentDummy::ReadoutEquipmentDummy(ConfigFile& cfg, std::string cfgEntryPoint) : ReadoutEquipment(cfg, cfgEntryPoint)
+{
 
   // get configuration values
-  // configuration parameter: | equipment-dummy-* | eventMaxSize | bytes | 128k
-  // | Maximum size of randomly generated event. |
-  // configuration parameter: |
-  // equipment-dummy-* | eventMinSize | bytes | 128k | Minimum size of randomly
-  // generated event. |
-  // configuration parameter: | equipment-dummy-* | fillData
-  // | int | 0 | Pattern used to fill data page: (0) no pattern used, data page
-  // is left untouched, with whatever values were in memory (1) incremental byte
-  // pattern (2) incremental word pattern, with one random word out of 5. |
+  // configuration parameter: | equipment-dummy-* | eventMaxSize | bytes | 128k | Maximum size of randomly generated event. |
+  // configuration parameter: | equipment-dummy-* | eventMinSize | bytes | 128k | Minimum size of randomly generated event. |
+  // configuration parameter: | equipment-dummy-* | fillData | int | 0 | Pattern used to fill data page: (0) no pattern used, data page is left untouched, with whatever values were in memory (1) incremental byte pattern (2) incremental word pattern, with one random word out of 5. |
   std::string sBytes;
   eventMaxSize = (int)128 * 1024;
   eventMinSize = (int)128 * 1024;
-  if (cfg.getOptionalValue<std::string>(cfgEntryPoint + ".eventMaxSize",
-                                        sBytes) == 0) {
+  if (cfg.getOptionalValue<std::string>(cfgEntryPoint + ".eventMaxSize", sBytes) == 0) {
     eventMaxSize = ReadoutUtils::getNumberOfBytesFromString(sBytes.c_str());
   }
-  if (cfg.getOptionalValue<std::string>(cfgEntryPoint + ".eventMinSize",
-                                        sBytes) == 0) {
+  if (cfg.getOptionalValue<std::string>(cfgEntryPoint + ".eventMinSize", sBytes) == 0) {
     eventMinSize = ReadoutUtils::getNumberOfBytesFromString(sBytes.c_str());
   }
   cfg.getOptionalValue<int>(cfgEntryPoint + ".fillData", fillData, (int)0);
 
   // log config summary
-  theLog.log(LogInfoDevel_(3002), "Equipment %s: eventSize: %d -> %d, fillData=%d", name.c_str(),
-             eventMinSize, eventMaxSize, fillData);
+  theLog.log(LogInfoDevel_(3002), "Equipment %s: eventSize: %d -> %d, fillData=%d", name.c_str(), eventMinSize, eventMaxSize, fillData);
 
   // ensure generated events will fit in blocks allocated from memory pool
   if ((size_t)eventMaxSize > mp->getDataBlockMaxSize()) {
-    theLog.log(LogErrorSupport_(3230), "memoryPoolPageSize too small, need at least %ld bytes",
-               (long)(eventMaxSize + mp->getPageSize() - mp->getDataBlockMaxSize()));
+    theLog.log(LogErrorSupport_(3230), "memoryPoolPageSize too small, need at least %ld bytes", (long)(eventMaxSize + mp->getPageSize() - mp->getDataBlockMaxSize()));
     throw __LINE__;
   }
 }
 
 ReadoutEquipmentDummy::~ReadoutEquipmentDummy() {}
 
-DataBlockContainerReference ReadoutEquipmentDummy::getNextBlock() {
+DataBlockContainerReference ReadoutEquipmentDummy::getNextBlock()
+{
 
   if (!isDataOn) {
     return nullptr;
@@ -84,11 +75,10 @@ DataBlockContainerReference ReadoutEquipmentDummy::getNextBlock() {
 
   // format data block
   if (nextBlock != nullptr) {
-    DataBlock *b = nextBlock->getData();
+    DataBlock* b = nextBlock->getData();
 
     // set size
-    int dSize = (int)(eventMinSize + (int)((eventMaxSize - eventMinSize) *
-                                           (rand() * 1.0 / RAND_MAX)));
+    int dSize = (int)(eventMinSize + (int)((eventMaxSize - eventMinSize) * (rand() * 1.0 / RAND_MAX)));
 
     // no need to fill header defaults, this is done by getNewDataBlockContainer()
     // only adjust payload size
@@ -102,7 +92,7 @@ DataBlockContainerReference ReadoutEquipmentDummy::getNextBlock() {
       }
     } else if (fillData == 2) {
       // incremental word pattern, with one random word out of 5
-      int *pi = (int *)b->data;
+      int* pi = (int*)b->data;
       for (unsigned int k = 0; k < dSize / sizeof(int); k++) {
         pi[k] = k;
         if (k % 5 == 0)
@@ -114,7 +104,4 @@ DataBlockContainerReference ReadoutEquipmentDummy::getNextBlock() {
   return nextBlock;
 }
 
-std::unique_ptr<ReadoutEquipment>
-getReadoutEquipmentDummy(ConfigFile &cfg, std::string cfgEntryPoint) {
-  return std::make_unique<ReadoutEquipmentDummy>(cfg, cfgEntryPoint);
-}
+std::unique_ptr<ReadoutEquipment> getReadoutEquipmentDummy(ConfigFile& cfg, std::string cfgEntryPoint) { return std::make_unique<ReadoutEquipmentDummy>(cfg, cfgEntryPoint); }

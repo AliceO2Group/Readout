@@ -9,12 +9,14 @@
 // or submit itself to any jurisdiction.
 
 #include "MemoryHandler.h"
+
 #include "readoutInfoLogger.h"
 
 std::unique_ptr<MemoryRegion> bigBlock = nullptr;
 std::mutex bigBlockMutex;
 
-MemoryHandler::MemoryHandler(int vPageSize, int vNumberOfPages) {
+MemoryHandler::MemoryHandler(int vPageSize, int vNumberOfPages)
+{
   pagesAvailable = nullptr;
 
   pageSize = vPageSize;
@@ -22,23 +24,20 @@ MemoryHandler::MemoryHandler(int vPageSize, int vNumberOfPages) {
 
   size_t bytesReserved = pageSize * numberOfPages;
 
-  theLog.log(LogInfoDevel_(3008), "Creating pool of %lu pages of size %lu, total %lu bytes",
-             numberOfPages, pageSize, bytesReserved);
+  theLog.log(LogInfoDevel_(3008), "Creating pool of %lu pages of size %lu, total %lu bytes", numberOfPages, pageSize, bytesReserved);
 
   bigBlockMutex.lock();
   size_t bytesFree = bigBlock->size - bigBlock->usedSize;
   if (bytesReserved > bytesFree) {
     bigBlockMutex.unlock();
-    theLog.log(LogErrorSupport_(3230), "No space left in memory bank: available %lu < %lu needed",
-               bytesFree, bytesReserved);
+    theLog.log(LogErrorSupport_(3230), "No space left in memory bank: available %lu < %lu needed", bytesFree, bytesReserved);
     throw __LINE__;
   }
-  baseAddress = &(((uint8_t *)bigBlock->ptr)[bigBlock->usedSize]);
+  baseAddress = &(((uint8_t*)bigBlock->ptr)[bigBlock->usedSize]);
   bigBlock->usedSize += bytesReserved;
   bigBlockMutex.unlock();
 
-  //    theLog.log(LogDebugTrace, "Got %lld pages, each
-  //    %s",nPages,ReadoutUtils::NumberOfBytesToString(pageSize,"Bytes").c_str());
+  // theLog.log(LogDebugTrace, "Got %lld pages, each %s",nPages,ReadoutUtils::NumberOfBytesToString(pageSize,"Bytes").c_str());
   pagesAvailable = std::make_unique<AliceO2::Common::Fifo<long>>(numberOfPages);
 
   for (unsigned int i = 0; i < numberOfPages; i++) {
@@ -49,25 +48,26 @@ MemoryHandler::MemoryHandler(int vPageSize, int vNumberOfPages) {
     pagesAvailable->push(offset);
   }
   memorySize = bytesReserved;
-  theLog.log(LogInfoDevel_(3008), "%lu pages added, base address=%p size=%lu", numberOfPages,
-             baseAddress, memorySize);
+  theLog.log(LogInfoDevel_(3008), "%lu pages added, base address=%p size=%lu", numberOfPages, baseAddress, memorySize);
 }
 
 MemoryHandler::~MemoryHandler() {}
 
-void *MemoryHandler::getPage() {
+void* MemoryHandler::getPage()
+{
   long offset = 0;
   int res = pagesAvailable->pop(offset);
   if (res == 0) {
-    uint8_t *pagePtr = &baseAddress[offset];
+    uint8_t* pagePtr = &baseAddress[offset];
     // theLog.log(LogDebugTrace, "%p Using page @ offset %d = %p",this,(int)offset,pagePtr);
     return pagePtr;
   }
   return nullptr;
 }
 
-void MemoryHandler::freePage(void *p) {
-  int64_t offset = ((uint8_t *)p) - baseAddress;
+void MemoryHandler::freePage(void* p)
+{
+  int64_t offset = ((uint8_t*)p) - baseAddress;
   // theLog.log(LogDebugTrace, "Releasing page @ offset %d (p=%p)",(int)offset,p);
   if ((offset < 0) || (offset > (int64_t)memorySize)) {
     throw __LINE__;
@@ -76,6 +76,6 @@ void MemoryHandler::freePage(void *p) {
   pagesAvailable->push(offset);
 }
 
-void *MemoryHandler::getBaseAddress() { return baseAddress; }
+void* MemoryHandler::getBaseAddress() { return baseAddress; }
 size_t MemoryHandler::getSize() { return memorySize; }
 size_t MemoryHandler::getPageSize() { return pageSize; }

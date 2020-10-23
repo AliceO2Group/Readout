@@ -20,22 +20,20 @@
 
 #include "ReadoutUtils.h"
 
-int main() {
+int main()
+{
 
   std::string cfgTransportType = "shmem";
   std::string cfgChannelName = "test";
   std::string cfgChannelType = "pair";
   std::string cfgChannelAddress = "ipc:///tmp/test-pipe";
 
-  auto factory =
-      FairMQTransportFactory::CreateTransportFactory(cfgTransportType);
-  auto pull = FairMQChannel{cfgChannelName, cfgChannelType, factory};
+  auto factory = FairMQTransportFactory::CreateTransportFactory(cfgTransportType);
+  auto pull = FairMQChannel{ cfgChannelName, cfgChannelType, factory };
   pull.Connect(cfgChannelAddress);
   int64_t ret;
 
-  printf("Starting FMQ multi-part receiver '%s' %s %s @ %s\n",
-         cfgChannelName.c_str(), cfgTransportType.c_str(),
-         cfgChannelType.c_str(), cfgChannelAddress.c_str());
+  printf("Starting FMQ multi-part receiver '%s' %s %s @ %s\n", cfgChannelName.c_str(), cfgTransportType.c_str(), cfgChannelType.c_str(), cfgChannelAddress.c_str());
 
   int statInterval = 1; // interval between stats, in seconds
   AliceO2::Common::Timer timerStats;
@@ -77,16 +75,10 @@ int main() {
       }
       if (isFirstStat) {
         isFirstStat = 0;
-        printf("Interval   Messages       Rate      Parts       Rate     "
-               "------- Rx CPU used --------      Tx CPU    Total\n");
-        printf("       s        msg         Hz        msg         Hz     total "
-               "%%   user %%  system %%             %%      msg\n");
+        printf("Interval   Messages       Rate      Parts       Rate     ------- Rx CPU used --------      Tx CPU    Total\n");
+        printf("       s        msg         Hz        msg         Hz     total %%   user %%  system %%             %%      msg\n");
       }
-      printf("%8.1f   %8lu   %8.1lf   %8lu   %8.1lf    %8.1lf %8.1lf  %8.1lf   "
-             "     %6.0lf %8lu\n",
-             t, msgNew, msgNew / t, msgNewPart, msgNewPart / t,
-             uTimePercent + sTimePercent, uTimePercent, sTimePercent, txCPU,
-             msgCount);
+      printf("%8.1f   %8lu   %8.1lf   %8lu   %8.1lf    %8.1lf %8.1lf  %8.1lf        %6.0lf %8lu\n", t, msgNew, msgNew / t, msgNewPart, msgNewPart / t, uTimePercent + sTimePercent, uTimePercent, sTimePercent, txCPU, msgCount);
       msgNew = 0;
       msgNewPart = 0;
       while (timerStats.isTimeout()) {
@@ -101,16 +93,16 @@ int main() {
         int nPart = msgParts.Size();
         msgCountPart += nPart;
         msgNewPart += nPart;
-        for (auto const &mm : msgParts) {
+        for (auto const& mm : msgParts) {
           // bad trick: TX CPU used (in previous second) encoded in message size
           txCPU = mm->GetSize() - 100;
           break;
         }
 
       } else {
-        for (auto &msg : msgs) {
+        for (auto& msg : msgs) {
           int sz = (int)msg->GetSize();
-          void *data = msg->GetData();
+          void* data = msg->GetData();
           // printf("Received message %p size %d\n", data, sz);
           // printf("Releasing message %p size %d\n", data, sz);
           msgCount++;

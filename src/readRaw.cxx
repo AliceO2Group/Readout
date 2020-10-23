@@ -8,35 +8,34 @@
 // granted to it by virtue of its status as an Intergovernmental Organization
 // or submit itself to any jurisdiction.
 
-#include "DataBlock.h"
-#include "DataBlockContainer.h"
-#include "DataSet.h"
-
-#include "RdhUtils.h"
-
+#include <lz4.h>
 #include <stdio.h>
 #include <string>
 
-#include <lz4.h>
+#include "DataBlock.h"
+#include "DataBlockContainer.h"
+#include "DataSet.h"
+#include "RdhUtils.h"
 
 //#define ERRLOG(args...) fprintf(stderr,args)
 #define ERRLOG(args...) fprintf(stdout, args)
 
-int main(int argc, const char *argv[]) {
+int main(int argc, const char* argv[])
+{
 
   // parameters
   std::string filePath;
-  typedef enum { plain, lz4, undefined } FileType;
+  typedef enum { plain,
+                 lz4,
+                 undefined } FileType;
   FileType fileType = FileType::plain;
 
   bool dumpRDH = false;
   bool validateRDH = true;
   bool dumpDataBlockHeader = false;
-  int dumpData = 0; // if set, number of bytes to dump in each data page
-  int dumpDataInline =
-      0; // if set, number of bytes to dump in each data page, after RDH dump
-  bool fileReadVerbose =
-      false; // flag to print more info (chunk size, etc) when reading file
+  int dumpData = 0;             // if set, number of bytes to dump in each data page
+  int dumpDataInline = 0;       // if set, number of bytes to dump in each data page, after RDH dump
+  bool fileReadVerbose = false; // flag to print more info (chunk size, etc) when reading file
   bool dataBlockHeaderEnabled = false;
   bool checkContinuousTriggerOrder = false;
   bool isAutoPageSize = false; // flag set when no known page size in file
@@ -45,29 +44,30 @@ int main(int argc, const char *argv[]) {
   // format is a list of key=value pairs
 
   if (argc < 2) {
-    ERRLOG("Usage: %s [rawFilePath] [options]\nList of options:\n \
-    filePath=(string) : path to file.\n \
-    dataBlockEnabled=0|1: specify if file is with/without internal readout data block headers.\n \
-    dumpRDH=0|1 : dump the RDH headers.\n \
-    validateRDH=0|1 : check the RDH headers.\n \
-    checkContinuousTriggerOrder=0|1 : check trigger order.\n \
-    dumpDataBlockHeader=0|1 : dump the data block headers (internal readout headers).\n \
-    dumpData=(int) : dump the data pages. If -1, all bytes. Otherwise, the first bytes only, as specified.\n \
-    dumpDataInline=(int) : if set, each packet raw content is printed (hex dump style). \
-    fileReadVerbose=(int) : if set, more information is printed when reading/decoding file. \
-    \n",
-           argv[0]);
+    ERRLOG(
+      "Usage: %s [rawFilePath] [options]\n"
+      "List of options:\n"
+      "    filePath=(string) : path to file.\n"
+      "    dataBlockEnabled=0|1: specify if file is with/without internal readout data block headers.\n"
+      "    dumpRDH=0|1 : dump the RDH headers.\n"
+      "    validateRDH=0|1 : check the RDH headers.\n"
+      "    checkContinuousTriggerOrder=0|1 : check trigger order.\n"
+      "    dumpDataBlockHeader=0|1 : dump the data block headers (internal readout headers).\n"
+      "    dumpData=(int) : dump the data pages. If -1, all bytes. Otherwise, the first bytes only, as specified.\n"
+      "    dumpDataInline=(int) : if set, each packet raw content is printed (hex dump style).\n"
+      "    fileReadVerbose=(int) : if set, more information is printed when reading/decoding file.\n"
+      "    \n",
+      argv[0]);
     return -1;
   }
 
   // extra options
   for (int i = 1; i < argc; i++) {
-    const char *option = argv[i];
+    const char* option = argv[i];
     std::string key(option);
     size_t separatorPosition = key.find('=');
     if (separatorPosition == std::string::npos) {
-      // if this is the first argument, use it as the file name (for backward
-      // compatibility)
+      // if this is the first argument, use it as the file name (for backward compatibility)
       if (i == 1) {
         filePath = argv[i];
       } else {
@@ -115,18 +115,10 @@ int main(int argc, const char *argv[]) {
   }
 
   ERRLOG("Using data file %s\n", filePath.c_str());
-  ERRLOG("dataBlockHeaderEnabled=%d dumpRDH=%d validateRDH=%d "
-         "checkContinuousTriggerOrder=%d "
-         "dumpDataBlockHeader=%d dumpData=%d "
-	 "dumpDataInline=%d fileReadVerbose=%d "
-	 "\n",
-         (int)dataBlockHeaderEnabled, (int)dumpRDH, (int)validateRDH,
-         (int)checkContinuousTriggerOrder, (int)dumpDataBlockHeader, dumpData,
-	 (int)dumpDataInline,(int)fileReadVerbose
-	 );
+  ERRLOG("dataBlockHeaderEnabled=%d dumpRDH=%d validateRDH=%d checkContinuousTriggerOrder=%d dumpDataBlockHeader=%d dumpData=%d dumpDataInline=%d fileReadVerbose=%d \n", (int)dataBlockHeaderEnabled, (int)dumpRDH, (int)validateRDH, (int)checkContinuousTriggerOrder, (int)dumpDataBlockHeader, dumpData, (int)dumpDataInline, (int)fileReadVerbose);
 
   // open raw data file
-  FILE *fp = fopen(filePath.c_str(), "rb");
+  FILE* fp = fopen(filePath.c_str(), "rb");
   if (fp == NULL) {
     ERRLOG("Failed to open file\n");
     return -1;
@@ -156,28 +148,23 @@ int main(int argc, const char *argv[]) {
   unsigned long pageCount = 0;
   unsigned long RDHBlockCount = 0;
   unsigned long fileOffset = 0;
-  unsigned long dataOffset =
-      0; // to keep track of position in uncompressed data
-  unsigned long dataOffsetLast = 0; // to print progress
-  const int dataOffsetProgressStep =
-      1 * 1024L * 1024L * 1024L; // every 1GB, print where we are
+  unsigned long dataOffset = 0;                                 // to keep track of position in uncompressed data
+  unsigned long dataOffsetLast = 0;                             // to print progress
+  const int dataOffsetProgressStep = 1 * 1024L * 1024L * 1024L; // every 1GB, print where we are
 
   bool isFirstTrigger = true;
   uint32_t latestTriggerOrbit = 0;
   uint32_t latestTriggerBC = 0;
 
-  const int maxBlockSize =
-      128 * 1024L *
-      1024L; // maximum memory allocated for page reading (or decompressing)
-  bool checkOrbitContiguous =
-      true; // if set, verify that they are no holes in orbit number
+  const int maxBlockSize = 128 * 1024L * 1024L; // maximum memory allocated for page reading (or decompressing)
+  bool checkOrbitContiguous = true;             // if set, verify that they are no holes in orbit number
 
   for (fileOffset = 0; fileOffset < (unsigned long)fileSize;) {
 
-#define ERR_LOOP                                                               \
-  {                                                                            \
-    ERRLOG("Error %d @ 0x%08lX\n", __LINE__, fileOffset);                      \
-    break;                                                                     \
+#define ERR_LOOP                                          \
+  {                                                       \
+    ERRLOG("Error %d @ 0x%08lX\n", __LINE__, fileOffset); \
+    break;                                                \
   }
 
     unsigned long blockOffset = dataOffset;
@@ -198,8 +185,7 @@ int main(int argc, const char *argv[]) {
       }
 
       if (dumpDataBlockHeader) {
-        printf("Block header %lu @ %lu\n", pageCount + 1,
-               fileOffset - sizeof(hb));
+        printf("Block header %lu @ %lu\n", pageCount + 1, fileOffset - sizeof(hb));
         printf("\theaderVersion= 0x%08X\n", hb.headerVersion);
         printf("\theaderSize = %u\n", hb.headerSize);
         printf("\tdataSize = %u\n", hb.dataSize);
@@ -219,7 +205,7 @@ int main(int argc, const char *argv[]) {
 
       if (fileType == FileType::lz4) {
         // read start of LZ4 frame: header + size
-        const char header[] = {0x04, 0x22, 0x4D, 0x18, 0x60, 0x70, 0x73};
+        const char header[] = { 0x04, 0x22, 0x4D, 0x18, 0x60, 0x70, 0x73 };
         uint32_t blockSize = 0;
         char buffer[sizeof(header) + sizeof(blockSize)];
         if (fread(&buffer, sizeof(buffer), 1, fp) != 1) {
@@ -237,7 +223,7 @@ int main(int argc, const char *argv[]) {
         if (!isHeaderOk) {
           ERR_LOOP;
         }
-        blockSize = *((uint32_t *)&buffer[sizeof(header)]);
+        blockSize = *((uint32_t*)&buffer[sizeof(header)]);
         // use given LZ4 frame size
         dataSize = blockSize;
       } else {
@@ -245,17 +231,15 @@ int main(int argc, const char *argv[]) {
       }
     }
 
-    // printf("Reading page %lu @ 0x%08lX
-    // (%.1fGB)\n",pageCount+1,fileOffset,fileOffset/(1024.0*1024.0*1024.0));
+    // printf("Reading page %lu @ 0x%08lX (%.1fGB)\n",pageCount+1,fileOffset,fileOffset/(1024.0*1024.0*1024.0));
     if (fileReadVerbose) {
-      printf("Reading chunk %lu : %lu bytes @ 0x%08lX - 0x%08lX\n",
-             pageCount + 1, dataSize, fileOffset, fileOffset + dataSize - 1);
+      printf("Reading chunk %lu : %lu bytes @ 0x%08lX - 0x%08lX\n", pageCount + 1, dataSize, fileOffset, fileOffset + dataSize - 1);
     }
 
     if (dataSize == 0) {
       ERR_LOOP;
     }
-    void *data = malloc(dataSize);
+    void* data = malloc(dataSize);
     if (data == NULL) {
       ERR_LOOP;
     }
@@ -267,7 +251,7 @@ int main(int argc, const char *argv[]) {
 
     if (fileType == FileType::lz4) {
       // read trailer
-      const char trailer[] = {0x00, 0x00, 0x00, 0x00};
+      const char trailer[] = { 0x00, 0x00, 0x00, 0x00 };
       char buffer[sizeof(trailer)];
       if (fread(&buffer, sizeof(buffer), 1, fp) != 1) {
         ERR_LOOP;
@@ -286,12 +270,11 @@ int main(int argc, const char *argv[]) {
       }
 
       // uncompress data
-      void *dataUncompressed = malloc(maxBlockSize);
+      void* dataUncompressed = malloc(maxBlockSize);
       if (dataUncompressed == NULL) {
         ERR_LOOP;
       }
-      int res = LZ4_decompress_safe((char *)data, (char *)dataUncompressed,
-                                    dataSize, maxBlockSize);
+      int res = LZ4_decompress_safe((char*)data, (char*)dataUncompressed, dataSize, maxBlockSize);
       if ((res <= 0) || (res >= maxBlockSize)) {
         ERR_LOOP;
       }
@@ -308,13 +291,12 @@ int main(int argc, const char *argv[]) {
       if ((dumpData < max) && (dumpData > 0)) {
         max = dumpData;
       }
-      printf("Data page %lu @ %lu (%ld bytes)", pageCount, blockOffset,
-             dataSize);
+      printf("Data page %lu @ %lu (%ld bytes)", pageCount, blockOffset, dataSize);
       for (long i = 0; i < max; i++) {
         if (i % 16 == 0) {
           printf("\n\t");
         }
-        printf("%02X ", (int)(((unsigned char *)data)[i]));
+        printf("%02X ", (int)(((unsigned char*)data)[i]));
       }
       printf("\n\t...\n");
     }
@@ -324,8 +306,7 @@ int main(int argc, const char *argv[]) {
       for (size_t pageOffset = 0; pageOffset < (unsigned long)dataSize;) {
 
         // check we are not at page boundary
-        if (pageOffset + sizeof(o2::Header::RAWDataHeader) >
-            (unsigned long)dataSize) {
+        if (pageOffset + sizeof(o2::Header::RAWDataHeader) > (unsigned long)dataSize) {
           if (isAutoPageSize) {
             // the (virtual) page boundary is in the middle of packet... try to
             // realign
@@ -345,7 +326,7 @@ int main(int argc, const char *argv[]) {
         }
 
         RDHBlockCount++;
-        RdhHandle h(((uint8_t *)data) + pageOffset);
+        RdhHandle h(((uint8_t*)data) + pageOffset);
 
         if (dumpRDH) {
           h.dumpRdh(pageOffset + blockOffset, 1);
@@ -357,8 +338,7 @@ int main(int argc, const char *argv[]) {
             // dump RDH if not done already
             h.dumpRdh(pageOffset, 1);
           }
-          ERRLOG("File offset 0x%08lX + %ld\n%s", blockOffset, pageOffset,
-                 errorDescription.c_str());
+          ERRLOG("File offset 0x%08lX + %ld\n%s", blockOffset, pageOffset, errorDescription.c_str());
           errorDescription.clear();
 
           if (dumpDataInline) {
@@ -368,13 +348,13 @@ int main(int argc, const char *argv[]) {
               if (ix % 16 == 0) {
                 printf("\n\t0x%04x\t", (int)ix);
               }
-              printf("%02X ", (int)(((unsigned char *)data)[pageOffset + ix]));
+              printf("%02X ", (int)(((unsigned char*)data)[pageOffset + ix]));
             }
             printf("\n\n");
           }
 
-          break; // we can not continue decoding if RDH wrong, we are not sure
-                 // if we can jump to the next ... or should we used fixed 8kB ?
+          // we can not continue decoding if RDH wrong, we are not sure if we can jump to the next ... or should we used fixed 8kB ?
+          break;
         }
 
         if (checkContinuousTriggerOrder) {
@@ -388,17 +368,12 @@ int main(int argc, const char *argv[]) {
               if (h.getTriggerBC() < latestTriggerBC) {
                 isTriggerOrderOk = 0;
               }
-            } else if (checkOrbitContiguous &&
-                       (h.getTriggerOrbit() != latestTriggerOrbit + 1)) {
+            } else if (checkOrbitContiguous && (h.getTriggerOrbit() != latestTriggerOrbit + 1)) {
               isTriggerOrderOk = 0;
             }
           }
           if (!isTriggerOrderOk) {
-            ERRLOG(
-                "Trigger order mismatch@ file offset 0x%08lX + %ld : new %08X "
-                ": %03X > previous: %08X : %03X \n",
-                blockOffset, pageOffset, h.getTriggerOrbit(), h.getTriggerBC(),
-                latestTriggerOrbit, latestTriggerBC);
+            ERRLOG("Trigger order mismatch@ file offset 0x%08lX + %ld : new %08X : %03X > previous: %08X : %03X \n", blockOffset, pageOffset, h.getTriggerOrbit(), h.getTriggerBC(), latestTriggerOrbit, latestTriggerBC);
           }
           latestTriggerBC = h.getTriggerBC();
           latestTriggerOrbit = h.getTriggerOrbit();
@@ -411,7 +386,7 @@ int main(int argc, const char *argv[]) {
             if (ix % 16 == 0) {
               printf("\n\t0x%04x\t", (int)ix);
             }
-            printf("%02X ", (int)(((unsigned char *)data)[pageOffset + ix]));
+            printf("%02X ", (int)(((unsigned char*)data)[pageOffset + ix]));
           }
           printf("\n\n");
         }
@@ -422,12 +397,9 @@ int main(int argc, const char *argv[]) {
           break;
         }
 
-        if ((pageOffset + offsetNextPacket > (unsigned long)dataSize) &&
-            (pageOffset + offsetNextPacket + fileOffset - dataSize <
-             (unsigned long)fileSize)) {
+        if ((pageOffset + offsetNextPacket > (unsigned long)dataSize) && (pageOffset + offsetNextPacket + fileOffset - dataSize < (unsigned long)fileSize)) {
           if (isAutoPageSize) {
-            // the (virtual) page boundary is in the middle of packet... try to
-            // realign
+            // the (virtual) page boundary is in the middle of packet... try to realign
             int delta = pageOffset + offsetNextPacket - dataSize;
             fileOffset += delta;
             dataSize += delta;

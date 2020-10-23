@@ -11,11 +11,10 @@
 // definition of a header message for a subtimeframe
 // subtimeframe made of 1 message with this header
 // followed by 1 message for each heartbeat-frame
-// All data come from the same data source (same linkId - but possibly different
-// FEE ids)
+// All data come from the same data source (same linkId - but possibly different FEE ids)
 
 struct SubTimeframe {
-  uint8_t version = 2; // version of this structure
+  uint8_t version = 2;      // version of this structure
   uint32_t timeframeId = 0; // id of timeframe
   uint32_t runNumber = 0;
   uint8_t systemId = 0xFF;

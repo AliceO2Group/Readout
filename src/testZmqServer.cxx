@@ -1,15 +1,16 @@
-#include "ZmqServer.hxx"
 #include <unistd.h>
 
-int main() {
+#include "ZmqServer.hxx"
+
+int main()
+{
   try {
     ZmqServer s("tcp://127.0.0.1:50001");
-    for(;;) {
+    for (;;) {
       sleep(1);
     }
+  } catch (...) {
   }
-  catch(...) {
-  }
-  
+
   return 0;
 }

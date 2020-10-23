@@ -19,29 +19,26 @@
 
 #include "ReadoutUtils.h"
 
-int main() {
+int main()
+{
 
   std::string cfgTransportType = "shmem";
   std::string cfgChannelName = "test";
   std::string cfgChannelType = "pair";
   std::string cfgChannelAddress = "ipc:///tmp/test-pipe";
 
-  auto transportFactory =
-      FairMQTransportFactory::CreateTransportFactory(cfgTransportType);
-  auto channel =
-      FairMQChannel{cfgChannelName, cfgChannelType, transportFactory};
+  auto transportFactory = FairMQTransportFactory::CreateTransportFactory(cfgTransportType);
+  auto channel = FairMQChannel{ cfgChannelName, cfgChannelType, transportFactory };
   channel.Bind(cfgChannelAddress);
   if (!channel.Validate()) {
     return -1;
   }
 
   const size_t bufferSize = 2000 * 1024L * 1024L;
-  auto memoryBuffer = channel.Transport()->CreateUnmanagedRegion(
-      bufferSize, [](void *data, size_t size, void *hint) {
-        // cleanup callback
-      });
-  printf("Created buffer %p size %ld\n", memoryBuffer->GetData(),
-         memoryBuffer->GetSize());
+  auto memoryBuffer = channel.Transport()->CreateUnmanagedRegion(bufferSize, [](void* data, size_t size, void* hint) {
+    // cleanup callback
+  });
+  printf("Created buffer %p size %ld\n", memoryBuffer->GetData(), memoryBuffer->GetSize());
 
   int statInterval = 1; // interval between stats, in seconds
   AliceO2::Common::Timer runningTime;
@@ -55,7 +52,7 @@ int main() {
   double msgRate = 3168;
   size_t sequenceTime = 15; // duration of each sequence
 
-  char *buf = (char *)memoryBuffer->GetData();
+  char* buf = (char*)memoryBuffer->GetData();
   size_t ix = 0;
 
   double lastCPUu = 0;
@@ -76,22 +73,19 @@ int main() {
   std::vector<FairMQMessagePtr> msgs;
   msgs.reserve(msgParts);
 
-  printf(
-      "starting sequence for %lus : rate = %.0lfHz, %lu parts per message,\n",
-      sequenceTime, msgRate, msgParts);
+  printf("starting sequence for %lus : rate = %.0lfHz, %lu parts per message,\n", sequenceTime, msgRate, msgParts);
   for (size_t i = 0; i < msgMax; i++) {
     msgs.clear();
 
     for (size_t im = 0; im < msgParts; im++) {
       msgSize = 100 + (size_t)CPUt;
-      void *dataPtr = (void *)(&buf[ix]);
-      void *hint = (void *)i;
+      void* dataPtr = (void*)(&buf[ix]);
+      void* hint = (void*)i;
       ix += msgSize;
       if (ix >= bufferSize) {
         ix = 0;
       }
-      msgs.emplace_back(
-          std::move(channel.NewMessage(memoryBuffer, dataPtr, msgSize, hint)));
+      msgs.emplace_back(std::move(channel.NewMessage(memoryBuffer, dataPtr, msgSize, hint)));
     }
     channel.Send(msgs);
     msgCount++;

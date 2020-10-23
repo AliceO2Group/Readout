@@ -8,27 +8,25 @@
 // granted to it by virtue of its status as an Intergovernmental Organization
 // or submit itself to any jurisdiction.
 
-#include "Consumer.h"
-#include "MemoryBankManager.h"
-#include "ReadoutUtils.h"
-
+#include <arpa/inet.h>
+#include <atomic>
 #include <fcntl.h>
+#include <infiniband/verbs.h>
 #include <malloc.h>
+#include <netdb.h>
 #include <poll.h>
+#include <rdma/rdma_cma.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
-
-#include <arpa/inet.h>
-#include <infiniband/verbs.h>
-#include <netdb.h>
-#include <rdma/rdma_cma.h>
 #include <sys/socket.h>
 #include <sys/types.h>
-
-#include <atomic>
 #include <thread>
+#include <unistd.h>
+
+#include "Consumer.h"
+#include "MemoryBankManager.h"
+#include "ReadoutUtils.h"
 
 struct pdata {
   uint64_t buf_va;            // base address of server memory buffer
@@ -45,54 +43,50 @@ const unsigned int nloop = 10;
 #define RESOLVE_TIMEOUT_MS 1000
 #define MAX_WR 256
 
-class ConsumerRDMA : public Consumer {
-public:
-  struct rdma_event_channel *cm_channel = nullptr;
-  struct rdma_cm_id *cm_id = nullptr;
-  struct ibv_pd *pd = nullptr;
-  struct ibv_comp_channel *comp_chan = nullptr;
-  struct ibv_cq *cq = nullptr;
-  struct ibv_mr *mr = nullptr;
+class ConsumerRDMA : public Consumer
+{
+ public:
+  struct rdma_event_channel* cm_channel = nullptr;
+  struct rdma_cm_id* cm_id = nullptr;
+  struct ibv_pd* pd = nullptr;
+  struct ibv_comp_channel* comp_chan = nullptr;
+  struct ibv_cq* cq = nullptr;
+  struct ibv_mr* mr = nullptr;
   struct pdata server_pdata;
   bool CQshutdownRequest = false;
-  std::atomic<int>
-      nAvailable; // maximum number of WR that can be issued concurrently
+  std::atomic<int> nAvailable; // maximum number of WR that can be issued concurrently
 
   int nPagesSent = 0; // number of pages sent
-                      //  int cfgMaxPages=0; // max number of pages to send
+
+  //  int cfgMaxPages=0; // max number of pages to send
   //  int cfgRemotePageSize=1024*1024; // size of remote data page
-  //  int cfgRemotePageNumber=1; // number of remote pages // TODO: get this on
-  //  connect init
+  //  int cfgRemotePageNumber=1; // number of remote pages // TODO: get this on connect init
 
-  ConsumerRDMA(ConfigFile &cfg, std::string cfgEntryPoint)
-      : Consumer(cfg, cfgEntryPoint) {
+  ConsumerRDMA(ConfigFile& cfg, std::string cfgEntryPoint) : Consumer(cfg, cfgEntryPoint)
+  {
 
-    // configuration parameter: | consumer-rdma-* | port | int | 10001 | Remote
-    // server TCP port number to connect to. |
+    // configuration parameter: | consumer-rdma-* | port | int | 10001 | Remote server TCP port number to connect to. |
     std::string cfgPort = "10000"; // remote server port
     cfg.getOptionalValue<std::string>(cfgEntryPoint + ".port", cfgPort);
 
-    // configuration parameter: | consumer-rdma-* | host | string | localhost |
-    // Remote server IP name to connect to. |
+    // configuration parameter: | consumer-rdma-* | host | string | localhost | Remote server IP name to connect to. |
     std::string cfgHost = "localhost"; // remote server address
     cfg.getOptionalValue<std::string>(cfgEntryPoint + ".host", cfgHost);
 
-    //    cfg.getOptionalValue<int>(cfgEntryPoint + ".maxPages", cfgMaxPages);
-    //    cfg.getOptionalValue<int>(cfgEntryPoint + ".remotePageSize",
-    //    cfgRemotePageSize);
+    // cfg.getOptionalValue<int>(cfgEntryPoint + ".maxPages", cfgMaxPages);
+    // cfg.getOptionalValue<int>(cfgEntryPoint + ".remotePageSize", cfgRemotePageSize);
 
     theLog.log(LogInfoDevel, "Looking for RDMA device...");
 
     // list devices
-    struct ibv_device **device_list = nullptr;
+    struct ibv_device** device_list = nullptr;
     int num_devices = 0;
     device_list = ibv_get_device_list(&num_devices);
     if (!device_list) {
       throw __LINE__;
     }
     for (int i = 0; i < num_devices; ++i) {
-      theLog.log(LogInfoDevel, "RDMA device[%d]: name=%s", i,
-                 ibv_get_device_name(device_list[i]));
+      theLog.log(LogInfoDevel, "RDMA device[%d]: name=%s", i, ibv_get_device_name(device_list[i]));
     }
     ibv_free_device_list(device_list);
     if (num_devices == 0) {
@@ -121,17 +115,16 @@ public:
     */
 
     // resolve server address
-    struct addrinfo *addr_res;
+    struct addrinfo* addr_res;
     struct addrinfo addr_hints;
     memset(&addr_hints, 0, sizeof(addr_hints));
     addr_hints.ai_family = AF_INET;
     addr_hints.ai_socktype = SOCK_STREAM;
-    if (getaddrinfo(cfgHost.c_str(), cfgPort.c_str(), &addr_hints, &addr_res) <
-        0) {
+    if (getaddrinfo(cfgHost.c_str(), cfgPort.c_str(), &addr_hints, &addr_res) < 0) {
       throw __LINE__;
     }
     bool addr_found = false;
-    for (struct addrinfo *t = addr_res; t != nullptr; t = t->ai_next) {
+    for (struct addrinfo* t = addr_res; t != nullptr; t = t->ai_next) {
       if (rdma_resolve_addr(cm_id, NULL, t->ai_addr, RESOLVE_TIMEOUT_MS) == 0) {
         addr_found = true;
         break;
@@ -144,7 +137,7 @@ public:
       throw __LINE__;
     }
 
-    struct rdma_cm_event *event = nullptr;
+    struct rdma_cm_event* event = nullptr;
     if (rdma_get_cm_event(cm_channel, &event)) {
       throw __LINE__;
     }
@@ -175,11 +168,9 @@ public:
       theLog.log(LogInfoDevel, "port state NOT ACTIVE = %d ", port_attr.state);
     }
 
-    int c_active_width[] = {1, 1, 2, 4, 4, 8, 12};
-    float c_active_speed[] = {1, 2.5,  2,  5.0,  4,  10.0,
-                              8, 10.0, 16, 14.0, 32, 25.0};
-    int c_mtu[] = {IBV_MTU_256,  256,  IBV_MTU_512,  512, IBV_MTU_1024, 1024,
-                   IBV_MTU_2048, 2048, IBV_MTU_4096, 4096};
+    int c_active_width[] = { 1, 1, 2, 4, 4, 8, 12 };
+    float c_active_speed[] = { 1, 2.5, 2, 5.0, 4, 10.0, 8, 10.0, 16, 14.0, 32, 25.0 };
+    int c_mtu[] = { IBV_MTU_256, 256, IBV_MTU_512, 512, IBV_MTU_1024, 1024, IBV_MTU_2048, 2048, IBV_MTU_4096, 4096 };
 
     for (unsigned int i = 0; i < sizeof(c_mtu) / sizeof(int); i += 2) {
       if (port_attr.active_mtu == c_mtu[i]) {
@@ -196,8 +187,7 @@ public:
         break;
       }
     }
-    for (unsigned int i = 0; i < sizeof(c_active_speed) / sizeof(float);
-         i += 2) {
+    for (unsigned int i = 0; i < sizeof(c_active_speed) / sizeof(float); i += 2) {
       if (port_attr.active_speed == c_active_speed[i]) {
         theLog.log(LogInfoDevel, "active_speed = %.1f Gbps", c_active_speed[i + 1]);
         break;
@@ -244,11 +234,11 @@ public:
     theMemoryBankManager.getMemoryRegions(memoryRegions);
 
     // check if memory regions contiguous
-    char *p0 = nullptr;
-    char *p1 = nullptr;
+    char* p0 = nullptr;
+    char* p1 = nullptr;
     bool isContiguous = true;
-    for (auto const &r : memoryRegions) {
-      char *pr = (char *)r.offset;
+    for (auto const& r : memoryRegions) {
+      char* pr = (char*)r.offset;
       if (p0 == nullptr) {
         p0 = pr;
       } else {
@@ -261,9 +251,7 @@ public:
     }
     if (isContiguous) {
       size_t sz = p1 - p0;
-      theLog.log(LogInfoDevel, 
-          "Banks contiguous, registering them in one go: %p - %p (size %lu)",
-          p0, p1 - 1, sz);
+      theLog.log(LogInfoDevel, "Banks contiguous, registering them in one go: %p - %p (size %lu)", p0, p1 - 1, sz);
       mr = ibv_reg_mr(pd, p0, sz, IBV_ACCESS_LOCAL_WRITE);
       if (mr == nullptr) {
         throw __LINE__;
@@ -308,11 +296,9 @@ public:
 
     memcpy(&server_pdata, event->param.conn.private_data, sizeof(server_pdata));
     rdma_ack_cm_event(event);
-    printf("remote buf @ %p\n", (void *)server_pdata.buf_va);
+    printf("remote buf @ %p\n", (void*)server_pdata.buf_va);
 
-    theLog.log(LogInfoDevel, "Remote buffer : %lu bytes total, %lu pages x %lu bytes",
-               server_pdata.buf_pageSize * server_pdata.buf_numberOfPages,
-               server_pdata.buf_numberOfPages, server_pdata.buf_pageSize);
+    theLog.log(LogInfoDevel, "Remote buffer : %lu bytes total, %lu pages x %lu bytes", server_pdata.buf_pageSize * server_pdata.buf_numberOfPages, server_pdata.buf_numberOfPages, server_pdata.buf_pageSize);
 
     nAvailable = MAX_WR;
     /*
@@ -374,7 +360,8 @@ public:
 
   ~ConsumerRDMA() {}
 
-  int pushData(DataBlockContainerReference &b) {
+  int pushData(DataBlockContainerReference& b)
+  {
     //	nBytesSent+=b->getData()->header.dataSize;
 
   startCQHandle:
@@ -383,8 +370,8 @@ public:
 
     // wait for next event in CQ
     // printf("check for CQ event in queue\n");
-    struct ibv_cq *evt_cq = nullptr;
-    void *cq_context = nullptr;
+    struct ibv_cq* evt_cq = nullptr;
+    void* cq_context = nullptr;
     if (ibv_get_cq_event(comp_chan, &evt_cq, &cq_context)) {
       goto endCQHandle;
     }
@@ -428,7 +415,7 @@ public:
       return 0;
     }
 
-    int32_t *ptr = (int32_t *)b->getData()->data;
+    int32_t* ptr = (int32_t*)b->getData()->data;
     size_t size = b->getData()->header.dataSize;
 
     if (!nAvailable.load()) {
@@ -455,9 +442,7 @@ public:
     wr.sg_list = &sg_list;
     wr.num_sge = 1;
     wr.opcode = IBV_WR_RDMA_WRITE;
-    wr.wr.rdma.remote_addr =
-        server_pdata.buf_va + (nPagesSent % server_pdata.buf_numberOfPages) *
-                                  server_pdata.buf_pageSize;
+    wr.wr.rdma.remote_addr = server_pdata.buf_va + (nPagesSent % server_pdata.buf_numberOfPages) * server_pdata.buf_pageSize;
 
     ptr[0] = size; // first word is the size of message transmitted
     // printf("Write remote @ page[%d]=%p\n",nPagesSent %
@@ -469,9 +454,8 @@ public:
       printf("error data bigger than remote page size\n");
     }
     wr.wr.rdma.rkey = server_pdata.buf_rkey;
-    wr.send_flags =
-        IBV_SEND_SIGNALED; // if not there, nothing happens in completion queue
-    struct ibv_send_wr *bad_wr;
+    wr.send_flags = IBV_SEND_SIGNALED; // if not there, nothing happens in completion queue
+    struct ibv_send_wr* bad_wr;
     // printf("sending %d\n",buf[i*CHUNK_SIZE]);
 
     if (ibv_post_send(cm_id->qp, &wr, &bad_wr)) {
@@ -483,10 +467,7 @@ public:
     return 0;
   }
 
-private:
+ private:
 };
 
-std::unique_ptr<Consumer> getUniqueConsumerRDMA(ConfigFile &cfg,
-                                                std::string cfgEntryPoint) {
-  return std::make_unique<ConsumerRDMA>(cfg, cfgEntryPoint);
-}
+std::unique_ptr<Consumer> getUniqueConsumerRDMA(ConfigFile& cfg, std::string cfgEntryPoint) { return std::make_unique<ConsumerRDMA>(cfg, cfgEntryPoint); }

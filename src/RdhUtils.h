@@ -13,18 +13,19 @@
 #ifndef RDHUTILS_H
 #define RDHUTILS_H
 
+#include <string>
 
 #include "RAWDataHeader.h"
-#include <string>
 
 // Some constants
 const unsigned int RdhMaxLinkId = 31; // maximum ID of a linkId in RDH
 
 // Utility class to access RDH fields and check them
-class RdhHandle {
-public:
+class RdhHandle
+{
+ public:
   // create a handle to RDH structure pointed by argument
-  RdhHandle(void *data);
+  RdhHandle(void* data);
 
   // destructor
   ~RdhHandle();
@@ -32,13 +33,11 @@ public:
   // check RDH content
   // returns 0 on success, number of errors found otherwise
   // Error message sets accordingly
-  int validateRdh(std::string &err);
+  int validateRdh(std::string& err);
 
   // print RDH content
-  // offset is a value to be displayed as address. if -1, memory address is
-  // used.
-  // singleLine: when set, RDH content printed in single line with top header
-  // printed once
+  // offset is a value to be displayed as address. if -1, memory address is used.
+  // singleLine: when set, RDH content printed in single line with top header printed once
   void dumpRdh(long offset = -1, bool singleLine = false);
 
   // access RDH fields
@@ -52,9 +51,7 @@ public:
   inline uint32_t getHbOrbit() { return (uint32_t)rdhPtr->heartbeatOrbit; }
   inline void incrementHbOrbit(uint32_t offset) { rdhPtr->heartbeatOrbit += offset; }
   inline uint16_t getMemorySize() { return (uint16_t)rdhPtr->memorySize; }
-  inline uint16_t getOffsetNextPacket() {
-    return (uint16_t)rdhPtr->offsetNextPacket;
-  }
+  inline uint16_t getOffsetNextPacket() { return (uint16_t)rdhPtr->offsetNextPacket; }
   inline bool getStopBit() { return (bool)rdhPtr->stopBit; }
   inline uint16_t getPagesCounter() { return (uint16_t)rdhPtr->pagesCounter; }
   inline uint32_t getTriggerOrbit() { return (uint32_t)rdhPtr->triggerOrbit; }
@@ -63,16 +60,16 @@ public:
   inline uint16_t getCruId() { return (uint16_t)rdhPtr->cruId; }
   inline uint8_t getEndPointId() { return (uint8_t)rdhPtr->dpwId; }
 
-private:
-  o2::Header::RAWDataHeader *rdhPtr; // pointer to RDH in memory
+ private:
+  o2::Header::RAWDataHeader* rdhPtr; // pointer to RDH in memory
 };
 
-// Utility class to access/parse/check the content of a contiguous memory block
-// consisting of RDH+data
-class RdhBlockHandle {
-public:
+// Utility class to access/parse/check the content of a contiguous memory block consisting of RDH+data
+class RdhBlockHandle
+{
+ public:
   // create a handle to the block, providing pointer and size
-  RdhBlockHandle(void *blockPtr, size_t size);
+  RdhBlockHandle(void* blockPtr, size_t size);
 
   // destructor
   ~RdhBlockHandle();
@@ -81,10 +78,9 @@ public:
   // return 0 on success, an error code if the block is invalid
   int printSummary();
 
-private:
-  void *blockPtr;   // pointer to beginning of memory block
+ private:
+  void* blockPtr;   // pointer to beginning of memory block
   size_t blockSize; // size of memory block
 };
-
 
 #endif
