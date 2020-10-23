@@ -311,7 +311,7 @@ int Readout::init(int argc, char* argv[])
   return 0;
 }
 
-#include <boost/property_tree/json_parser.hpp>
+//#include <boost/property_tree/json_parser.hpp>
 
 int Readout::configure(const boost::property_tree::ptree& properties)
 {
