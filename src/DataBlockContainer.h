@@ -42,9 +42,7 @@ private:
   std::shared_ptr<MemPool> mp;
 };
 
-/**
- * DataBlockContainer that takes ownership of the payload and deletes it when needed.
- */
+// DataBlockContainer that takes ownership of the payload and deletes it when needed.
 class SelfReleasingBlockContainer : public DataBlockContainer {
 
 public:

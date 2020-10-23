@@ -23,12 +23,11 @@
 
 using namespace AliceO2::Common;
 
-/*
-  DataBlockAggregator
 
-  One "slicer" per equipment: data blocks with same sourceId are grouped in a
-  "slice" of blocks having the same TF id.
-*/
+// DataBlockAggregator
+//
+// One "slicer" per equipment: data blocks with same sourceId are grouped in a "slice" of blocks having the same TF id.
+
 
 // a class to group blocks with same ID in slices
 class DataBlockSlicer {
@@ -37,15 +36,12 @@ public:
   DataBlockSlicer();
   ~DataBlockSlicer();
 
-  // append a new block to curent slice of corresponding link
-  // a timestamp may be given
+  // append a new block to curent slice of corresponding link a timestamp may be given
   // returns the number of blocks in slice used
   int appendBlock(DataBlockContainerReference const &block, double timestamp = 0);
 
   // get a slice, if available
-  // if includeIncomplete is true, also retrieves current slice, even if
-  // incomplete otherwise, only a complete slice is returned, if any when
-  // iterated, returned in order of creation, older first
+  // if includeIncomplete is true, also retrieves current slice, even if incomplete otherwise, only a complete slice is returned, if any when iterated, returned in order of creation, older first
   DataSetReference getSlice(bool includeIncomplete = false);
 
   // consider the slices which have not been updated since timestamp as complete
@@ -98,15 +94,13 @@ public:
 
   int disableSlicing = 0; // when set, slicer is disabled, data is just passed through
 
-  double cfgSliceTimeout = 0; // when set, slices not updated after timeout (seconds)
-                              // are considered completed and are flushed
+  double cfgSliceTimeout = 0; // when set, slices not updated after timeout (seconds) are considered completed and are flushed
 
   static Thread::CallbackResult threadCallback(void *arg);
 
   Thread::CallbackResult executeCallback();
 
-  bool doFlush = 0; // when set, flush slices including incomplete ones
-                    // the flag is reset automatically when done
+  bool doFlush = 0; // when set, flush slices including incomplete ones the flag is reset automatically when done
 
   bool enableStfBuilding = 0; // when set, STF are buffered until all sources have participated. Data from late sources are discarded.
   double cfgStfTimeout = 0;   // timeout used with enableStfBuilding
@@ -123,9 +117,7 @@ private:
   int isIncompletePending;
 
   std::vector<DataBlockSlicer> slicers;
-  int nextIndex = 0;                    // index of input channel to start with at next iteration
-                                        // to fill output fifo. not starting always from zero to
-                                        // avoid favorizing low-index channels.
+  int nextIndex = 0;                    // index of input channel to start with at next iteration to fill output fifo. not starting always from zero to avoid favorizing low-index channels.
   unsigned long long totalBlocksIn = 0; // number of blocks received from inputs
 
   // container for sub-subtimeframe (i.e. all data pages of 1 timeframe for a given single source)

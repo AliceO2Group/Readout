@@ -23,30 +23,29 @@ public:
   virtual ~Consumer(){};
   virtual int pushData(DataBlockContainerReference &b) = 0;
 
-  // iterate through blocks of a dataset, using the per-block pushData() method.
+  // Iterate through blocks of a dataset, using the per-block pushData() method.
   // Returns number of successfully pushed blocks in set.
   virtual int pushData(DataSetReference &bc);
 
+  // Function called just before starting data taking. Data will soon start to flow in.
   virtual int start() {
     totalPushSuccess = 0;
     totalPushError = 0;
     return 0;
-  }; // function called just before starting data taking. Data will soon start
-     // to flow in.
+  };
+
+  // Function called just after stopping data taking, after the last call to pushData(). Not called before input FIFO empty.
   virtual int stop() {
     theLog.log(LogInfoDevel_(3003), "Push statistics for %s: %llu err / %llu total", this->name.c_str(), totalPushError, totalPushError + totalPushSuccess);
     return 0;
-  }; // function called just after stopping data taking, after the last call to
-     // pushData(). Not called before input FIFO empty.
+  };
 
 public:
   Consumer *forwardConsumer = nullptr; // consumer where to push output data, if any
   bool isForwardConsumer = false;      // this consumer will get data from output of another consumer
   std::string name;                    // name of this consumer
-  bool stopOnError = false;            // if set, readout will stop when this consumer reports an error
-                                       // (isError flag or pushData() failing)
-  int isError = 0;                     // flag which might be used to count number of errors
-                                       // occuring in the consumer
+  bool stopOnError = false;            // if set, readout will stop when this consumer reports an error (isError flag or pushData() failing)
+  int isError = 0;                     // flag which might be used to count number of errors occuring in the consumer
   bool isErrorReported = false;        // flag to keep track of error reports for this consumer
   unsigned long long totalPushSuccess = 0;
   unsigned long long totalPushError = 0;

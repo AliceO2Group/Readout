@@ -33,9 +33,7 @@ class ConsumerDataSampling : public Consumer {
     }
   };
 
-  // cleanup function, defined with the callback footprint expected in the 3rd
-  // argument of FairMQTransportFactory.CreateMessage() when object not null, it
-  // should be a (DataBlockContainerReference *), which will be destroyed
+  // cleanup function, defined with the callback footprint expected in the 3rd argument of FairMQTransportFactory.CreateMessage() when object not null, it should be a (DataBlockContainerReference *), which will be destroyed
   static void cleanupCallback(void *data, void *object) {
     if ((object != nullptr) && (data != nullptr)) {
       DataBlockContainerReference *ptr = (DataBlockContainerReference *)object;
@@ -58,8 +56,7 @@ private:
 public:
   ConsumerDataSampling(ConfigFile &cfg, std::string cfgEntryPoint) : Consumer(cfg, cfgEntryPoint), channels(1) {
     std::string address;
-    // configuration parameter: | consumer-data-sampling-* | address | string |
-    // ipc:///tmp/readout-pipe-1 | Address of the data sampling. |
+    // configuration parameter: | consumer-data-sampling-* | address | string | ipc:///tmp/readout-pipe-1 | Address of the data sampling. |
     cfg.getOptionalValue<std::string>(cfgEntryPoint + ".address", address, "ipc:///tmp/readout-pipe-1");
     channels[0].UpdateName("data-out");
     channels[0].UpdateType("pub"); // pub or push?
@@ -71,8 +68,7 @@ public:
       throw "ConsumerDataSampling: channel validation failed";
     }
 
-    // todo: def "data-out" as const string to name output channel to which we
-    // will push
+    // todo: def "data-out" as const string to name output channel to which we will push
     m.emplace(std::string("data-out"), channels);
 
     for (auto it : m) {
@@ -118,9 +114,7 @@ public:
   }
   int pushData(DataBlockContainerReference &b) {
 
-    // we create a copy of the reference, in a newly allocated object, so that
-    // reference is kept alive until this new object is destroyed in the
-    // cleanupCallback
+    // create a copy of the reference, in a newly allocated object, so that reference is kept alive until this new object is destroyed in the cleanupCallback
     DataBlockContainerReference *ptr = new DataBlockContainerReference(b);
 
     if (sender.GetCurrentState() != fair::mq::State::Running) {

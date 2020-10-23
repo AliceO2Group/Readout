@@ -36,8 +36,7 @@ private:
   AliceO2::Common::Timer runningTime;
   AliceO2::Common::Timer monitoringUpdateTimer;
   double elapsedTime;       // value used for rates computation
-  double intervalStartTime; // counter for interval statistics, keeps last
-                            // timestamp
+  double intervalStartTime; // counter for interval statistics, keeps last timestamp
 
   int monitoringEnabled;
   double monitoringUpdatePeriod;
@@ -46,11 +45,8 @@ private:
 
   struct rusage previousUsage;    // variable to keep track of last getrusage() result
   struct rusage currentUsage;     // variable to keep track of last getrusage() result
-  double timePreviousGetrusage;   // variable storing 'runningTime' value when
-                                  // getrusage was previously called (0 if not
-                                  // called yet)
-  double cpuUsedOverLastInterval; // average CPU usage over latest measurement
-                                  // interval
+  double timePreviousGetrusage;   // variable storing 'runningTime' value when getrusage was previously called (0 if not called yet)
+  double cpuUsedOverLastInterval; // average CPU usage over latest measurement interval
 
   // per-equipment statistics
   struct EquipmentStats {
@@ -117,18 +113,15 @@ private:
       // https://alice.its.cern.ch/jira/browse/FLPPROT-69
 
       sendMetricNoException({counterBlocks, "readout.Blocks"});
-      //      sendMetricNoException({counterBytesTotal, "readout.BytesTotal"});
+      // sendMetricNoException({counterBytesTotal, "readout.BytesTotal"});
       sendMetricNoException({counterBytesTotal, "readout.BytesTotal"}, DerivedMetricMode::RATE);
       sendMetricNoException({counterBytesDiff, "readout.BytesInterval"});
-      //      sendMetricNoException({(counterBytesTotal/(1024*1024)),
-      //      "readout.MegaBytesTotal"});
+      // sendMetricNoException({(counterBytesTotal/(1024*1024)), "readout.MegaBytesTotal"});
 
       // per-equipment stats
       for (auto &it : equipmentStatsMap) {
         std::string metricName = "readout.BytesEquipment." + std::to_string(it.first);
-        // sendMetricNoException(Metric{it.second.counterBytesPayload,
-        // "readout.BytesEquipment"}.addTags({(unsigned int)it.first}),
-        // DerivedMetricMode::RATE);
+        // sendMetricNoException(Metric{it.second.counterBytesPayload, "readout.BytesEquipment"}.addTags({(unsigned int)it.first}), DerivedMetricMode::RATE);
         sendMetricNoException(Metric{it.second.counterBytesPayload, metricName}, DerivedMetricMode::RATE);
       }
     }
@@ -137,8 +130,7 @@ private:
     counterBlocksDiff = 0;
   }
 
-  // run a function in a separate thread to publish data regularly, until flag
-  // isShutdown is set
+  // run a function in a separate thread to publish data regularly, until flag isShutdown is set
   std::unique_ptr<std::thread> periodicUpdateThread; // the thread running periodic updates
   bool periodicUpdateThreadShutdown;                 // flag to stop periodicUpdateThread
   void periodicUpdate() {
@@ -167,16 +159,13 @@ private:
 public:
   ConsumerStats(ConfigFile &cfg, std::string cfgEntryPoint) : Consumer(cfg, cfgEntryPoint) {
 
-    // configuration parameter: | consumer-stats-* | monitoringEnabled | int | 0
-    // | Enable (1) or disable (0) readout monitoring. |
+    // configuration parameter: | consumer-stats-* | monitoringEnabled | int | 0 | Enable (1) or disable (0) readout monitoring. |
     cfg.getOptionalValue(cfgEntryPoint + ".monitoringEnabled", monitoringEnabled, 0);
-    // configuration parameter: | consumer-stats-* | monitoringUpdatePeriod |
-    // double | 10 | Period of readout monitoring updates, in seconds. |
+    // configuration parameter: | consumer-stats-* | monitoringUpdatePeriod | double | 10 | Period of readout monitoring updates, in seconds. |
     cfg.getOptionalValue(cfgEntryPoint + ".monitoringUpdatePeriod", monitoringUpdatePeriod, 10.0);
 
     if (monitoringEnabled) {
-      // configuration parameter: | consumer-stats-* | monitoringURI | string |
-      // | URI to connect O2 monitoring service. c.f. o2::monitoring. |
+      // configuration parameter: | consumer-stats-* | monitoringURI | string | | URI to connect O2 monitoring service. c.f. o2::monitoring. |
       const std::string configURI = cfg.getValue<std::string>(cfgEntryPoint + ".monitoringURI");
 
       theLog.log(LogInfoDevel_(3002), "Monitoring enabled - period %.2fs - using %s", monitoringUpdatePeriod, configURI.c_str());
@@ -184,9 +173,7 @@ public:
       monitoringCollector->addGlobalTag(tags::Key::Subsystem, tags::Value::Readout);
 
       // enable process monitoring
-      // configuration parameter: | consumer-stats-* | processMonitoringInterval
-      // | int | 0 | Period of process monitoring updates (O2 standard metrics).
-      // If zero (default), disabled.|
+      // configuration parameter: | consumer-stats-* | processMonitoringInterval | int | 0 | Period of process monitoring updates (O2 standard metrics). If zero (default), disabled.|
       int processMonitoringInterval = 0;
       cfg.getOptionalValue(cfgEntryPoint + ".processMonitoringInterval", processMonitoringInterval, 0);
       if (processMonitoringInterval > 0) {
@@ -194,10 +181,7 @@ public:
       }
     }
 
-    // configuration parameter: | consumer-stats-* | consoleUpdate | int | 0 |
-    // If non-zero, periodic updates also output on the log console (at rate
-    // defined in monitoringUpdatePeriod). If zero, periodic log output is
-    // disabled. |
+    // configuration parameter: | consumer-stats-* | consoleUpdate | int | 0 | If non-zero, periodic updates also output on the log console (at rate defined in monitoringUpdatePeriod). If zero, periodic log output is disabled. |
     cfg.getOptionalValue(cfgEntryPoint + ".consoleUpdate", consoleUpdate, 0);
     if (consoleUpdate) {
       theLog.log(LogInfoDevel_(3002), "Periodic console statistics enabled");

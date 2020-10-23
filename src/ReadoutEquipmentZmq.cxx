@@ -57,8 +57,7 @@ private:
 ReadoutEquipmentZmq::ReadoutEquipmentZmq(ConfigFile &cfg, std::string cfgEntryPoint) : ReadoutEquipment(cfg, cfgEntryPoint) {
 
   std::string cfgAddress = "";
-  // configuration parameter: | equipment-zmq-* | address | string | |
-  // Address of remote server to connect, eg tcp://remoteHost:12345. |
+  // configuration parameter: | equipment-zmq-* | address | string | | Address of remote server to connect, eg tcp://remoteHost:12345. |
   cfg.getValue<std::string>(cfgEntryPoint + ".address", cfgAddress);
   theLog.log(LogInfoDevel_(3002), "Connecting to %s", cfgAddress.c_str());
 
@@ -98,9 +97,7 @@ ReadoutEquipmentZmq::ReadoutEquipmentZmq(ConfigFile &cfg, std::string cfgEntryPo
     throw __LINE__;
   }
 
-  // configuration parameter: | equipment-zmq-* | timeframeClientUrl | string | | The address
-  // to be used to retrieve current timeframe.
-  // When set, data is published only once for each TF id published by remote server. |
+  // configuration parameter: | equipment-zmq-* | timeframeClientUrl | string | | The address to be used to retrieve current timeframe. When set, data is published only once for each TF id published by remote server. |
   std::string cfgTimeframeClientUrl;
   cfg.getOptionalValue<std::string>(cfgEntryPoint + ".timeframeClientUrl", cfgTimeframeClientUrl);
   if (cfgTimeframeClientUrl.length() > 0) {
@@ -163,8 +160,7 @@ ReadoutEquipmentZmq::~ReadoutEquipmentZmq() {
 void ReadoutEquipmentZmq::loopSnapshot(void) {
 
   int linerr = 0, zmqerr = 0;
-  bool doLogSnapshot = 1; // flag to display message on next successful snapshot
-                          // (1st on start or after error)
+  bool doLogSnapshot = 1; // flag to display message on next successful snapshot (1st on start or after error)
 
   for (; !shutdownSnapshotThread;) {
     for (; !shutdownSnapshotThread;) {

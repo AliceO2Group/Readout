@@ -24,21 +24,16 @@ public:
 
   ConsumerTCP(ConfigFile &cfg, std::string cfgEntryPoint) : Consumer(cfg, cfgEntryPoint) {
 
-    // configuration parameter: | consumer-tcp-* | port | int | 10001 | Remote
-    // server TCP port number to connect to. |
+    // configuration parameter: | consumer-tcp-* | port | int | 10001 | Remote server TCP port number to connect to. |
     int cfgPort = 10001; // remote server port
     cfg.getOptionalValue<int>(cfgEntryPoint + ".port", cfgPort);
 
-    // configuration parameter: | consumer-tcp-* | host | string | localhost |
-    // Remote server IP name to connect to. |
+    // configuration parameter: | consumer-tcp-* | host | string | localhost | Remote server IP name to connect to. |
     std::string cfgHost = "localhost"; // remote server address
     cfg.getOptionalValue<std::string>(cfgEntryPoint + ".host", cfgHost);
 
-    // configuration parameter: | consumer-tcp-* | ncx | int | 1 | Number of
-    // parallel streams (and threads) to use. The port number specified in
-    // 'port' parameter will be increased by 1 for each extra connection. |
-    int cfgNcx = 1; // number of parallel connections (using ports from port to
-                    // port+ncx-1
+    // configuration parameter: | consumer-tcp-* | ncx | int | 1 | Number of parallel streams (and threads) to use. The port number specified in 'port' parameter will be increased by 1 for each extra connection. |
+    int cfgNcx = 1; // number of parallel connections (using ports from port to port+ncx-1
     cfg.getOptionalValue<int>(cfgEntryPoint + ".ncx", cfgNcx);
     theLog.log(LogInfoDevel_(3002), "TCP client connecting to %s:%d-%d", cfgHost.c_str(), cfgPort, cfgPort + cfgNcx - 1);
 

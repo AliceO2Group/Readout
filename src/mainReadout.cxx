@@ -218,14 +218,8 @@ void Readout::publishLogbookStats() {
   if (logbookHandle != nullptr) {
     bool isOk = false;
     try {
-      // virtual void runStart(int64_t runNumber, boost::posix_time::ptime
-      // o2Start, boost::posix_time::ptime triggerStart, std::string activityId,
-      // RunType runType, int64_t nDetectors, int64_t nFlps, int64_t nEpns)
-      // override;
-      // logbookHandle->flpAdd(occRunNumber, occRole, "localhost");
-      // virtual void flpUpdateCounters(int64_t runNumber, std::string flpName,
-      // int64_t nSubtimeframes, int64_t nEquipmentBytes, int64_t
-      // nRecordingBytes, int64_t nFairMqBytes) override;
+      // virtual void runStart(int64_t runNumber, boost::posix_time::ptime o2Start, boost::posix_time::ptime triggerStart, std::string activityId, RunType runType, int64_t nDetectors, int64_t nFlps, int64_t nEpns) override; logbookHandle->flpAdd(occRunNumber, occRole, "localhost");
+      // virtual void flpUpdateCounters(int64_t runNumber, std::string flpName, int64_t nSubtimeframes, int64_t nEquipmentBytes, int64_t nRecordingBytes, int64_t nFairMqBytes) override;
       logbookHandle->flpUpdateCounters(occRunNumber, occRole, (int64_t)gReadoutStats.numberOfSubtimeframes, (int64_t)gReadoutStats.bytesReadout, (int64_t)gReadoutStats.bytesRecorded, (int64_t)gReadoutStats.bytesFairMQ);
       isOk = true;
     } catch (const std::exception &ex) {
@@ -342,10 +336,8 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
     return -1;
   }
 
-  // apply provided occ properties
-  // over loaded configuration
-  // with function to overwrtie configuration tree t1 with (selected) content of
-  // t2
+  // apply provided occ properties over loaded configuration
+  // with function to overwrtie configuration tree t1 with (selected) content of t2
   auto mergeConfig = [&](boost::property_tree::ptree &t1, const boost::property_tree::ptree &t2) {
     theLog.log(LogInfoDevel, "Merging selected content of OCC configuration");
     try {
@@ -421,54 +413,39 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
   }
 
   // extract optional configuration parameters
-  // configuration parameter: | readout | exitTimeout | double | -1 | Time in
-  // seconds after which the program exits automatically. -1 for unlimited. |
+  // configuration parameter: | readout | exitTimeout | double | -1 | Time in seconds after which the program exits automatically. -1 for unlimited. |
   cfgExitTimeout = -1;
   cfg.getOptionalValue<double>("readout.exitTimeout", cfgExitTimeout);
-  // configuration parameter: | readout | flushEquipmentTimeout | double | 1 |
-  // Time in seconds to wait for data once the equipments are stopped. 0 means
-  // stop immediately. |
+  // configuration parameter: | readout | flushEquipmentTimeout | double | 1 | Time in seconds to wait for data once the equipments are stopped. 0 means stop immediately. |
   cfgFlushEquipmentTimeout = 1;
   cfg.getOptionalValue<double>("readout.flushEquipmentTimeout", cfgFlushEquipmentTimeout);
-  // configuration parameter: | readout | memoryPoolStatsEnabled | int | 0 |
-  // Global debugging flag to enable statistics on memory pool usage (printed
-  // to stdout when pool released). |
+  // configuration parameter: | readout | memoryPoolStatsEnabled | int | 0 | Global debugging flag to enable statistics on memory pool usage (printed to stdout when pool released). |
   int cfgMemoryPoolStatsEnabled = 0;
   cfg.getOptionalValue<int>("readout.memoryPoolStatsEnabled", cfgMemoryPoolStatsEnabled);
   extern int MemoryPagesPoolStatsEnabled;
   MemoryPagesPoolStatsEnabled = cfgMemoryPoolStatsEnabled;
-  // configuration parameter: | readout | disableAggregatorSlicing | int | 0 |
-  // When set, the aggregator slicing is disabled, data pages are passed through
-  // without grouping/slicing. |
+  // configuration parameter: | readout | disableAggregatorSlicing | int | 0 | When set, the aggregator slicing is disabled, data pages are passed through without grouping/slicing. |
   cfgDisableAggregatorSlicing = 0;
   cfg.getOptionalValue<int>("readout.disableAggregatorSlicing", cfgDisableAggregatorSlicing);
-  // configuration parameter: | readout | aggregatorSliceTimeout | double | 0 |
-  // When set, slices (groups) of pages are flushed if not updated after given
-  // timeout (otherwise closed only on beginning of next TF, or on stop). |
+  // configuration parameter: | readout | aggregatorSliceTimeout | double | 0 | When set, slices (groups) of pages are flushed if not updated after given timeout (otherwise closed only on beginning of next TF, or on stop). |
   cfgAggregatorSliceTimeout = 0;
   cfg.getOptionalValue<double>("readout.aggregatorSliceTimeout", cfgAggregatorSliceTimeout);
-  // configuration parameter: | readout | aggregatorStfTimeout | double | 0 |
-  // When set, subtimeframes are buffered until timeout
-  // (otherwise, sent immediately and independently for each data source). |
+  // configuration parameter: | readout | aggregatorStfTimeout | double | 0 | When set, subtimeframes are buffered until timeout (otherwise, sent immediately and independently for each data source). |
   cfgAggregatorStfTimeout = 0;
   cfg.getOptionalValue<double>("readout.aggregatorStfTimeout", cfgAggregatorStfTimeout);
 
-  // configuration parameter: | readout | logbookEnabled | int | 0 | When set,
-  // the logbook is enabled and populated with readout stats at runtime. |
+  // configuration parameter: | readout | logbookEnabled | int | 0 | When set, the logbook is enabled and populated with readout stats at runtime. |
   cfgLogbookEnabled = 0;
   cfg.getOptionalValue<int>("readout.logbookEnabled", cfgLogbookEnabled);
   if (cfgLogbookEnabled) {
 #ifndef WITH_LOGBOOK
     theLog.log(LogErrorDevel_(3210), "Logbook enabled in configuration, but feature not available in this build");
 #else
-    // configuration parameter: | readout | logbookUrl | string | | The address
-    // to be used for the logbook API. |
+    // configuration parameter: | readout | logbookUrl | string | | The address to be used for the logbook API. |
     cfg.getOptionalValue<std::string>("readout.logbookUrl", cfgLogbookUrl);
-    // configuration parameter: | readout | logbookApiToken | string | | The
-    // token to be used for the logbook API. |
+    // configuration parameter: | readout | logbookApiToken | string | | The token to be used for the logbook API. |
     cfg.getOptionalValue<std::string>("readout.logbookApiToken", cfgLogbookApiToken);
-    // configuration parameter: | readout | logbookUpdateInterval | int | 30 |
-    // Amount of time (in seconds) between logbook publish updates. |
+    // configuration parameter: | readout | logbookUpdateInterval | int | 30 | Amount of time (in seconds) between logbook publish updates. |
     cfgLogbookUpdateInterval = 30;
     cfg.getOptionalValue<int>("readout.logbookUpdateInterval", cfgLogbookUpdateInterval);
 
@@ -480,9 +457,7 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
 #endif
   }
 
-  // configuration parameter: | readout | timeframeServerUrl | string | | The address
-  // to be used to publish current timeframe, e.g. to be used as reference clock for other
-  // readout instances. |
+  // configuration parameter: | readout | timeframeServerUrl | string | | The address to be used to publish current timeframe, e.g. to be used as reference clock for other readout instances. |
   cfg.getOptionalValue<std::string>("readout.timeframeServerUrl", cfgTimeframeServerUrl);
   if (cfgTimeframeServerUrl.length() > 0) {
 #ifdef WITH_ZMQ
@@ -502,8 +477,7 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
     // skip disabled
     int enabled = 1;
     try {
-      // configuration parameter: | bank-* | enabled | int | 1 | Enable (1) or
-      // disable (0) the memory bank. |
+      // configuration parameter: | bank-* | enabled | int | 1 | Enable (1) or disable (0) the memory bank. |
       enabled = cfg.getValue<int>(kName + ".enabled");
     } catch (...) {
     }
@@ -512,8 +486,7 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
     }
 
     // bank size
-    // configuration parameter: | bank-* | size | bytes | | Size of the memory
-    // bank, in bytes. |
+    // configuration parameter: | bank-* | size | bytes | | Size of the memory bank, in bytes. |
     std::string cfgSize = "";
     cfg.getOptionalValue<std::string>(kName + ".size", cfgSize);
     long long mSize = ReadoutUtils::getNumberOfBytesFromString(cfgSize.c_str());
@@ -523,8 +496,7 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
     }
 
     // bank type
-    // configuration parameter: | bank-* | type | string| | Support used to
-    // allocate memory. Possible values: malloc, MemoryMappedFile. |
+    // configuration parameter: | bank-* | type | string| | Support used to allocate memory. Possible values: malloc, MemoryMappedFile. |
     std::string cfgType = "";
     try {
       cfgType = cfg.getValue<std::string>(kName + ".type");
@@ -537,8 +509,7 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
     }
 
     // numa node
-    // configuration parameter: | bank-* | numaNode | int | -1| Numa node where
-    // memory should be allocated. -1 means unspecified (system will choose). |
+    // configuration parameter: | bank-* | numaNode | int | -1| Numa node where memory should be allocated. -1 means unspecified (system will choose). |
     int cfgNumaNode = -1;
     cfg.getOptionalValue<int>(kName + ".numaNode", cfgNumaNode);
 
@@ -593,8 +564,7 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
     // skip disabled
     int enabled = 1;
     try {
-      // configuration parameter: | consumer-* | enabled | int | 1 | Enable
-      // (value=1) or disable (value=0) the consumer. |
+      // configuration parameter: | consumer-* | enabled | int | 1 | Enable (value=1) or disable (value=0) the consumer. |
       enabled = cfg.getValue<int>(kName + ".enabled");
     } catch (...) {
     }
@@ -602,23 +572,18 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
       continue;
     }
 
-    // configuration parameter: | consumer-* | consumerOutput | string |  | Name
-    // of the consumer where the output of this consumer (if any) should be
-    // pushed. |
+    // configuration parameter: | consumer-* | consumerOutput | string |  | Name of the consumer where the output of this consumer (if any) should be pushed. |
     std::string cfgOutput = "";
     cfg.getOptionalValue<std::string>(kName + ".consumerOutput", cfgOutput);
 
-    // configuration parameter: | consumer-* | stopOnError | int | 0 | If 1,
-    // readout will stop automatically on consumer error. |
+    // configuration parameter: | consumer-* | stopOnError | int | 0 | If 1, readout will stop automatically on consumer error. |
     int cfgStopOnError = 0;
     cfg.getOptionalValue<int>(kName + ".stopOnError", cfgStopOnError);
 
     // instanciate consumer of appropriate type
     std::unique_ptr<Consumer> newConsumer = nullptr;
     try {
-      // configuration parameter: | consumer-* | consumerType | string |  | The
-      // type of consumer to be instanciated. One of:stats, FairMQDevice,
-      // DataSampling, FairMQChannel, fileRecorder, checker, processor, tcp. |
+      // configuration parameter: | consumer-* | consumerType | string |  | The type of consumer to be instanciated. One of:stats, FairMQDevice, DataSampling, FairMQChannel, fileRecorder, checker, processor, tcp. |
       std::string cfgType = "";
       cfgType = cfg.getValue<std::string>(kName + ".consumerType");
       theLog.log(LogInfoDevel, "Configuring consumer %s: %s", kName.c_str(), cfgType.c_str());
@@ -722,16 +687,14 @@ int Readout::configure(const boost::property_tree::ptree &properties) {
     //}
 
     // skip disabled equipments
-    // configuration parameter: | equipment-* | enabled | int | 1 | Enable
-    // (value=1) or disable (value=0) the equipment. |
+    // configuration parameter: | equipment-* | enabled | int | 1 | Enable (value=1) or disable (value=0) the equipment. |
     int enabled = 1;
     cfg.getOptionalValue<int>(kName + ".enabled", enabled);
     if (!enabled) {
       continue;
     }
 
-    // configuration parameter: | equipment-* | equipmentType | string |  | The
-    // type of equipment to be instanciated. One of: dummy, rorc, cruEmulator |
+    // configuration parameter: | equipment-* | equipmentType | string |  | The type of equipment to be instanciated. One of: dummy, rorc, cruEmulator |
     std::string cfgEquipmentType = "";
     cfgEquipmentType = cfg.getValue<std::string>(kName + ".equipmentType");
     theLog.log(LogInfoDevel, "Configuring equipment %s: %s", kName.c_str(), cfgEquipmentType.c_str());
@@ -895,8 +858,7 @@ void Readout::loopRunning() {
       }
 
       for (auto &c : dataConsumers) {
-        // push only to "prime" consumers, not to those getting data directly
-        // forwarded from another consumer
+        // push only to "prime" consumers, not to those getting data directly forwarded from another consumer
         if (c->isForwardConsumer == false) {
           if (c->pushData(bc) < 0) {
             c->isError++;
@@ -965,8 +927,7 @@ int Readout::stop() {
   theLog.log(LogInfoSupport_(3005), "Readout executing STOP");
 
   // raise flag
-  stopTimer.reset(cfgFlushEquipmentTimeout * 1000000); // add a delay before stopping aggregator -
-                                                       // continune to empty FIFOs
+  stopTimer.reset(cfgFlushEquipmentTimeout * 1000000); // add a delay before stopping aggregator - continune to empty FIFOs
   isRunning = 0;
 
   // disable data producers
@@ -1046,18 +1007,15 @@ int Readout::reset() {
     agg = nullptr; // destroy aggregator, and release blocks it may still own.
   }
 
-  // todo: check nothing in the input pipeline
-  // flush & stop equipments
+  // todo: check nothing in the input pipeline flush & stop equipments
   for (auto &&readoutDevice : readoutDevices) {
     // ensure nothing left in output FIFO to allow releasing memory
-    //      printf("readout: in=%llu
-    //      out=%llu\n",readoutDevice->dataOut->getNumberIn(),readoutDevice->dataOut->getNumberOut());
+    // printf("readout: in=%llu out=%llu\n",readoutDevice->dataOut->getNumberIn(),readoutDevice->dataOut->getNumberOut());
     theLog.log(LogInfoDevel, "Releasing equipment %s", readoutDevice->getName().c_str());
     readoutDevice->dataOut->clear();
   }
 
-  //  printf("agg: in=%llu
-  //  out=%llu\n",agg_output.getNumberIn(),agg_output.getNumberOut());
+  // printf("agg: in=%llu out=%llu\n",agg_output.getNumberIn(),agg_output.getNumberOut());
 
   theLog.log(LogInfoDevel, "Releasing readout devices");
   for (size_t i = 0, size = readoutDevices.size(); i != size; ++i) {
@@ -1194,7 +1152,8 @@ private:
 // the main program loop
 int main(int argc, char *argv[]) {
 
-  // check environment
+  // check environment settings
+  
   // OCC control port. If set, use OCClib to handle Readout states.
   bool occMode = false;
   if (getenv("OCC_CONTROL_PORT") != nullptr) {

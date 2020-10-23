@@ -63,8 +63,7 @@ int main(int argc, const char *argv[]) {
     std::string key(option);
     size_t separatorPosition = key.find('=');
     if (separatorPosition == std::string::npos) {
-      // if this is the first argument, use it as the file name (for backward
-      // compatibility)
+      // if this is the first argument, use it as the file name (for backward compatibility)
       if (i == 1) {
         filePath = argv[i];
       } else {
@@ -228,8 +227,7 @@ int main(int argc, const char *argv[]) {
       }
     }
 
-    // printf("Reading page %lu @ 0x%08lX
-    // (%.1fGB)\n",pageCount+1,fileOffset,fileOffset/(1024.0*1024.0*1024.0));
+    // printf("Reading page %lu @ 0x%08lX (%.1fGB)\n",pageCount+1,fileOffset,fileOffset/(1024.0*1024.0*1024.0));
     if (fileReadVerbose) {
       printf("Reading chunk %lu : %lu bytes @ 0x%08lX - 0x%08lX\n", pageCount + 1, dataSize, fileOffset, fileOffset + dataSize - 1);
     }
@@ -351,8 +349,8 @@ int main(int argc, const char *argv[]) {
             printf("\n\n");
           }
 
-          break; // we can not continue decoding if RDH wrong, we are not sure
-                 // if we can jump to the next ... or should we used fixed 8kB ?
+          // we can not continue decoding if RDH wrong, we are not sure if we can jump to the next ... or should we used fixed 8kB ?
+          break;           
         }
 
         if (checkContinuousTriggerOrder) {
@@ -397,8 +395,7 @@ int main(int argc, const char *argv[]) {
 
         if ((pageOffset + offsetNextPacket > (unsigned long)dataSize) && (pageOffset + offsetNextPacket + fileOffset - dataSize < (unsigned long)fileSize)) {
           if (isAutoPageSize) {
-            // the (virtual) page boundary is in the middle of packet... try to
-            // realign
+            // the (virtual) page boundary is in the middle of packet... try to realign
             int delta = pageOffset + offsetNextPacket - dataSize;
             fileOffset += delta;
             dataSize += delta;

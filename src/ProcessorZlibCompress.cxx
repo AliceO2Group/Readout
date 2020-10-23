@@ -36,8 +36,7 @@ int processBlock(DataBlockContainerReference &input, DataBlockContainerReference
   deflateInit(&defstream, Z_BEST_SPEED);                    // or Z_BEST_COMPRESSION
   size_t maxSizeOut = deflateBound(&defstream, (uInt)size); // maximum size of output
 
-  // in-place compression does not work completely, just few first bytes are
-  // wrong, too bad we have to create a temporary output buffer
+  // in-place compression does not work completely, just few first bytes are wrong, too bad we have to create a temporary output buffer
   void *out;
   out = malloc(maxSizeOut);
   if (out == nullptr)
@@ -51,12 +50,9 @@ int processBlock(DataBlockContainerReference &input, DataBlockContainerReference
   deflate(&defstream, Z_FINISH);
   deflateEnd(&defstream);
 
-  // printf("Compressed size is: %lu - %.2lf\n",
-  // defstream.total_out,(defstream.total_in-defstream.total_out)*100.0/defstream.total_in);
+  // printf("Compressed size is: %lu - %.2lf\n", defstream.total_out,(defstream.total_in-defstream.total_out)*100.0/defstream.total_in);
 
-  // copy output buffer back to same data page if space allows, otherwise drop
-  // it
-
+  // copy output buffer back to same data page if space allows, otherwise drop it
   if (defstream.total_out > size) {
     return -1;
   }

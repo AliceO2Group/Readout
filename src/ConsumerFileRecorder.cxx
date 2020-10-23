@@ -53,10 +53,8 @@ public:
 
   // write to file
   // data given by 'ptr', number of bytes given by 'size'
-  // isPage is a flag telling if the data belongs to a page (for the 'number of
-  // pages written' counter) remainingBlockSize is taken into account not to
-  // exceed max file size, to avoid starting writing anything if the next write
-  // would reach limit return one of the status code below
+  // isPage is a flag telling if the data belongs to a page (for the 'number of pages written' counter)
+  // remainingBlockSize is taken into account not to exceed max file size, to avoid starting writing anything if the next write would reach limit return one of the status code below
   enum Status { Success = 0, Error = -1, FileLimitsReached = 1 };
   FileHandle::Status write(void *ptr, size_t size, bool isPage = false, size_t remainingBlockSize = 0) {
     lastWriteBytes = 0; // reset last bytes written
@@ -95,8 +93,7 @@ public:
       counterPages++;
     }
     lastWriteBytes = size;
-    // printf("%s: %llu/%llu bytes %d/%d
-    // pages\n",path.c_str(),counterBytesTotal,maxFileSize,counterPages,maxPages);
+    // printf("%s: %llu/%llu bytes %d/%d pages\n",path.c_str(),counterBytesTotal,maxFileSize,counterPages,maxPages);
     return Status::Success;
   }
 
@@ -115,8 +112,7 @@ private:
   size_t lastWriteBytes = 0;                // number of bytes last written with success
 
 public:
-  int fileId = 0; // a placeholder for an incremental counter to identify
-                  // current file Id (when file splitting enabled)
+  int fileId = 0; // a placeholder for an incremental counter to identify current file Id (when file splitting enabled)
 };
 
 // data source tags used in file identifier
@@ -138,21 +134,11 @@ class ConsumerFileRecorder : public Consumer {
 public:
   ConsumerFileRecorder(ConfigFile &cfg, std::string cfgEntryPoint) : Consumer(cfg, cfgEntryPoint) {
 
-    // configuration parameter: | consumer-fileRecorder-* | fileName | string |
-    // | Path to the file where to record data. The following variables are
-    // replaced at runtime: ${XXX} -> get variable XXX from environment, %t ->
-    // unix timestamp (seconds since epoch), %T -> formatted date/time, %i ->
-    // equipment ID of each data chunk (used to write data from different
-    // equipments to different output files), %l -> link ID (used to write data
-    // from different links to different output files). |
+    // configuration parameter: | consumer-fileRecorder-* | fileName | string | | Path to the file where to record data. The following variables are replaced at runtime: ${XXX} -> get variable XXX from environment, %t -> unix timestamp (seconds since epoch), %T -> formatted date/time, %i -> equipment ID of each data chunk (used to write data from different equipments to different output files), %l -> link ID (used to write data from different links to different output files). |
     fileName = cfg.getValue<std::string>(cfgEntryPoint + ".fileName");
     theLog.log(LogInfoDevel_(3002), "Recording path = %s", fileName.c_str());
 
-    // configuration parameter: | consumer-fileRecorder-* | bytesMax | bytes | 0
-    // | Maximum number of bytes to write to each file. Data pages are never
-    // truncated, so if writing the full page would exceed this limit, no data
-    // from that page is written at all and file is closed. If zero (default),
-    // no maximum size set.|
+    // configuration parameter: | consumer-fileRecorder-* | bytesMax | bytes | 0 | Maximum number of bytes to write to each file. Data pages are never truncated, so if writing the full page would exceed this limit, no data from that page is written at all and file is closed. If zero (default), no maximum size set.|
     std::string sMaxBytes;
     if (cfg.getOptionalValue<std::string>(cfgEntryPoint + ".bytesMax", sMaxBytes) == 0) {
       maxFileSize = ReadoutUtils::getNumberOfBytesFromString(sMaxBytes.c_str());
@@ -161,9 +147,7 @@ public:
       }
     }
 
-    // configuration parameter: | consumer-fileRecorder-* | pagesMax | int | 0 |
-    // Maximum number of data pages accepted by recorder. If zero (default), no
-    // maximum set.|
+    // configuration parameter: | consumer-fileRecorder-* | pagesMax | int | 0 | Maximum number of data pages accepted by recorder. If zero (default), no maximum set.|
     maxFilePages = 0;
     if (cfg.getOptionalValue<int>(cfgEntryPoint + ".pagesMax", maxFilePages) == 0) {
       if (maxFilePages) {
@@ -171,25 +155,11 @@ public:
       }
     }
 
-    // configuration parameter: | consumer-fileRecorder-* |
-    // dataBlockHeaderEnabled | int | 0 | Enable (1) or disable (0) the writing
-    // to file of the internal readout header (Readout DataBlock.h)
-    // between the data pages, to easily navigate through the file
-    // without RDH decoding. If disabled, the raw data pages received from CRU
-    // are written without further formatting. |
+    // configuration parameter: | consumer-fileRecorder-* | dataBlockHeaderEnabled | int | 0 | Enable (1) or disable (0) the writing to file of the internal readout header (Readout DataBlock.h) between the data pages, to easily navigate through the file without RDH decoding. If disabled, the raw data pages received from CRU are written without further formatting. |
     cfg.getOptionalValue(cfgEntryPoint + ".dataBlockHeaderEnabled", recordWithDataBlockHeader, 0);
     theLog.log(LogInfoDevel_(3002), "Recording internal data block headers = %d", recordWithDataBlockHeader);
 
-    // configuration parameter: | consumer-fileRecorder-* | filesMax | int | 1 |
-    // If 1 (default), file splitting is disabled: file is closed whenever a
-    // limit is reached on a given recording stream. Otherwise, file splitting
-    // is enabled: whenever the current file reaches a limit, it is closed an
-    // new one is created (with an incremental name). If <=0, an unlimited
-    // number of incremental chunks can be created. If non-zero, it defines the
-    // maximum number of chunks. The file name is suffixed with chunk number (by
-    // default, ".001, .002, ..." at the end of the file name. One may use "%c"
-    // in the file name to define where this incremental file counter is
-    // printed. |
+    // configuration parameter: | consumer-fileRecorder-* | filesMax | int | 1 | If 1 (default), file splitting is disabled: file is closed whenever a limit is reached on a given recording stream. Otherwise, file splitting is enabled: whenever the current file reaches a limit, it is closed an new one is created (with an incremental name). If <=0, an unlimited number of incremental chunks can be created. If non-zero, it defines the maximum number of chunks. The file name is suffixed with chunk number (by default, ".001, .002, ..." at the end of the file name. One may use "%c" in the file name to define where this incremental file counter is printed. |
     filesMax = 1;
     if (cfg.getOptionalValue<int>(cfgEntryPoint + ".filesMax", filesMax) == 0) {
       if (filesMax == 1) {
@@ -203,14 +173,7 @@ public:
       }
     }
 
-    // configuration parameter: | consumer-fileRecorder-* | dropEmptyHBFrames |
-    // int | 0 | If 1, memory pages are scanned and empty HBframes are
-    // discarded, i.e. couples of packets which contain only RDH, the first one
-    // with pagesCounter=0 and the second with stop bit set. This setting does
-    // not change the content of in-memory data pages, other consumers would
-    // still get full data pages with empty packets. This setting is meant to
-    // reduce the amount of data recorded for continuous detectors in triggered
-    // mode.|
+    // configuration parameter: | consumer-fileRecorder-* | dropEmptyHBFrames | int | 0 | If 1, memory pages are scanned and empty HBframes are discarded, i.e. couples of packets which contain only RDH, the first one with pagesCounter=0 and the second with stop bit set. This setting does not change the content of in-memory data pages, other consumers would still get full data pages with empty packets. This setting is meant to reduce the amount of data recorded for continuous detectors in triggered mode.|
     cfg.getOptionalValue(cfgEntryPoint + ".dropEmptyHBFrames", dropEmptyHBFrames, 0);
     if (dropEmptyHBFrames) {
       if (recordWithDataBlockHeader) {
@@ -274,8 +237,7 @@ public:
   // optional params:
   // equipmentID: use given equipment Id
   // delayIfSourceId: when set, file is not created immediately
-  // getNewFp: if not null, function will copy handle to created file in the
-  // given variable
+  // getNewFp: if not null, function will copy handle to created file in the given variable
   int createFile(std::shared_ptr<FileHandle> *getNewHandle = nullptr, const DataSourceId &sourceId = undefinedDataSourceId, bool delayIfSourceId = true, int fileId = 1) {
 
     // create the file name according to specified path
@@ -283,11 +245,9 @@ public:
     // ${XXX} -> get variable XXX from environment
     // %t -> unix timestamp (seconds since epoch)
     // %T -> formatted date/time
-    // %i -> equipment ID of each data chunk (used to write data from different
-    // equipments to different output files). %l -> link ID of each data chunk
-    // (used to write data from different links to different output files). %f
-    // -> file number (incremental), when file splitting enabled (empty
-    // otherwise)
+    // %i -> equipment ID of each data chunk (used to write data from different equipments to different output files). 
+    // %l -> link ID of each data chunk (used to write data from different links to different output files).
+    // %f -> file number (incremental), when file splitting enabled (empty otherwise)
     std::string newFileName;
 
     // string for file incremental ID
@@ -397,8 +357,7 @@ public:
       return -1;
     }
     if (!newHandle->isFileOk()) {
-      // no need to log a special message, error printed by FileHandle
-      // constructor
+      // no need to log a special message, error printed by FileHandle constructor
       return -1;
     }
     newHandle->fileId = fileId;
@@ -425,8 +384,7 @@ public:
       return 0;
     }
 
-    // the file handle to be used for this block
-    // by default, the main file
+    // the file handle to be used for this block by default, the main file
     std::shared_ptr<FileHandle> fpUsed;
 
     // does it depend on equipmentId ?
@@ -528,14 +486,11 @@ public:
 
       // write datablock header, if wanted
       if (recordWithDataBlockHeader) {
-        // as-is, some fields like data pointer will not be meaningful in file
-        // unless corrected. todo: correct them, e.g. replace data pointer by
-        // file offset.
+        // as-is, some fields like data pointer will not be meaningful in file unless corrected.
+        // todo: correct them, e.g. replace data pointer by file offset.
         // In particular, incompatible with dropEmptyHBFrames as size changes.
         writeToFile(&b->getData()->header, (size_t)b->getData()->header.headerSize, (size_t)b->getData()->header.dataSize);
-        // datablock header does not count as a page,
-        // but we account for the payload size for the next write (possibly one
-        // full page)
+        // datablock header does not count as a page, but we account for the payload size for the next write (possibly one full page)
       }
 
       // write payload data
@@ -543,8 +498,7 @@ public:
         // by default, we write the full payload data
         writeToFile(b->getData()->data, (size_t)b->getData()->header.dataSize, 0);
       } else {
-        // we have to check packet by packet and discard empty HBstart/HBstop
-        // pairs
+        // we have to check packet by packet and discard empty HBstart/HBstop pairs
         size_t blockSize = b->getData()->header.dataSize;
         uint8_t *baseAddress = (uint8_t *)(b->getData()->data);
         for (size_t pageOffset = 0; pageOffset < blockSize;) {
@@ -602,8 +556,7 @@ public:
           } else {
 
             // write packet
-            // use offsetNextPacket instead of memorySize for file to be
-            // consistent
+            // use offsetNextPacket instead of memorySize for file to be consistent
             writeToFile(baseAddress + pageOffset, (size_t)h.getOffsetNextPacket(), 0);
             packetsRecorded++;
           }
@@ -630,18 +583,15 @@ private:
   typedef std::map<DataSourceId, std::shared_ptr<FileHandle>> FilePerSourceMap;
   typedef std::map<DataSourceId, std::shared_ptr<FileHandle>>::iterator FilePerSourceMapIterator;
   typedef std::pair<DataSourceId, std::shared_ptr<FileHandle>> FilePerSourcePair;
-  FilePerSourceMap filePerSourceMap;   // a map to store a file handle for each
-                                       // data source (equipmentId, linkId)
-  bool perSourceRecordingFile = false; // when set, recording file name is based on id(s) of data source
-                                       // (equipmentId, linkId)
+  FilePerSourceMap filePerSourceMap;   // a map to store a file handle for each data source (equipmentId, linkId)
+  bool perSourceRecordingFile = false; // when set, recording file name is based on id(s) of data source (equipmentId, linkId)
   bool useSourceLinkId = false;        // when set, the link ID is used in file name
   bool useSourceEquipmentId = false;   // when set, the equipment ID is used in file name
 
   bool recordingEnabled = false; // if not set, recording is disabled
 
   // from configuration
-  std::string fileName = "";          // path/filename to be used for recording (may include variables
-                                      // evaluated at runtime, on file creation)
+  std::string fileName = "";          // path/filename to be used for recording (may include variables evaluated at runtime, on file creation)
   int recordWithDataBlockHeader = 0;  // if set, internal readout headers are included in file
   unsigned long long maxFileSize = 0; // maximum number of bytes to write (in each file)
   int maxFilePages = 0;               // maximum number of pages to write (in each file)

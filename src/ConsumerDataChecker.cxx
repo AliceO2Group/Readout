@@ -51,37 +51,38 @@ public:
     }
 
     size = b->getData()->header.dataSize;
-    //    theLog.log(LogDebugTrace, "checking container %p data @ %p : %d bytes",(void
-    //    *)b.get(),ptr,(int)size);
+    //    theLog.log(LogDebugTrace, "checking container %p data @ %p : %d bytes",(void*)b.get(),ptr,(int)size);
 
     unsigned int pageId = 0;
     for (unsigned int i = 0; i < size; pageId++) {
       checkedPages++;
       RocPageHeader *h = (RocPageHeader *)&(((char *)ptr)[i]);
 
-      /*      printf("page %u @ %p\n",pageId,(void *)h);
-            for (unsigned int w=0;w<sizeof(RocPageHeader)/sizeof(unsigned
-         int);w++) { printf("%08X  ",(((unsigned int *)h)[w])); if (w%8==7)
-         printf("\n");
-            }
-            printf("\n");
+      /*
+      printf("page %u @ %p\n",pageId,(void *)h);
+      for (unsigned int w=0;w<sizeof(RocPageHeader)/sizeof(unsigned int);w++) {
+        printf("%08X  ",(((unsigned int *)h)[w]));
+        if (w%8==7) printf("\n");
+      }
+      printf("\n");
       */
+
       void *pagePayloadPtr = &((char *)h)[sizeof(RocPageHeader)];
-      unsigned int pagePayloadSize = (h->payloadSize) * 256 / 8 - sizeof(RocPageHeader); // convert to bytes the size given in number of
-                                                                                         // 256-bits words
+      // convert to bytes the size given in number of 256-bits words
+      unsigned int pagePayloadSize = (h->payloadSize) * 256 / 8 - sizeof(RocPageHeader);
 
       /*
-            printf("payload size = %u\n",pagePayloadSize);
-            for (unsigned int w=0;w<pagePayloadSize/sizeof(unsigned int);w++) {
-              printf("%08X  ",(((unsigned int *)pagePayloadPtr)[w]));
-              if (w%8==7) printf("\n");
-            }
-            printf("\n");
+      printf("payload size = %u\n",pagePayloadSize);
+      for (unsigned int w=0;w<pagePayloadSize/sizeof(unsigned int);w++) {
+        printf("%08X  ",(((unsigned int *)pagePayloadPtr)[w]));
+        if (w%8==7) printf("\n");
+      }
+      printf("\n");
 
-            for (unsigned int w=0;w<16;w++) {
-              printf("%08X  ",(((unsigned int *)pagePayloadPtr)[w]));
-              if (w%8==7) printf("\n");
-            }
+      for (unsigned int w=0;w<16;w++) {
+        printf("%08X  ",(((unsigned int *)pagePayloadPtr)[w]));
+        if (w%8==7) printf("\n");
+      }
       */
 
       // check counter increasing
@@ -90,9 +91,7 @@ public:
         if (((unsigned int *)pagePayloadPtr)[w]!=checkValue) {
           errorCount++;
           if ((errorCount<100)||(errorCount%1000==0)) {
-            theLog.log(LogDebugTrace, "Error #%llu : Superpage %p Page %d : 32-bit word %d
-      mismatch : %X != %X\n",errorCount,ptr,i,w,((unsigned int
-      *)pagePayloadPtr)[w],checkValue);
+            theLog.log(LogDebugTrace, "Error #%llu : Superpage %p Page %d : 32-bit word %d mismatch : %X != %X\n",errorCount,ptr,i,w,((unsigned int*)pagePayloadPtr)[w],checkValue);
           }
 
         }

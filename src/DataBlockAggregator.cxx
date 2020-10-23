@@ -60,16 +60,13 @@ void DataBlockAggregator::stop(int waitStop) {
   theLog.log(LogInfoDevel_(3003), "Aggregator processed %llu blocks", totalBlocksIn);
   for (unsigned int i = 0; i < inputs.size(); i++) {
 
-    //    printf("aggregator input %d: in=%llu
-    //    out=%llu\n",i,inputs[i]->getNumberIn(),inputs[i]->getNumberOut());
-    //    printf("Aggregator FIFO in %d clear: %d
-    //    items\n",i,inputs[i]->getNumberOfUsedSlots());
+    // printf("aggregator input %d: in=%llu out=%llu\n",i,inputs[i]->getNumberIn(),inputs[i]->getNumberOut());
+    // printf("Aggregator FIFO in %d clear: %d items\n",i,inputs[i]->getNumberOfUsedSlots());
 
     inputs[i]->clear();
   }
-  //  printf("Aggregator FIFO out after clear: %d
-  //  items\n",output->getNumberOfUsedSlots());
-  /* todo: do we really need to clear? should be automatic */
+  // printf("Aggregator FIFO out after clear: %d items\n",output->getNumberOfUsedSlots());
+  // TODO: do we really need to clear? should be automatic
 
   DataSetReference bc = nullptr;
   while (!output->pop(bc)) {
@@ -129,11 +126,7 @@ Thread::CallbackResult DataBlockAggregator::executeCallback() {
       inputs[i]->pop(b);
       nBlocksIn++;
       totalBlocksIn++;
-      //       printf("Got block %d from dev %d eq %d link %d tf %d\n",
-      //        (int)(b->getData()->header.blockId), i,
-      //        (int)(b->getData()->header.equipmentId),
-      //        (int)(b->getData()->header.linkId),
-      //        (int)(b->getData()->header.timeframeId));
+      // printf("Got block %d from dev %d eq %d link %d tf %d\n", (int)(b->getData()->header.blockId), i, (int)(b->getData()->header.equipmentId), (int)(b->getData()->header.linkId), (int)(b->getData()->header.timeframeId));
       if (slicers[i].appendBlock(b, now) <= 0) {
         return Thread::CallbackResult::Error;
       }
@@ -259,15 +252,11 @@ int DataBlockSlicer::appendBlock(DataBlockContainerReference const &block, doubl
   PartialSlice &s = partialSlices[sourceId];
 
   if (s.currentDataSet != nullptr) {
-    // theLog.log(LogDebugTrace, "slice size = %d
-    // chunks",partialSlices[linkId].currentDataSet->size()); if
-    // ((partialSlices[linkId].tfId!=tfId)||(partialSlices[linkId].currentDataSet->size()>2))
+    // theLog.log(LogDebugTrace, "slice size = %d chunks",partialSlices[linkId].currentDataSet->size()); if ((partialSlices[linkId].tfId!=tfId)||(partialSlices[linkId].currentDataSet->size()>2))
     // {
     if ((s.tfId != tfId) || (tfId == undefinedTimeframeId)) {
       // the current slice is complete
-      // theLog.log(LogDebugTrace, "slicer %p TF %d eq %d link %d is complete (%d
-      // blocks)",this,
-      // (int)s.tfId,(int)sourceId.equipmentId,(int)sourceId.linkId,s.currentDataSet->size());
+      // theLog.log(LogDebugTrace, "slicer %p TF %d eq %d link %d is complete (%d blocks)",this, (int)s.tfId,(int)sourceId.equipmentId,(int)sourceId.linkId,s.currentDataSet->size());
       slices.push(s.currentDataSet);
       s.currentDataSet = nullptr;
     }
@@ -282,14 +271,12 @@ int DataBlockSlicer::appendBlock(DataBlockContainerReference const &block, doubl
   s.currentDataSet->push_back(block);
   s.tfId = tfId;
   s.lastUpdateTime = timestamp;
-  // printf(" %d,%d -> %d
-  // blocks\n",s.sourceId.equipmentId,s.sourceId.linkId,s.currentDataSet->size());
+  // printf(" %d,%d -> %d blocks\n",s.sourceId.equipmentId,s.sourceId.linkId,s.currentDataSet->size());
   return s.currentDataSet->size();
 }
 
 DataSetReference DataBlockSlicer::getSlice(bool includeIncomplete) {
-  // get a slice. get oldest from queue, or possibly currentDataSet when queue
-  // empty and includeIncomplete is true
+  // get a slice. get oldest from queue, or possibly currentDataSet when queue empty and includeIncomplete is true
   DataSetReference bcv = nullptr;
   if (slices.empty()) {
     if (includeIncomplete) {

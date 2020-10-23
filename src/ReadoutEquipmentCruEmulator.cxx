@@ -31,26 +31,21 @@ private:
 
   Thread::CallbackResult populateFifoOut(); // iterative callback
 
-  int cfgNumberOfLinks; // number of links to simulate. Will create data blocks
-                        // round-robin.
+  int cfgNumberOfLinks; // number of links to simulate. Will create data blocks round-robin.
   int cfgFeeId;         // FEE id to be used
-  int cfgLinkId;        // Link id to be used (base number - will be incremented if
-                        // multiple links selected)
+  int cfgLinkId;        // Link id to be used (base number - will be incremented if multiple links selected)
 
   const unsigned int LHCBunches = 3564;                     // number of bunches in LHC
   const unsigned int LHCOrbitRate = 11246;                  // LHC orbit rate, in Hz. 299792458 / 26659
   const unsigned int LHCBCRate = LHCOrbitRate * LHCBunches; // LHC bunch crossing rate, in Hz
 
   int cruBlockSize; // size of 1 data block (RDH+payload)
-  int bcStep;       // interval in BC clocks between two CRU block transfers, based on
-                    // link input data rate
+  int bcStep;       // interval in BC clocks between two CRU block transfers, based on link input data rate
 
   int cfgHBperiod = 1;               // interval between 2 HeartBeat triggers, in number of LHC orbits
-  double cfgGbtLinkThroughput = 3.2; // input link data rate in Gigabits/s per second, for one link
-                                     // (GBT=3.2 or 4.8 gbps)
+  double cfgGbtLinkThroughput = 3.2; // input link data rate in Gigabits/s per second, for one link (GBT=3.2 or 4.8 gbps)
 
-  int cfgMaxBlocksPerPage; // max number of CRU blocks per page (0 => fill the
-                           // page)
+  int cfgMaxBlocksPerPage; // max number of CRU blocks per page (0 => fill the page)
 
   double cfgEmptyHbRatio = 0.0;   // amount of empty HB frames
   int cfgPayloadSize = 64 * 1024; // maximum payload size, randomized
@@ -78,28 +73,15 @@ ReadoutEquipmentCruEmulator::ReadoutEquipmentCruEmulator(ConfigFile &cfg, std::s
   // declare RDH equipment
   initRdhEquipment();
 
-  // get configuration values
-  // configuration parameter: | equipment-cruemulator-* | maxBlocksPerPage | int
-  // | 0 | [obsolete- not used]. Maximum number of blocks per page. |
-  // configuration parameter: | equipment-cruemulator-* | cruBlockSize | int |
-  // 8192 | Size of a RDH block. |
-  // configuration parameter: |
-  // equipment-cruemulator-* | numberOfLinks | int | 1 | Number of GBT links
-  // simulated by equipment. |
-  // configuration parameter: |
-  // equipment-cruemulator-* | feeId | int | 0 | Front-End Electronics Id, used
-  // for FEE Id field in RDH. |
-  // configuration parameter: |
-  // equipment-cruemulator-* | linkId | int | 0 | Id of first link. If
-  // numberOfLinks>1, ids will range from linkId to linkId+numberOfLinks-1. |
-  // configuration parameter: | equipment-cruemulator-* | HBperiod | int | 1 |
-  // Interval between 2 HeartBeat triggers, in number of LHC orbits. |
-  // configuration parameter: | equipment-cruemulator-* | EmptyHbRatio | double
-  // | 0 | Fraction of empty HBframes, to simulate triggered detectors. |
-  // configuration parameter: | equipment-cruemulator-* | PayloadSize | int |
-  // 64k | Maximum payload size for each trigger. Actual size is randomized, and
-  // then split in a number of (cruBlockSize) packets. |
-
+  // get configuration values 
+  // configuration parameter: | equipment-cruemulator-* | maxBlocksPerPage | int | 0 | [obsolete- not used]. Maximum number of blocks per page. |
+  // configuration parameter: | equipment-cruemulator-* | cruBlockSize | int | 8192 | Size of a RDH block. |
+  // configuration parameter: | equipment-cruemulator-* | numberOfLinks | int | 1 | Number of GBT links simulated by equipment. |
+  // configuration parameter: | equipment-cruemulator-* | feeId | int | 0 | Front-End Electronics Id, used for FEE Id field in RDH. |
+  // configuration parameter: | equipment-cruemulator-* | linkId | int | 0 | Id of first link. If numberOfLinks>1, ids will range from linkId to linkId+numberOfLinks-1. |
+  // configuration parameter: | equipment-cruemulator-* | HBperiod | int | 1 | Interval between 2 HeartBeat triggers, in number of LHC orbits. |
+  // configuration parameter: | equipment-cruemulator-* | EmptyHbRatio | double | 0 | Fraction of empty HBframes, to simulate triggered detectors. |
+  // configuration parameter: | equipment-cruemulator-* | PayloadSize | int | 64k | Maximum payload size for each trigger. Actual size is randomized, and then split in a number of (cruBlockSize) packets. |
   cfg.getOptionalValue<int>(cfgEntryPoint + ".maxBlocksPerPage", cfgMaxBlocksPerPage, (int)0);
   cfg.getOptionalValue<int>(cfgEntryPoint + ".cruBlockSize", cruBlockSize, (int)8192);
   cfg.getOptionalValue<int>(cfgEntryPoint + ".numberOfLinks", cfgNumberOfLinks, (int)1);
@@ -130,8 +112,7 @@ ReadoutEquipmentCruEmulator::~ReadoutEquipmentCruEmulator() {}
 
 Thread::CallbackResult ReadoutEquipmentCruEmulator::prepareBlocks() {
 
-  // cru emulator creates a set of data pages for each link and put them in the
-  // fifo to be retrieve by getNextBlock
+  // cru emulator creates a set of data pages for each link and put them in the fifo to be retrieve by getNextBlock
 
   // check that we don't go faster than LHC...
   double t = elapsedTime.getTime();
@@ -166,8 +147,7 @@ Thread::CallbackResult ReadoutEquipmentCruEmulator::prepareBlocks() {
       return Thread::CallbackResult::Idle;
     }
     pendingBlocks[i] = nextBlock;
-    // printf("equipment %s : got block ref = %p rawptr = %p data=%p
-    // \n",getName().c_str(),nextBlock,nextBlock->getData(),nextBlock->getData()->data);
+    // printf("equipment %s : got block ref = %p rawptr = %p data=%p \n",getName().c_str(),nextBlock,nextBlock->getData(),nextBlock->getData()->data);
   }
 
   // at this point, we have 1 free page per link... fill it!
@@ -247,8 +227,7 @@ Thread::CallbackResult ReadoutEquipmentCruEmulator::prepareBlocks() {
       // https://docs.google.com/document/d/1KUoLnEw5PndVcj4FKR5cjV-MBN3Bqfx_B0e6wQOIuVE/edit#heading=h.5q65he8hp62c
 
       o2::Header::RAWDataHeader *rdh = (o2::Header::RAWDataHeader *)&b->data[offset];
-      // printf("rdh=%p block=%p delta=%d\n",rdh,b->data,(int)((char *)rdh-(char
-      // *)b->data));
+      // printf("rdh=%p block=%p delta=%d\n",rdh,b->data,(int)((char *)rdh-(char *)b->data));
 
       *rdh = defaultRDH; // reset fields to defaults
       rdh->triggerOrbit = nowOrbit;
@@ -279,8 +258,7 @@ Thread::CallbackResult ReadoutEquipmentCruEmulator::prepareBlocks() {
         }
       }
 
-      // printf("block %p offset %d / %d, link %d @ %p
-      // data=%p\n",b,offset,memPoolElementSize,linkId,rdh,b->data);
+      // printf("block %p offset %d / %d, link %d @ %p data=%p\n",b,offset,memPoolElementSize,linkId,rdh,b->data);
       // dumpRDH(rdh);
       nBlocksInPage++;
     }

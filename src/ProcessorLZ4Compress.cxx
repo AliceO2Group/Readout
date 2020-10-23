@@ -8,9 +8,8 @@
 // granted to it by virtue of its status as an Intergovernmental Organization
 // or submit itself to any jurisdiction.
 
-/*
-  This processor compresses data with LZ4 algorithm https://lz4.github.io/lz4/
-*/
+
+//  This processor compresses data with LZ4 algorithm https://lz4.github.io/lz4/
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -50,17 +49,13 @@ int processBlock(DataBlockContainerReference &input, DataBlockContainerReference
 
   // LZ4 frame
   // here we use simplest format with no options:
-  // Magic number (4b) FLG (1b) BD (1b) HC (1b) BlockCompressedSize (4b) Data
-  // (xxx) EndMark (4b)
+  // Magic number (4b) FLG (1b) BD (1b) HC (1b) BlockCompressedSize (4b) Data (xxx) EndMark (4b)
 
   const char header[] = {
       0x04, 0x22, 0x4D, 0x18, // Magic Number
-      0x60,                   // FLG b01100000 = 0x60 -> Version=01 (bits 6-7), Block Independence
-                              // flag=1 (bit 5)
-      0x70,                   // BD  b01110000 = 0x70 -> Block Maximum Size=111 (bits 4-5-6) 7 ->
-                              // 4MB
-      0x73,                   // HC header checksum (xxh32()>>8) & 0xFF (do not include Magic
-                              // Number!)
+      0x60,                   // FLG b01100000 = 0x60 -> Version=01 (bits 6-7), Block Independence flag=1 (bit 5)
+      0x70,                   // BD  b01110000 = 0x70 -> Block Maximum Size=111 (bits 4-5-6) 7 -> 4MB
+      0x73,                   // HC header checksum (xxh32()>>8) & 0xFF (do not include Magic Number!)
   };
 
   // to get header checksum:
@@ -77,8 +72,7 @@ int processBlock(DataBlockContainerReference &input, DataBlockContainerReference
 
   const bool reuseInputBufferForOutput = 0; // flag to select copy method
 
-  // size needed for final output buffer
-  // = maximum size after compression + few bytes for LZ4 file formatting
+  // size needed for final output buffer = maximum size after compression + few bytes for LZ4 file formatting
   int64_t maxCompressedSize = LZ4_compressBound(sizeIn);
   int64_t maxFormattedSize = maxCompressedSize + lz4FrameFormatBytes;
 
@@ -90,16 +84,14 @@ int processBlock(DataBlockContainerReference &input, DataBlockContainerReference
 
   if (!reuseInputBufferForOutput) {
     // create a new data block + container from malloc()
-    // (not using a predefined memory bank,
-    // which are not readily available from consumers)
+    // (not using a predefined memory bank, which are not readily available from consumers)
     size_t pageSize = sizeof(DataBlock) + maxFormattedSize;
     void *newPage = malloc(pageSize);
     if (newPage == nullptr) {
       return ERR_MALLOC;
     }
 
-    // fill header at beginning of page
-    // assuming payload is contiguous after header
+    // fill header at beginning of page assuming payload is contiguous after header
     DataBlock *b = (DataBlock *)newPage;
     b->header = input->getData()->header;
     b->data = &(((char *)b)[sizeof(DataBlock)]);

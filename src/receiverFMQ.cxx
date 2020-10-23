@@ -218,30 +218,23 @@ int main(int argc, const char **argv) {
     return -1;
   }
 
-  // configuration parameter: | receiverFMQ | transportType | string | shmem |
-  // c.f. parameter with same name in consumer-FairMQchannel-* |
+  // configuration parameter: | receiverFMQ | transportType | string | shmem | c.f. parameter with same name in consumer-FairMQchannel-* |
   std::string cfgTransportType = "shmem";
   cfg.getOptionalValue<std::string>(cfgEntryPoint + ".transportType", cfgTransportType);
 
-  // configuration parameter: | receiverFMQ | channelName | string | readout |
-  // c.f. parameter with same name in consumer-FairMQchannel-* |
+  // configuration parameter: | receiverFMQ | channelName | string | readout | c.f. parameter with same name in consumer-FairMQchannel-* |
   std::string cfgChannelName = "readout";
   cfg.getOptionalValue<std::string>(cfgEntryPoint + ".channelName", cfgChannelName);
 
-  // configuration parameter: | receiverFMQ | channelType | string | pair | c.f.
-  // parameter with same name in consumer-FairMQchannel-* |
+  // configuration parameter: | receiverFMQ | channelType | string | pair | c.f. parameter with same name in consumer-FairMQchannel-* |
   std::string cfgChannelType = "pair";
   cfg.getOptionalValue<std::string>(cfgEntryPoint + ".channelType", cfgChannelType);
 
-  // configuration parameter: | receiverFMQ | channelAddress | string |
-  // ipc:///tmp/pipe-readout | c.f. parameter with same name in
-  // consumer-FairMQchannel-* |
+  // configuration parameter: | receiverFMQ | channelAddress | string | ipc:///tmp/pipe-readout | c.f. parameter with same name in consumer-FairMQchannel-* |
   std::string cfgChannelAddress = "ipc:///tmp/pipe-readout";
   cfg.getOptionalValue<std::string>(cfgEntryPoint + ".channelAddress", cfgChannelAddress);
 
-  // configuration parameter: | receiverFMQ | decodingMode | string | none |
-  // Decoding mode of the readout FMQ output stream. Possible values: none (no
-  // decoding), stfHbf, stfSuperpage |
+  // configuration parameter: | receiverFMQ | decodingMode | string | none | Decoding mode of the readout FMQ output stream. Possible values: none (no decoding), stfHbf, stfSuperpage |
   std::string cfgDecodingMode = "none";
   cfg.getOptionalValue<std::string>(cfgEntryPoint + ".decodingMode", cfgDecodingMode);
   enum decodingMode { none = 0, stfHbf = 1, stfSuperpage = 2, stfDatablock = 3 };
@@ -258,15 +251,11 @@ int main(int argc, const char **argv) {
     theLog.log(LogErrorSupport_(3102), "Wrong decoding mode set : %s", cfgDecodingMode.c_str());
   }
 
-  // configuration parameter: | receiverFMQ | dumpRDH | int | 0 | When
-  // set, the RDH of data received are printed (needs decodingMode=readout).|
+  // configuration parameter: | receiverFMQ | dumpRDH | int | 0 | When set, the RDH of data received are printed (needs decodingMode=readout).|
   int cfgDumpRDH = 0;
   cfg.getOptionalValue<int>(cfgEntryPoint + ".dumpRDH", cfgDumpRDH, 0);
 
-  // configuration parameter: | receiverFMQ | dumpTF | int | 0 | When
-  // set, a message is printed when a new timeframe is received.
-  // If the value is bigger than one, this specifies a periodic interval between
-  // TF print after the first one. (e.g. 100 would print TF 1, 100, 200, etc). |
+  // configuration parameter: | receiverFMQ | dumpTF | int | 0 | When set, a message is printed when a new timeframe is received. If the value is bigger than one, this specifies a periodic interval between TF print after the first one. (e.g. 100 would print TF 1, 100, 200, etc). |
   int cfgDumpTF = 0;
   cfg.getOptionalValue<int>(cfgEntryPoint + ".dumpTF", cfgDumpTF, 0);
   theLog.log(LogInfoDevel_(3002), "dumpRDH = %d dumpTF = %d", cfgDumpRDH, cfgDumpTF);
@@ -453,7 +442,7 @@ int main(int argc, const char **argv) {
     }
     // printf("releasing msg %p\n",msg->GetData());
     // std::cout << " received message of size " << msg->GetSize() << std::endl;
-    // // access data via inputMsg->GetData()
+    // access data via inputMsg->GetData()
 
     // print regularly the current throughput
     if (runningTime.isTimeout()) {

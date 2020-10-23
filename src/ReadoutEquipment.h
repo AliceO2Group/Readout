@@ -43,10 +43,8 @@ public:
   virtual void initCounters();
   virtual void finalCounters();
 
-  bool stopOnError = false; // if set, readout will stop when this equipment
-                            // reports an error (isError flag)
-  int isError = 0;          // flag which might be used to count number of errors
-                            // occuring in the equipment
+  bool stopOnError = false; // if set, readout will stop when this equipment reports an error (isError flag)
+  int isError = 0;          // flag which might be used to count number of errors occuring in the equipment
 
   // protected:
   // todo: give direct access to output FIFO?
@@ -61,9 +59,8 @@ private:
 
   // Function called iteratively in dedicated thread to populate FIFO.
   // The equipmentStats member variable should be updated.
-  // calling sequence: prepareBlocks() + iterate getNextBlock()
-  // The return value gives a hint about if it should be called soon again or
-  // not. If idle, can wait a bit
+  // Calling sequence: prepareBlocks() + iterate getNextBlock()
+  // The return value gives a hint about if it should be called soon again or not. If idle, can wait a bit
   virtual Thread::CallbackResult prepareBlocks() { return Thread::CallbackResult::Idle; };
   virtual DataBlockContainerReference getNextBlock() { return nullptr; };
 
@@ -76,8 +73,7 @@ protected:
   // Definition of performance counters for readout statistics.
   // Each counter is assigned a unique integer index (incremental, starting 0).
   // The last element can be used to get the number of counters defined.
-  // The (int) index value can be used to access the corresponding counter in
-  // equipmentStats array.
+  // The (int) index value can be used to access the corresponding counter in equipmentStats array.
   enum EquipmentStatsIndexes {
     nBlocksOut = 0,
     nBytesOut = 1,
@@ -108,10 +104,8 @@ protected:
   std::vector<CounterStats> equipmentStats;
   std::vector<CounterValue> equipmentStatsLast;
 
-  double cfgConsoleStatsUpdateTime = 0;     // number of seconds between regular printing of statistics on console
-                                            // (if zero, only on stop)
-  AliceO2::Common::Timer consoleStatsTimer; // timer to keep track of elapsed time between console
-                                            // statistics updates
+  double cfgConsoleStatsUpdateTime = 0;     // number of seconds between regular printing of statistics on console (if zero, only on stop)
+  AliceO2::Common::Timer consoleStatsTimer; // timer to keep track of elapsed time between console statistics updates
 
   AliceO2::Common::Timer clk;
   AliceO2::Common::Timer clk0;
@@ -119,19 +113,16 @@ protected:
   double readoutRate;
   std::string name; // name of the equipment
 
-  uint16_t id = undefinedEquipmentId; // id of equipment (optional, used to tag
-                                      // data blocks)
+  uint16_t id = undefinedEquipmentId; // id of equipment (optional, used to tag data blocks)
 
   std::shared_ptr<MemoryPagesPool> mp; // a memory pool from which to allocate data pages
   int memoryPoolPageSize = 0;          // size if each page in pool
   int memoryPoolNumberOfPages = 0;     // number of pages in pool
-  std::string memoryBankName = "";     // memory bank to be used. by default, this
-                                       // uses the first memory bank available
+  std::string memoryBankName = "";     // memory bank to be used. by default, this uses the first memory bank available
 
   int disableOutput = 0; // when set true, data are dropped before pushing to output queue
 
-  size_t pageSpaceReserved = 0; // amount of space reserved (in bytes) at beginning of each data page,
-                                // possibly to store header
+  size_t pageSpaceReserved = 0; // amount of space reserved (in bytes) at beginning of each data page, possibly to store header
 
   int debugFirstPages = 0; // print debug info on first number of pages read
 
@@ -157,10 +148,8 @@ private:
   int cfgRdhDumpEnabled = 0;                  // flag to enable RDH dump at runtime
   int cfgRdhDumpErrorEnabled = 1;             // flag to enable RDH error log at runtime
   int cfgRdhDumpWarningEnabled = 0;           // flag to enable RDH warning log at runtime
-  int cfgRdhUseFirstInPageEnabled = 0;        // flag to enable reading of first RDH in
-                                              // page to populate readout headers
-  int cfgRdhCheckPacketCounterContiguous = 1; // flag to enable checking if RDH packetCounter value contiguous (done
-                                              // link-by-link)
+  int cfgRdhUseFirstInPageEnabled = 0;        // flag to enable reading of first RDH in page to populate readout headers
+  int cfgRdhCheckPacketCounterContiguous = 1; // flag to enable checking if RDH packetCounter value contiguous (done link-by-link)
 
   bool isRdhEquipment = false; // to be set true for RDH equipments
 
@@ -181,8 +170,7 @@ protected:
 
   unsigned long long statsRdhCheckOk = 0;        // number of RDH structs which have passed check ok
   unsigned long long statsRdhCheckErr = 0;       // number of RDH structs which have not passed check
-  unsigned long long statsRdhCheckStreamErr = 0; // number of inconsistencies in RDH stream (e.g. ids/timing compared to
-                                                 // previous RDH)
+  unsigned long long statsRdhCheckStreamErr = 0; // number of inconsistencies in RDH stream (e.g. ids/timing compared to previous RDH)
 };
 
 std::unique_ptr<ReadoutEquipment> getReadoutEquipmentDummy(ConfigFile &cfg, std::string cfgEntryPoint);

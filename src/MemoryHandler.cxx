@@ -36,8 +36,7 @@ MemoryHandler::MemoryHandler(int vPageSize, int vNumberOfPages) {
   bigBlock->usedSize += bytesReserved;
   bigBlockMutex.unlock();
 
-  //    theLog.log(LogDebugTrace, "Got %lld pages, each
-  //    %s",nPages,ReadoutUtils::NumberOfBytesToString(pageSize,"Bytes").c_str());
+  // theLog.log(LogDebugTrace, "Got %lld pages, each %s",nPages,ReadoutUtils::NumberOfBytesToString(pageSize,"Bytes").c_str());
   pagesAvailable = std::make_unique<AliceO2::Common::Fifo<long>>(numberOfPages);
 
   for (unsigned int i = 0; i < numberOfPages; i++) {

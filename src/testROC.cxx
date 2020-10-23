@@ -134,8 +134,7 @@ int ROCdevice::doLoop() {
   // first empty fifo from available pages
   int nPop = 0;
   while ((channel->getReadyQueueSize() > 0)) {
-    auto superpage = channel->getSuperpage(); // this is the first superpage in
-                                              // FIFO ... let's check its state
+    auto superpage = channel->getSuperpage(); // this is the first superpage in FIFO ... let's check its state
     if (superpage.isFilled()) {
       mp->releasePage(superpage.getUserData());
       channel->popSuperpage();

@@ -28,22 +28,16 @@ using PtrProcessFunction = decltype(&processBlock);
 class processThread {
 
 public:
-  std::unique_ptr<AliceO2::Common::Fifo<DataBlockContainerReference>> inputFifo;  // fifo for input data. This should be filled externally to
-                                                                                  // provide data blocks.
-  std::unique_ptr<AliceO2::Common::Fifo<DataBlockContainerReference>> outputFifo; // fifo for output data. This should be emptied externally, to
-                                                                                  // dispose of processed data blocks.
+  std::unique_ptr<AliceO2::Common::Fifo<DataBlockContainerReference>> inputFifo;  // fifo for input data. This should be filled externally to provide data blocks.
+  std::unique_ptr<AliceO2::Common::Fifo<DataBlockContainerReference>> outputFifo; // fifo for output data. This should be emptied externally, to dispose of processed data blocks.
 
-  // constructor
-  // parameters:
-  // - f: process function, called for each block coming in inputFifo. Result is
-  // put in outputFifo.
+  // constructor parameters:
+  // - f: process function, called for each block coming in inputFifo. Result is put in outputFifo.
   // - id: a number to identify this processing thread
   // - fifoSize: size of input and output FIFOs for incoming/output data blocks
-  // - idleSleepTime: idle sleep time (in microseconds), when input fifo empty
-  // or output fifo full, before retrying.
+  // - idleSleepTime: idle sleep time (in microseconds), when input fifo empty or output fifo full, before retrying.
   //
-  // The constructor initialize the member variables and create the processing
-  // thread.
+  // The constructor initialize the member variables and create the processing thread.
   processThread(PtrProcessFunction f, int id, unsigned int fifoSize = 10, unsigned int idleSleepTime = 100) {
     shutdown = 0;
     fProcess = f;
@@ -76,8 +70,7 @@ public:
     stop(); // stop thread
   }
 
-  // the loop which runs in a separate thread and calls fProcess() for each
-  // block in input fifo, until stop() is called
+  // the loop which runs in a separate thread and calls fProcess() for each block in input fifo, until stop() is called
   void loop() {
     // printf("starting thread %d input=%p
     // output=%p\n",threadId,inputFifo.get(),outputFifo.get());
@@ -86,9 +79,7 @@ public:
     // if (outputFifo==nullptr) return;
     for (; !shutdown;) {
       bool isActive = 0;
-      // printf("thread %d loop\n",threadId);
-      // wait there is a slot in output fifo before processing a new block, so
-      // that we are sure we can push the result
+      // wait there is a slot in output fifo before processing a new block, so that we are sure we can push the result
       if (!outputFifo->isFull()) {
         DataBlockContainerReference bc = nullptr;
         inputFifo->pop(bc);
@@ -116,8 +107,7 @@ public:
 private:
   std::atomic<int> shutdown;             // flag set to 1 to request thread termination
   std::unique_ptr<std::thread> th;       // the thread
-  unsigned int cfgIdleSleepTime = 0;     // idle sleep time (in microseconds), when
-                                         // fifos empty or full, before retrying
+  unsigned int cfgIdleSleepTime = 0;     // idle sleep time (in microseconds), when fifos empty or full, before retrying
   PtrProcessFunction fProcess = nullptr; // the process function to be used
   int threadId = 0;                      // id of the thread
 };
@@ -135,32 +125,23 @@ private:
 
   // various statistics
   unsigned long long dropBytes = 0;          // amount of data lost in bytes (could not keep up with incomping data)
-  unsigned long long dropBlocks = 0;         // amount of data lost in blocks (could not
-                                             // keep up with incomping data)
+  unsigned long long dropBlocks = 0;         // amount of data lost in blocks (could not keep up with incomping data)
   unsigned long long processedBytes = 0;     // amount of data processed in bytes
   unsigned long long processedBlocks = 0;    // amount of data processed in blocks
   unsigned long long processedBytesOut = 0;  // amount of data output in bytes
   unsigned long long processedBlocksOut = 0; // amount of data output in blocks
 
   std::atomic<int> shutdown;                 // flag set to 1 to request thread termination
-  std::unique_ptr<std::thread> outputThread; // the collector thread taking care of emptying processors
-                                             // output fifos
-  int cfgIdleSleepTime;                      // sleep time (microseconds) for the processing threads
-                                             // (see class processThread) and the collector thread
-                                             // aggregating output
-  int cfgFifoSize;                           // fifo size for the processing threads (see class
-                                             // processThread)
+  std::unique_ptr<std::thread> outputThread; // the collector thread taking care of emptying processors output fifos
+  int cfgIdleSleepTime;                      // sleep time (microseconds) for the processing threads (see class processThread) and the collector thread aggregating output
+  int cfgFifoSize;                           // fifo size for the processing threads (see class processThread)
 
-  int cfgEnsurePageOrder = 0;                                 // if set, will track incoming pages ID and make
-                                                              // sure it goes out in same order
+  int cfgEnsurePageOrder = 0;                                 // if set, will track incoming pages ID and make sure it goes out in same order
   std::unique_ptr<AliceO2::Common::Fifo<DataBlockId>> idFifo; // fifo to keep track of order of IDs coming in
 
-  DataBlockId currentId = 1000000000000ULL; // a global counter to tag pages being processed. We
-                                            // don't start from zero just to make this id a bit more
-                                            // unique.
+  DataBlockId currentId = 1000000000000ULL; // a global counter to tag pages being processed. We don't start from zero just to make this id a bit more unique.
 
-  const bool fpPagesLog = false; // if set, this allows to save input/output ids
-                                 // to file for debugging
+  const bool fpPagesLog = false; // if set, this allows to save input/output ids to file for debugging
   FILE *fpPagesIn = nullptr;
   FILE *fpPagesOut = nullptr;
 
@@ -168,9 +149,7 @@ public:
   // constructor
   ConsumerDataProcessor(ConfigFile &cfg, std::string cfgEntryPoint) : Consumer(cfg, cfgEntryPoint) {
 
-    // configuration parameter: | consumer-processor-* | libraryPath | string |
-    // | Path to the library file providing the processBlock() function to be
-    // used. |
+    // configuration parameter: | consumer-processor-* | libraryPath | string | | Path to the library file providing the processBlock() function to be used. |
     std::string libraryPath = cfg.getValue<std::string>(cfgEntryPoint + ".libraryPath");
     theLog.log(LogInfoDevel_(3002), "Using library file = %s", libraryPath.c_str());
 
@@ -188,19 +167,13 @@ public:
       throw __LINE__;
     }
 
-    // configuration parameter: | consumer-processor-* | threadInputFifoSize |
-    // int | 10 | Size of input FIFO, where pending data are waiting to be
-    // processed. |
+    // configuration parameter: | consumer-processor-* | threadInputFifoSize | int | 10 | Size of input FIFO, where pending data are waiting to be processed. |
     cfg.getOptionalValue<int>(cfgEntryPoint + ".threadInputFifoSize", cfgFifoSize, 10);
 
-    // configuration parameter: | consumer-processor-* | threadIdleSleepTime |
-    // int | 1000 | Sleep time (microseconds) of inactive thread, before polling
-    // for next data. |
+    // configuration parameter: | consumer-processor-* | threadIdleSleepTime | int | 1000 | Sleep time (microseconds) of inactive thread, before polling for next data. |
     cfg.getOptionalValue<int>(cfgEntryPoint + ".threadIdleSleepTime", cfgIdleSleepTime, 1000);
 
-    // create a thread pool for the processing
-    // configuration parameter: | consumer-processor-* | numberOfThreads | int |
-    // 1 | Number of threads running the processBlock() function in parallel. |
+    // create a thread pool for the processing configuration parameter: | consumer-processor-* | numberOfThreads | int | 1 | Number of threads running the processBlock() function in parallel. |
     cfg.getOptionalValue<int>(cfgEntryPoint + ".numberOfThreads", numberOfThreads, 1);
     theLog.log(LogInfoDevel_(3002), "Using %d thread(s) for processing", numberOfThreads);
     for (int i = 0; i < numberOfThreads; i++) {
@@ -208,10 +181,7 @@ public:
     }
 
     // create a FIFO to keep track of incoming page IDs
-    // configuration parameter: | consumer-processor-* | ensurePageOrder | int |
-    // 0 | If set, ensures that data pages goes out of the processing pool in
-    // same order as input (which is not guaranteed with multithreading
-    // otherwise). This option adds latency. |
+    // configuration parameter: | consumer-processor-* | ensurePageOrder | int | 0 | If set, ensures that data pages goes out of the processing pool in same order as input (which is not guaranteed with multithreading otherwise). This option adds latency. |
     cfg.getOptionalValue<int>(cfgEntryPoint + ".ensurePageOrder", cfgEnsurePageOrder, 0);
     if (cfgEnsurePageOrder) {
       idFifo = std::make_unique<AliceO2::Common::Fifo<DataBlockId>>((int)(numberOfThreads * cfgFifoSize * 2));
@@ -222,8 +192,7 @@ public:
       fpPagesOut = fopen("/tmp/pagesOut.txt", "w");
     }
 
-    // create a collector thread to collect output blocks from the processing
-    // threads
+    // create a collector thread to collect output blocks from the processing threads
     shutdown = 0;
     std::function<void(void)> l = std::bind(&ConsumerDataProcessor::loopOutput, this);
     outputThread = std::make_unique<std::thread>(l);
@@ -272,8 +241,7 @@ public:
     // check we have space to keep track of this page
     if (cfgEnsurePageOrder) {
       if (idFifo->isFull()) {
-        // theLog.log(LogWarningDevel, "Page ordering FIFO full,
-        // discarding data");
+        // theLog.log(LogWarningDevel, "Page ordering FIFO full, discarding data");
         dropBlocks++;
         dropBytes += size;
         return -1;
@@ -287,9 +255,7 @@ public:
       if (threadIndex == numberOfThreads) {
         threadIndex = 0;
       }
-      //      if (threadPool[threadIndex]->inputFifo->isFull()) {continue;
-      //      if (debug) {printf("pushing %p to thread
-      //      %d\n",b.get(),threadIndex+1);}
+      // if (threadPool[threadIndex]->inputFifo->isFull()) {continue; if (debug) {printf("pushing %p to thread %d\n",b.get(),threadIndex+1);}
       if (threadPool[threadIndex]->inputFifo->push(b) == 0) {
         break;
       }
@@ -333,8 +299,7 @@ public:
     // lambda function that pushes forward next available bage
     auto pushPage = [&](DataBlockContainerReference bc) {
       isActive = 1;
-      // if (debug) {printf("output: got %p\n",bc.get());}
-      // printf("output: push %lu\n",bc->getData()->header.pipelineId);
+      // if (debug) {printf("output: got %p\n",bc.get());} printf("output: push %lu\n",bc->getData()->header.pipelineId);
 
       this->processedBlocksOut++;
       this->processedBytesOut += bc->getData()->header.dataSize;
@@ -369,8 +334,7 @@ public:
                 if (fpPagesOut != nullptr) {
                   fprintf(fpPagesOut, "%llu\t%llu\t%d\t%d\t%llu\n", (unsigned long long)bc->getData()->header.pipelineId, (unsigned long long)bc->getData()->header.blockId, bc->getData()->header.linkId, bc->getData()->header.equipmentId, (unsigned long long)bc->getData()->header.timeframeId);
                 }
-                // we increment start index, as it is more likely to have the
-                // next page
+                // we increment start index, as it is more likely to have the next page
                 threadIx++;
                 break;
               }

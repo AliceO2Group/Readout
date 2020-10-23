@@ -268,11 +268,9 @@ typedef struct _RAWDataHeaderV4 {
     uint32_t word0 = 0xffffffff;
     struct {
       uint32_t linkId : 8;        /// bit 0 to 7: link id (GBT channel number)
-      uint32_t packetCounter : 8; /// bit 8 to 15: packet counter (increased at
-                                  /// every packet received in the link)
+      uint32_t packetCounter : 8; /// bit 8 to 15: packet counter (increased at every packet received in the link)
       uint32_t cruId : 12;        /// bit 16 to 27: CRU id
-      uint32_t dpwId : 4;         /// bit 28 to 31: data path wrapper id, used to
-                                  /// identify one of the 2 CRU End Points
+      uint32_t dpwId : 4;         /// bit 28 to 31: data path wrapper id, used to identify one of the 2 CRU End Points
     };
   };
 
@@ -403,11 +401,9 @@ typedef struct _RAWDataHeaderV6 {
     uint32_t word3 = 0xffffffff;
     struct {
       uint32_t linkId : 8;        /// bit 0 to 7: link id (GBT channel number)
-      uint32_t packetCounter : 8; /// bit 8 to 15: packet counter (increased at
-                                  /// every packet received in the link)
+      uint32_t packetCounter : 8; /// bit 8 to 15: packet counter (increased at every packet received in the link)
       uint32_t cruId : 12;        /// bit 16 to 27: CRU id
-      uint32_t dpwId : 4;         /// bit 28 to 31: data path wrapper id, used to
-                                  /// identify one of the 2 CRU End Points
+      uint32_t dpwId : 4;         /// bit 28 to 31: data path wrapper id, used to identify one of the 2 CRU End Points
     };
   };
 

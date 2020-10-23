@@ -26,8 +26,7 @@ MemoryPagesPool::MemoryPagesPool(size_t vPageSize, size_t vNumberOfPages, void *
   assert(headerReservedSpace >= sizeof(DataBlock));
   assert(headerReservedSpace <= pageSize);
 
-  // if not specified, assuming base block size big enough to fit number of
-  // pages * page size
+  // if not specified, assuming base block size big enough to fit number of pages * page size
   if (baseBlockSize == 0) {
     baseBlockSize = pageSize * numberOfPages;
   }
@@ -185,11 +184,8 @@ void MemoryPagesPool::releasePage(void *address) {
 }
 
 size_t MemoryPagesPool::getPageSize() { return pageSize; }
-
 size_t MemoryPagesPool::getTotalNumberOfPages() { return numberOfPages; }
-
 size_t MemoryPagesPool::getNumberOfPagesAvailable() { return pagesAvailable->getNumberOfUsedSlots(); }
-
 void *MemoryPagesPool::getBaseBlockAddress() { return baseBlockAddress; }
 size_t MemoryPagesPool::getBaseBlockSize() { return baseBlockSize; }
 
@@ -219,8 +215,7 @@ std::shared_ptr<DataBlockContainer> MemoryPagesPool::getNewDataBlockContainer(vo
     }
   }
 
-  // fill header at beginning of page
-  // assuming payload is contiguous after header
+  // fill header at beginning of page assuming payload is contiguous after header
   DataBlock *b = (DataBlock *)newPage;
   b->header = defaultDataBlockHeader;
   b->header.dataSize = getDataBlockMaxSize();

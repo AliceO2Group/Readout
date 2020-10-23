@@ -25,9 +25,9 @@
 #include "RAWDataHeader.h"
 #include "SubTimeframe.h"
 
-// cleanup function, defined with the callback footprint expected in the 3rd
-// argument of FairMQTransportFactory.CreateMessage() when object not null, it
-// should be a (DataBlockContainerReference *), which will be destroyed
+// cleanup function
+// defined with the callback footprint expected in the 3rd argument of FairMQTransportFactory.CreateMessage()
+// when object not null, it should be a (DataBlockContainerReference *), which will be destroyed
 void msgcleanupCallback(void *data, void *object) {
   if ((object != nullptr) && (data != nullptr)) {
     DataBlockContainerReference *ptr = (DataBlockContainerReference *)object;
@@ -58,9 +58,7 @@ public:
 
   ConsumerFMQchannel(ConfigFile &cfg, std::string cfgEntryPoint) : Consumer(cfg, cfgEntryPoint) {
 
-    // configuration parameter: | consumer-FairMQChannel-* | disableSending |
-    // int | 0 | If set, no data is output to FMQ channel. Used for performance
-    // test to create FMQ shared memory segment without pushing the data. |
+    // configuration parameter: | consumer-FairMQChannel-* | disableSending | int | 0 | If set, no data is output to FMQ channel. Used for performance test to create FMQ shared memory segment without pushing the data. |
     int cfgDisableSending = 0;
     cfg.getOptionalValue<int>(cfgEntryPoint + ".disableSending", cfgDisableSending);
     if (cfgDisableSending) {
@@ -68,10 +66,7 @@ public:
       disableSending = true;
     }
 
-    // configuration parameter: | consumer-FairMQChannel-* | enableRawFormat |
-    // int | 0 | If 0, data is pushed 1 STF header + 1 part per HBF.
-    // If 1, data is pushed in raw format without STF headers, 1 FMQ message
-    // per data page. If 2, format is 1 STF header + 1 part per data page.|
+    // configuration parameter: | consumer-FairMQChannel-* | enableRawFormat | int | 0 | If 0, data is pushed 1 STF header + 1 part per HBF. If 1, data is pushed in raw format without STF headers, 1 FMQ message per data page. If 2, format is 1 STF header + 1 part per data page.|
     int cfgEnableRawFormat = 0;
     cfg.getOptionalValue<int>(cfgEntryPoint + ".enableRawFormat", cfgEnableRawFormat);
     if (cfgEnableRawFormat == 1) {
@@ -85,32 +80,23 @@ public:
       enableRawFormatDatablock = true;
     }
 
-    // configuration parameter: | consumer-FairMQChannel-* | sessionName |
-    // string | default | Name of the FMQ session. c.f. FairMQ::FairMQChannel.h
-    // |
+    // configuration parameter: | consumer-FairMQChannel-* | sessionName | string | default | Name of the FMQ session. c.f. FairMQ::FairMQChannel.h |
     std::string cfgSessionName = "default";
     cfg.getOptionalValue<std::string>(cfgEntryPoint + ".sessionName", cfgSessionName);
 
-    // configuration parameter: | consumer-FairMQChannel-* | fmq-transport |
-    // string | shmem | Name of the FMQ transport. Typically: zeromq or shmem.
-    // c.f. FairMQ::FairMQChannel.h |
+    // configuration parameter: | consumer-FairMQChannel-* | fmq-transport | string | shmem | Name of the FMQ transport. Typically: zeromq or shmem. c.f. FairMQ::FairMQChannel.h |
     std::string cfgTransportType = "shmem";
     cfg.getOptionalValue<std::string>(cfgEntryPoint + ".fmq-transport", cfgTransportType);
 
-    // configuration parameter: | consumer-FairMQChannel-* | fmq-name | string |
-    // readout | Name of the FMQ channel. c.f. FairMQ::FairMQChannel.h |
+    // configuration parameter: | consumer-FairMQChannel-* | fmq-name | string | readout | Name of the FMQ channel. c.f. FairMQ::FairMQChannel.h |
     std::string cfgChannelName = "readout";
     cfg.getOptionalValue<std::string>(cfgEntryPoint + ".fmq-name", cfgChannelName);
 
-    // configuration parameter: | consumer-FairMQChannel-* | fmq-type | string |
-    // pair | Type of the FMQ channel. Typically: pair. c.f.
-    // FairMQ::FairMQChannel.h |
+    // configuration parameter: | consumer-FairMQChannel-* | fmq-type | string | pair | Type of the FMQ channel. Typically: pair. c.f. FairMQ::FairMQChannel.h |
     std::string cfgChannelType = "pair";
     cfg.getOptionalValue<std::string>(cfgEntryPoint + ".fmq-type", cfgChannelType);
 
-    // configuration parameter: | consumer-FairMQChannel-* | fmq-address |
-    // string | ipc:///tmp/pipe-readout | Address of the FMQ channel. Depends on
-    // transportType. c.f. FairMQ::FairMQChannel.h |
+    // configuration parameter: | consumer-FairMQChannel-* | fmq-address | string | ipc:///tmp/pipe-readout | Address of the FMQ channel. Depends on transportType. c.f. FairMQ::FairMQChannel.h |
     std::string cfgChannelAddress = "ipc:///tmp/pipe-readout";
     cfg.getOptionalValue<std::string>(cfgEntryPoint + ".fmq-address", cfgChannelAddress);
 
@@ -119,9 +105,7 @@ public:
     FairMQProgOptions fmqOptions;
     fmqOptions.SetValue<std::string>("session", cfgSessionName);
 
-    // configuration parameter: | consumer-FairMQChannel-* | fmq-progOptions |
-    // string |  | Additional FMQ program options parameters, as a
-    // comma-separated list of key=value pairs. |
+    // configuration parameter: | consumer-FairMQChannel-* | fmq-progOptions | string |  | Additional FMQ program options parameters, as a comma-separated list of key=value pairs. |
     std::string cfgFmqOptions = "";
     cfg.getOptionalValue<std::string>(cfgEntryPoint + ".fmq-progOptions", cfgFmqOptions);
     std::map<std::string, std::string> mapOptions;
@@ -136,18 +120,11 @@ public:
     transportFactory = FairMQTransportFactory::CreateTransportFactory(cfgTransportType, fair::mq::tools::Uuid(), &fmqOptions);
     sendingChannel = std::make_unique<FairMQChannel>(cfgChannelName, cfgChannelType, transportFactory);
 
-    // configuration parameter: | consumer-FairMQChannel-* | memoryBankName |
-    // string |  | Name of the memory bank to crete (if any) and use. This
-    // consumer has the special property of being able to provide memory banks
-    // to readout, as the ones defined in bank-*. It creates a memory region
-    // optimized for selected transport and to be used for readout device DMA. |
+    // configuration parameter: | consumer-FairMQChannel-* | memoryBankName | string |  | Name of the memory bank to crete (if any) and use. This consumer has the special property of being able to provide memory banks to readout, as the ones defined in bank-*. It creates a memory region optimized for selected transport and to be used for readout device DMA. |
     std::string memoryBankName = ""; // name of memory bank to create (if any) and use.
     cfg.getOptionalValue<std::string>(cfgEntryPoint + ".memoryBankName", memoryBankName);
 
-    // configuration parameter: | consumer-FairMQChannel-* | unmanagedMemorySize
-    // | bytes |  | Size of the memory region to be created. c.f.
-    // FairMQ::FairMQUnmanagedRegion.h. If not set, no special FMQ memory region
-    // is created. |
+    // configuration parameter: | consumer-FairMQChannel-* | unmanagedMemorySize | bytes |  | Size of the memory region to be created. c.f. FairMQ::FairMQUnmanagedRegion.h. If not set, no special FMQ memory region is created. |
     std::string cfgUnmanagedMemorySize = "";
     cfg.getOptionalValue<std::string>(cfgEntryPoint + ".unmanagedMemorySize", cfgUnmanagedMemorySize);
     long long mMemorySize = ReadoutUtils::getNumberOfBytesFromString(cfgUnmanagedMemorySize.c_str());
@@ -177,18 +154,13 @@ public:
     if (memoryBuffer != nullptr) {
       memBank = std::make_shared<MemoryBank>(memoryBuffer->GetData(), memoryBuffer->GetSize(), nullptr, "FMQ unmanaged memory buffer from " + cfgEntryPoint);
       if (memoryBankName.length() == 0) {
-        memoryBankName = cfgEntryPoint; // if no bank name defined, create one
-                                        // with the name of the consumer
+        memoryBankName = cfgEntryPoint; // if no bank name defined, create one with the name of the consumer
       }
       theMemoryBankManager.addBank(memBank, memoryBankName);
       theLog.log(LogInfoDevel_(3008), "Bank %s added", memoryBankName.c_str());
     }
 
-    // allocate a pool of pages for headers and data frame copies
-    // configuration parameter: | consumer-FairMQChannel-* | memoryPoolPageSize
-    // | bytes | 128k | c.f. same parameter in bank-*. | configuration
-    // parameter: | consumer-FairMQChannel-* | memoryPoolNumberOfPages | int |
-    // 100 | c.f. same parameter in bank-*. |
+    // allocate a pool of pages for headers and data frame copies configuration parameter: | consumer-FairMQChannel-* | memoryPoolPageSize | bytes | 128k | c.f. same parameter in bank-*. | configuration parameter: | consumer-FairMQChannel-* | memoryPoolNumberOfPages | int | 100 | c.f. same parameter in bank-*. |
     memoryPoolPageSize = 0;
     memoryPoolNumberOfPages = 100;
     std::string cfgMemoryPoolPageSize = "128k";
@@ -205,8 +177,7 @@ public:
   ~ConsumerFMQchannel() {
     // release in reverse order
     mp = nullptr;
-    memoryBuffer = nullptr; // warning: data range may still be referenced in
-                            // memory bank manager
+    memoryBuffer = nullptr; // warning: data range may still be referenced in memory bank manager
     sendingChannel = nullptr;
     transportFactory = nullptr;
   }
@@ -260,9 +231,7 @@ public:
     // 1 FMQ message per data page, 1 part= header, 1 part= payload
     if (enableRawFormatDatablock) {
       for (auto &br : *bc) {
-        // we create a copy of the reference, in a newly allocated object, so that
-        // reference is kept alive until this new object is destroyed in the
-        // cleanupCallback
+        // create a copy of the reference, in a newly allocated object, so that reference is kept alive until this new object is destroyed in the cleanupCallback
         DataBlockContainerReference *ptr = new DataBlockContainerReference(br);
         if (ptr == nullptr) {
           totalPushError++;
@@ -355,8 +324,8 @@ public:
       return 0;
     }
 
-    // send msg with WP5 format: 1 FMQ message for header + 1 FMQ message per
-    // HBF (all belonging to same CRU/link id)
+    // send msg with WP5 format:
+    // 1 FMQ message for header + 1 FMQ message per HBF (all belonging to same CRU/link id)
 
     // we iterate a first time to count number of HB
     if (memoryPoolPageSize < (int)sizeof(SubTimeframe)) {
@@ -403,16 +372,14 @@ public:
           theLog.log(LogWarningSupport_(3004), "mismatch linkId");
         }
       }
-      // printf("block %d tf %d link
-      // %d\n",ix,b->header.timeframeId,b->header.linkId);
+      // printf("block %d tf %d link %d\n",ix,b->header.timeframeId,b->header.linkId);
 
       for (int offset = 0; offset + sizeof(o2::Header::RAWDataHeader) <= b->header.dataSize;) {
         // printf("checking %p : %d\n",b,offset);
         o2::Header::RAWDataHeader *rdh = (o2::Header::RAWDataHeader *)&b->data[offset];
         if (rdh->heartbeatOrbit != lastHBid) {
           lastHBid = rdh->heartbeatOrbit;
-          // printf("offset %d -
-          // HBid=%d\n",offset,lastHBid);
+          // printf("offset %d - HBid=%d\n",offset,lastHBid);
         }
         if (stfHeader->linkId != rdh->linkId) {
           theLog.log(LogWarningSupport_(3004), "TF%d link Id mismatch %d != %d @ page offset %d", (int)stfHeader->timeframeId, (int)stfHeader->linkId, (int)rdh->linkId, (int)offset);
@@ -427,13 +394,10 @@ public:
       }
     }
 
-    // printf("TF %d link %d = %d blocks
-    // \n",(int)stfHeader->timeframeId,(int)stfHeader->linkId,(int)bc->size());
+    // printf("TF %d link %d = %d blocks \n",(int)stfHeader->timeframeId,(int)stfHeader->linkId,(int)bc->size());
 
     // create a header message
-    // std::unique_ptr<FairMQMessage>
-    // msgHeader(transportFactory->CreateMessage((void *)stfHeader,
-    // sizeof(SubTimeframe), cleanupCallback, (void *)(blockRef)));
+    // std::unique_ptr<FairMQMessage> msgHeader(transportFactory->CreateMessage((void *)stfHeader, sizeof(SubTimeframe), cleanupCallback, (void *)(blockRef)));
     assert(messagesToSend.empty());
     messagesToSend.emplace_back(std::move(sendingChannel->NewMessage(memoryBuffer, (void *)stfHeader, sizeof(SubTimeframe), (void *)(blockRef))));
     messagesToSendSize = sizeof(SubTimeframe);
@@ -456,9 +420,7 @@ public:
       pf.HBstart = ix;
       pf.HBlength = l;
       pf.HBid = id;
-      // we create a copy of the reference, in a newly allocated object, so that
-      // reference is kept alive until this new object is destroyed in the
-      // cleanupCallback
+      // create a copy of the reference, in a newly allocated object, so that reference is kept alive until this new object is destroyed in the cleanupCallback
       pf.blockRef = new DataBlockContainerReference(br);
       // printf("allocating blockRef %p for %p\n",pf.blockRef,br);
       pendingFrames.push_back(pf);
@@ -478,14 +440,10 @@ public:
         DataBlock *b = br->getData();
         int ix = pendingFrames[0].HBstart;
         int l = pendingFrames[0].HBlength;
-        //        std::unique_ptr<FairMQMessage>
-        //        msgBody(transportFactory->CreateMessage((void
-        //        *)(&(b->data[ix])),(size_t)(l), cleanupCallback, (void
-        //        *)(pendingFrames[0].blockRef)));
+        // std::unique_ptr<FairMQMessage> msgBody(transportFactory->CreateMessage((void *)(&(b->data[ix])),(size_t)(l), cleanupCallback, (void *)(pendingFrames[0].blockRef)));
         void *hint = (void *)pendingFrames[0].blockRef;
-        // printf("block %p ix = %d : %d hint=%p\n",(void
-        // *)(&(b->data[ix])),ix,l,hint); std::cout <<
-        // typeid(pendingFrames[0].blockRef).name() << std::endl;
+        // printf("block %p ix = %d : %d hint=%p\n",(void *)(&(b->data[ix])),ix,l,hint);
+        // std::cout << typeid(pendingFrames[0].blockRef).name() << std::endl;
 
         // create and queue a fmq message
         messagesToSend.emplace_back(std::move(sendingChannel->NewMessage(memoryBuffer, (void *)(&(b->data[ix])), (size_t)(l), hint)));
@@ -534,17 +492,13 @@ public:
           newIx += l;
         }
 
-        // std::unique_ptr<FairMQMessage>
-        // msgBody(transportFactory->CreateMessage((void *)newBlock, totalSize,
-        // cleanupCallbackForMalloc, (void *)(newBlock)));
-        // sendingChannel->Send(msgBody);
+        // std::unique_ptr<FairMQMessage> msgBody(transportFactory->CreateMessage((void *)newBlock, totalSize, cleanupCallbackForMalloc, (void *)(newBlock))); sendingChannel->Send(msgBody);
 
         // create and queue a fmq message
         messagesToSend.emplace_back(std::move(sendingChannel->NewMessage(memoryBuffer, (void *)newBlock, totalSize, (void *)(blockRef))));
         messagesToSendSize += totalSize;
 
-        // printf("sent reallocated HB %d (originally %d blocks) = %d
-        // bytes\n",pendingFrames[0].HBid,nFrames,totalSize);
+        // printf("sent reallocated HB %d (originally %d blocks) = %d bytes\n",pendingFrames[0].HBid,nFrames,totalSize);
       }
       pendingFrames.clear();
     };
@@ -555,8 +509,7 @@ public:
         unsigned int HBstart = 0;
         for (int offset = 0; offset + sizeof(o2::Header::RAWDataHeader) <= b->header.dataSize;) {
           o2::Header::RAWDataHeader *rdh = (o2::Header::RAWDataHeader *)&b->data[offset];
-          // printf("CRU block %p = HB %d link %d @
-          // %d\n",b,(int)rdh->heartbeatOrbit,(int)rdh->linkId,offset);
+          // printf("CRU block %p = HB %d link %d @ %d\n",b,(int)rdh->heartbeatOrbit,(int)rdh->linkId,offset);
           if (rdh->heartbeatOrbit != lastHBid) {
             // printf("new HBf detected\n");
             int HBlength = offset - HBstart;
@@ -612,34 +565,23 @@ public:
     }
 
     /*
-
-      std::unique_ptr<FairMQMessage>
-      msgBody(transportFactory->CreateMessage((void *)(&b->data[HBstart]),
-      (size_t)(HBlength), cleanupCallback, (void *)(ptr)));
+      std::unique_ptr<FairMQMessage> msgBody(transportFactory->CreateMessage((void *)(&b->data[HBstart]), (size_t)(HBlength), cleanupCallback, (void *)(ptr)));
       sendingChannel->Send(msgBody);
-      printf("HB %d link %d @ %d +
-      %d\n",lastHBid,(int)rdh->linkId,HBstart,HBlength); printf("(last part)
-      sent %d bytes\n",(int)HBlength);
-*/
+      printf("HB %d link %d @ %d + %d\n",lastHBid,(int)rdh->linkId,HBstart,HBlength);
+      printf("(last part) sent %d bytes\n",(int)HBlength);
+    */
 
-    // todo: wait until next block to check if HBF continues on top... if so,
-    // realloc into a single block
+    // todo: wait until next block to check if HBF continues on top... if so, realloc into a single block
 
-    /*    // we create a copy of the reference, in a newly allocated object, so
-       that reference is kept alive until this new object is destroyed in the
-       cleanupCallback DataBlockContainerReference *ptr=new
-       DataBlockContainerReference(br);
-        //std::unique_ptr<FairMQMessage>
-       msgHeader(transportFactory->CreateMessage((void
-       *)&(b->getData()->header), (size_t)(b->getData()->header.headerSize),
-       cleanupCallback, (void *)nullptr)); std::unique_ptr<FairMQMessage>
-       msgBody(transportFactory->CreateMessage((void *)(br->getData()->data),
-       (size_t)(br->getData()->header.dataSize), cleanupCallback, (void
-       *)(ptr)));
-        //sendingChannel->Send(msgHeader);
-        sendingChannel->Send(msgBody);
-        return 0;
-        */
+    /*
+       // create a copy of the reference, in a newly allocated object, so that reference is kept alive until this new object is destroyed in the cleanupCallback
+       DataBlockContainerReference *ptr=new DataBlockContainerReference(br);
+       //std::unique_ptr<FairMQMessage> msgHeader(transportFactory->CreateMessage((void *)&(b->getData()->header), (size_t)(b->getData()->header.headerSize), cleanupCallback, (void *)nullptr));
+       std::unique_ptr<FairMQMessage> msgBody(transportFactory->CreateMessage((void *)(br->getData()->data), (size_t)(br->getData()->header.dataSize), cleanupCallback, (void *)(ptr)));
+       //sendingChannel->Send(msgHeader);
+       sendingChannel->Send(msgBody);
+       return 0;
+    */
     totalPushSuccess++;
     return 0;
   }

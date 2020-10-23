@@ -53,9 +53,9 @@ private:
   CounterValue histoVmax;                // max value in histogram
   unsigned int histoNbin;                // number of steps in histo
   double histoStep;                      // step size (as a fraction of vmax)
-  double histoK1;
-  double histoK2;
-  int histoLogScale; // if set, using logarithmic scale on X
+  double histoK1;                        // scaling factor
+  double histoK2;                        // scaling factor
+  int histoLogScale;                     // if set, using logarithmic scale on X
 };
 
 #endif // #ifndef _COUNTERSTATS_H

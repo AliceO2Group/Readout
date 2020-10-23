@@ -31,9 +31,9 @@ protected:
   }
 };
 
-// cleanup function, defined with the callback footprint expected in the 3rd
-// argument of FairMQTransportFactory.CreateMessage() when object not null, it
-// should be a (DataBlockContainerReference *), which will be destroyed
+// cleanup function
+// Defined with the callback footprint expected in the 3rd argument of FairMQTransportFactory.CreateMessage().
+// When object not null, it should be a (DataBlockContainerReference *), which will be destroyed.
 void cleanupCallback(void *data, void *object) {
   if ((object != nullptr) && (data != nullptr)) {
     DataBlockContainerReference *ptr = (DataBlockContainerReference *)object;
@@ -66,8 +66,7 @@ public:
       throw "ConsumerFMQ: channel validation failed";
     }
 
-    // todo: def "data-out" as const string to name output channel to which we
-    // will push
+    // todo: def "data-out" as const string to name output channel to which we will push
     m.emplace(std::string("data-out"), channels);
 
     for (auto it : m) {
@@ -114,9 +113,7 @@ public:
 
   int pushData(DataBlockContainerReference &b) {
 
-    // we create a copy of the reference, in a newly allocated object, so that
-    // reference is kept alive until this new object is destroyed in the
-    // cleanupCallback
+    // create a copy of the reference, in a newly allocated object, so that reference is kept alive until this new object is destroyed in the cleanupCallback
     DataBlockContainerReference *ptr = new DataBlockContainerReference(b);
     std::unique_ptr<FairMQMessage> msgHeader(transportFactory->CreateMessage((void *)&(b->getData()->header), (size_t)(b->getData()->header.headerSize), cleanupCallback, (void *)nullptr));
     std::unique_ptr<FairMQMessage> msgBody(transportFactory->CreateMessage((void *)(b->getData()->data), (size_t)(b->getData()->header.dataSize), cleanupCallback, (void *)(ptr)));

@@ -32,8 +32,7 @@ public:
   ~SocketTx();
 
   // push a new piece of data to output socket
-  // returns 0 on success, or -1 on error (e.g. when already busy sending
-  // something)
+  // returns 0 on success, or -1 on error (e.g. when already busy sending something)
   int pushData(DataBlockContainerReference &b);
 
 private:
@@ -51,8 +50,7 @@ private:
   int serverPort;         // remote server port
 
 private:
-  std::atomic<int> isSending;                         // if set, thread busy sending. if not set, new
-                                                      // block can be pushed
+  std::atomic<int> isSending;                         // if set, thread busy sending. if not set, new block can be pushed
   DataBlockContainerReference currentBlock = nullptr; // current data chunk being sent
   size_t currentBlockIndex = 0;                       // number of bytes of chunk already sent
 

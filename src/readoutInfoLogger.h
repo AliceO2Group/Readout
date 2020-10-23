@@ -6,6 +6,7 @@
 // includes and globals
 #include <InfoLogger/InfoLogger.hxx>
 #include <InfoLogger/InfoLoggerMacros.hxx>
+
 using namespace AliceO2::InfoLogger;
 extern InfoLogger theLog;
 

@@ -56,26 +56,23 @@ public:
   std::atomic<int> nAvailable; // maximum number of WR that can be issued concurrently
 
   int nPagesSent = 0; // number of pages sent
-                      //  int cfgMaxPages=0; // max number of pages to send
+  
+  //  int cfgMaxPages=0; // max number of pages to send
   //  int cfgRemotePageSize=1024*1024; // size of remote data page
-  //  int cfgRemotePageNumber=1; // number of remote pages // TODO: get this on
-  //  connect init
+  //  int cfgRemotePageNumber=1; // number of remote pages // TODO: get this on connect init
 
   ConsumerRDMA(ConfigFile &cfg, std::string cfgEntryPoint) : Consumer(cfg, cfgEntryPoint) {
 
-    // configuration parameter: | consumer-rdma-* | port | int | 10001 | Remote
-    // server TCP port number to connect to. |
+    // configuration parameter: | consumer-rdma-* | port | int | 10001 | Remote server TCP port number to connect to. |
     std::string cfgPort = "10000"; // remote server port
     cfg.getOptionalValue<std::string>(cfgEntryPoint + ".port", cfgPort);
 
-    // configuration parameter: | consumer-rdma-* | host | string | localhost |
-    // Remote server IP name to connect to. |
+    // configuration parameter: | consumer-rdma-* | host | string | localhost | Remote server IP name to connect to. |
     std::string cfgHost = "localhost"; // remote server address
     cfg.getOptionalValue<std::string>(cfgEntryPoint + ".host", cfgHost);
 
-    //    cfg.getOptionalValue<int>(cfgEntryPoint + ".maxPages", cfgMaxPages);
-    //    cfg.getOptionalValue<int>(cfgEntryPoint + ".remotePageSize",
-    //    cfgRemotePageSize);
+    // cfg.getOptionalValue<int>(cfgEntryPoint + ".maxPages", cfgMaxPages);
+    // cfg.getOptionalValue<int>(cfgEntryPoint + ".remotePageSize", cfgRemotePageSize);
 
     theLog.log(LogInfoDevel, "Looking for RDMA device...");
 

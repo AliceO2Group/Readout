@@ -73,14 +73,12 @@ std::shared_ptr<MemoryPagesPool> MemoryBankManager::getPagedPool(size_t pageSize
       return nullptr;
     }
 
-    // theLog.log(LogDebugTrace_(3008),"Allocating %ld x %ld bytes from
-    // memory bank '%s'",pageNumber,pageSize,banks[ix].name.c_str());
+    // theLog.log(LogDebugTrace_(3008),"Allocating %ld x %ld bytes from memory bank '%s'",pageNumber,pageSize,banks[ix].name.c_str());
 
     // reserve space from big block
     baseAddress = banks[ix].bank->getBaseAddress();
     offset = 0;
-    blockSize = pageSize * (pageNumber + 1); // this is the maximum space to use...
-                                             // may loose some pages for alignment
+    blockSize = pageSize * (pageNumber + 1); // this is the maximum space to use... may loose some pages for alignment
 
     // alloc new block after existing ranges already in use
     for (auto it = banks[ix].rangesInUse.begin(); it != banks[ix].rangesInUse.end(); ++it) {

@@ -77,7 +77,7 @@ MemoryBankMalloc::~MemoryBankMalloc() {
 }
 
 #ifdef WITH_READOUTCARD
-/// MemoryBank implementation with hugepages
+// MemoryBank implementation with hugepages
 class MemoryBankMemoryMappedFile : public MemoryBank {
 public:
   MemoryBankMemoryMappedFile(size_t size, std::string description);
@@ -95,8 +95,7 @@ MemoryBankMemoryMappedFile::MemoryBankMemoryMappedFile(size_t v_size, std::strin
   // sort them from biggest to smallest page size
   std::sort(hpt.begin(), hpt.end(), [](auto &v1, auto &v2) { return v1.first > v2.first; });
 
-  // select huge page size as big as possible so that target size is a multiple
-  // of it
+  // select huge page size as big as possible so that target size is a multiple of it
   int hugePageSizeBytes = 0;
   std::string hugePagePath;
   std::string availableSizes;
@@ -139,7 +138,7 @@ MemoryBankMemoryMappedFile::MemoryBankMemoryMappedFile(size_t v_size, std::strin
 MemoryBankMemoryMappedFile::~MemoryBankMemoryMappedFile() {}
 #endif
 
-/// MemoryBank factory based on type
+// MemoryBank factory based on type
 std::shared_ptr<MemoryBank> getMemoryBank(size_t size, std::string type, std::string description) {
 
   if (type == "malloc") {

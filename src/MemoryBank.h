@@ -26,8 +26,7 @@ public:
 
   using ReleaseCallback = std::function<void(void)>;
   MemoryBank(void *baseAddress, std::size_t size, ReleaseCallback callback,
-             std::string description); // constructor, given a memory chunk and
-                                       // mean to release it
+             std::string description); // constructor, given a memory chunk and mean to release it
 
   virtual ~MemoryBank(); // destructor
 
@@ -41,15 +40,13 @@ protected:
   void *baseAddress;               // base address (virtual) of buffer
   std::size_t size;                // size of buffer, in bytes
   std::string description;         // description of the memory bank (type/sypport, etc)
-  ReleaseCallback releaseCallback; // an optional user-callback to be called in destructor,
-                                   // when overloaded constructor has been used
+  ReleaseCallback releaseCallback; // an optional user-callback to be called in destructor, when overloaded constructor has been used
 };
 
 // factory function to create a MemoryBank instance of a given type
 // size: size of the bank, in bytes
-// support: type of support to be used. Available choices: malloc,
-// MemoryMappedFile description: optional description for the memory bank
-
+// support: type of support to be used. Available choices: malloc, MemoryMappedFile
+// description: optional description for the memory bank
 std::shared_ptr<MemoryBank> getMemoryBank(size_t size, std::string support, std::string description = "");
 
 #endif // #ifndef _MEMORYBANKMANAGER_H

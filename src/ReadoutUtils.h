@@ -43,8 +43,7 @@ int getKeyValuePairsFromString(const std::string &input, std::map<std::string, s
 // suffix is the "base unit" to add after calculated prefix, e.g. Byte-> kBytes
 std::string NumberOfBytesToString(double value, const char *suffix, int base = 1024);
 
-// function to get cumulated user and system CPU time used by current process
-// in seconds.
+// function to get cumulated user and system CPU time used by current process in seconds.
 // returns 0 on success, -1 on error
 int getProcessStats(double &uTime, double &sTime);
 

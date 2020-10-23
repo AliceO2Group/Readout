@@ -52,8 +52,7 @@ private:
 
   uint32_t orbitOffset = 0; // to be applied to orbit after 1st loop
 
-  void copyFileDataToPage(void *page); // fill given page with file data
-                                       // according to current settings
+  void copyFileDataToPage(void *page); // fill given page with file data according to current settings
 };
 
 void ReadoutEquipmentPlayer::copyFileDataToPage(void *page) {
@@ -87,27 +86,15 @@ ReadoutEquipmentPlayer::ReadoutEquipmentPlayer(ConfigFile &cfg, std::string cfgE
   };
 
   // get configuration values
-  // configuration parameter: | equipment-player-* | filePath | string | | Path
-  // of file containing data to be injected in readout. |
+  // configuration parameter: | equipment-player-* | filePath | string | | Path of file containing data to be injected in readout. |
   filePath = cfg.getValue<std::string>(cfgEntryPoint + ".filePath");
-  // configuration parameter: | equipment-player-* | preLoad | int | 1 | If 1,
-  // data pages preloaded with file content on startup. If 0, data is copied at
-  // runtime. |
+  // configuration parameter: | equipment-player-* | preLoad | int | 1 | If 1, data pages preloaded with file content on startup. If 0, data is copied at runtime. |
   cfg.getOptionalValue<int>(cfgEntryPoint + ".preLoad", preLoad, 1);
-  // configuration parameter: | equipment-player-* | fillPage | int | 1 | If 1,
-  // content of data file is copied multiple time in each data page until page
-  // is full (or almost full: on the last iteration, there is no partial copy if
-  // remaining space is smaller than full file size). If 0, data file is copied
-  // exactly once in each data page. |
+  // configuration parameter: | equipment-player-* | fillPage | int | 1 | If 1, content of data file is copied multiple time in each data page until page is full (or almost full: on the last iteration, there is no partial copy if remaining space is smaller than full file size). If 0, data file is copied exactly once in each data page. |
   cfg.getOptionalValue<int>(cfgEntryPoint + ".fillPage", fillPage, 1);
-  // configuration parameter: | equipment-player-* | autoChunk | int | 0 | When
-  // set, the file is replayed once, and cut automatically in data pages
-  // compatible with memory bank settings and RDH information.
-  // In this mode the preLoad and fillPage options have no effect. |
+  // configuration parameter: | equipment-player-* | autoChunk | int | 0 | When set, the file is replayed once, and cut automatically in data pages compatible with memory bank settings and RDH information. In this mode the preLoad and fillPage options have no effect. |
   cfg.getOptionalValue<int>(cfgEntryPoint + ".autoChunk", autoChunk, 0);
-  // configuration parameter: | equipment-player-* | autoChunkLoop | int | 0 | When
-  // set, the file is replayed in loops. Trigger orbit counter in RDH are modified for
-  // iterations after the first one, so that they keep increasing. |
+  // configuration parameter: | equipment-player-* | autoChunkLoop | int | 0 | When set, the file is replayed in loops. Trigger orbit counter in RDH are modified for iterations after the first one, so that they keep increasing. |
   cfg.getOptionalValue<int>(cfgEntryPoint + ".autoChunkLoop", autoChunkLoop, 0);
 
   // log config summary
@@ -272,8 +259,7 @@ DataBlockContainerReference ReadoutEquipmentPlayer::getNextBlock() {
 
             // fill page metadata
             if (pageOffset == 0) {
-              // printf("link %d TF %d\n",
-              //  (int)currentPacketHeader.linkId,(int)currentPacketHeader.timeframeId);
+              // printf("link %d TF %d\n", (int)currentPacketHeader.linkId,(int)currentPacketHeader.timeframeId);
               b->header.linkId = currentPacketHeader.linkId;
               b->header.equipmentId = currentPacketHeader.equipmentId;
               b->header.timeframeId = currentPacketHeader.timeframeId;
@@ -283,8 +269,7 @@ DataBlockContainerReference ReadoutEquipmentPlayer::getNextBlock() {
             bool changePage = 0;
             if (!isFirst) {
               if ((currentPacketHeader.linkId != lastPacketHeader.linkId) || (currentPacketHeader.equipmentId != lastPacketHeader.equipmentId) || (currentPacketHeader.timeframeId != lastPacketHeader.timeframeId)) {
-                // printf("%d : %d -> %d :
-                // %d\n",currentPacketHeader.linkId,currentPacketHeader.timeframeId,lastPacketHeader.linkId,lastPacketHeader.timeframeId);
+                // printf("%d : %d -> %d : %d\n",currentPacketHeader.linkId,currentPacketHeader.timeframeId,lastPacketHeader.linkId,lastPacketHeader.timeframeId);
                 changePage = 1;
               }
             }
@@ -312,8 +297,7 @@ DataBlockContainerReference ReadoutEquipmentPlayer::getNextBlock() {
           nBytes = pageOffset;
           b->header.dataSize = nBytes;
           fileOffset += nBytes;
-          // printf ("bytes = %d    delta = %d    new file Offset = %lu\n",
-          // nBytes, delta, fileOffset);
+          // printf ("bytes = %d    delta = %d    new file Offset = %lu\n", nBytes, delta, fileOffset);
           if (delta > 0) {
             // rewind if necessary
             if (fseek(fp, fileOffset, SEEK_SET)) {

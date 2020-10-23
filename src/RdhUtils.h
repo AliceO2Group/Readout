@@ -35,10 +35,8 @@ public:
   int validateRdh(std::string &err);
 
   // print RDH content
-  // offset is a value to be displayed as address. if -1, memory address is
-  // used.
-  // singleLine: when set, RDH content printed in single line with top header
-  // printed once
+  // offset is a value to be displayed as address. if -1, memory address is used.
+  // singleLine: when set, RDH content printed in single line with top header printed once
   void dumpRdh(long offset = -1, bool singleLine = false);
 
   // access RDH fields
@@ -65,8 +63,7 @@ private:
   o2::Header::RAWDataHeader *rdhPtr; // pointer to RDH in memory
 };
 
-// Utility class to access/parse/check the content of a contiguous memory block
-// consisting of RDH+data
+// Utility class to access/parse/check the content of a contiguous memory block consisting of RDH+data
 class RdhBlockHandle {
 public:
   // create a handle to the block, providing pointer and size

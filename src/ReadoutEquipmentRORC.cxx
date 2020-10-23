@@ -55,8 +55,7 @@ private:
   unsigned long long statsNumberOfPagesEmpty = 0; // number of empty pages read out
   unsigned long long statsNumberOfPagesLost = 0;  // number of pages read out but lost
 
-  uint8_t RdhLastPacketCounter[RdhMaxLinkId + 1]; // last value of packetCounter
-                                                  // RDH field for each link id
+  uint8_t RdhLastPacketCounter[RdhMaxLinkId + 1]; // last value of packetCounter RDH field for each link id
 
   size_t superPageSize = 0; // usable size of a superpage
 
@@ -76,69 +75,48 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : 
   try {
 
     // get parameters from configuration
-    // config keys are the same as the corresponding set functions in
-    // AliceO2::roc::Parameters
+    // config keys are the same as the corresponding set functions in AliceO2::roc::Parameters
 
-    // configuration parameter: | equipment-rorc-* | cardId | string | | ID of
-    // the board to be used. Typically, a PCI bus device id. c.f.
-    // AliceO2::roc::Parameters. |
+    // configuration parameter: | equipment-rorc-* | cardId | string | | ID of the board to be used. Typically, a PCI bus device id. c.f. AliceO2::roc::Parameters. |
     std::string cardId = cfg.getValue<std::string>(name + ".cardId");
 
-    // configuration parameter: | equipment-rorc-* | channelNumber | int | 0 |
-    // Channel number of the board to be used. Typically 0 for CRU, or 1-6 for
-    // CRORC. c.f. AliceO2::roc::Parameters. |
+    // configuration parameter: | equipment-rorc-* | channelNumber | int | 0 | Channel number of the board to be used. Typically 0 for CRU, or 1-6 for CRORC. c.f. AliceO2::roc::Parameters. |
     int cfgChannelNumber = 0;
     cfg.getOptionalValue<int>(name + ".channelNumber", cfgChannelNumber);
 
-    // configuration parameter: | equipment-rorc-* | dataSource | string |
-    //  Internal | This parameter selects the data source used by ReadoutCard,
-    // c.f. AliceO2::roc::Parameters. It can be for CRU one of Fee, Ddg,
-    // Internal and for CRORC one of Fee, SIU, DIU, Internal. |
+    // configuration parameter: | equipment-rorc-* | dataSource | string | Internal | This parameter selects the data source used by ReadoutCard, c.f. AliceO2::roc::Parameters. It can be for CRU one of Fee, Ddg, Internal and for CRORC one of Fee, SIU, DIU, Internal. |
     std::string cfgDataSource = "Internal";
     cfg.getOptionalValue<std::string>(name + ".dataSource", cfgDataSource);
 
     // std::string cfgReadoutMode="CONTINUOUS";
     // cfg.getOptionalValue<std::string>(name + ".readoutMode", cfgReadoutMode);
 
-    // configuration parameter: | equipment-rorc-* | cleanPageBeforeUse | int |
-    // 0 | If set, data pages are filled with zero before being given for
-    // writing by device. Slow, but usefull to readout incomplete pages (driver
-    // currently does not return correctly number of bytes written in page. |
+    // configuration parameter: | equipment-rorc-* | cleanPageBeforeUse | int | 0 | If set, data pages are filled with zero before being given for writing by device. Slow, but usefull to readout incomplete pages (driver currently does not return correctly number of bytes written in page. |
     cfg.getOptionalValue<int>(name + ".cleanPageBeforeUse", cfgCleanPageBeforeUse);
     if (cfgCleanPageBeforeUse) {
       theLog.log(LogInfoDevel_(3002), "Superpages will be cleaned before each DMA - this may be slow!");
     }
 
-    // configuration parameter: | equipment-rorc-* | firmwareCheckEnabled | int
-    // | 1 | If set, RORC driver checks compatibility with detected firmware.
-    // Use 0 to bypass this check (eg new fw version not yet recognized
-    // by ReadoutCard version). |
+    // configuration parameter: | equipment-rorc-* | firmwareCheckEnabled | int | 1 | If set, RORC driver checks compatibility with detected firmware. Use 0 to bypass this check (eg new fw version not yet recognized by ReadoutCard version). |
     cfg.getOptionalValue<int>(name + ".firmwareCheckEnabled", cfgFirmwareCheckEnabled);
     if (!cfgFirmwareCheckEnabled) {
       theLog.log(LogWarningSupport_(3002), "Bypassing RORC firmware compatibility check");
     }
 
-    // configuration parameter: | equipment-rorc-* | debugStatsEnabled | int | 0
-    // | If set, enable extra statistics about internal buffers status. (printed
-    // to stdout when stopping) |
+    // configuration parameter: | equipment-rorc-* | debugStatsEnabled | int | 0 | If set, enable extra statistics about internal buffers status. (printed to stdout when stopping) |
     cfg.getOptionalValue<int>(name + ".debugStatsEnabled", cfgDebugStatsEnabled);
 
-    /*    // get readout memory buffer parameters
-        std::string sMemorySize=cfg.getValue<std::string>(name +
-       ".memoryBufferSize"); std::string
-       sPageSize=cfg.getValue<std::string>(name + ".memoryPageSize"); long long
-       mMemorySize=ReadoutUtils::getNumberOfBytesFromString(sMemorySize.c_str());
-        long long
-       mPageSize=ReadoutUtils::getNumberOfBytesFromString(sPageSize.c_str());
+      // get readout memory buffer parameters
+      // std::string sMemorySize=cfg.getValue<std::string>(name + ".memoryBufferSize");
+      // std::string sPageSize=cfg.getValue<std::string>(name + ".memoryPageSize"); long long
+      // mMemorySize=ReadoutUtils::getNumberOfBytesFromString(sMemorySize.c_str());
+      // long long mPageSize=ReadoutUtils::getNumberOfBytesFromString(sPageSize.c_str());
+      // std::string cfgHugePageSize="1GB";
+      // cfg.getOptionalValue<std::string>(name + ".memoryHugePageSize",cfgHugePageSize);
 
-        std::string cfgHugePageSize="1GB";
-        cfg.getOptionalValue<std::string>(name +
-       ".memoryHugePageSize",cfgHugePageSize);
-    */
     // unique identifier based on card ID
     std::string uid = "readout." + cardId + "." + std::to_string(cfgChannelNumber);
-    // sleep((cfgChannelNumber+1)*2);  // trick to avoid all channels open at
-    // once - fail to acquire lock
+    // sleep((cfgChannelNumber+1)*2);  // trick to avoid all channels open at once - fail to acquire lock
 
     // define usable superpagesize
     superPageSize = mp->getPageSize() - pageSpaceReserved; // Keep space at beginning for DataBlock object
@@ -164,9 +142,10 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile &cfg, std::string name) : 
     // params.setReadoutMode(AliceO2::roc::ReadoutMode::fromString(cfgReadoutMode));
 
     /*
-    theLog.log(LogDebugTrace, "Loop DMA block %p:%lu", mp->getBaseBlockAddress(),
-    mp->getBaseBlockSize()); char *ptr=(char *)mp->getBaseBlockAddress(); for
-    (size_t i=0;i<mp->getBaseBlockSize();i++) { ptr[i]=0;
+    theLog.log(LogDebugTrace, "Loop DMA block %p:%lu", mp->getBaseBlockAddress(), // mp->getBaseBlockSize()); 
+    char *ptr=(char *)mp->getBaseBlockAddress();
+    for (size_t i=0;i<mp->getBaseBlockSize();i++) { 
+      ptr[i]=0;
     }
     */
 
@@ -235,8 +214,7 @@ Thread::CallbackResult ReadoutEquipmentRORC::prepareBlocks() {
   }
 
   // keep track of situations where the queue is completely empty
-  // this means we have not filled it fast enough (except in first loop, where
-  // it's normal it is empty)
+  // this means we have not filled it fast enough (except in first loop, where it's normal it is empty)
   if (isWaitingFirstLoop) {
     isWaitingFirstLoop = false;
   } else {
@@ -291,8 +269,7 @@ Thread::CallbackResult ReadoutEquipmentRORC::prepareBlocks() {
     isActive = 0;
   }
 
-  // This global mutex was also used as a fix to allow reading out 2 CRORC at
-  // same time otherwise machine reboots when ACPI is not OFF
+  // This global mutex was also used as a fix to allow reading out 2 CRORC at same time otherwise machine reboots when ACPI is not OFF
   // readoutEquipmentRORCLock.lock();
 
   // this is to be called periodically for driver internal business
@@ -301,7 +278,7 @@ Thread::CallbackResult ReadoutEquipmentRORC::prepareBlocks() {
   // readoutEquipmentRORCLock.unlock();
 
   // from time to time, we may monitor temperature
-  //      virtual boost::optional<float> getTemperature() = 0;
+  // virtual boost::optional<float> getTemperature() = 0;
 
   if (!isActive) {
     return Thread::CallbackResult::Idle;
@@ -326,8 +303,7 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock() {
     void *mpPageAddress = (void *)(superpage.getUserData());
     if (superpage.isReady()) {
       std::shared_ptr<DataBlockContainer> d = nullptr;
-      // printf ("received a page with %d bytes - isFilled=%d isREady=%d\n",
-      //(int)superpage.getReceived(),(int)superpage.isFilled(),(int)superpage.isReady());
+      // printf ("received a page with %d bytes - isFilled=%d isREady=%d\n", (int)superpage.getReceived(),(int)superpage.isFilled(),(int)superpage.isReady());
       if (!mp->isPageValid(mpPageAddress)) {
         theLog.log(LogWarningSupport_(3008), "Got an invalid page from RORC : %p", mpPageAddress);
       } else {
@@ -384,7 +360,9 @@ void ReadoutEquipmentRORC::setDataOn() {
 }
 
 void ReadoutEquipmentRORC::setDataOff() {
-  ReadoutEquipment::setDataOff(); // ensure we don't push pages any more
+  // ensure we don't push pages any more
+  ReadoutEquipment::setDataOff();
+
   // no need to wait, stopDma() immediately disables push()
   // if there would be one pending in device thread loop
 
