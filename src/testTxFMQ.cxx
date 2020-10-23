@@ -25,7 +25,7 @@ int main() {
   auto channel =
       FairMQChannel{cfgChannelName, cfgChannelType, transportFactory};
   channel.Bind(cfgChannelAddress);
-  if (!channel.ValidateChannel()) {
+  if (!channel.Validate()) {
     return -1;
   }
 
