@@ -32,7 +32,7 @@ if {[catch {set rocOutput [exec roc-list-cards]} err]} {
 }
 set rocOutputLines [split $rocOutput "\n"]
 if {[catch {
-  set rocHeader "#   Type   PCI Addr   Serial   Endpoint   NUMA  FW Version"
+  set rocHeader "#   Type   PCI Addr   Serial   Endpoint   NUMA  FW Version   UL Version"
   if {[string trim [lindex $rocOutputLines 1]]!=$rocHeader} {
     # throw only in tcl 8.7... but if not it generates an error anyway, which is what we want
     throw
