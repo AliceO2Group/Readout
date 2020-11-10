@@ -273,3 +273,4 @@ This file describes the main feature changes for each readout.exe released versi
 - RDH is handled in the same way for all equipments (RORC, player, emulator). Same RDH configuration parameters apply to all.
 - Log messages level and codes added.
 - Prettified source code.
+- Added utility eventDump.exe, to dump the RDH of data taken by readout.exe online (provided that a zmq consumer is defined in readout config).

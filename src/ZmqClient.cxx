@@ -113,7 +113,7 @@ void ZmqClient::run()
       
       int nb = 0;
       nb = zmq_recv(zh, msgBuffer, cfgMaxMsgSize, 0);
-      if (nb == cfgMaxMsgSize) {
+      if (nb >= cfgMaxMsgSize) {
         // buffer was too small to gt full message
 	theLog.log(LogWarningDevel, "ZMQ message bigger than buffer, skipping");
         break;

@@ -232,6 +232,12 @@ The following utilities are also available:
   consumerType=fileRecorder
   fileName=/tmp/data.raw.lz4
   ```
+  
+- **eventDump.exe**
+ Provide means to check/display content of online data taken with readout. It needs a consumer defined in readout ocnfig with consumerType=zmq and an address (e.g. address=ipc:///tmp/readout-out).
+ The interactive client can then be started with parameter port=(same port has given in consumer address) and pageSize=(maximum super page size configured for readout equipments).
+ Available keyboard commands are: (s) start page dump continuous (d) stop page dump (n) dump next page only (x) exit.
+ Each page received is printed in the console (selection of RDH fields only, no payload).
 
 
 # Recorded file format
