@@ -364,6 +364,11 @@ add_executable(
         ${SOURCE_DIR}/testZmqServer.cxx
 	$<TARGET_OBJECTS:objReadoutUtils>
 )
+add_executable(
+	eventDump.exe
+        ${SOURCE_DIR}/eventDump.cxx
+	$<TARGET_OBJECTS:objReadoutUtils>
+)
 endif()
 
 # a minimal test program to check Monitoring library
@@ -383,7 +388,7 @@ if (ReadoutCard_FOUND)
   list (APPEND executables testROC.exe)
 endif()
 if (${ZMQ_FOUND})
-  list (APPEND executables testZmqClient.exe testZmqServer.exe)
+  list (APPEND executables testZmqClient.exe testZmqServer.exe eventDump.exe)
 endif()
 foreach (exe ${executables})
 	target_include_directories(${exe} PRIVATE ${READOUT_INCLUDE_DIRS})
