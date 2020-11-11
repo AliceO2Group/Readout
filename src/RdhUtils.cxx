@@ -29,10 +29,10 @@ void RdhHandle::dumpRdh(long offset, bool singleLine)
       printf("0x%08lX", offset);
     }
     printf("   %02d      %02d %7d %7d  %5d  %4d  %4d  0x%08X:%03X  0x%08X     %2d   %2d    %03d\n",
-      (int)getHeaderVersion(), (int)getHeaderSize(), (int)getMemorySize(), (int)getOffsetNextPacket(),
-      (int)getFeeId(), (int)getCruId(), (int)getLinkId(),
-      getTriggerOrbit(), getTriggerBC(), (int)getTriggerType(),
-      (int)getPagesCounter(), (int)getStopBit(), (int)getPacketCounter());    
+           (int)getHeaderVersion(), (int)getHeaderSize(), (int)getMemorySize(), (int)getOffsetNextPacket(),
+           (int)getFeeId(), (int)getCruId(), (int)getLinkId(),
+           getTriggerOrbit(), getTriggerBC(), (int)getTriggerType(),
+           (int)getPagesCounter(), (int)getStopBit(), (int)getPacketCounter());
 
   } else {
     if (offset == -1) {

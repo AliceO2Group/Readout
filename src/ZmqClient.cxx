@@ -17,7 +17,7 @@ ZmqClient::ZmqClient(const std::string& url, int maxMsgSize)
   if (msgBuffer == nullptr) {
     throw __LINE__;
   }
-  
+
   int linerr = 0;
   int zmqerr = 0;
   for (;;) {
@@ -97,7 +97,8 @@ int ZmqClient::setCallback(std::function<int(void* msg, int msgSize)> cb)
   return 0;
 }
 
-void ZmqClient::setPause(int pause) {
+void ZmqClient::setPause(int pause)
+{
   isPaused = pause;
 }
 
@@ -110,16 +111,16 @@ void ZmqClient::run()
         usleep(10000);
         continue;
       }
-      
+
       int nb = 0;
       nb = zmq_recv(zh, msgBuffer, cfgMaxMsgSize, 0);
       if (nb >= cfgMaxMsgSize) {
         // buffer was too small to gt full message
-	theLog.log(LogWarningDevel, "ZMQ message bigger than buffer, skipping");
+        theLog.log(LogWarningDevel, "ZMQ message bigger than buffer, skipping");
         break;
       }
-      
-      if ((callback != nullptr) && (nb > 0)  && (!isPaused)) {
+
+      if ((callback != nullptr) && (nb > 0) && (!isPaused)) {
         if (callback(msgBuffer, nb)) {
           linerr = __LINE__;
           break;
@@ -136,7 +137,7 @@ void ZmqClient::run()
         linerr = __LINE__;
         break;
       }
-      ((char *)msgBuffer)[nb] = 0;
+      ((char*)msgBuffer)[nb] = 0;
       printf("recv %d = %s\n", nb, msgBuffer);
       break;
     }
