@@ -278,7 +278,7 @@ class ConsumerFMQchannel : public Consumer
         return -1;
       }
       SubTimeframe stfhDefaults;
-      memcpy(stfHeader, &stfhDefaults, sizeof(SubTimeframe));
+      *stfHeader = stfhDefaults;
 
       // set flag when this is last STF in timeframe
       if (bc->back()->getData()->header.flagEndOfTimeframe) {
@@ -360,7 +360,7 @@ class ConsumerFMQchannel : public Consumer
       return -1;
     }
     SubTimeframe stfhDefaults;
-    memcpy(stfHeader, &stfhDefaults, sizeof(SubTimeframe));
+    *stfHeader = stfhDefaults;
 
     unsigned int lastHBid = -1;
     int isFirst = true;
