@@ -277,8 +277,8 @@ class ConsumerFMQchannel : public Consumer
         totalPushError++;
         return -1;
       }
-      stfHeader->timeframeId = 0;
-      stfHeader->linkId = undefinedLinkId;
+      SubTimeframe stfhDefaults;
+      memcpy(stfHeader, &stfhDefaults, sizeof(SubTimeframe));
 
       // set flag when this is last STF in timeframe
       if (bc->back()->getData()->header.flagEndOfTimeframe) {
@@ -359,8 +359,8 @@ class ConsumerFMQchannel : public Consumer
       totalPushError++;
       return -1;
     }
-    stfHeader->timeframeId = undefinedTimeframeId;
-    stfHeader->linkId = undefinedLinkId;
+    SubTimeframe stfhDefaults;
+    memcpy(stfHeader, &stfhDefaults, sizeof(SubTimeframe));
 
     unsigned int lastHBid = -1;
     int isFirst = true;
