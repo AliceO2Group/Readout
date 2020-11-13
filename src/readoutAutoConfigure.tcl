@@ -6,10 +6,29 @@
 
 # arguments:
 # -o configFile : save configuration to given file name (instead of stdout) - file is appended
+# -m mode       : optimization mode, one of standalone (readout-only) or full (with extra components)
+
+# dependencies
+package require json
 
 # defaults
 set configFile ""
+set mode "standalone"
 
+# configuration
+# buffer size in MB, for each equipment
+set bufferPerEquipment 8000
+# superpage size
+set readoutPageSize 1048576
+# stf spare copy buffer ratio, as a fraction of the main buffer
+set bufferStfCopyFraction 0.1
+# maximum buffer size, in fraction of total system memory
+set bufferMaxSystemUse 0.5
+# source to use for ROCs
+# e.g. Fee, Internal, Ddg
+set dataSource "Fee"
+# some more space per page for alignment
+set pageAlign 10240
 
 # command line args
 set x 0
@@ -19,6 +38,10 @@ while {[set opt [lindex $argv $x]] != ""} {
         set configFile [lindex $argv [expr $x + 1]]
         incr x
    }
+   -m {
+        set mode [lindex $argv [expr $x + 1]]
+        incr x
+   }   
  }
  incr x
 }
@@ -26,26 +49,20 @@ while {[set opt [lindex $argv $x]] != ""} {
 
 # get list of ROCs
 set ldev {}
-if {[catch {set rocOutput [exec roc-list-cards]} err]} {
+if {[catch {set rocOutput [exec roc-list-cards --json]} err]} {
   puts "roc-list-cards failed: $err"
   exit 1
 }
-set rocOutputLines [split $rocOutput "\n"]
-if {[catch {
-  set rocHeader "#   Type   PCI Addr   Serial   Endpoint   NUMA  FW Version   UL Version"
-  if {[string trim [lindex $rocOutputLines 1]]!=$rocHeader} {
-    # throw only in tcl 8.7... but if not it generates an error anyway, which is what we want
-    throw
-  }
-  for {set i 3} {$i<[expr [llength $rocOutputLines] -1]} {incr i} {
-    set l [lindex $rocOutputLines $i]
-    set type [string trim [string range $l 6 12]]
-    set pci [string trim [string range $l 13 23]]
-    set serial [string trim [string range $l 24 32]]
-    set endpoint [string trim [string range $l 33 43]]
-    set numa [string trim [string range $l 44 49]]
 
-    lappend ldev "$type" "$pci" "$endpoint" "$numa" "$serial"
+if {[catch {
+  set dd [::json::json2dict [exec roc-list-cards --json]]
+  dict for {id params} $dd {
+      set type [dict get $params "type"]
+      set pci [dict get $params "pciAddress"]
+      set serial [dict get $params "serial"]
+      set endpoint [dict get $params "endpoint"]    
+      set numa [dict get $params "numa"]
+      lappend ldev "$type" "$pci" "$endpoint" "$numa" "$serial"
   }
 } err]} {
   puts "Failed to parse roc-list-cards output: $err"
@@ -185,7 +202,6 @@ if {($pagesPerRoc<1)} {
 }
 
 puts "Using $pagesPerRoc x 1G page per ROC"
-set readoutPageSize [expr 1024*1024]
 set readoutNPages [expr int($pagesPerRoc * (1024.0*1024.0*1024.0) / $readoutPageSize) - 1]
 if {0} {
   # enforce a minimum number of pages
@@ -199,7 +215,10 @@ if {0} {
 puts "Using for readout equipment $readoutNPages * $readoutPageSize bytes"
 
 # Generate readout configuration
+puts "Generating config optimized for readout $mode operation"
+set config {}
 
+if {$mode == "standalone"} {
 # general parameters
 lappend config "
 \[readout\]
@@ -266,6 +285,101 @@ memoryPoolPageSize=${readoutPageSize}
 "
   }
 }
+
+} elseif {$mode == "full"} {
+ 
+ set nPagesPerEquipment [expr int($bufferPerEquipment * 1024 * 1024 * 1.0 / ($readoutPageSize + $pageAlign))]
+ set bufferTotal [expr ($nROC * ($readoutPageSize + 1024) * $nPagesPerEquipment) * (1 + $bufferStfCopyFraction)]
+ set maxAllowed [expr $bufferMaxSystemUse * $memTotal]
+ 
+ puts "Readout page size = $readoutPageSize"
+ 
+ if ($bufferTotal>$maxAllowed) {
+   puts "Wished: $bufferTotal ($nPagesPerEquipment pages per equipment, $nROC devices)"
+   puts "Exceeding [expr $bufferMaxSystemUse * 100]% memory resources, limiting buffer to $maxAllowed bytes"
+   set nPagesPerEquipment [expr int(($maxAllowed * 1.0 / (1 + $bufferStfCopyFraction)) / ($nROC * ($readoutPageSize + $pageAlign)))]
+   set bufferTotal $maxAllowed   
+ }
+
+ set nPagesPerEquipment [expr int($nPagesPerEquipment)]
+ set bufMB [expr int($bufferTotal / (1024*1024)) + 1]
+ set nPageStfb [expr int ($bufferTotal * $bufferStfCopyFraction * 1.0 / ($readoutPageSize + $pageAlign))]
+ set pageSizeKb "[expr int($readoutPageSize / 1024)]k"
+ puts "Using: $bufferTotal ($nPagesPerEquipment pages per equipment, $nROC devices)"
+    
+  # general config params
+  lappend config "
+\[readout\]
+aggregatorStfTimeout=0.5
+aggregatorSliceTimeout=1
+ 
+\[consumer-stats\]
+enabled=1
+consumerType=stats
+monitoringEnabled=0
+monitoringUpdatePeriod=1
+consoleUpdate=0
+
+\[consumer-fmq-stfb\]
+enabled=1
+consumerType=FairMQChannel
+fmq-name=readout-stfb
+fmq-address=ipc:///tmp/readout-pipe-stfb
+fmq-type=push
+fmq-transport=shmem
+sessionName=default
+unmanagedMemorySize=${bufMB}M
+memoryPoolNumberOfPages=${nPageStfb}
+memoryPoolPageSize=${pageSizeKb}
+disableSending=0
+
+\[receiver-fmq-stfb\]
+decodingMode=stfHbf
+dumpRDH=1
+dumpTF=1
+channelAddress=ipc:///tmp/readout-pipe-stfb
+channelType=pull
+
+\[consumer-fmq-qc\]
+enabled=0
+consumerType=FairMQChannel
+fmq-name=readout-qc
+fmq-address=tcp://127.0.0.1:50001
+fmq-type=pub
+fmq-transport=zeromq
+sessionName=default
+enableRawFormat=1
+
+\[receiver-fmq-qc\]
+decodingMode=none
+dumpRDH=1
+dumpTF=0
+channelAddress=tcp://127.0.0.1:50001
+channelType=sub
+"
+set rocN 0
+foreach {type pci endpoint numa serial} $ldev {
+  incr rocN
+  lappend config "
+# ${type} ${serial}:${endpoint}
+\[equipment-roc-${rocN}\]
+enabled=1
+equipmentType=rorc
+cardId=${pci}
+dataSource=${dataSource}
+memoryPoolNumberOfPages=${nPagesPerEquipment}
+memoryPoolPageSize=${pageSizeKb}
+rdhUseFirstInPageEnabled=1
+rdhCheckEnabled=0
+rdhDumpEnabled=0
+firmwareCheckEnabled=0
+"
+}
+
+}
+
+
+
 
 # convert to string
 set config [join $config]
