@@ -274,3 +274,7 @@ This file describes the main feature changes for each readout.exe released versi
 - Log messages level and codes added.
 - Prettified source code.
 - Added utility eventDump.exe, to dump the RDH of data taken by readout.exe online (provided that a zmq consumer is defined in readout config).
+
+## v1.5.1 - 13/11/2020
+- readoutAutoConfigure: improved compatibility with roc-list-cards, now using JSON output.
+- STFB interface: fixed version number.
