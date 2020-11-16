@@ -278,3 +278,7 @@ This file describes the main feature changes for each readout.exe released versi
 ## v1.5.1 - 13/11/2020
 - readoutAutoConfigure: improved compatibility with roc-list-cards, now using JSON output.
 - STFB interface: fixed version number.
+
+## v1.5.2 - 16/11/2020
+- receiverFMQ.exe: added parameter dumpSTF.
+- STFB interface: fixed unpopulated fields in header.

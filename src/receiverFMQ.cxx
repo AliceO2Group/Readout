@@ -266,7 +266,12 @@ int main(int argc, const char** argv)
   // configuration parameter: | receiverFMQ | dumpTF | int | 0 | When set, a message is printed when a new timeframe is received. If the value is bigger than one, this specifies a periodic interval between TF print after the first one. (e.g. 100 would print TF 1, 100, 200, etc). |
   int cfgDumpTF = 0;
   cfg.getOptionalValue<int>(cfgEntryPoint + ".dumpTF", cfgDumpTF, 0);
-  theLog.log(LogInfoDevel_(3002), "dumpRDH = %d dumpTF = %d", cfgDumpRDH, cfgDumpTF);
+
+  // configuration parameter: | receiverFMQ | dumpSTF | int | 0 | When set, the STF header of data received are printed (needs decodingMode=stfHbf).|
+  int cfgDumpSTF = 0;
+  cfg.getOptionalValue<int>(cfgEntryPoint + ".dumpSTF", cfgDumpSTF, 0);
+
+  theLog.log(LogInfoDevel_(3002), "dumpRDH = %d dumpTF = %d dump STF = %d", cfgDumpRDH, cfgDumpTF, cfgDumpSTF);
 
   // create FMQ receiving channel
   theLog.log(LogInfoDevel_(3002), "Creating FMQ RX channel %s type %s @ %s", cfgChannelName.c_str(), cfgChannelType.c_str(), cfgChannelAddress.c_str());
@@ -339,6 +344,24 @@ int main(int argc, const char** argv)
                 break;
               }
               stf = (SubTimeframe*)mm->GetData();
+	      if (cfgDumpSTF) {
+		printf("STF:\n \
+		version: %d\n \
+		timeframeId: %d\n \
+		systemId: %d\n \
+		feeId: %d\n \
+		equipmentId: %d\n \
+		linkId: %d\n\
+		lastTFMessage: %d\n",
+		(int)stf->version,
+		(int)stf->timeframeId,
+		(int)stf->systemId,
+		(int)stf->feeId,
+		(int)stf->equipmentId,
+		(int)stf->linkId,
+		(int)stf->lastTFMessage);
+              }
+	      
               if (cfgDumpTF) {
                 if ((stf->timeframeId == 1) || (stf->timeframeId % cfgDumpTF == 0)) {
                   dumpNext = true;

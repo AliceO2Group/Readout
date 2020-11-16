@@ -368,9 +368,23 @@ class ConsumerFMQchannel : public Consumer
     for (auto& br : *bc) {
       ix++;
       DataBlock* b = br->getData();
+      
+      // set flag when this is last STF in timeframe
+      if (b->header.flagEndOfTimeframe) {
+        stfHeader->lastTFMessage = 1;
+      }
+
       if (isFirst) {
+        // fill STF header
         stfHeader->timeframeId = b->header.timeframeId;
+        stfHeader->runNumber = b->header.runNumber;
+        stfHeader->systemId = b->header.systemId;
+        stfHeader->feeId = b->header.feeId;
+        stfHeader->equipmentId = b->header.equipmentId;
         stfHeader->linkId = b->header.linkId;
+        stfHeader->timeframeOrbitFirst = b->header.timeframeOrbitFirst;
+        stfHeader->timeframeOrbitLast = b->header.timeframeOrbitLast;
+	stfHeader->isRdhFormat = b->header.isRdhFormat;
         isFirst = false;
       } else {
         if (stfHeader->timeframeId != b->header.timeframeId) {
