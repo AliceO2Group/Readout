@@ -193,6 +193,13 @@ if {$err>0} {
   puts "Can not generate config"
   exit 1  
 }
+
+# Generate readout configuration
+puts "Generating config optimized for readout $mode operation"
+set config {}
+
+if {$mode == "standalone"} {
+
 puts "Available [expr ($nHuge1G/$numaNodes)] page(s) per NUMA node"
 set pagesPerRoc [expr ($nHuge1G/$numaNodes) / $maxPerNuma]
 
@@ -214,11 +221,7 @@ if {0} {
 }
 puts "Using for readout equipment $readoutNPages * $readoutPageSize bytes"
 
-# Generate readout configuration
-puts "Generating config optimized for readout $mode operation"
-set config {}
 
-if {$mode == "standalone"} {
 # general parameters
 lappend config "
 \[readout\]
@@ -308,7 +311,10 @@ memoryPoolPageSize=${readoutPageSize}
  puts "Using: $bufferTotal ($nPagesPerEquipment pages per equipment, $nROC devices)"
     
   # general config params
-  lappend config "
+  lappend config "\
+# readout.exe configuration file
+# auto-generated [clock format [clock seconds]]
+  
 \[readout\]
 aggregatorStfTimeout=0.5
 aggregatorSliceTimeout=1
@@ -324,7 +330,7 @@ consoleUpdate=0
 enabled=1
 consumerType=FairMQChannel
 fmq-name=readout-stfb
-fmq-address=ipc:///tmp/readout-pipe-stfb
+fmq-address=ipc:///tmp/readout-fmq-stfb
 fmq-type=push
 fmq-transport=shmem
 sessionName=default
@@ -333,29 +339,31 @@ memoryPoolNumberOfPages=${nPageStfb}
 memoryPoolPageSize=${pageSizeKb}
 disableSending=0
 
-\[receiver-fmq-stfb\]
+\[rx-fmq-stfb\]
 decodingMode=stfHbf
-dumpRDH=1
+dumpRDH=0
 dumpTF=1
-channelAddress=ipc:///tmp/readout-pipe-stfb
+channelAddress=ipc:///tmp/readout-fmq-stfb
 channelType=pull
+transportType=shmem
 
 \[consumer-fmq-qc\]
-enabled=0
+enabled=1
 consumerType=FairMQChannel
 fmq-name=readout-qc
-fmq-address=tcp://127.0.0.1:50001
+fmq-address=ipc:///tmp/readout-fmq-qc
 fmq-type=pub
 fmq-transport=zeromq
 sessionName=default
 enableRawFormat=1
 
-\[receiver-fmq-qc\]
+\[rx-fmq-qc\]
 decodingMode=none
-dumpRDH=1
+dumpRDH=0
 dumpTF=0
-channelAddress=tcp://127.0.0.1:50001
+channelAddress=ipc:///tmp/readout-fmq-qc
 channelType=sub
+transportType=zeromq
 "
 set rocN 0
 foreach {type pci endpoint numa serial} $ldev {

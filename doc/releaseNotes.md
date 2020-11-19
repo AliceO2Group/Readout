@@ -282,3 +282,6 @@ This file describes the main feature changes for each readout.exe released versi
 ## v1.5.2 - 16/11/2020
 - receiverFMQ.exe: added parameter dumpSTF.
 - STFB interface: fixed unpopulated fields in header.
+
+## next version
+- readoutAutoConfigure: added option ("-m full") to generate a working config with STFB and QC FMQ channels.
