@@ -600,13 +600,20 @@ int Readout::configure(const boost::property_tree::ptree& properties)
       } else {
         theLog.log(LogErrorSupport_(3102), "Unknown consumer type '%s' for [%s]", cfgType.c_str(), kName.c_str());
       }
-    } catch (const std::exception& ex) {
+    }
+    catch (const std::exception& ex) {
       theLog.log(LogErrorSupport_(3100), "Failed to configure consumer %s : %s", kName.c_str(), ex.what());
       continue;
-    } catch (const std::string& ex) {
+    }
+    catch (const std::string& ex) {
       theLog.log(LogErrorSupport_(3100), "Failed to configure consumer %s : %s", kName.c_str(), ex.c_str());
       continue;
-    } catch (...) {
+    }
+    catch (const char* ex) {
+      theLog.log(LogErrorSupport_(3100), "Failed to configure consumer %s : %s", kName.c_str(), ex);
+      continue;
+    }
+    catch (...) {
       theLog.log(LogErrorSupport_(3100), "Failed to configure consumer %s", kName.c_str());
       continue;
     }
