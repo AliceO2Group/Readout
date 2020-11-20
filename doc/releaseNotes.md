@@ -285,3 +285,5 @@ This file describes the main feature changes for each readout.exe released versi
 
 ## next version
 - readoutAutoConfigure: added option ("-m full") to generate a working config with STFB and QC FMQ channels.
+- Updated configuration parameters:
+  - added consumer-*.filterLinksInclude and consumer-*.filterLinkExclude to define filters based on link ids. (eg, to zmq-publish only CTP CRU / IR data link).
