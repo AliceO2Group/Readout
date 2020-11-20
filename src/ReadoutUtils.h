@@ -15,6 +15,7 @@
 #include <map>
 #include <stdint.h>
 #include <string>
+#include <vector>
 
 #include "RAWDataHeader.h"
 
@@ -39,6 +40,10 @@ void dumpRDH(o2::Header::RAWDataHeader* rdh);
 // e.g. key1=value1, key2=value2, key3=value3 ...
 // returns 0 on success, -1 on error
 int getKeyValuePairsFromString(const std::string& input, std::map<std::string, std::string>& output);
+
+// parse a string of coma-separated integers into a vector
+// returns 0 on success, -1 on error
+int getIntegerListFromString(const std::string& input, std::vector<int>& output);
 
 // function to convert a value in bytes to a prefixed number 3+3 digits
 // suffix is the "base unit" to add after calculated prefix, e.g. Byte-> kBytes

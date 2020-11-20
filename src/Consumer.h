@@ -20,7 +20,7 @@
 class Consumer
 {
  public:
-  Consumer(ConfigFile&, std::string){};
+  Consumer(ConfigFile&, std::string);
   virtual ~Consumer(){};
   virtual int pushData(DataBlockContainerReference& b) = 0;
 
@@ -33,13 +33,15 @@ class Consumer
   {
     totalPushSuccess = 0;
     totalPushError = 0;
+    totalBlocksFiltered = 0;
+    totalBlocksUnfiltered = 0;
     return 0;
   };
 
   // Function called just after stopping data taking, after the last call to pushData(). Not called before input FIFO empty.
   virtual int stop()
   {
-    theLog.log(LogInfoDevel_(3003), "Push statistics for %s: %llu err / %llu total", this->name.c_str(), totalPushError, totalPushError + totalPushSuccess);
+    theLog.log(LogInfoDevel_(3003), "Push statistics for %s: %llu err / %llu total (DataSets), %llu/%llu filtered (DataBlocks)", this->name.c_str(), totalPushError, totalPushError + totalPushSuccess, totalBlocksFiltered, totalBlocksUnfiltered + totalBlocksFiltered);
     return 0;
   };
 
@@ -52,6 +54,20 @@ class Consumer
   bool isErrorReported = false;        // flag to keep track of error reports for this consumer
   unsigned long long totalPushSuccess = 0;
   unsigned long long totalPushError = 0;
+  unsigned long long totalBlocksFiltered = 0;
+  unsigned long long totalBlocksUnfiltered = 0;
+  
+ protected:
+  // check if a DataBlock passes defined filters. Return 1 if ok, zero if not.
+  // if link in list of excluded filters: 0
+  // if link in list of included filters, or included filters list empty: 1
+  // empty datablocks are always excluded
+  bool isDataBlockFilterOk(const DataBlock&);
+  
+ private:
+  bool filterLinksEnabled = 0; // when set, defines a filter link
+  std::vector<int> filterLinksInclude; // match is OK only for links in this list (or for all if list is empty).
+  std::vector<int> filterLinksExclude; // match is NOT OK for any link in this list.
 };
 
 std::unique_ptr<Consumer> getUniqueConsumerStats(ConfigFile& cfg, std::string cfgEntryPoint);
