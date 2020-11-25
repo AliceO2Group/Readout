@@ -68,6 +68,10 @@ class Consumer
   bool filterLinksEnabled = 0; // when set, defines a filter link
   std::vector<int> filterLinksInclude; // match is OK only for links in this list (or for all if list is empty).
   std::vector<int> filterLinksExclude; // match is NOT OK for any link in this list.
+  bool filterEquipmentIdsEnabled = 0; // when set, defines a filter based on equipmentId
+  std::vector<int> filterEquipmentIdsInclude; // match is OK only for ids in this list (or for all if list is empty).
+  std::vector<int> filterEquipmentIdsExclude; // match is NOT OK for any id in this list.
+
 };
 
 std::unique_ptr<Consumer> getUniqueConsumerStats(ConfigFile& cfg, std::string cfgEntryPoint);

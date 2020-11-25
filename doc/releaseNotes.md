@@ -287,4 +287,5 @@ This file describes the main feature changes for each readout.exe released versi
 - readoutAutoConfigure: added option ("-m full") to generate a working config with STFB and QC FMQ channels.
 - Updated configuration parameters:
   - added consumer-\*.filterLinksInclude and consumer-\*.filterLinkExclude to define filters based on link ids. (eg, to zmq-publish only CTP CRU / IR data link).
+  - added consumer-\*.filterEquipmentIdsInclude and consumer-\*.filterEquipmentIdsExclude to define filters based on equipment ids.
 - eventDump: added maxRdhPerPage parameter, to limit the number of RDH printed for each page and reduce verbosity.
