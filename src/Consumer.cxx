@@ -29,6 +29,24 @@ Consumer::Consumer(ConfigFile& cfg, std::string cfgEntryPoint)
     filterLinksEnabled = 1;    
     theLog.log(LogInfoDevel_(3002), "Filtering on links enabled: include=%s exclude=%s", cfgFilterLinksInclude.c_str(), cfgFilterLinksExclude.c_str());
   }
+  
+   // configuration parameter: | consumer-* | filterEquipmentIdsInclude | string |  | Defines a filter based on equipment ids. Only data belonging to the equipments in this list (coma separated values) are accepted. If empty, all equipment ids are fine. |
+  std::string cfgFilterEquipmentIdsInclude;
+  cfg.getOptionalValue<std::string>(cfgEntryPoint + ".filterEquipmentIdsInclude", cfgFilterEquipmentIdsInclude);
+  if (!getIntegerListFromString(cfgFilterEquipmentIdsInclude, filterEquipmentIdsInclude)) {
+    throw("Can not parse configuration item filterEquipmentIdsInclude");
+  }
+  // configuration parameter: | consumer-* | filterEquipmentIdsExclude | string |  | Defines a filter based on equipment ids. All data belonging to the equipments in this list (coma separated values) are rejected. |
+  std::string cfgFilterEquipmentIdsExclude;
+  cfg.getOptionalValue<std::string>(cfgEntryPoint + ".filterEquipmentIdsExclude", cfgFilterEquipmentIdsExclude);
+  if (!getIntegerListFromString(cfgFilterEquipmentIdsExclude, filterEquipmentIdsExclude)) {
+    throw("Can not parse configuration item filterEquipmentIdsExclude");
+  }
+  if (filterEquipmentIdsInclude.size() || filterEquipmentIdsExclude.size()) {
+    filterEquipmentIdsEnabled = 1;    
+    theLog.log(LogInfoDevel_(3002), "Filtering on equipment ids enabled: include=%s exclude=%s", cfgFilterEquipmentIdsInclude.c_str(), cfgFilterEquipmentIdsExclude.c_str());
+  }
+
 }
 
 int Consumer::pushData(DataSetReference& bc)
@@ -66,22 +84,49 @@ int Consumer::pushData(DataSetReference& bc)
 }
 
 bool Consumer::isDataBlockFilterOk(const DataBlock& b) {
-  if (!filterLinksEnabled) {
-    return 1;
-  }
-  int linkId = b.header.linkId;
-  for(auto i : filterLinksExclude) {
-    if (i == linkId) {
-      return 0;
+  bool isOk = 1;
+  
+  if (filterLinksEnabled) {
+    int id = b.header.linkId;
+    for(auto i : filterLinksExclude) {
+      if (i == id) {
+	return 0;
+      }
+    }
+    if (filterLinksInclude.size() != 0) {
+      isOk = 0;
+      for(auto i : filterLinksInclude) {
+	if (i == id) {
+	  isOk=1;
+	  break;
+	}
+      }
     }
   }
-  if (filterLinksInclude.size() == 0) {
-    return 1;
+  if (!isOk) {
+    return 0;
   }
-  for(auto i : filterLinksInclude) {
-    if (i == linkId) {
-      return 1;
+
+  if (filterEquipmentIdsEnabled) {
+    int id = b.header.equipmentId;
+    for(auto i : filterEquipmentIdsExclude) {
+      if (i == id) {
+	return 0;
+      }
+    }
+    if (filterEquipmentIdsInclude.size() != 0) {
+      isOk = 0;
+      for(auto i : filterEquipmentIdsInclude) {
+	if (i == id) {
+	  isOk=1;
+	  break;
+	}
+      }
     }
   }
-  return 0;
+  if (!isOk) {
+    return 0;
+  }
+  
+  return 1;
 }

@@ -46,6 +46,8 @@ The parameters related to 3rd-party libraries are described here for convenience
 | consumer-* | enabled | int | 1 | Enable (value=1) or disable (value=0) the consumer. | 
 | consumer-* | filterLinksInclude | string |  | Defines a filter based on link ids. Only data belonging to the links in this list (coma separated values) are accepted. If empty, all link ids are fine. |
 | consumer-* | filterLinksExclude | string |  | Defines a filter based on link ids. All data belonging to the links in this list (coma separated values) are rejected. |
+| consumer-* | filterEquipmentIdsInclude | string |  | Defines a filter based on equipment ids. Only data belonging to the equipment ids in this list (coma separated values) are accepted. If empty, all equipment ids are fine. |
+| consumer-* | filterEquipmentIdsExclude | string |  | Defines a filter based on equipment ids. All data belonging to the equipment in this list (coma separated values) are rejected. |
 | consumer-* | stopOnError | int | 0 | If 1, readout will stop automatically on consumer error. | 
 | consumer-data-sampling-* | address | string | ipc:///tmp/readout-pipe-1 | Address of the data sampling. | 
 | consumer-FairMQChannel-* | disableSending | int | 0 | If set, no data is output to FMQ channel. Used for performance test to create FMQ shared memory segment without pushing the data. | 
