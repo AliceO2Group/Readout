@@ -180,7 +180,8 @@ class ConsumerDataProcessor : public Consumer
     // configuration parameter: | consumer-processor-* | threadIdleSleepTime | int | 1000 | Sleep time (microseconds) of inactive thread, before polling for next data. |
     cfg.getOptionalValue<int>(cfgEntryPoint + ".threadIdleSleepTime", cfgIdleSleepTime, 1000);
 
-    // create a thread pool for the processing configuration parameter: | consumer-processor-* | numberOfThreads | int | 1 | Number of threads running the processBlock() function in parallel. |
+    // create a thread pool for the processing
+    // configuration parameter: | consumer-processor-* | numberOfThreads | int | 1 | Number of threads running the processBlock() function in parallel. |
     cfg.getOptionalValue<int>(cfgEntryPoint + ".numberOfThreads", numberOfThreads, 1);
     theLog.log(LogInfoDevel_(3002), "Using %d thread(s) for processing", numberOfThreads);
     for (int i = 0; i < numberOfThreads; i++) {
