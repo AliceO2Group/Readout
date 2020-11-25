@@ -238,6 +238,10 @@ The following utilities are also available:
  The interactive client can then be started with parameter port=(same port has given in consumer address) and pageSize=(maximum super page size configured for readout equipments).
  Available keyboard commands are: (s) start page dump continuous (d) stop page dump (n) dump next page only (x) exit.
  Each page received is printed in the console (selection of RDH fields only, no payload).
+ Optional parameters: (key=value format)
+ - port: ZMQ address to connect.
+ - pageSize: maximum page size to be received.
+ - maxRdhPerPage: number of RDH to print for each page (0 = all).
 
 
 # Recorded file format
