@@ -21,7 +21,8 @@ int main(int argc, const char* argv[])
 {
   std::string port = "tcp://127.0.0.1:50001"; // ZMQ server address
   int pageSize = 2 * 1024L * 1024L;           // ZMQ RX buffer size, should be big enough to receive a full superpage
-
+  int maxRdhPerPage = 0;                      // set maximum number of RDH printed per page. 0 means all.
+  
   // parse options
   for (int i = 1; i < argc; i++) {
     const char* option = argv[i];
@@ -39,10 +40,13 @@ int main(int argc, const char* argv[])
     if (key == "pageSize") {
       pageSize = atoi(value.c_str());
     }
+    if (key == "maxRdhPerPage") {
+      maxRdhPerPage = atoi(value.c_str());
+    }
   }
 
   theLog.log(LogInfoOps, "Starting eventDump");
-  theLog.log(LogInfoDevel, "Connecting to %s, page size = %d", port.c_str(), pageSize);
+  theLog.log(LogInfoDevel, "Connecting to %s, page size = %d, maxRdhPerPage = %d", port.c_str(), pageSize, maxRdhPerPage);
   theLog.log(LogInfoOps, "Interactive keyboard commands: (s) start (d) stop (n) next page (x) exit");
 
   std::unique_ptr<ZmqClient> tfClient;
@@ -61,7 +65,10 @@ int main(int argc, const char* argv[])
     printf("# Page %d - %d bytes\n", pageCount, msgSize);
 
     std::string errorDescription;
+    int lines = 0;
     for (size_t pageOffset = 0; pageOffset < (unsigned long)msgSize;) {
+      lines++;
+      if ((maxRdhPerPage>0) && (lines>maxRdhPerPage)) break;
 
       if (pageOffset + sizeof(o2::Header::RAWDataHeader) > (unsigned long)msgSize) {
         break;
