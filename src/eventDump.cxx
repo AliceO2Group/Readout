@@ -13,10 +13,6 @@ TtyChecker theTtyChecker;
 // log handle
 InfoLogger theLog;
 
-int tfClientCallback(void* msg, int msgSize)
-{
-}
-
 int main(int argc, const char* argv[])
 {
   std::string port = "tcp://127.0.0.1:50001"; // ZMQ server address
