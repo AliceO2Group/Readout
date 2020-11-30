@@ -283,7 +283,7 @@ This file describes the main feature changes for each readout.exe released versi
 - receiverFMQ.exe: added parameter dumpSTF.
 - STFB interface: fixed unpopulated fields in header.
 
-## next version
+## v1.5.3 - 30/11/2020
 - readoutAutoConfigure: added option ("-m full") to generate a working config with STFB and QC FMQ channels.
 - Updated configuration parameters:
   - added consumer-\*.filterLinksInclude and consumer-\*.filterLinkExclude to define filters based on link ids. (eg, to zmq-publish only CTP CRU / IR data link).
