@@ -263,7 +263,7 @@ class ConsumerFileRecorder : public Consumer
     std::string newFileName;
 
     // string for file incremental ID
-    char sFileId[4] = "";
+    char sFileId[11] = "";
     if ((filesMax != 1) && (fileId > 0)) {
       snprintf(sFileId, sizeof(sFileId), "%03d", fileId);
     }
