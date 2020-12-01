@@ -9,9 +9,9 @@
 // or submit itself to any jurisdiction.
 
 #include "ReadoutEquipment.h"
-
 #include "ReadoutStats.h"
 #include "readoutInfoLogger.h"
+#include <inttypes.h>
 
 extern tRunNumber occRunNumber;
 
@@ -347,7 +347,7 @@ Thread::CallbackResult ReadoutEquipment::threadCallback(void* arg)
       // print block debug info
       if (ptr->debugFirstPages > 0) {
         DataBlockHeader* h = &(nextBlock->getData()->header);
-        theLog.log(LogDebugDevel_(3009), "Equipment %s (%d) page %lu link %d tf %lu size %d", ptr->name.c_str(), h->equipmentId, h->blockId, h->linkId, h->timeframeId, h->dataSize);
+        theLog.log(LogDebugDevel_(3009), "Equipment %s (%d) page %" PRIu64 " link %d tf %" PRIu64 " size %d", ptr->name.c_str(), h->equipmentId, h->blockId, h->linkId, h->timeframeId, h->dataSize);
         ptr->debugFirstPages--;
       }
 

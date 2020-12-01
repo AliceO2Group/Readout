@@ -1,4 +1,5 @@
 #include <unistd.h>
+#include <inttypes.h>
 
 #include "ZmqClient.hxx"
 
@@ -14,7 +15,7 @@ int callback(void* msg, int msgSize)
   uint64_t tf;
 
   if (msgSize == sizeof(tf)) {
-    printf("TF %lu\n", *((uint64_t*)msg));
+    printf("TF %" PRIu64 "\n", *((uint64_t*)msg));
     return 0;
   }
   return -1;

@@ -130,7 +130,7 @@ void ZmqClient::run()
 
       uint64_t tf;
       if (nb == sizeof(tf)) {
-        printf("TF %lu\n", *((uint64_t*)msgBuffer));
+        printf("TF %lu\n", (unsigned long) *((uint64_t*)msgBuffer));
       }
       break;
       if (nb == 0) {

@@ -17,6 +17,7 @@
 #include <cstring>
 #include <mutex>
 #include <string>
+#include <inttypes.h>
 
 #include "RdhUtils.h"
 #include "ReadoutEquipment.h"
@@ -429,13 +430,13 @@ void ReadoutEquipmentRORC::finalCounters()
           tr = tv[i] * 100.0 / ts;
         }
         if ((i == 0) || (i == tx.size() - 1)) {
-          printf("%3d       \t%13lu\t%3.1lf\n", (int)t1, tv[i], tr);
+          printf("%3d       \t%13" PRIu64 "\t%3.1lf\n", (int)t1, tv[i], tr);
         } else {
           double t2 = tx[i + 1] * 100.0 / RocFifoSize;
           if (revert) {
             t2 = 100 - t2;
           }
-          printf("%3d - %3d     \t%13lu\t%3.1lf\n", (int)t1, (int)t2, tv[i], tr);
+          printf("%3d - %3d     \t%13" PRIu64 "\t%3.1lf\n", (int)t1, (int)t2, tv[i], tr);
         }
       }
     };

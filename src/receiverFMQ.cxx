@@ -155,7 +155,10 @@ ReadoutStfDecoder::ReadoutStfDecoder(std::vector<FairMQMessagePtr> inMsgParts)
 
         RdhHandle h(((uint8_t*)data) + pageOffset);
         int nErr = h.validateRdh(errorDescription);
-
+        if (nErr) {
+	  throw;
+	}
+	
         uint16_t offsetNextPacket = h.getOffsetNextPacket();
         if (offsetNextPacket == 0) {
           throw;
@@ -453,7 +456,7 @@ int main(int argc, const char** argv)
             if (sz != sizeof(DataBlockHeader)) {
               theLog.log(LogErrorSupport_(3237), "part[0] size = %d, should be %d", sz, (int)sizeof(DataBlock));
             } else {
-              DataBlockHeader* dbhb = (DataBlockHeader*)msgParts[0]->GetData();
+              // DataBlockHeader* dbhb = (DataBlockHeader*)msgParts[0]->GetData();
               // printf("rx datablock size: header %d ?= msgpart %d\n",(int)dbhb->dataSize,(int)msgParts[1]->GetSize());
             }
           }

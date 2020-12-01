@@ -132,7 +132,7 @@ class ConsumerFMQchannel : public Consumer
     cfg.getOptionalValue<std::string>(cfgEntryPoint + ".unmanagedMemorySize", cfgUnmanagedMemorySize);
     long long mMemorySize = ReadoutUtils::getNumberOfBytesFromString(cfgUnmanagedMemorySize.c_str());
     if (mMemorySize > 0) {
-      memoryBuffer = sendingChannel->Transport()->CreateUnmanagedRegion(mMemorySize, [this](void* /*data*/, size_t /*size*/, void* hint) { // cleanup callback
+      memoryBuffer = sendingChannel->Transport()->CreateUnmanagedRegion(mMemorySize, [](void* /*data*/, size_t /*size*/, void* hint) { // cleanup callback
         // printf("ack %p (size %d) hint=%p\n",data,(int)size,hint);
 
         if (hint != nullptr) {
@@ -310,9 +310,9 @@ class ConsumerFMQchannel : public Consumer
 
       // header
       if (memoryBuffer) {
-        msgs.emplace_back(std::move(sendingChannel->NewMessage(memoryBuffer, (void*)stfHeader, sizeof(SubTimeframe), (void*)(blockRef))));
+        msgs.emplace_back(sendingChannel->NewMessage(memoryBuffer, (void*)stfHeader, sizeof(SubTimeframe), (void*)(blockRef)));
       } else {
-        msgs.emplace_back(std::move(sendingChannel->NewMessage((void*)stfHeader, sizeof(SubTimeframe), msgcleanupCallback, (void*)(blockRef))));
+        msgs.emplace_back(sendingChannel->NewMessage((void*)stfHeader, sizeof(SubTimeframe), msgcleanupCallback, (void*)(blockRef)));
       }
       // one msg part per superpage
       for (auto& br : *bc) {
@@ -326,9 +326,9 @@ class ConsumerFMQchannel : public Consumer
         void* blobPtr = b->data;
         size_t blobSize = (size_t)b->header.dataSize;
         if (memoryBuffer) {
-          msgs.emplace_back(std::move(sendingChannel->NewMessage(memoryBuffer, blobPtr, blobSize, hint)));
+          msgs.emplace_back(sendingChannel->NewMessage(memoryBuffer, blobPtr, blobSize, hint));
         } else {
-          msgs.emplace_back(std::move(sendingChannel->NewMessage(blobPtr, blobSize, msgcleanupCallback, hint)));
+          msgs.emplace_back(sendingChannel->NewMessage(blobPtr, blobSize, msgcleanupCallback, hint));
         }
       }
       sendingChannel->Send(msgs);
@@ -427,9 +427,9 @@ class ConsumerFMQchannel : public Consumer
     // std::unique_ptr<FairMQMessage> msgHeader(transportFactory->CreateMessage((void *)stfHeader, sizeof(SubTimeframe), cleanupCallback, (void *)(blockRef)));
     assert(messagesToSend.empty());
     if (memoryBuffer) {
-      messagesToSend.emplace_back(std::move(sendingChannel->NewMessage(memoryBuffer, (void*)stfHeader, sizeof(SubTimeframe), (void*)(blockRef))));
+      messagesToSend.emplace_back(sendingChannel->NewMessage(memoryBuffer, (void*)stfHeader, sizeof(SubTimeframe), (void*)(blockRef)));
     } else {
-      messagesToSend.emplace_back(std::move(sendingChannel->NewMessage((void*)stfHeader, sizeof(SubTimeframe), msgcleanupCallback, (void*)(blockRef))));
+      messagesToSend.emplace_back(sendingChannel->NewMessage((void*)stfHeader, sizeof(SubTimeframe), msgcleanupCallback, (void*)(blockRef)));
    }
     messagesToSendSize = sizeof(SubTimeframe);
     // printf("sent header %d bytes\n",(int)sizeof(SubTimeframe));
@@ -478,9 +478,9 @@ class ConsumerFMQchannel : public Consumer
 
         // create and queue a fmq message
 	if (memoryBuffer) {
-          messagesToSend.emplace_back(std::move(sendingChannel->NewMessage(memoryBuffer, (void*)(&(b->data[ix])), (size_t)(l), hint)));
+          messagesToSend.emplace_back(sendingChannel->NewMessage(memoryBuffer, (void*)(&(b->data[ix])), (size_t)(l), hint));
 	} else {
-	  messagesToSend.emplace_back(std::move(sendingChannel->NewMessage((void*)(&(b->data[ix])), (size_t)(l), msgcleanupCallback, hint)));
+	  messagesToSend.emplace_back(sendingChannel->NewMessage((void*)(&(b->data[ix])), (size_t)(l), msgcleanupCallback, hint));
 	}
         messagesToSendSize += l;
         // printf("sent single HB %d = %d bytes\n",pendingFrames[0].HBid,l);
@@ -531,9 +531,9 @@ class ConsumerFMQchannel : public Consumer
 
         // create and queue a fmq message
 	if (memoryBuffer) {
-          messagesToSend.emplace_back(std::move(sendingChannel->NewMessage(memoryBuffer, (void*)newBlock, totalSize, (void*)(blockRef))));
+          messagesToSend.emplace_back(sendingChannel->NewMessage(memoryBuffer, (void*)newBlock, totalSize, (void*)(blockRef)));
 	} else {
-          messagesToSend.emplace_back(std::move(sendingChannel->NewMessage((void*)newBlock, totalSize, msgcleanupCallback, (void*)(blockRef))));
+          messagesToSend.emplace_back(sendingChannel->NewMessage((void*)newBlock, totalSize, msgcleanupCallback, (void*)(blockRef)));
 	}
         messagesToSendSize += totalSize;
 

@@ -9,8 +9,8 @@
 // or submit itself to any jurisdiction.
 
 #include "DataBlockAggregator.h"
-
 #include "readoutInfoLogger.h"
+#include <inttypes.h>
 
 DataBlockAggregator::DataBlockAggregator(AliceO2::Common::Fifo<DataSetReference>* v_output, std::string name)
 {
@@ -164,7 +164,7 @@ Thread::CallbackResult DataBlockAggregator::executeCallback()
         uint64_t tfId = db->header.timeframeId;
         uint64_t sourceId = (((uint64_t)db->header.equipmentId) << 32) | ((uint64_t)db->header.linkId);
         if (tfId <= lastTimeframeId) {
-          theLog.log(LogWarningSupport_(3235), "Discarding late data for TF %lu (source = 0x%lX)", tfId, sourceId);
+          theLog.log(LogWarningSupport_(3235), "Discarding late data for TF %" PRIu64 " (source = 0x%" PRIx64 ")", tfId, sourceId);
         } else {
           tStf& stf = stfBuffer[tfId];
           stf.tfId = tfId;

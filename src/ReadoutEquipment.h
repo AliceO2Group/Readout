@@ -130,7 +130,6 @@ class ReadoutEquipment
  private:
   int tagDatablockFromRdh(RdhHandle& RDH, DataBlockHeader& h);
   unsigned long long statsNumberOfTimeframes = 0; // number of timeframes read out
-  uint32_t currentTimeframeHbOrbitBegin = 0;      // HbOrbit of beginning of timeframe
   uint32_t firstTimeframeHbOrbitBegin = 0;        // HbOrbit of beginning of first timeframe
   bool isDefinedFirstTimeframeHbOrbitBegin = 0;
 
@@ -138,7 +137,7 @@ class ReadoutEquipment
   uint64_t currentTimeframe = 0;         // id of current timeframe
   bool usingSoftwareClock = false;       // if set, using internal software clock to generate timeframe id
 
-  const unsigned int LHCBunches = 3564;    // number of bunches in LHC
+  //const unsigned int LHCBunches = 3564;    // number of bunches in LHC
   const unsigned int LHCOrbitRate = 11246; // LHC orbit rate, in Hz. 299792458 / 26659
   uint32_t timeframePeriodOrbits = 256;    // timeframe interval duration in number of LHC orbits
   double timeframeRate = 0;                // timeframe rate, when generated internally
@@ -150,7 +149,7 @@ class ReadoutEquipment
   int cfgRdhDumpErrorEnabled = 1;             // flag to enable RDH error log at runtime
   int cfgRdhDumpWarningEnabled = 0;           // flag to enable RDH warning log at runtime
   int cfgRdhUseFirstInPageEnabled = 0;        // flag to enable reading of first RDH in page to populate readout headers
-  int cfgRdhCheckPacketCounterContiguous = 1; // flag to enable checking if RDH packetCounter value contiguous (done link-by-link)
+  //int cfgRdhCheckPacketCounterContiguous = 1; // flag to enable checking if RDH packetCounter value contiguous (done link-by-link)
 
   bool isRdhEquipment = false; // to be set true for RDH equipments
 
