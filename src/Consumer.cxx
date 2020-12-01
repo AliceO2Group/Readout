@@ -16,13 +16,13 @@ Consumer::Consumer(ConfigFile& cfg, std::string cfgEntryPoint)
   // configuration parameter: | consumer-* | filterLinksInclude | string |  | Defines a filter based on link ids. Only data belonging to the links in this list (coma separated values) are accepted. If empty, all link ids are fine. |
   std::string cfgFilterLinksInclude;
   cfg.getOptionalValue<std::string>(cfgEntryPoint + ".filterLinksInclude", cfgFilterLinksInclude);
-  if (!getIntegerListFromString(cfgFilterLinksInclude, filterLinksInclude)) {
+  if (getIntegerListFromString(cfgFilterLinksInclude, filterLinksInclude)<0) {
     throw("Can not parse configuration item filterLinksInclude");
   }
   // configuration parameter: | consumer-* | filterLinksExclude | string |  | Defines a filter based on link ids. All data belonging to the links in this list (coma separated values) are rejected. |
   std::string cfgFilterLinksExclude;
   cfg.getOptionalValue<std::string>(cfgEntryPoint + ".filterLinksExclude", cfgFilterLinksExclude);
-  if (!getIntegerListFromString(cfgFilterLinksExclude, filterLinksExclude)) {
+  if (getIntegerListFromString(cfgFilterLinksExclude, filterLinksExclude)<0) {
     throw("Can not parse configuration item filterLinksExclude");
   }
   if (filterLinksInclude.size() || filterLinksExclude.size()) {
@@ -33,13 +33,13 @@ Consumer::Consumer(ConfigFile& cfg, std::string cfgEntryPoint)
    // configuration parameter: | consumer-* | filterEquipmentIdsInclude | string |  | Defines a filter based on equipment ids. Only data belonging to the equipments in this list (coma separated values) are accepted. If empty, all equipment ids are fine. |
   std::string cfgFilterEquipmentIdsInclude;
   cfg.getOptionalValue<std::string>(cfgEntryPoint + ".filterEquipmentIdsInclude", cfgFilterEquipmentIdsInclude);
-  if (!getIntegerListFromString(cfgFilterEquipmentIdsInclude, filterEquipmentIdsInclude)) {
+  if (getIntegerListFromString(cfgFilterEquipmentIdsInclude, filterEquipmentIdsInclude)<0) {
     throw("Can not parse configuration item filterEquipmentIdsInclude");
   }
   // configuration parameter: | consumer-* | filterEquipmentIdsExclude | string |  | Defines a filter based on equipment ids. All data belonging to the equipments in this list (coma separated values) are rejected. |
   std::string cfgFilterEquipmentIdsExclude;
   cfg.getOptionalValue<std::string>(cfgEntryPoint + ".filterEquipmentIdsExclude", cfgFilterEquipmentIdsExclude);
-  if (!getIntegerListFromString(cfgFilterEquipmentIdsExclude, filterEquipmentIdsExclude)) {
+  if (getIntegerListFromString(cfgFilterEquipmentIdsExclude, filterEquipmentIdsExclude)<0) {
     throw("Can not parse configuration item filterEquipmentIdsExclude");
   }
   if (filterEquipmentIdsInclude.size() || filterEquipmentIdsExclude.size()) {
