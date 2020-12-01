@@ -100,9 +100,9 @@ int main()
         }
 
       } else {
-        msgCount+=msgs.size();
-        msgNew+=msgs.size();
-	/*
+        msgCount += msgs.size();
+        msgNew += msgs.size();
+        /*
        for (auto& msg : msgs) {
           int sz = (int)msg->GetSize();
           void* data = msg->GetData();

@@ -222,13 +222,13 @@ class ConsumerFMQchannel : public Consumer
         void* blobPtr = b->data;
         size_t blobSize = (size_t)b->header.dataSize;
         // printf("send %p = %d bytes hint=%p\n",blobPtr,(int)blobSize,hint);
-	if (memoryBuffer) {
-	  auto msg=sendingChannel->NewMessage(memoryBuffer, blobPtr, blobSize, hint);
-	  sendingChannel->Send(msg);
-	} else {
-          auto msg=sendingChannel->NewMessage(blobPtr, blobSize, msgcleanupCallback, hint);
+        if (memoryBuffer) {
+          auto msg = sendingChannel->NewMessage(memoryBuffer, blobPtr, blobSize, hint);
           sendingChannel->Send(msg);
-	}        
+        } else {
+          auto msg = sendingChannel->NewMessage(blobPtr, blobSize, msgcleanupCallback, hint);
+          sendingChannel->Send(msg);
+        }
         gReadoutStats.bytesFairMQ += blobSize;
       }
       totalPushSuccess++;
@@ -373,7 +373,7 @@ class ConsumerFMQchannel : public Consumer
     for (auto& br : *bc) {
       ix++;
       DataBlock* b = br->getData();
-      
+
       // set flag when this is last STF in timeframe
       if (b->header.flagEndOfTimeframe) {
         stfHeader->lastTFMessage = 1;
@@ -389,7 +389,7 @@ class ConsumerFMQchannel : public Consumer
         stfHeader->linkId = b->header.linkId;
         stfHeader->timeframeOrbitFirst = b->header.timeframeOrbitFirst;
         stfHeader->timeframeOrbitLast = b->header.timeframeOrbitLast;
-	stfHeader->isRdhFormat = b->header.isRdhFormat;
+        stfHeader->isRdhFormat = b->header.isRdhFormat;
         isFirst = false;
       } else {
         if (stfHeader->timeframeId != b->header.timeframeId) {
@@ -430,7 +430,7 @@ class ConsumerFMQchannel : public Consumer
       messagesToSend.emplace_back(sendingChannel->NewMessage(memoryBuffer, (void*)stfHeader, sizeof(SubTimeframe), (void*)(blockRef)));
     } else {
       messagesToSend.emplace_back(sendingChannel->NewMessage((void*)stfHeader, sizeof(SubTimeframe), msgcleanupCallback, (void*)(blockRef)));
-   }
+    }
     messagesToSendSize = sizeof(SubTimeframe);
     // printf("sent header %d bytes\n",(int)sizeof(SubTimeframe));
 
@@ -477,11 +477,11 @@ class ConsumerFMQchannel : public Consumer
         // std::cout << typeid(pendingFrames[0].blockRef).name() << std::endl;
 
         // create and queue a fmq message
-	if (memoryBuffer) {
+        if (memoryBuffer) {
           messagesToSend.emplace_back(sendingChannel->NewMessage(memoryBuffer, (void*)(&(b->data[ix])), (size_t)(l), hint));
-	} else {
-	  messagesToSend.emplace_back(sendingChannel->NewMessage((void*)(&(b->data[ix])), (size_t)(l), msgcleanupCallback, hint));
-	}
+        } else {
+          messagesToSend.emplace_back(sendingChannel->NewMessage((void*)(&(b->data[ix])), (size_t)(l), msgcleanupCallback, hint));
+        }
         messagesToSendSize += l;
         // printf("sent single HB %d = %d bytes\n",pendingFrames[0].HBid,l);
         // printf("left to FMQ: %p\n",pendingFrames[0].blockRef);
@@ -530,11 +530,11 @@ class ConsumerFMQchannel : public Consumer
         // std::unique_ptr<FairMQMessage> msgBody(transportFactory->CreateMessage((void *)newBlock, totalSize, cleanupCallbackForMalloc, (void *)(newBlock))); sendingChannel->Send(msgBody);
 
         // create and queue a fmq message
-	if (memoryBuffer) {
+        if (memoryBuffer) {
           messagesToSend.emplace_back(sendingChannel->NewMessage(memoryBuffer, (void*)newBlock, totalSize, (void*)(blockRef)));
-	} else {
+        } else {
           messagesToSend.emplace_back(sendingChannel->NewMessage((void*)newBlock, totalSize, msgcleanupCallback, (void*)(blockRef)));
-	}
+        }
         messagesToSendSize += totalSize;
 
         // printf("sent reallocated HB %d (originally %d blocks) = %d bytes\n",pendingFrames[0].HBid,nFrames,totalSize);

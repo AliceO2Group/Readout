@@ -144,11 +144,11 @@ class ReadoutEquipment
 
   // RDH-related configuration parameters
 
-  int cfgRdhCheckEnabled = 0;                 // flag to enable RDH check at runtime
-  int cfgRdhDumpEnabled = 0;                  // flag to enable RDH dump at runtime
-  int cfgRdhDumpErrorEnabled = 1;             // flag to enable RDH error log at runtime
-  int cfgRdhDumpWarningEnabled = 0;           // flag to enable RDH warning log at runtime
-  int cfgRdhUseFirstInPageEnabled = 0;        // flag to enable reading of first RDH in page to populate readout headers
+  int cfgRdhCheckEnabled = 0;          // flag to enable RDH check at runtime
+  int cfgRdhDumpEnabled = 0;           // flag to enable RDH dump at runtime
+  int cfgRdhDumpErrorEnabled = 1;      // flag to enable RDH error log at runtime
+  int cfgRdhDumpWarningEnabled = 0;    // flag to enable RDH warning log at runtime
+  int cfgRdhUseFirstInPageEnabled = 0; // flag to enable reading of first RDH in page to populate readout headers
   //int cfgRdhCheckPacketCounterContiguous = 1; // flag to enable checking if RDH packetCounter value contiguous (done link-by-link)
 
   bool isRdhEquipment = false; // to be set true for RDH equipments

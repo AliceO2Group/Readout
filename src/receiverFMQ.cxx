@@ -156,9 +156,9 @@ ReadoutStfDecoder::ReadoutStfDecoder(std::vector<FairMQMessagePtr> inMsgParts)
         RdhHandle h(((uint8_t*)data) + pageOffset);
         int nErr = h.validateRdh(errorDescription);
         if (nErr) {
-	  throw;
-	}
-	
+          throw;
+        }
+
         uint16_t offsetNextPacket = h.getOffsetNextPacket();
         if (offsetNextPacket == 0) {
           throw;
@@ -347,8 +347,9 @@ int main(int argc, const char** argv)
                 break;
               }
               stf = (SubTimeframe*)mm->GetData();
-	      if (cfgDumpSTF) {
-		printf("STF:\n \
+              if (cfgDumpSTF) {
+                printf(
+                  "STF:\n \
 		version: %d\n \
 		timeframeId: %d\n \
 		systemId: %d\n \
@@ -356,15 +357,15 @@ int main(int argc, const char** argv)
 		equipmentId: %d\n \
 		linkId: %d\n\
 		lastTFMessage: %d\n",
-		(int)stf->version,
-		(int)stf->timeframeId,
-		(int)stf->systemId,
-		(int)stf->feeId,
-		(int)stf->equipmentId,
-		(int)stf->linkId,
-		(int)stf->lastTFMessage);
+                  (int)stf->version,
+                  (int)stf->timeframeId,
+                  (int)stf->systemId,
+                  (int)stf->feeId,
+                  (int)stf->equipmentId,
+                  (int)stf->linkId,
+                  (int)stf->lastTFMessage);
               }
-	      
+
               if (cfgDumpTF) {
                 if ((stf->timeframeId == 1) || (stf->timeframeId % cfgDumpTF == 0)) {
                   dumpNext = true;
