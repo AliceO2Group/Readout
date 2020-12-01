@@ -56,7 +56,7 @@ class ConsumerRDMA : public Consumer
   bool CQshutdownRequest = false;
   std::atomic<int> nAvailable; // maximum number of WR that can be issued concurrently
 
-  int nPagesSent = 0; // number of pages sent
+  unsigned int nPagesSent = 0; // number of pages sent
 
   //  int cfgMaxPages=0; // max number of pages to send
   //  int cfgRemotePageSize=1024*1024; // size of remote data page
