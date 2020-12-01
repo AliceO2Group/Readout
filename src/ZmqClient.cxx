@@ -138,7 +138,7 @@ void ZmqClient::run()
         break;
       }
       ((char*)msgBuffer)[nb] = 0;
-      printf("recv %d = %s\n", nb, msgBuffer);
+      printf("recv %d = %s\n", nb, (char *)msgBuffer);
       break;
     }
     if ((zmqerr) || (linerr)) {

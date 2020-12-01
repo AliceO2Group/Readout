@@ -178,4 +178,5 @@ int getIntegerListFromString(const std::string &input, std::vector<int>& output)
       output.push_back(i);
     }
   }
+  return 0;
 }
