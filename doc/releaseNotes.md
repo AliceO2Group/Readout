@@ -290,5 +290,5 @@ This file describes the main feature changes for each readout.exe released versi
   - added consumer-\*.filterEquipmentIdsInclude and consumer-\*.filterEquipmentIdsExclude to define filters based on equipment ids.
 - eventDump: added maxRdhPerPage parameter, to limit the number of RDH printed for each page and reduce verbosity.
 
-## v1.5.5 - 1/12/2020
+## v1.5.6 - 1/12/2020
 - minor release, code cleanup.
