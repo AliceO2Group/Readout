@@ -44,7 +44,7 @@ int main()
   size_t msgCountPart = 0;
   size_t msgNew = 0;
   size_t msgNewPart = 0;
-  double tNew = 0.0;
+  //double tNew = 0.0;
   double utimeNew = 0.0;
   double stimeNew = 0.0;
   bool isFirstStat = 1;
@@ -64,7 +64,7 @@ int main()
 
     if (timerStats.isTimeout()) {
       double t = timerStats.getTime();
-      double tt = runningTime.getTime();
+      //double tt = runningTime.getTime();
       double uTime, sTime;
       double uTimePercent = -1, sTimePercent = -1;
       if (getProcessStats(uTime, sTime) == 0) {
@@ -100,14 +100,16 @@ int main()
         }
 
       } else {
-        for (auto& msg : msgs) {
+        msgCount += msgs.size();
+        msgNew += msgs.size();
+        /*
+       for (auto& msg : msgs) {
           int sz = (int)msg->GetSize();
           void* data = msg->GetData();
-          // printf("Received message %p size %d\n", data, sz);
-          // printf("Releasing message %p size %d\n", data, sz);
-          msgCount++;
-          msgNew++;
+          printf("Received message %p size %d\n", data, sz);
+          printf("Releasing message %p size %d\n", data, sz);
         }
+       */
       }
     }
   }

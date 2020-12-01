@@ -35,7 +35,7 @@ int main()
   }
 
   const size_t bufferSize = 2000 * 1024L * 1024L;
-  auto memoryBuffer = channel.Transport()->CreateUnmanagedRegion(bufferSize, [](void* data, size_t size, void* hint) {
+  auto memoryBuffer = channel.Transport()->CreateUnmanagedRegion(bufferSize, [](void* /*data*/, size_t /*size*/, void* /*hint*/) {
     // cleanup callback
   });
   printf("Created buffer %p size %ld\n", memoryBuffer->GetData(), memoryBuffer->GetSize());
@@ -85,13 +85,13 @@ int main()
       if (ix >= bufferSize) {
         ix = 0;
       }
-      msgs.emplace_back(std::move(channel.NewMessage(memoryBuffer, dataPtr, msgSize, hint)));
+      msgs.emplace_back(channel.NewMessage(memoryBuffer, dataPtr, msgSize, hint));
     }
     channel.Send(msgs);
     msgCount++;
 
     for (;;) {
-      double now = runningTime.getTime();
+      //double now = runningTime.getTime();
       double rate = msgCount / runningTime.getTime();
       if (rate <= msgRate) {
         break;

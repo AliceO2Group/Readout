@@ -155,6 +155,9 @@ ReadoutStfDecoder::ReadoutStfDecoder(std::vector<FairMQMessagePtr> inMsgParts)
 
         RdhHandle h(((uint8_t*)data) + pageOffset);
         int nErr = h.validateRdh(errorDescription);
+        if (nErr) {
+          throw;
+        }
 
         uint16_t offsetNextPacket = h.getOffsetNextPacket();
         if (offsetNextPacket == 0) {
@@ -344,8 +347,9 @@ int main(int argc, const char** argv)
                 break;
               }
               stf = (SubTimeframe*)mm->GetData();
-	      if (cfgDumpSTF) {
-		printf("STF:\n \
+              if (cfgDumpSTF) {
+                printf(
+                  "STF:\n \
 		version: %d\n \
 		timeframeId: %d\n \
 		systemId: %d\n \
@@ -353,15 +357,15 @@ int main(int argc, const char** argv)
 		equipmentId: %d\n \
 		linkId: %d\n\
 		lastTFMessage: %d\n",
-		(int)stf->version,
-		(int)stf->timeframeId,
-		(int)stf->systemId,
-		(int)stf->feeId,
-		(int)stf->equipmentId,
-		(int)stf->linkId,
-		(int)stf->lastTFMessage);
+                  (int)stf->version,
+                  (int)stf->timeframeId,
+                  (int)stf->systemId,
+                  (int)stf->feeId,
+                  (int)stf->equipmentId,
+                  (int)stf->linkId,
+                  (int)stf->lastTFMessage);
               }
-	      
+
               if (cfgDumpTF) {
                 if ((stf->timeframeId == 1) || (stf->timeframeId % cfgDumpTF == 0)) {
                   dumpNext = true;
@@ -453,7 +457,7 @@ int main(int argc, const char** argv)
             if (sz != sizeof(DataBlockHeader)) {
               theLog.log(LogErrorSupport_(3237), "part[0] size = %d, should be %d", sz, (int)sizeof(DataBlock));
             } else {
-              DataBlockHeader* dbhb = (DataBlockHeader*)msgParts[0]->GetData();
+              // DataBlockHeader* dbhb = (DataBlockHeader*)msgParts[0]->GetData();
               // printf("rx datablock size: header %d ?= msgpart %d\n",(int)dbhb->dataSize,(int)msgParts[1]->GetSize());
             }
           }

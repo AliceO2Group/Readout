@@ -159,23 +159,23 @@ int getProcessStats(double& uTime, double& sTime)
   return err;
 }
 
-int getIntegerListFromString(const std::string &input, std::vector<int>& output)
+int getIntegerListFromString(const std::string& input, std::vector<int>& output)
 {
   // coma-separated list of link ids (positive=include, negative=exclude)
   std::istringstream f(input);
-  std::string s;    
+  std::string s;
   while (std::getline(f, s, ',')) {
     // trim
     const std::string blanks = "\t\n\v\f\r ";
     s.erase(s.find_last_not_of(blanks) + 1);
     s.erase(0, s.find_first_not_of(blanks));
     size_t p;
-    int i=std::stoi( s, &p);
-    if (p!=s.length()) {
+    int i = std::stoi(s, &p);
+    if (p != s.length()) {
       return -1;
-    }
-    else {
+    } else {
       output.push_back(i);
     }
   }
+  return 0;
 }

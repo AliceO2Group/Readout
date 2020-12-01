@@ -56,22 +56,21 @@ class Consumer
   unsigned long long totalPushError = 0;
   unsigned long long totalBlocksFiltered = 0;
   unsigned long long totalBlocksUnfiltered = 0;
-  
+
  protected:
   // check if a DataBlock passes defined filters. Return 1 if ok, zero if not.
   // if link in list of excluded filters: 0
   // if link in list of included filters, or included filters list empty: 1
   // empty datablocks are always excluded
   bool isDataBlockFilterOk(const DataBlock&);
-  
+
  private:
-  bool filterLinksEnabled = 0; // when set, defines a filter link
-  std::vector<int> filterLinksInclude; // match is OK only for links in this list (or for all if list is empty).
-  std::vector<int> filterLinksExclude; // match is NOT OK for any link in this list.
-  bool filterEquipmentIdsEnabled = 0; // when set, defines a filter based on equipmentId
+  bool filterLinksEnabled = 0;                // when set, defines a filter link
+  std::vector<int> filterLinksInclude;        // match is OK only for links in this list (or for all if list is empty).
+  std::vector<int> filterLinksExclude;        // match is NOT OK for any link in this list.
+  bool filterEquipmentIdsEnabled = 0;         // when set, defines a filter based on equipmentId
   std::vector<int> filterEquipmentIdsInclude; // match is OK only for ids in this list (or for all if list is empty).
   std::vector<int> filterEquipmentIdsExclude; // match is NOT OK for any id in this list.
-
 };
 
 std::unique_ptr<Consumer> getUniqueConsumerStats(ConfigFile& cfg, std::string cfgEntryPoint);
