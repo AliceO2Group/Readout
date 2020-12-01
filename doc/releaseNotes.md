@@ -289,3 +289,6 @@ This file describes the main feature changes for each readout.exe released versi
   - added consumer-\*.filterLinksInclude and consumer-\*.filterLinkExclude to define filters based on link ids. (eg, to zmq-publish only CTP CRU / IR data link).
   - added consumer-\*.filterEquipmentIdsInclude and consumer-\*.filterEquipmentIdsExclude to define filters based on equipment ids.
 - eventDump: added maxRdhPerPage parameter, to limit the number of RDH printed for each page and reduce verbosity.
+
+## v1.5.4 - 1/12/2020
+- minor release, code cleanup.
