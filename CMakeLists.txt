@@ -75,7 +75,7 @@ endif()
 
 # check FairMQ
 # FairMQ::FairMQ target does not provide the transitive dependency on FairLogger and Boost, so we have to add them manually
-find_package(Boost COMPONENTS container thread regex date_time )
+find_package(Boost COMPONENTS container thread regex date_time)
 find_package(FairLogger)
 if ((NOT FairMQ_FOUND) OR (NOT FairLogger_FOUND))
   message(STATUS "FairMQ or FairLogger not found, corresponding features disabled")
@@ -87,7 +87,9 @@ else ()
   endforeach()
   get_target_property(FairMQ_INCLUDE_DIRS FairMQ::FairMQ INTERFACE_INCLUDE_DIRECTORIES)
   get_target_property(FairLogger_INCLUDE_DIRS FairLogger::FairLogger INTERFACE_INCLUDE_DIRECTORIES)
-  get_target_property(fmt_INCLUDE_DIRS fmt::fmt INTERFACE_INCLUDE_DIRECTORIES)
+  if (TARGET fmt::fmt) 
+    get_target_property(fmt_INCLUDE_DIRS fmt::fmt INTERFACE_INCLUDE_DIRECTORIES)
+  endif ()
   list(APPEND FairMQ_INCLUDE_DIRS ${FairLogger_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS} ${fmt_INCLUDE_DIRS})
 endif ()
 
@@ -122,6 +124,7 @@ add_compile_definitions($<$<BOOL:${Numa_FOUND}>:WITH_NUMA> $<$<BOOL:${RDMA_FOUND
 
 # define include directories
 set(READOUT_INCLUDE_DIRS
+ ${Boost_INCLUDE_DIRS} 
  ${InfoLogger_INCLUDE_DIRS}
  ${ReadoutCard_INCLUDE_DIRS}
  ${Common_INCLUDE_DIRS}
@@ -380,7 +383,7 @@ add_executable(
 
 # disable some executables when corresponding dependencies not found
 if (NOT FairMQ_FOUND)
-	set_target_properties(testTxFMQ.exe testRxFMQ.exe testTxPerf testRxPerf PROPERTIES EXCLUDE_FROM_ALL 1)
+	set_target_properties(testTxFMQ.exe testRxFMQ.exe testTxPerfFMQ.exe testRxPerfFMQ.exe PROPERTIES EXCLUDE_FROM_ALL 1)
 endif ()
 
 # set include and libraries for all
