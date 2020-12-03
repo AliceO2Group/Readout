@@ -12,12 +12,12 @@
 find_path(
   ZMQ_INCLUDE_DIRS NAMES zmq.h
   PATHS ${ZMQ_ROOT} ${ZMQ_ROOT}/include
-  NO_DEFAULT_PATH)
+  )
   
 find_library(
   ZMQ_LIBRARIES NAMES zmq
   PATHS ${ZMQ_ROOT} ${ZMQ_ROOT}/lib
-  NO_DEFAULT_PATH)
+  )
  
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(ZMQ
