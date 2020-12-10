@@ -33,6 +33,9 @@ class ReadoutEquipmentCruEmulator : public ReadoutEquipment
   Thread::CallbackResult populateFifoOut(); // iterative callback
 
   int cfgNumberOfLinks; // number of links to simulate. Will create data blocks round-robin.
+  int cfgSystemId;      // system id to be used
+  int cfgCruId;         // CRU id to be used
+  int cfgDpwId;         // DPW id to be used
   int cfgFeeId;         // FEE id to be used
   int cfgLinkId;        // Link id to be used (base number - will be incremented if multiple links selected)
 
@@ -80,6 +83,9 @@ ReadoutEquipmentCruEmulator::ReadoutEquipmentCruEmulator(ConfigFile& cfg, std::s
   // configuration parameter: | equipment-cruemulator-* | maxBlocksPerPage | int | 0 | [obsolete- not used]. Maximum number of blocks per page. |
   // configuration parameter: | equipment-cruemulator-* | cruBlockSize | int | 8192 | Size of a RDH block. |
   // configuration parameter: | equipment-cruemulator-* | numberOfLinks | int | 1 | Number of GBT links simulated by equipment. |
+  // configuration parameter: | equipment-cruemulator-* | systemId | int | 19 | System Id, used for System Id field in RDH. By default, using the TEST code. |
+  // configuration parameter: | equipment-cruemulator-* | cruId | int | 0 | CRU Id, used for CRU Id field in RDH. |
+  // configuration parameter: | equipment-cruemulator-* | dpwId | int | 0 | CRU end-point Id (data path wrapper id), used for DPW Id field in RDH. |
   // configuration parameter: | equipment-cruemulator-* | feeId | int | 0 | Front-End Electronics Id, used for FEE Id field in RDH. |
   // configuration parameter: | equipment-cruemulator-* | linkId | int | 0 | Id of first link. If numberOfLinks>1, ids will range from linkId to linkId+numberOfLinks-1. |
   // configuration parameter: | equipment-cruemulator-* | HBperiod | int | 1 | Interval between 2 HeartBeat triggers, in number of LHC orbits. |
@@ -88,6 +94,9 @@ ReadoutEquipmentCruEmulator::ReadoutEquipmentCruEmulator(ConfigFile& cfg, std::s
   cfg.getOptionalValue<int>(cfgEntryPoint + ".maxBlocksPerPage", cfgMaxBlocksPerPage, (int)0);
   cfg.getOptionalValue<int>(cfgEntryPoint + ".cruBlockSize", cruBlockSize, (int)8192);
   cfg.getOptionalValue<int>(cfgEntryPoint + ".numberOfLinks", cfgNumberOfLinks, (int)1);
+  cfg.getOptionalValue<int>(cfgEntryPoint + ".systemId", cfgSystemId, (int)19);
+  cfg.getOptionalValue<int>(cfgEntryPoint + ".cruId", cfgCruId, (int)0);
+  cfg.getOptionalValue<int>(cfgEntryPoint + ".dpwId", cfgDpwId, (int)0);
   cfg.getOptionalValue<int>(cfgEntryPoint + ".feeId", cfgFeeId, (int)0);
   cfg.getOptionalValue<int>(cfgEntryPoint + ".linkId", cfgLinkId, (int)0);
   cfg.getOptionalValue<int>(cfgEntryPoint + ".HBperiod", cfgHBperiod);
@@ -95,7 +104,7 @@ ReadoutEquipmentCruEmulator::ReadoutEquipmentCruEmulator(ConfigFile& cfg, std::s
   cfg.getOptionalValue<int>(cfgEntryPoint + ".PayloadSize", cfgPayloadSize);
 
   // log config summary
-  theLog.log(LogInfoDevel_(3002), "Equipment %s: maxBlocksPerPage=%d cruBlockSize=%d numberOfLinks=%d feeId=%d linkId=%d HBperiod=%d EmptyHbRatio=%f PayloadSize=%d", name.c_str(), cfgMaxBlocksPerPage, cruBlockSize, cfgNumberOfLinks, cfgFeeId, cfgLinkId, cfgHBperiod, cfgEmptyHbRatio, cfgPayloadSize);
+  theLog.log(LogInfoDevel_(3002), "Equipment %s: maxBlocksPerPage=%d cruBlockSize=%d numberOfLinks=%d systemId=%d cruId=%d dpwId=%d feeId=%d linkId=%d HBperiod=%d EmptyHbRatio=%f PayloadSize=%d", name.c_str(), cfgMaxBlocksPerPage, cruBlockSize, cfgNumberOfLinks, cfgSystemId, cfgCruId, cfgDpwId, cfgFeeId, cfgLinkId, cfgHBperiod, cfgEmptyHbRatio, cfgPayloadSize);
 
   // initialize array of pending blocks (to be filled with data)
   pendingBlocks.resize(cfgNumberOfLinks);
@@ -237,6 +246,9 @@ Thread::CallbackResult ReadoutEquipmentCruEmulator::prepareBlocks()
       rdh->triggerOrbit = nowOrbit;
       rdh->triggerBC = nowBc;
       rdh->heartbeatOrbit = nowHb;
+      rdh->systemId = cfgSystemId;
+      rdh->cruId = cfgCruId;
+      rdh->dpwId = cfgDpwId;
       rdh->feeId = cfgFeeId;
       rdh->linkId = linkId;
       rdh->offsetNextPacket = cruBlockSize;

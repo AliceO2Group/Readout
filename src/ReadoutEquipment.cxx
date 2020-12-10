@@ -98,19 +98,20 @@ ReadoutEquipment::ReadoutEquipment(ConfigFile& cfg, std::string cfgEntryPoint)
 
   // RDH-related extra configuration parameters
   // configuration parameter: | equipment-* | rdhCheckEnabled | int | 0 | If set, data pages are parsed and RDH headers checked. Errors are reported in logs. |
-  cfg.getOptionalValue<int>(name + ".rdhCheckEnabled", cfgRdhCheckEnabled);
+  cfg.getOptionalValue<int>(cfgEntryPoint + ".rdhCheckEnabled", cfgRdhCheckEnabled);
   // configuration parameter: | equipment-* | rdhDumpEnabled | int | 0 | If set, data pages are parsed and RDH headers summary printed. Setting a negative number will print only the first N RDH.|
-  cfg.getOptionalValue<int>(name + ".rdhDumpEnabled", cfgRdhDumpEnabled);
+  cfg.getOptionalValue<int>(cfgEntryPoint + ".rdhDumpEnabled", cfgRdhDumpEnabled);
   // configuration parameter: | equipment-* | rdhDumpErrorEnabled | int | 1 | If set, a log message is printed for each RDH header error found.|
-  cfg.getOptionalValue<int>(name + ".rdhDumpErrorEnabled", cfgRdhDumpErrorEnabled);
+  cfg.getOptionalValue<int>(cfgEntryPoint + ".rdhDumpErrorEnabled", cfgRdhDumpErrorEnabled);
   // configuration parameter: | equipment-* | rdhDumpWarningEnabled | int | 0 | If set, a log message is printed for each RDH header warning found.|
-  cfg.getOptionalValue<int>(name + ".rdhDumpWarningEnabled", cfgRdhDumpWarningEnabled);
+  cfg.getOptionalValue<int>(cfgEntryPoint + ".rdhDumpWarningEnabled", cfgRdhDumpWarningEnabled);
   // configuration parameter: | equipment-* | rdhUseFirstInPageEnabled | int | 0 | If set, the first RDH in each data page is used to populate readout headers (e.g. linkId).|
-  cfg.getOptionalValue<int>(name + ".rdhUseFirstInPageEnabled", cfgRdhUseFirstInPageEnabled);
-
+  cfg.getOptionalValue<int>(cfgEntryPoint + ".rdhUseFirstInPageEnabled", cfgRdhUseFirstInPageEnabled);
+  theLog.log(LogInfoDevel_(3002), "RDH settings: rdhCheckEnabled=%d rdhDumpEnabled=%d rdhDumpErrorEnabled=%d rdhDumpWarningEnabled=%d rdhUseFirstInPageEnabled=%d", cfgRdhCheckEnabled, cfgRdhDumpEnabled, cfgRdhDumpErrorEnabled, cfgRdhDumpWarningEnabled, cfgRdhUseFirstInPageEnabled);
+  
   // configuration parameter: | equipment-* | TFperiod | int | 256 | Duration of a timeframe, in number of LHC orbits. |
   int cfgTFperiod = 256;
-  cfg.getOptionalValue<int>(name + ".TFperiod", cfgTFperiod);
+  cfg.getOptionalValue<int>(cfgEntryPoint + ".TFperiod", cfgTFperiod);
   timeframePeriodOrbits = cfgTFperiod;
 
   if (!cfgRdhUseFirstInPageEnabled) {
