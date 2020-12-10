@@ -83,6 +83,8 @@ set configurationParametersDescriptor {
 | equipment-* | stopOnError | int | 0 | If 1, readout will stop automatically on equipment error. | 
 | equipment-* | TFperiod | int | 256 | Duration of a timeframe, in number of LHC orbits. | 
 | equipment-cruemulator-* | cruBlockSize | int | 8192 | Size of a RDH block. | 
+| equipment-cruemulator-* | cruId | int | 0 | CRU Id, used for CRU Id field in RDH. |
+| equipment-cruemulator-* | dpwId | int | 0 | CRU end-point Id (data path wrapper id), used for DPW Id field in RDH. |
 | equipment-cruemulator-* | EmptyHbRatio | double | 0 | Fraction of empty HBframes, to simulate triggered detectors. | 
 | equipment-cruemulator-* | feeId | int | 0 | Front-End Electronics Id, used for FEE Id field in RDH. | 
 | equipment-cruemulator-* | HBperiod | int | 1 | Interval between 2 HeartBeat triggers, in number of LHC orbits. | 
@@ -90,6 +92,7 @@ set configurationParametersDescriptor {
 | equipment-cruemulator-* | maxBlocksPerPage | int | 0 | [obsolete- not used]. Maximum number of blocks per page. | 
 | equipment-cruemulator-* | numberOfLinks | int | 1 | Number of GBT links simulated by equipment. | 
 | equipment-cruemulator-* | PayloadSize | int | 64k | Maximum payload size for each trigger. Actual size is randomized, and then split in a number of (cruBlockSize) packets. | 
+| equipment-cruemulator-* | systemId | int | 19 | System Id, used for System Id field in RDH. By default, using the TEST code. |
 | equipment-dummy-* | eventMaxSize | bytes | 128k | Maximum size of randomly generated event. | 
 | equipment-dummy-* | eventMinSize | bytes | 128k | Minimum size of randomly generated event. | 
 | equipment-dummy-* | fillData | int | 0 | Pattern used to fill data page: (0) no pattern used, data page is left untouched, with whatever values were in memory (1) incremental byte pattern (2) incremental word pattern, with one random word out of 5. | 
