@@ -27,8 +27,6 @@ set bufferMaxSystemUse 0.5
 # source to use for ROCs
 # e.g. Fee, Internal, Ddg
 set dataSource "Fee"
-# some more space per page for alignment
-set pageAlign 10240
 
 # command line args
 set x 0
@@ -291,8 +289,9 @@ memoryPoolPageSize=${readoutPageSize}
 
 } elseif {$mode == "full"} {
  
- set nPagesPerEquipment [expr int($bufferPerEquipment * 1024 * 1024 * 1.0 / ($readoutPageSize + $pageAlign))]
- set bufferTotal [expr ($nROC * ($readoutPageSize + 1024) * $nPagesPerEquipment) * (1 + $bufferStfCopyFraction)]
+ set nPagesAlign 4
+ set nPagesPerEquipment [expr int($bufferPerEquipment * 1024 * 1024 * 1.0 / $readoutPageSize)]
+ set bufferTotal [expr ($nROC * $readoutPageSize * ($nPagesPerEquipment + $nPagesAlign)) * (1 + $bufferStfCopyFraction)]
  set maxAllowed [expr $bufferMaxSystemUse * $memTotal]
  
  puts "Readout page size = $readoutPageSize"
@@ -300,13 +299,13 @@ memoryPoolPageSize=${readoutPageSize}
  if ($bufferTotal>$maxAllowed) {
    puts "Wished: $bufferTotal ($nPagesPerEquipment pages per equipment, $nROC devices)"
    puts "Exceeding [expr $bufferMaxSystemUse * 100]% memory resources, limiting buffer to $maxAllowed bytes"
-   set nPagesPerEquipment [expr int(($maxAllowed * 1.0 / (1 + $bufferStfCopyFraction)) / ($nROC * ($readoutPageSize + $pageAlign)))]
+   set nPagesPerEquipment [expr int(($maxAllowed * 1.0 / (1 + $bufferStfCopyFraction)) / ($nROC * $readoutPageSize)) - $nPagesAlign]
    set bufferTotal $maxAllowed   
  }
 
  set nPagesPerEquipment [expr int($nPagesPerEquipment)]
  set bufMB [expr int($bufferTotal / (1024*1024)) + 1]
- set nPageStfb [expr int ($bufferTotal * $bufferStfCopyFraction * 1.0 / ($readoutPageSize + $pageAlign))]
+ set nPageStfb [expr int($nROC * $nPagesPerEquipment * $bufferStfCopyFraction)]
  set pageSizeKb "[expr int($readoutPageSize / 1024)]k"
  puts "Using: $bufferTotal ($nPagesPerEquipment pages per equipment, $nROC devices)"
     
