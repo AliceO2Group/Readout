@@ -157,6 +157,7 @@ Documentation of the parameters is available by right-clicking in any value fiel
   Usage: readoutConfigEditor myConfigFile.cfg
   ```    
 
+Some of the configuration parameters may be overwritten at runtime by OCC, when readout is launched from AliECS. For example, the FairMQ parameters for the StfBuilder connection are set dynamically in the configure step. This is done for the consumer with matching fmq-name=readout.
 
 
 # Usage

@@ -328,7 +328,9 @@ consoleUpdate=0
 \[consumer-fmq-stfb\]
 enabled=1
 consumerType=FairMQChannel
-fmq-name=readout-stfb
+# fmq-name should be 'readout'
+# to allow OCC to overwrite params for StfBuilder connection
+fmq-name=readout
 fmq-address=ipc:///tmp/readout-fmq-stfb
 fmq-type=push
 fmq-transport=shmem
