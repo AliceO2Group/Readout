@@ -297,3 +297,5 @@ This file describes the main feature changes for each readout.exe released versi
 - Updated configuration parameters:
   - added equipment-cruemulator-*.cruId, dpwId, systemId: to set corresponding fields in emulated RDH.
 - Added example configuration file to run readout software data generator + stfBuilder.
+## v1.5.9 - 11/01/2020
+- readoutAutoConfigure: minor fixes (memory size, stfb fmq-name).
