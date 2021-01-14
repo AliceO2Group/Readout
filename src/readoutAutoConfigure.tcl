@@ -7,6 +7,8 @@
 # arguments:
 # -o configFile : save configuration to given file name (instead of stdout) - file is appended
 # -m mode       : optimization mode, one of standalone (readout-only) or full (with extra components)
+# -s silent     : no log output, just the config
+# -k key=value  : set a variable
 
 # dependencies
 package require json
@@ -21,12 +23,32 @@ set bufferPerEquipment 8000
 # superpage size
 set readoutPageSize 1048576
 # stf spare copy buffer ratio, as a fraction of the main buffer
-set bufferStfCopyFraction 0.1
+set bufferStfCopyFraction 0.4
 # maximum buffer size, in fraction of total system memory
 set bufferMaxSystemUse 0.5
 # source to use for ROCs
 # e.g. Fee, Internal, Ddg
 set dataSource "Fee"
+
+# url for monitoring. if set, monitoring is enabled
+# eg: influxdb-unix:///tmp/telegraf.sock
+set monitoringURI ""
+
+# output log info
+set logEnabled 1
+
+# version of this script
+set version "1.5.9.2"
+
+set generateQC 0
+
+# log function
+proc doLog {txt} {
+  global logEnabled
+  if {$logEnabled} {
+    puts "$txt"
+  }
+}
 
 # command line args
 set x 0
@@ -39,16 +61,36 @@ while {[set opt [lindex $argv $x]] != ""} {
    -m {
         set mode [lindex $argv [expr $x + 1]]
         incr x
-   }   
+   }
+   -s {
+        set logEnabled 0
+   }
+   -k {
+        set o [lindex $argv [expr $x + 1]]
+	set lo [split $o "="]
+	if {[llength $lo]==2} {
+	  set [lindex $lo 0] [lindex $lo 1]
+	} else {
+	  doLog "Bad option ${opt} ${o}"
+	  exit 1
+	}
+   }
+   
  }
  incr x
 }
 
+# get hostname
+set hostname ""
+if {[catch {set hostname [exec hostname -s]} err]} {
+  doLog "hostname failed: $err"
+  exit 1
+}
 
 # get list of ROCs
 set ldev {}
 if {[catch {set rocOutput [exec roc-list-cards --json]} err]} {
-  puts "roc-list-cards failed: $err"
+  doLog "roc-list-cards failed: $err"
   exit 1
 }
 
@@ -63,17 +105,17 @@ if {[catch {
       lappend ldev "$type" "$pci" "$endpoint" "$numa" "$serial"
   }
 } err]} {
-  puts "Failed to parse roc-list-cards output: $err"
+  doLog "Failed to parse roc-list-cards output: $err"
 }
 if {[llength $ldev]==0} {
-  puts "No ROC device found, exiting"
+  doLog "No ROC device found, exiting"
   exit 1
 }
 
 # get memory configuration
 
 if {[catch {set hugeOutput [exec hugeadm --pool-list]} err]} {
-  puts "hugeadm failed: $err"
+  doLog "hugeadm failed: $err"
   exit 1
 }
 set hugeOutputLines [split $hugeOutput "\n"]
@@ -92,25 +134,25 @@ if {[catch {
     lappend lmem "$size" "$current"
   }
 } err]} {
-  puts "Failed to parse hugeadm output: $err"
+  doLog "Failed to parse hugeadm output: $err"
 }
 
 
 # get NUMA config
 
 if {[catch {set numaOutput [exec lscpu | grep NUMA]} err]} {
-  puts "lscpu | grep NUMA failed: $err"
+  doLog "lscpu | grep NUMA failed: $err"
   exit 1
 }
 if {[scan $numaOutput "NUMA node(s):          %d" numaNodes]!=1} {
-  puts "Failed to parse lscpu output: $err"
+  doLog "Failed to parse lscpu output: $err"
 }
 
 
 # get memory configuration
 
 if {[catch {set memOutput [exec free -b]} err]} {
-  puts "free failed: $err"
+  doLog "free failed: $err"
   exit 1
 }
 set memOutputLines [split $memOutput "\n"]
@@ -125,7 +167,7 @@ if {[catch {
   set memUsed [string trim [string range $l 19 30]]
   set memFree [string trim [string range $l 31 42]]
 } err]} {
-  puts "Failed to parse free output: $err"
+  doLog "Failed to parse free output: $err"
 }
 
 
@@ -135,45 +177,45 @@ set err 0
 
 # log information found
 
-puts "Memory: ${memFree}/${memTotal} bytes available/total"
+doLog "Memory: ${memFree}/${memTotal} bytes available/total"
 
-puts "NUMA nodes: $numaNodes"
+doLog "NUMA nodes: $numaNodes"
 
 if {$numaNodes==0} {
-  puts "Should not be zero"
+  doLog "Should not be zero"
   incr err
 }
 
-puts "Memory available (hugepages):"
+doLog "Memory available (hugepages):"
 set nHuge1G 0
 foreach {pageSize pagesAvailable} $lmem {
- puts "  $pagesAvailable * $pageSize bytes"
+ doLog "  $pagesAvailable * $pageSize bytes"
  if {$pageSize==1073741824} {
    set nHuge1G $pagesAvailable
  }
 }
 if {$nHuge1G==0} {
-  puts "1G pages should not be zero"
+  doLog "1G pages should not be zero"
   incr err
 }
 
-puts "Devices found:"
+doLog "Devices found:"
 set nROC 0
 for {set i 0} {$i<$numaNodes} {incr i} {
     set nRocNuma($i) 0
 }
 foreach {type pci endpoint numa serial} $ldev {
   if {("$type"=="CRU")||("$type"=="CRORC")} {
-     puts "  $type @ $pci endpoint $endpoint numa $numa serial $serial"
+     doLog "  $type @ $pci endpoint $endpoint numa $numa serial $serial"
      incr nROC
      if {"$numa">=$numaNodes} {
-       puts "Inconsistent NUMA id!"
+       doLog "Inconsistent NUMA id!"
        incr err
      }
      incr nRocNuma($numa)
   }
 }
-puts "$nROC ROCs"
+doLog "$nROC ROCs"
 
 set maxPerNuma 0
 for {set i 0} {$i<$numaNodes} {incr i} {
@@ -181,32 +223,40 @@ for {set i 0} {$i<$numaNodes} {incr i} {
     set maxPerNuma $nRocNuma($i)
   }
 }
-puts "Maximum $maxPerNuma ROC(s) per NUMA node"
+doLog "Maximum $maxPerNuma ROC(s) per NUMA node"
 if ($maxPerNuma==0) {
-  puts "Should not be zero"
+  doLog "Should not be zero"
   incr err  
 }
 
 if {$err>0} {
-  puts "Can not generate config"
+  doLog "Can not generate config"
   exit 1  
 }
 
 # Generate readout configuration
-puts "Generating config optimized for readout $mode operation"
+doLog "Generating config optimized for readout $mode operation"
 set config {}
+
+lappend config "# readout.exe configuration file
+# auto-generated v${version}
+# on ${hostname}
+# [clock format [clock seconds]]
+
+"
+
 
 if {$mode == "standalone"} {
 
-puts "Available [expr ($nHuge1G/$numaNodes)] page(s) per NUMA node"
+doLog "Available [expr ($nHuge1G/$numaNodes)] page(s) per NUMA node"
 set pagesPerRoc [expr ($nHuge1G/$numaNodes) / $maxPerNuma]
 
 if {($pagesPerRoc<1)} {
-  puts "Not enough 1G HugePages allocated, need at least 1 per ROC"
+  doLog "Not enough 1G HugePages allocated, need at least 1 per ROC"
   exit 1  
 }
 
-puts "Using $pagesPerRoc x 1G page per ROC"
+doLog "Using $pagesPerRoc x 1G page per ROC"
 set readoutNPages [expr int($pagesPerRoc * (1024.0*1024.0*1024.0) / $readoutPageSize) - 1]
 if {0} {
   # enforce a minimum number of pages
@@ -217,7 +267,7 @@ if {0} {
     set readoutPageSize [expr $readoutPageSize - ($readoutPageSize % (8*1024))]
   }
 }
-puts "Using for readout equipment $readoutNPages * $readoutPageSize bytes"
+doLog "Using for readout equipment $readoutNPages * $readoutPageSize bytes"
 
 
 # general parameters
@@ -294,11 +344,11 @@ memoryPoolPageSize=${readoutPageSize}
  set bufferTotal [expr ($nROC * $readoutPageSize * ($nPagesPerEquipment + $nPagesAlign)) * (1 + $bufferStfCopyFraction)]
  set maxAllowed [expr $bufferMaxSystemUse * $memTotal]
  
- puts "Readout page size = $readoutPageSize"
+ doLog "Readout page size = $readoutPageSize"
  
  if ($bufferTotal>$maxAllowed) {
-   puts "Wished: $bufferTotal ($nPagesPerEquipment pages per equipment, $nROC devices)"
-   puts "Exceeding [expr $bufferMaxSystemUse * 100]% memory resources, limiting buffer to $maxAllowed bytes"
+   doLog "Wished: $bufferTotal ($nPagesPerEquipment pages per equipment, $nROC devices)"
+   doLog "Exceeding [expr $bufferMaxSystemUse * 100]% memory resources, limiting buffer to $maxAllowed bytes"
    set nPagesPerEquipment [expr int(($maxAllowed * 1.0 / (1 + $bufferStfCopyFraction)) / ($nROC * $readoutPageSize)) - $nPagesAlign]
    set bufferTotal $maxAllowed   
  }
@@ -307,13 +357,10 @@ memoryPoolPageSize=${readoutPageSize}
  set bufMB [expr int($bufferTotal / (1024*1024)) + 1]
  set nPageStfb [expr int($nROC * $nPagesPerEquipment * $bufferStfCopyFraction)]
  set pageSizeKb "[expr int($readoutPageSize / 1024)]k"
- puts "Using: $bufferTotal ($nPagesPerEquipment pages per equipment, $nROC devices)"
+ doLog "Using: $bufferTotal ($nPagesPerEquipment pages per equipment, $nROC devices)"
     
   # general config params
-  lappend config "\
-# readout.exe configuration file
-# auto-generated [clock format [clock seconds]]
-  
+  lappend config " 
 \[readout\]
 aggregatorStfTimeout=0.5
 aggregatorSliceTimeout=1
@@ -321,9 +368,19 @@ aggregatorSliceTimeout=1
 \[consumer-stats\]
 enabled=1
 consumerType=stats
-monitoringEnabled=0
 monitoringUpdatePeriod=1
 consoleUpdate=0
+"
+
+if {${monitoringURI}==""} {
+  lappend config "monitoringEnabled=0"
+} else {
+  lappend config "monitoringEnabled=1
+monitoringURI=${monitoringURI}"
+}
+
+
+lappend config "
 
 \[consumer-fmq-stfb\]
 enabled=1
@@ -347,7 +404,10 @@ dumpTF=1
 channelAddress=ipc:///tmp/readout-fmq-stfb
 channelType=pull
 transportType=shmem
+"
 
+if {$generateQC} {
+lappend config "
 \[consumer-fmq-qc\]
 enabled=1
 consumerType=FairMQChannel
@@ -366,6 +426,8 @@ channelAddress=ipc:///tmp/readout-fmq-qc
 channelType=sub
 transportType=zeromq
 "
+}
+
 set rocN 0
 foreach {type pci endpoint numa serial} $ldev {
   incr rocN
@@ -391,15 +453,15 @@ firmwareCheckEnabled=0
 
 
 # convert to string
-set config [join $config]
+set config [join $config ""]
 
 
 if {$configFile==""} {
-  puts "readout.exe configuration template:"
+  doLog "readout.exe configuration template:"
   puts $config
   
 } else {
-  puts "Creating configuration file $configFile"
+  doLog "Creating configuration file $configFile"
   set fd [open $configFile "w"]
   puts $fd "$config"
   close $fd
