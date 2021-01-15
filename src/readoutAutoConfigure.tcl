@@ -38,9 +38,16 @@ set monitoringURI ""
 set logEnabled 1
 
 # version of this script
-set version "1.5.9.2"
+set version "1.5.9.4"
 
 set generateQC 0
+set generateREC 0
+set recBytesMax "0"
+set recPagesMax "1000"
+
+# channels to configure per card, if CRORC
+# string in the form "serial1:channel1,channel2, serial2:channel1,..."
+set channelMask ""
 
 # log function
 proc doLog {txt} {
@@ -94,6 +101,27 @@ if {[catch {set rocOutput [exec roc-list-cards --json]} err]} {
   exit 1
 }
 
+# return 1 if provided serial/channel found in channelMask (or if channelMask empty)
+# return 0 if no match for serial/channel
+proc matchMask {serial channel} {
+  global channelMask
+  if {"$channelMask"==""} {
+    return 1
+  }
+  foreach e [split $channelMask " "] {
+    set ls [split $e ":"]
+    if {[llength $ls]!=2} {continue}
+    set s [lindex $ls 0]
+    if {"$s"!="$serial"} {continue}
+    foreach c [split [lindex $ls 1] ","] {
+      if {"$c"=="$channel"} {
+        return 1
+      }
+    }
+  }
+  return 0
+}
+
 if {[catch {
   set dd [::json::json2dict [exec roc-list-cards --json]]
   dict for {id params} $dd {
@@ -102,7 +130,15 @@ if {[catch {
       set serial [dict get $params "serial"]
       set endpoint [dict get $params "endpoint"]    
       set numa [dict get $params "numa"]
-      lappend ldev "$type" "$pci" "$endpoint" "$numa" "$serial"
+      if {$type=="CRORC"} {
+        foreach cix {0 1 2 3 4 5} {
+          if {[matchMask "$serial" "$cix"]} {
+            lappend ldev "$type" "$pci" "$endpoint" "$numa" "$serial" "$cix"
+          }
+        }
+      } else {
+          lappend ldev "$type" "$pci" "$endpoint" "$numa" "$serial" "0"      
+      }
   }
 } err]} {
   doLog "Failed to parse roc-list-cards output: $err"
@@ -204,9 +240,9 @@ set nROC 0
 for {set i 0} {$i<$numaNodes} {incr i} {
     set nRocNuma($i) 0
 }
-foreach {type pci endpoint numa serial} $ldev {
+foreach {type pci endpoint numa serial channel} $ldev {
   if {("$type"=="CRU")||("$type"=="CRORC")} {
-     doLog "  $type @ $pci endpoint $endpoint numa $numa serial $serial"
+     doLog "  $type @ $pci endpoint $endpoint numa $numa serial $serial channel $channel"
      incr nROC
      if {"$numa">=$numaNodes} {
        doLog "Inconsistent NUMA id!"
@@ -310,7 +346,7 @@ numaNode=${i}
 
 # ROCs
 set rocN 0
-foreach {type pci endpoint numa serial} $ldev {
+foreach {type pci endpoint numa serial channel} $ldev {
   if {("$type"=="CRU")||("$type"=="CRORC")} {
     incr rocN
 
@@ -323,17 +359,22 @@ size=${pagesPerRoc}G
 numaNode=${numa}
 "
 }
-    lappend config "
+  lappend config "
 \[equipment-roc-${rocN}\]
 enabled=1
 equipmentType=rorc
 cardId=${pci}
-#channel=0
-dataSource=Internal
+"
+  if {$type=="CRORC"} {
+    lappend config "channelNumber=${channel}
+"
+  lappend config "dataSource=Internal
 memoryBankName=bank-${rocN}
 memoryPoolNumberOfPages=${readoutNPages}
 memoryPoolPageSize=${readoutPageSize}
 "
+}
+
   }
 }
 
@@ -428,16 +469,38 @@ transportType=zeromq
 "
 }
 
+if {$generateREC} {
+lappend config "
+\[consumer-rec\]
+enabled=1
+consumerType=fileRecorder
+fileName=/tmp/data_eq%i.raw
+bytesMax=${recBytesMax}
+pagesMax=${recPagesMax}
+"
+}
+
+
 set rocN 0
-foreach {type pci endpoint numa serial} $ldev {
+foreach {type pci endpoint numa serial channel} $ldev {
   incr rocN
+  set rocName "$type $pci"
+  if {$type=="CRU"} {
+    set rocName "${type} ${serial}:${endpoint}"
+  } elseif {$type=="CRORC"} {
+  set rocName "${type} ${serial}:${channel}"
+  }
   lappend config "
-# ${type} ${serial}:${endpoint}
+# ${rocName}
 \[equipment-roc-${rocN}\]
 enabled=1
 equipmentType=rorc
 cardId=${pci}
-dataSource=${dataSource}
+"
+  if {$type=="CRORC"} {
+    lappend config "channelNumber=${channel}
+"  
+  lappend config "dataSource=${dataSource}
 memoryPoolNumberOfPages=${nPagesPerEquipment}
 memoryPoolPageSize=${pageSizeKb}
 rdhUseFirstInPageEnabled=1
@@ -445,6 +508,7 @@ rdhCheckEnabled=0
 rdhDumpEnabled=0
 firmwareCheckEnabled=0
 "
+}
 }
 
 }
