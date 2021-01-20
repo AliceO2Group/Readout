@@ -299,3 +299,5 @@ This file describes the main feature changes for each readout.exe released versi
 - Added example configuration file to run readout software data generator + stfBuilder.
 ## v1.5.9 - 11/01/2021
 - readoutAutoConfigure: minor fixes (memory size, stfb fmq-name).
+## next
+- Fixed compressor libraries linking.
