@@ -161,7 +161,7 @@ class ConsumerDataProcessor : public Consumer
     theLog.log(LogInfoDevel_(3002), "Using library file = %s", libraryPath.c_str());
 
     // dynamically load the user-provided library
-    libHandle = dlopen(libraryPath.c_str(), RTLD_LAZY);
+    libHandle = dlopen(libraryPath.c_str(), RTLD_NOW);
     if (libHandle == nullptr) {
       theLog.logError("Failed to load library");
       throw __LINE__;
