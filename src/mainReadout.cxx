@@ -528,6 +528,7 @@ int Readout::configure(const boost::property_tree::ptree& properties)
   }
 
   // configuration of data consumers
+  int nConsumerFailures = 0;
   for (auto kName : ConfigFileBrowser(&cfg, "consumer-")) {
 
     // skip disabled
@@ -602,16 +603,12 @@ int Readout::configure(const boost::property_tree::ptree& properties)
       }
     } catch (const std::exception& ex) {
       theLog.log(LogErrorSupport_(3100), "Failed to configure consumer %s : %s", kName.c_str(), ex.what());
-      continue;
     } catch (const std::string& ex) {
       theLog.log(LogErrorSupport_(3100), "Failed to configure consumer %s : %s", kName.c_str(), ex.c_str());
-      continue;
     } catch (const char* ex) {
       theLog.log(LogErrorSupport_(3100), "Failed to configure consumer %s : %s", kName.c_str(), ex);
-      continue;
     } catch (...) {
       theLog.log(LogErrorSupport_(3100), "Failed to configure consumer %s", kName.c_str());
-      continue;
     }
 
     if (newConsumer != nullptr) {
@@ -623,6 +620,8 @@ int Readout::configure(const boost::property_tree::ptree& properties)
         newConsumer->stopOnError = 1;
       }
       dataConsumers.push_back(std::move(newConsumer));
+    } else {
+      nConsumerFailures++;
     }
   }
 
@@ -646,7 +645,13 @@ int Readout::configure(const boost::property_tree::ptree& properties)
     }
     if (!found) {
       theLog.log(LogErrorSupport_(3100), "Failed to attach consumer %s to %s (%s)", p.first->name.c_str(), p.second.c_str(), err.c_str());
+      nConsumerFailures++;
     }
+  }
+
+  if (nConsumerFailures) {
+    theLog.log(LogErrorSupport_(3100), "Some consumers failed to initialize, exiting");
+    return -1;
   }
 
   // configure readout equipments
