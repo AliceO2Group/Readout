@@ -94,7 +94,7 @@ class FileHandle
       return Status::Error;
     }
     counterBytesTotal += size;
-    gReadoutStats.bytesRecorded += size;
+    gReadoutStats.counters.bytesRecorded += size;
     if (isPage) {
       counterPages++;
     }

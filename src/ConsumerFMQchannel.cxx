@@ -229,7 +229,7 @@ class ConsumerFMQchannel : public Consumer
           auto msg = sendingChannel->NewMessage(blobPtr, blobSize, msgcleanupCallback, hint);
           sendingChannel->Send(msg);
         }
-        gReadoutStats.bytesFairMQ += blobSize;
+        gReadoutStats.counters.bytesFairMQ += blobSize;
       }
       totalPushSuccess++;
       return 0;
@@ -583,7 +583,7 @@ class ConsumerFMQchannel : public Consumer
       // send all the messages
       if (sendingChannel->Send(messagesToSend) >= 0) {
         messagesToSend.clear();
-        gReadoutStats.bytesFairMQ += messagesToSendSize;
+        gReadoutStats.counters.bytesFairMQ += messagesToSendSize;
         messagesToSendSize = 0;
       } else {
         theLog.log(LogErrorSupport_(3233), "Sending failed");

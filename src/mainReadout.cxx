@@ -187,7 +187,7 @@ void Readout::publishLogbookStats()
     try {
       // virtual void runStart(int64_t runNumber, boost::posix_time::ptime o2Start, boost::posix_time::ptime triggerStart, std::string activityId, RunType runType, int64_t nDetectors, int64_t nFlps, int64_t nEpns) override; logbookHandle->flpAdd(occRunNumber, occRole, "localhost");
       // virtual void flpUpdateCounters(int64_t runNumber, std::string flpName, int64_t nSubtimeframes, int64_t nEquipmentBytes, int64_t nRecordingBytes, int64_t nFairMqBytes) override;
-      logbookHandle->flpUpdateCounters(occRunNumber, occRole, (int64_t)gReadoutStats.numberOfSubtimeframes, (int64_t)gReadoutStats.bytesReadout, (int64_t)gReadoutStats.bytesRecorded, (int64_t)gReadoutStats.bytesFairMQ);
+      logbookHandle->flpUpdateCounters(occRunNumber, occRole, (int64_t)gReadoutStats.counters.numberOfSubtimeframes, (int64_t)gReadoutStats.counters.bytesReadout, (int64_t)gReadoutStats.counters.bytesRecorded, (int64_t)gReadoutStats.counters.bytesFairMQ);
       isOk = true;
     } catch (const std::exception& ex) {
       theLog.log(LogErrorDevel_(3210), "Failed to update logbook: %s", ex.what());
@@ -831,7 +831,7 @@ void Readout::loopRunning()
               tfServer->publish(&maxTimeframeId, sizeof(maxTimeframeId));
             }
 #endif
-            gReadoutStats.numberOfSubtimeframes++;
+            gReadoutStats.counters.numberOfSubtimeframes++;
           }
         }
       }
