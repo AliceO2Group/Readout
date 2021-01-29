@@ -22,6 +22,9 @@ struct ReadoutStatsCounters {
   std::atomic<uint64_t> bytesReadout;
   std::atomic<uint64_t> bytesRecorded;
   std::atomic<uint64_t> bytesFairMQ;
+  double timestamp;
+  double bytesReadoutRate;
+  std::atomic<uint64_t> state;
 };
 
 // need to be able to easily transmit this struct as a whole

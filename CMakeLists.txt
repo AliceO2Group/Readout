@@ -371,7 +371,18 @@ add_executable(
 	eventDump.exe
         ${SOURCE_DIR}/eventDump.cxx
 	$<TARGET_OBJECTS:objReadoutUtils>
+	
 )
+
+# a process to monitor stats of remote readout processes
+add_executable(
+	readoutMonitor.exe
+        ${SOURCE_DIR}/readoutMonitor.cxx
+	$<$<BOOL:${ZMQ_FOUND}>:${SOURCE_DIR}/ZmqClient.cxx>
+)
+target_include_directories(readoutMonitor.exe PRIVATE ${READOUT_INCLUDE_DIRS})
+target_link_libraries(readoutMonitor.exe PRIVATE AliceO2::InfoLogger AliceO2::Common ${ZMQ_LIBRARIES})
+
 endif()
 
 # a minimal test program to check Monitoring library
@@ -397,7 +408,9 @@ foreach (exe ${executables})
 	target_include_directories(${exe} PRIVATE ${READOUT_INCLUDE_DIRS})
 	target_link_libraries(${exe} PRIVATE ${READOUT_LINK_LIBRARIES})
 endforeach ()
-
+if (${ZMQ_FOUND})
+  list (APPEND executables readoutMonitor.exe)
+endif()
 
 
 ###################################################
