@@ -36,7 +36,7 @@ void ReadoutStats::reset()
   
   counters.timestamp = time(nullptr);
   counters.bytesReadoutRate = 0;
-  coutners.
+  counters.state = 0;
 }
 
 void ReadoutStats::print() { theLog.log(LogInfoSupport_(3003), "Readout global stats: numberOfSubtimeframes=%llu bytesReadout=%llu bytesRecorded=%llu bytesFairMQ=%llu", (unsigned long long)counters.numberOfSubtimeframes.load(), (unsigned long long)counters.bytesReadout.load(), (unsigned long long)counters.bytesRecorded.load(), (unsigned long long)counters.bytesFairMQ.load()); }
