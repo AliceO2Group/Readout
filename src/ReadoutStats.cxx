@@ -29,10 +29,14 @@ ReadoutStats::~ReadoutStats() {}
 
 void ReadoutStats::reset()
 {
-  numberOfSubtimeframes = 0;
-  bytesReadout = 0;
-  bytesRecorded = 0;
-  bytesFairMQ = 0;
+  counters.numberOfSubtimeframes = 0;
+  counters.bytesReadout = 0;
+  counters.bytesRecorded = 0;
+  counters.bytesFairMQ = 0;
+  
+  counters.timestamp = time(nullptr);
+  counters.bytesReadoutRate = 0;
+  coutners.
 }
 
-void ReadoutStats::print() { theLog.log(LogInfoSupport_(3003), "Readout global stats: numberOfSubtimeframes=%llu bytesReadout=%llu bytesRecorded=%llu bytesFairMQ=%llu", (unsigned long long)numberOfSubtimeframes.load(), (unsigned long long)bytesReadout.load(), (unsigned long long)bytesRecorded.load(), (unsigned long long)bytesFairMQ.load()); }
+void ReadoutStats::print() { theLog.log(LogInfoSupport_(3003), "Readout global stats: numberOfSubtimeframes=%llu bytesReadout=%llu bytesRecorded=%llu bytesFairMQ=%llu", (unsigned long long)counters.numberOfSubtimeframes.load(), (unsigned long long)counters.bytesReadout.load(), (unsigned long long)counters.bytesRecorded.load(), (unsigned long long)counters.bytesFairMQ.load()); }

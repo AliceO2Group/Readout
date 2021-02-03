@@ -21,7 +21,13 @@
 #include "DataBlockContainer.h"
 #include "DataSet.h"
 #include "ReadoutUtils.h"
+#include "ReadoutStats.h"
+
 using namespace o2::monitoring;
+
+#ifdef WITH_ZMQ
+#include <zmq.h>
+#endif
 
 // macro to get number of element in static array
 #define STATIC_ARRAY_ELEMENT_COUNT(x) sizeof(x) / sizeof(x[0])
@@ -58,6 +64,14 @@ class ConsumerStats : public Consumer
 
   bool isRunning = false;
 
+  // zeroMQ publish
+  #ifdef WITH_ZMQ
+  void* zmqContext = nullptr;
+  void* zmqHandle = nullptr;
+  void* zmqBuffer = nullptr;
+  bool zmqEnabled = 0;
+  #endif
+  
   // reset all counters and timers for a fresh start
   // must be called once before first publishStats() call
   void reset()
@@ -129,6 +143,12 @@ class ConsumerStats : public Consumer
         sendMetricNoException(Metric{ it.second.counterBytesPayload, metricName }, DerivedMetricMode::RATE);
       }
     }
+    
+    #ifdef WITH_ZMQ
+    if (zmqEnabled) {
+      zmq_send (zmqHandle, &gReadoutStats.counters , sizeof(gReadoutStats.counters), ZMQ_DONTWAIT);
+    }
+    #endif
 
     counterBytesDiff = 0;
     counterBlocksDiff = 0;
@@ -193,6 +213,46 @@ class ConsumerStats : public Consumer
       theLog.log(LogInfoDevel_(3002), "Periodic console statistics enabled");
     }
 
+    #ifdef WITH_ZMQ
+    // configuration parameter: | consumer-stats-* | zmqPublishAddress | string | | If defined, readout statistics are also published periodically (at rate defined in monitoringUpdatePeriod) to a ZMQ server. Suggested value: tcp://127.0.0.1:6008 (for use by readoutMonitor.exe). |
+    std::string cfgZmqPublishAddress = "";
+    cfg.getOptionalValue<std::string>(cfgEntryPoint + ".zmqPublishAddress", cfgZmqPublishAddress);
+    if (cfgZmqPublishAddress!="") {
+      theLog.log(LogInfoDevel_(3002), "ZMQ stats publishing enabled - using %s", cfgZmqPublishAddress.c_str());
+      int zmqError = 0;
+      try {
+	zmqContext = zmq_ctx_new();
+	if (zmqContext == nullptr) {
+	  zmqError = zmq_errno();
+	  throw __LINE__;
+	}
+
+	zmqHandle = zmq_socket(zmqContext, ZMQ_PUSH);
+	if (zmqHandle == nullptr) {
+	  zmqError = zmq_errno();
+	  throw __LINE__;
+	}
+
+	zmqError = zmq_connect(zmqHandle, cfgZmqPublishAddress.c_str());
+	if (zmqError) {
+	  throw __LINE__;
+	}
+	
+	zmqEnabled = 1;
+	
+      }
+      catch (int lineErr) {
+	if (zmqError) {
+	  theLog.log(LogErrorDevel, "ZeroMQ error @%d : (%d) %s", lineErr, zmqError, zmq_strerror(zmqError));
+	} else {
+	  theLog.log(LogErrorDevel, "Error @%d", lineErr);
+	}
+	// ZMQ unavailable does not cause consumer to fail starting
+	theLog.log(LogErrorDevel, "ZMQ stats publishing disabled");
+      }
+    }
+    #endif
+
     // make sure to initialize all counters and timers
     reset();
 
@@ -209,6 +269,17 @@ class ConsumerStats : public Consumer
 
     periodicUpdateThreadShutdown = 1;
     periodicUpdateThread->join();
+    
+    #ifdef WITH_ZMQ
+    if (zmqHandle != nullptr) {
+      zmq_close(zmqHandle);
+      zmqHandle = nullptr;
+    }
+    if (zmqContext != nullptr) {
+      zmq_ctx_destroy(zmqContext);
+      zmqContext = nullptr;
+    }
+    #endif
   }
 
   int pushData(DataBlockContainerReference& b)

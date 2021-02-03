@@ -342,7 +342,7 @@ Thread::CallbackResult ReadoutEquipment::threadCallback(void* arg)
       // update stats
       nPushedOut++;
       ptr->equipmentStats[EquipmentStatsIndexes::nBytesOut].increment(nextBlock->getData()->header.dataSize);
-      gReadoutStats.bytesReadout += nextBlock->getData()->header.dataSize;
+      gReadoutStats.counters.bytesReadout += nextBlock->getData()->header.dataSize;
       isActive = true;
 
       // print block debug info

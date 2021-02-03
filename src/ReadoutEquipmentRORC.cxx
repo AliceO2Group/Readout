@@ -84,7 +84,7 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile& cfg, std::string name) : 
     // configuration parameter: | equipment-rorc-* | cardId | string | | ID of the board to be used. Typically, a PCI bus device id. c.f. AliceO2::roc::Parameters. |
     std::string cardId = cfg.getValue<std::string>(name + ".cardId");
 
-    // configuration parameter: | equipment-rorc-* | channelNumber | int | 0 | Channel number of the board to be used. Typically 0 for CRU, or 1-6 for CRORC. c.f. AliceO2::roc::Parameters. |
+    // configuration parameter: | equipment-rorc-* | channelNumber | int | 0 | Channel number of the board to be used. Typically 0 for CRU, or 0-5 for CRORC. c.f. AliceO2::roc::Parameters. |
     int cfgChannelNumber = 0;
     cfg.getOptionalValue<int>(name + ".channelNumber", cfgChannelNumber);
 

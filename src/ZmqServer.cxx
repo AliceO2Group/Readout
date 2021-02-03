@@ -54,6 +54,15 @@ ZmqServer::~ZmqServer()
     th->join();
     th = nullptr;
   }
+  
+  if (zh != nullptr) {
+    zmq_close(zh);
+    zh = nullptr;
+  }
+  if (context != nullptr) {
+    zmq_ctx_destroy(context);
+    context = nullptr;
+  }
 }
 
 int ZmqServer::publish(void* msgBody, int msgSize)

@@ -63,7 +63,7 @@ class DataBlockContainerFromMemoryHandler : public DataBlockContainer
   std::shared_ptr<MemoryHandler> mMemoryHandler;
 
  public:
-  DataBlockContainerFromMemoryHandler(std::shared_ptr<MemoryHandler> const& h)
+  DataBlockContainerFromMemoryHandler(std::shared_ptr<MemoryHandler> const& h) : DataBlockContainer((DataBlock *)nullptr)
   {
 
     mMemoryHandler = h;

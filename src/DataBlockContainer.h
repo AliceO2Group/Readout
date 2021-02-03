@@ -16,52 +16,35 @@ class DataBlockContainer
 {
 
  public:
-  DataBlockContainer(DataBlock* v_data = NULL, uint64_t v_dataBufferSize = 0);
-  virtual ~DataBlockContainer();
-  DataBlock* getData();
-  uint64_t getDataBufferSize();
-
   using ReleaseCallback = std::function<void(void)>;
   // NB: may use std::bind to add extra arguments
 
+  // default constructor
+  DataBlockContainer(DataBlock* v_data = nullptr, uint64_t v_dataBufferSize = 0) : data(v_data), dataBufferSize(v_dataBufferSize), releaseCallback(nullptr) {};
+
   // this constructor allows to specify a callback which is invoked when container is destroyed
-  DataBlockContainer(ReleaseCallback callback, DataBlock* v_data = NULL, uint64_t v_dataBufferSize = 0);
+  DataBlockContainer(ReleaseCallback v_callback = nullptr, DataBlock* v_data = nullptr, uint64_t v_dataBufferSize = 0) : data(v_data), dataBufferSize(v_dataBufferSize), releaseCallback(v_callback) {};
+  
+  // destructor
+  virtual ~DataBlockContainer() {
+    if (releaseCallback != nullptr) {
+      releaseCallback();
+    }
+  };
+  
+  DataBlock* getData() {
+    return data;
+  };
+  
+  uint64_t getDataBufferSize() {
+    return dataBufferSize;
+  };
 
  protected:
-  DataBlock* data;
+  DataBlock* data; // The DataBlock in use
   uint64_t dataBufferSize = 0; // Usable memory size pointed by data. Unspecified if zero.
-  ReleaseCallback releaseCallback;
+  ReleaseCallback releaseCallback;  // Function called on object destroy, to release dataBlock.
 };
 
-class DataBlockContainerFromMemPool : public DataBlockContainer
-{
-
- public:
-  DataBlockContainerFromMemPool(std::shared_ptr<MemPool> pool, DataBlock* v_data = NULL);
-  ~DataBlockContainerFromMemPool();
-
- private:
-  std::shared_ptr<MemPool> mp;
-};
-
-// DataBlockContainer that takes ownership of the payload and deletes it when needed.
-class SelfReleasingBlockContainer : public DataBlockContainer
-{
-
- public:
-  SelfReleasingBlockContainer()
-  {
-    data = new DataBlock();
-    data->data = nullptr;
-  }
-
-  ~SelfReleasingBlockContainer()
-  {
-    if (data->data != nullptr) {
-      delete[] data->data;
-    }
-    delete data;
-  }
-};
 
 #endif

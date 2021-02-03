@@ -17,6 +17,20 @@
 
 #include <atomic>
 
+struct ReadoutStatsCounters {
+  std::atomic<uint64_t> numberOfSubtimeframes;
+  std::atomic<uint64_t> bytesReadout;
+  std::atomic<uint64_t> bytesRecorded;
+  std::atomic<uint64_t> bytesFairMQ;
+  double timestamp;
+  double bytesReadoutRate;
+  std::atomic<uint64_t> state;
+};
+
+// need to be able to easily transmit this struct as a whole
+static_assert(std::is_pod<ReadoutStatsCounters>::value);
+
+
 class ReadoutStats
 {
  public:
@@ -25,10 +39,8 @@ class ReadoutStats
   void reset();
   void print();
 
-  std::atomic<uint64_t> numberOfSubtimeframes;
-  std::atomic<uint64_t> bytesReadout;
-  std::atomic<uint64_t> bytesRecorded;
-  std::atomic<uint64_t> bytesFairMQ;
+  ReadoutStatsCounters counters;
 };
 
 extern ReadoutStats gReadoutStats;
+
