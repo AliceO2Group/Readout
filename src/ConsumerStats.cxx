@@ -68,7 +68,6 @@ class ConsumerStats : public Consumer
   #ifdef WITH_ZMQ
   void* zmqContext = nullptr;
   void* zmqHandle = nullptr;
-  void* zmqBuffer = nullptr;
   bool zmqEnabled = 0;
   #endif
   

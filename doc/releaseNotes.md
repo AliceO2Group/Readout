@@ -304,3 +304,5 @@ This file describes the main feature changes for each readout.exe released versi
 - Updated configuration parameters:
   - added consumer-stats.zmqPublishAddress : to publish readout statistics by ZMQ.
 - Added readoutMonitor.exe, a server to collect and display statistics published by ZMQ from multiple readout processes.
+## v1.5.11 - 04/02/2021
+- Cosmetics build fix osx.
