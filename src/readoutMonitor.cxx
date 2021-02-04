@@ -51,7 +51,7 @@ int main(int argc, const char** argv)
   cfgFileURI = argv[1];
   cfgEntryPoint = argv[2];
   
-  theLog.setContext(InfoLoggerContext({{InfoLoggerContext::FieldName::Facility, "readout/monitor"}}));
+  theLog.setContext(InfoLoggerContext({{InfoLoggerContext::FieldName::Facility, (std::string) "readout/monitor"}}));
   
   // load configuration file
   theLog.log(LogInfoDevel_(3002), "Reading configuration from %s", cfgFileURI);
