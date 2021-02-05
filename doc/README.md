@@ -291,7 +291,10 @@ After 1st iteration, the readout software updates the trigger orbit counters in 
 An offset is applied on each loop, so that readout outputs a continuous timeframe sequence.
 
 Check the equipment-player-* configuration parameters for further details on the options.
-In all replay modes, ReadoutEquipmentPlayer does not support LZ4 files or files recorded with internal headers.
+
+In all replay modes, ReadoutEquipmentPlayer does not support LZ4 files or files recorded with internal headers. Readout accepts a single input raw data file per replay equipment. In principle, several replay equipments can be configured, but this can possibly cause synchronisation issues between the equipments, if the replay rate is not limited.
+
+Readout can cope with input files containing data from multiple CRUs. The data pages will be split and tagged accordingly to the RDH fields (respecting the "1 single link per page" CRU specification).
 
 
 
