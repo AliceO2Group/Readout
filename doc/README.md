@@ -272,7 +272,7 @@ format subject to change without notice.
 # File replay
 
 Readout has a special equipment (ReadoutEquipmentPlayer) to replay data from a RAW file.
-There are two modes of operation:
+There are several modes of operation:
 1) continuous replay (default): the data from the file is copied to each memory data page (once per page, or multiple times to fill the page,
 see 'fillPage' option). This creates an infinite stream of all-identical datapages: 1 file -> 1 data page, repeated continuously.
 There is a 'preload' option to load memory with file content on startup, in order to maximize runtime throughput (no data copy).
@@ -286,7 +286,13 @@ The input file must have a valid RDH formatting to access these fields. The data
 This mode is typically used to test data processing downstream of readout.
 An example configuration file is given in 'readout-player.cfg'.
 
-In both modes, ReadoutEquipmentPlayer does not support LZ4 files or files recorded with internal headers.
+3) loop replay (use 'autoChunk' + 'autoChunkLoop' options): same as 2), but when reaching the end of the file, replay restarts from the beginning.
+After 1st iteration, the readout software updates the trigger orbit counters in the RDH to make them realistic, continuously increasing.
+An offset is applied on each loop, so that readout outputs a continuous timeframe sequence.
+
+Check the equipment-player-* configuration parameters for further details on the options.
+In all replay modes, ReadoutEquipmentPlayer does not support LZ4 files or files recorded with internal headers.
+
 
 
 # Contact
