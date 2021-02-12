@@ -38,12 +38,14 @@ set monitoringURI ""
 set logEnabled 1
 
 # version of this script
-set version "1.5.9.4"
+set version "2.0"
 
+# defaults
 set generateQC 0
 set generateREC 0
 set recBytesMax "0"
 set recPagesMax "1000"
+set disableSending 0
 
 # channels to configure per card, if CRORC
 # string in the form "serial1:channel1,channel2, serial2:channel1,..."
@@ -368,12 +370,12 @@ cardId=${pci}
   if {$type=="CRORC"} {
     lappend config "channelNumber=${channel}
 "
+  }
   lappend config "dataSource=Internal
 memoryBankName=bank-${rocN}
 memoryPoolNumberOfPages=${readoutNPages}
 memoryPoolPageSize=${readoutPageSize}
 "
-}
 
   }
 }
@@ -429,20 +431,20 @@ consumerType=FairMQChannel
 # fmq-name should be 'readout'
 # to allow OCC to overwrite params for StfBuilder connection
 fmq-name=readout
-fmq-address=ipc:///tmp/readout-fmq-stfb
+fmq-address=ipc://@readout-fmq-stfb
 fmq-type=push
 fmq-transport=shmem
 sessionName=default
 unmanagedMemorySize=${bufMB}M
 memoryPoolNumberOfPages=${nPageStfb}
 memoryPoolPageSize=${pageSizeKb}
-disableSending=0
+disableSending=${disableSending}
 
 \[rx-fmq-stfb\]
 decodingMode=stfHbf
 dumpRDH=0
 dumpTF=1
-channelAddress=ipc:///tmp/readout-fmq-stfb
+channelAddress=ipc://@readout-fmq-stfb
 channelType=pull
 transportType=shmem
 "
@@ -453,7 +455,7 @@ lappend config "
 enabled=1
 consumerType=FairMQChannel
 fmq-name=readout-qc
-fmq-address=ipc:///tmp/readout-fmq-qc
+fmq-address=ipc://@readout-fmq-qc
 fmq-type=pub
 fmq-transport=zeromq
 sessionName=default
@@ -463,7 +465,7 @@ enableRawFormat=1
 decodingMode=none
 dumpRDH=0
 dumpTF=0
-channelAddress=ipc:///tmp/readout-fmq-qc
+channelAddress=ipc://@readout-fmq-qc
 channelType=sub
 transportType=zeromq
 "
@@ -500,6 +502,7 @@ cardId=${pci}
   if {$type=="CRORC"} {
     lappend config "channelNumber=${channel}
 "  
+  }
   lappend config "dataSource=${dataSource}
 memoryPoolNumberOfPages=${nPagesPerEquipment}
 memoryPoolPageSize=${pageSizeKb}
@@ -508,7 +511,6 @@ rdhCheckEnabled=0
 rdhDumpEnabled=0
 firmwareCheckEnabled=0
 "
-}
 }
 
 }
