@@ -297,10 +297,15 @@ This file describes the main feature changes for each readout.exe released versi
 - Updated configuration parameters:
   - added equipment-cruemulator-*.cruId, dpwId, systemId: to set corresponding fields in emulated RDH.
 - Added example configuration file to run readout software data generator + stfBuilder.
+
 ## v1.5.9 - 11/01/2021
 - readoutAutoConfigure: minor fixes (memory size, stfb fmq-name).
+
 ## v1.5.12 - 04/02/2021
 - Fixed compressor libraries linking.
 - Updated configuration parameters:
   - added consumer-stats.zmqPublishAddress : to publish readout statistics by ZMQ.
 - Added readoutMonitor.exe, a server to collect and display statistics published by ZMQ from multiple readout processes.
+
+##  next version
+- readoutAutoConfigure: using virtual ipc address for FMQ. Config generator versioning now indepedent from readout version (now 2.1) for better tracking of generated config files.
