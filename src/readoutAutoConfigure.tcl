@@ -38,7 +38,7 @@ set monitoringURI ""
 set logEnabled 1
 
 # version of this script
-set version "2.0"
+set version "2.1"
 
 # defaults
 set generateQC 0
@@ -46,6 +46,7 @@ set generateREC 0
 set recBytesMax "0"
 set recPagesMax "1000"
 set disableSending 0
+set rdhCheckEnabled 0
 
 # channels to configure per card, if CRORC
 # string in the form "serial1:channel1,channel2, serial2:channel1,..."
@@ -507,7 +508,7 @@ cardId=${pci}
 memoryPoolNumberOfPages=${nPagesPerEquipment}
 memoryPoolPageSize=${pageSizeKb}
 rdhUseFirstInPageEnabled=1
-rdhCheckEnabled=0
+rdhCheckEnabled=${rdhCheckEnabled}
 rdhDumpEnabled=0
 firmwareCheckEnabled=0
 "
