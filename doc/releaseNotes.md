@@ -309,3 +309,4 @@ This file describes the main feature changes for each readout.exe released versi
 
 ##  next version
 - readoutAutoConfigure: using virtual ipc address for FMQ. Config generator versioning now indepedent from readout version (now 2.1) for better tracking of generated config files.
+- optimized flush of TF buffer on stop.
