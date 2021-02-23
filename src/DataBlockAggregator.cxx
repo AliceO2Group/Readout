@@ -95,6 +95,14 @@ Thread::CallbackResult DataBlockAggregator::executeCallback()
   // get time once per iteration
   double now = timeNow.getTime();
 
+  // flush pending data
+  // check here to ensure it does not start in middle of a loop
+  // because doFlush is set asynchronously
+  bool executeFlush = 0;
+  if (doFlush) {
+    executeFlush = 1;
+  }
+
   for (unsigned int ix = 0; ix < nInputs; ix++) {
     int i = (ix + nextIndex) % nInputs;
 
@@ -150,7 +158,7 @@ Thread::CallbackResult DataBlockAggregator::executeCallback()
         return Thread::CallbackResult::Idle;
       }
       bool includeIncomplete = 0;
-      if ((doFlush) && (inputs[i]->isEmpty())) {
+      if ((executeFlush) && (inputs[i]->isEmpty())) {
         includeIncomplete = 1;
       }
       DataSetReference bcv = slicers[i].getSlice(includeIncomplete);
@@ -190,7 +198,7 @@ Thread::CallbackResult DataBlockAggregator::executeCallback()
     auto it = stfBuffer.begin();
     while (it != stfBuffer.end()) {
       double age = now - it->second.updateTime;
-      if (age >= cfgStfTimeout) {
+      if ((age >= cfgStfTimeout) || (executeFlush)) {
         // printf("pushing age %.3f tf %d -> %d sources\n",age,it->second.tfId,it->second.sstf.size());
         double tmin = it->second.updateTime;
         double tmax = it->second.updateTime;
@@ -228,7 +236,7 @@ Thread::CallbackResult DataBlockAggregator::executeCallback()
   }
 
   if ((nBlocksIn == 0) && (nSlicesOut == 0)) {
-    if ((doFlush) && (stfBuffer.size() == 0)) {
+    if ((executeFlush) && (stfBuffer.size() == 0)) {
       doFlush = 0; // flushing is complete if we are now idle
     }
     return Thread::CallbackResult::Idle;
