@@ -38,7 +38,7 @@ set monitoringURI ""
 set logEnabled 1
 
 # version of this script
-set version "2.2"
+set version "2.1"
 
 # defaults
 set generateQC 0
