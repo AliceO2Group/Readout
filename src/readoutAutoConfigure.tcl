@@ -38,7 +38,7 @@ set monitoringURI ""
 set logEnabled 1
 
 # version of this script
-set version "2.1"
+set version "2.2"
 
 # defaults
 set generateQC 0
@@ -406,6 +406,7 @@ memoryPoolPageSize=${readoutPageSize}
   # general config params
   lappend config " 
 \[readout\]
+flushEquipmentTimeout=2
 aggregatorStfTimeout=0.5
 aggregatorSliceTimeout=1
  
