@@ -36,7 +36,7 @@
 #endif
 
 #ifdef WITH_LOGBOOK
-#include <JiskefetApiCpp/JiskefetFactory.h>
+#include <BookkeepingApiCpp/BookkeepingFactory.h>
 #endif
 
 #include <atomic>
@@ -167,7 +167,7 @@ class Readout
   std::mutex mutexErrors;             // mutex to guard access to error variables
 
 #ifdef WITH_LOGBOOK
-  std::unique_ptr<jiskefet::JiskefetInterface> logbookHandle; // handle to logbook
+  std::unique_ptr<bookkeeping::BookkeepingInterface> logbookHandle; // handle to logbook
 #endif
   void publishLogbookStats();          // publish current readout counters to logbook
   AliceO2::Common::Timer logbookTimer; // timer to handle readout logbook publish interval
@@ -419,7 +419,7 @@ int Readout::configure(const boost::property_tree::ptree& properties)
     cfg.getOptionalValue<int>("readout.logbookUpdateInterval", cfgLogbookUpdateInterval);
 
     theLog.log(LogInfoDevel, "Logbook enabled, %ds update interval, using URL = %s", cfgLogbookUpdateInterval, cfgLogbookUrl.c_str());
-    logbookHandle = jiskefet::getApiInstance(cfgLogbookUrl, cfgLogbookApiToken);
+    logbookHandle = bookkeeping::getApiInstance(cfgLogbookUrl, cfgLogbookApiToken);
     if (logbookHandle == nullptr) {
       theLog.log(LogErrorSupport_(3210), "Failed to create handle to logbook");
     }
