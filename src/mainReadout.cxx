@@ -747,6 +747,7 @@ int Readout::start()
 
   // publish initial logbook statistics
   gReadoutStats.reset();
+  gReadoutStats.counters.state=stringToUint64("start...");
   publishLogbookStats();
   logbookTimer.reset(cfgLogbookUpdateInterval * 1000000);
   maxTimeframeId = 0;
@@ -799,6 +800,7 @@ int Readout::start()
   runningThread = std::make_unique<std::thread>(l);
 
   theLog.log(LogInfoSupport_(3005), "Readout completed START");
+  gReadoutStats.counters.state=stringToUint64("running");
   return 0;
 }
 
@@ -907,6 +909,7 @@ int Readout::stop()
 {
 
   theLog.log(LogInfoSupport_(3005), "Readout executing STOP");
+  gReadoutStats.counters.state=stringToUint64("stop...");
 
   // raise flag
   stopTimer.reset(cfgFlushEquipmentTimeout * 1000000); // add a delay before stopping aggregator - continune to empty FIFOs
@@ -955,6 +958,7 @@ int Readout::stop()
   }
 
   // publish final logbook statistics
+  gReadoutStats.counters.state=stringToUint64("stopped");
   publishLogbookStats();
   gReadoutStats.reset();
 
