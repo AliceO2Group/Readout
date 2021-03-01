@@ -22,6 +22,7 @@
 #include <InfoLogger/InfoLoggerMacros.hxx>
 #include <boost/property_tree/ptree.hpp>
 #include <thread>
+#include <time.h>
 
 #include "DataBlock.h"
 #include "DataBlockContainer.h"
@@ -129,6 +130,10 @@ class Readout
 
   void loopRunning(); // called in state "running"
 
+  bool standaloneMode = false; // flag set when readout running in standalone mode (auto state machines)
+  int cfgTimeStart = 0; // time at which START should be executed in standalone mode
+  int cfgTimeStop = 0; // time at which STOP should be executed in standalone mode
+    
  private:
   ConfigFile cfg;
   const char* cfgFileURI = "";
@@ -140,6 +145,7 @@ class Readout
   int cfgDisableAggregatorSlicing;
   double cfgAggregatorSliceTimeout;
   double cfgAggregatorStfTimeout;
+  double cfgTfRateLimit;
   int cfgLogbookEnabled;
   std::string cfgLogbookUrl;
   std::string cfgLogbookApiToken;
@@ -164,7 +170,7 @@ class Readout
 
   bool isError = 0;                   // flag set to 1 when error has been detected
   std::vector<std::string> strErrors; // errors backlog
-  std::mutex mutexErrors;             // mutex to guard access to error variables
+  std::mutex mutexErrors;             // mutex to guard access to error variables  
 
 #ifdef WITH_LOGBOOK
   std::unique_ptr<bookkeeping::BookkeepingInterface> logbookHandle; // handle to logbook
@@ -385,6 +391,48 @@ int Readout::configure(const boost::property_tree::ptree& properties)
   // configuration parameter: | readout | exitTimeout | double | -1 | Time in seconds after which the program exits automatically. -1 for unlimited. |
   cfgExitTimeout = -1;
   cfg.getOptionalValue<double>("readout.exitTimeout", cfgExitTimeout);
+  if (standaloneMode) {
+    
+    auto scanTime = [&](const std::string paramName, int &t) {
+      std::string s;
+      cfg.getOptionalValue<std::string>(paramName, s);
+      
+      if (s.length()) {
+	bool isOk = 0;
+	// scan full date/time
+	// format: 2021-01-31 23:30:00 or just 23:30:00 (local time)
+	int year, month, day, hour, minute, second;
+	time_t now = time(nullptr);
+	struct tm *ts = localtime(&now);
+	if (sscanf(s.c_str() ,"%d-%d-%d %d:%d:%d", &year, &month, &day, &hour, &minute, &second) == 6) {
+	  ts->tm_year=year - 1900;
+	  ts->tm_mon=month - 1;
+	  ts->tm_mday=day;
+	  ts->tm_hour=hour;
+	  ts->tm_min=minute;
+	  ts->tm_sec=second;
+	  t=mktime(ts);
+	  isOk = 1;
+	} else if (sscanf(s.c_str(),"%d:%d:%d", &hour, &minute, &second) == 3) {
+	  ts->tm_hour=hour;
+	  ts->tm_min=minute;
+	  ts->tm_sec=second;
+	  t=mktime(ts);
+	  isOk = 1;
+	}
+	if (!isOk) {
+          theLog.log(LogErrorSupport_(3102), "Wrong value for parameter %s = %s", paramName.c_str(), s.c_str()); 
+	}
+      }
+    };
+
+    // configuration parameter: | readout | timeStart | string | | In standalone mode, time at which to execute start. If not set, immediately. |
+    scanTime("readout.timeStart", cfgTimeStart);
+    
+     // configuration parameter: | readout | timeStop | string | | In standalone mode, time at which to execute stop. If not set, on int/term/quit signal. |
+    scanTime("readout.timeStop", cfgTimeStop); 
+  }
+  
   // configuration parameter: | readout | flushEquipmentTimeout | double | 1 | Time in seconds to wait for data once the equipments are stopped. 0 means stop immediately. |
   cfgFlushEquipmentTimeout = 1;
   cfg.getOptionalValue<double>("readout.flushEquipmentTimeout", cfgFlushEquipmentTimeout);
@@ -402,6 +450,12 @@ int Readout::configure(const boost::property_tree::ptree& properties)
   // configuration parameter: | readout | aggregatorStfTimeout | double | 0 | When set, subtimeframes are buffered until timeout (otherwise, sent immediately and independently for each data source). |
   cfgAggregatorStfTimeout = 0;
   cfg.getOptionalValue<double>("readout.aggregatorStfTimeout", cfgAggregatorStfTimeout);
+  // configuration parameter: | readout | tfRateLimit | double | 0 | When set, the output is limited to a given timeframe rate. |
+  cfgTfRateLimit = 0;
+  cfg.getOptionalValue<double>("readout.tfRateLimit", cfgTfRateLimit);
+  if (cfgTfRateLimit > 0) {
+     theLog.log(LogInfoDevel, "Timeframe rate limit = % .2lf Hz", cfgTfRateLimit);
+  }
 
   // configuration parameter: | readout | logbookEnabled | int | 0 | When set, the logbook is enabled and populated with readout stats at runtime. |
   cfgLogbookEnabled = 0;
@@ -790,6 +844,8 @@ int Readout::start()
   if (cfgExitTimeout > 0) {
     startTimer.reset(cfgExitTimeout * 1000000);
     theLog.log(LogInfoDevel, "Automatic exit in %.2f seconds", cfgExitTimeout);
+  } else {
+    startTimer.reset();
   }
 
   theLog.log(LogInfoDevel, "Running");
@@ -819,40 +875,53 @@ void Readout::loopRunning()
     }
 
     DataSetReference bc = nullptr;
-    agg_output->pop(bc);
+    // check first element from incoming fifo
+    if (agg_output->front(bc) == 0) {
 
-    if (bc != nullptr) {
-      // count number of subtimeframes
-      if (bc->size() > 0) {
-        if (bc->at(0)->getData() != nullptr) {
-          uint64_t newTimeframeId = bc->at(0)->getData()->header.timeframeId;
-          if (newTimeframeId > maxTimeframeId) {
-            maxTimeframeId = newTimeframeId;
-#ifdef WITH_ZMQ
-            if (tfServer) {
-              tfServer->publish(&maxTimeframeId, sizeof(maxTimeframeId));
+      if (bc != nullptr) {
+	// count number of subtimeframes
+	if (bc->size() > 0) {
+          if (bc->at(0)->getData() != nullptr) {
+            uint64_t newTimeframeId = bc->at(0)->getData()->header.timeframeId;
+	    // are we complying with maximum TF rate ?
+            if (cfgTfRateLimit > 0) {
+              if (newTimeframeId > floor(startTimer.getTime() * cfgTfRateLimit) + 1) {
+		usleep(1000);
+		continue;
+	      }
             }
-#endif
-            gReadoutStats.counters.numberOfSubtimeframes++;
+            if (newTimeframeId > maxTimeframeId) {    
+              maxTimeframeId = newTimeframeId;
+  #ifdef WITH_ZMQ
+              if (tfServer) {
+        	tfServer->publish(&maxTimeframeId, sizeof(maxTimeframeId));
+              }
+  #endif
+              gReadoutStats.counters.numberOfSubtimeframes++;
+            }
           }
-        }
+	}
+
+	for (auto& c : dataConsumers) {
+          // push only to "prime" consumers, not to those getting data directly forwarded from another consumer
+          if (c->isForwardConsumer == false) {
+            if (c->pushData(bc) < 0) {
+              c->isError++;
+            }
+          }
+          if ((c->isError) && (c->stopOnError)) {
+            if (!c->isErrorReported) {
+              theLog.log(LogErrorSupport_(3231), "Error detected in consumer %s", c->name.c_str());
+              c->isErrorReported = true;
+            }
+            isError = 1;
+          }
+	}
       }
 
-      for (auto& c : dataConsumers) {
-        // push only to "prime" consumers, not to those getting data directly forwarded from another consumer
-        if (c->isForwardConsumer == false) {
-          if (c->pushData(bc) < 0) {
-            c->isError++;
-          }
-        }
-        if ((c->isError) && (c->stopOnError)) {
-          if (!c->isErrorReported) {
-            theLog.log(LogErrorSupport_(3231), "Error detected in consumer %s", c->name.c_str());
-            c->isErrorReported = true;
-          }
-          isError = 1;
-        }
-      }
+      // actually remove element from incoming fifo
+      agg_output->pop(bc);
+
     } else {
       // we are idle...
       // todo: set configurable idling time
@@ -1165,7 +1234,7 @@ int main(int argc, char* argv[])
   if (getenv("O2_READOUT_INTERACTIVE") != nullptr) {
     interactiveMode = true;
     occMode = false;
-  }
+  }  
 
   // initialize logging
   theLogContext.setField(InfoLoggerContext::FieldName::Facility, "readout");
@@ -1374,19 +1443,54 @@ int main(int argc, char* argv[])
     }
 
   } else {
+    theReadout->standaloneMode = true;
     theLog.log(LogInfoDevel, "Readout entering standalone state machine");
     boost::property_tree::ptree properties; // an empty "extra" config
     err = theReadout->configure(properties);
     if (err) {
       return err;
     }
+    
+    int nloop = 1; // number of start/stop loop to execute
+    
+    auto logTimeGuard = [&] (const std::string command, int t) {
+      if (t) {
+        time_t tt = t;
+        struct tm *ts = localtime(&tt);
+        theLog.log(LogInfoOps, "Readout will execute %s at %04d-%02d-%02d %02d:%02d:%02d", command.c_str(), ts->tm_year+1900, ts->tm_mon+1, ts->tm_mday, ts->tm_hour, ts->tm_min, ts->tm_sec);
+	if (t <= time(nullptr)) {
+          theLog.log(LogWarningOps, "This date is in the past ! Will %s immediately", command.c_str());
+	}
+      }
+    };
+    
+    // check START / STOP time
+    logTimeGuard("START", theReadout->cfgTimeStart);
+    logTimeGuard("STOP", theReadout->cfgTimeStop);
+    
+    // check START time
+    while ((theReadout->cfgTimeStart>0) && (time(nullptr) < theReadout->cfgTimeStart)) {
+      if (ShutdownRequest) {
+	nloop = 0;
+	break;
+      }
+      usleep(5000);
+    }
+
     // loop for testing, single iteration in normal conditions
-    for (int i = 0; i < 1; i++) {
+    for (int i = 0; i < nloop; i++) {
       err = theReadout->start();
       if (err) {
         return err;
       }
       while (1) {
+        // check STOP time
+	if (theReadout->cfgTimeStop) {
+	  if (time(nullptr) >= theReadout->cfgTimeStop) {
+	    break;
+	  }
+	}
+	
         err = theReadout->iterateRunning();
         if (err == 1) {
           theLog.log(LogInfoSupport, "Readout requesting to stop");
