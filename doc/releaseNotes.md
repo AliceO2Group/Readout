@@ -314,3 +314,4 @@ This file describes the main feature changes for each readout.exe released versi
   - changed equipment-player-*.autoChunkLoop: when negative value set, stop the replay after corresponding number of iterations. (e.g. -5 -> 5x replay).
   - added readout.tfRateLimit:  when set, the output (of the aggregator) is limited to a given timeframe rate.
   - added readout.timeStart and readout.timeStop: when set, in standalone mode, readout will execute START and STOP at given time.
+  - added stats for data pages given to consumer-FMQchannel (number in use, release latency).

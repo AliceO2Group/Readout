@@ -39,4 +39,16 @@ void ReadoutStats::reset()
   counters.state = 0;
 }
 
-void ReadoutStats::print() { theLog.log(LogInfoSupport_(3003), "Readout global stats: numberOfSubtimeframes=%llu bytesReadout=%llu bytesRecorded=%llu bytesFairMQ=%llu", (unsigned long long)counters.numberOfSubtimeframes.load(), (unsigned long long)counters.bytesReadout.load(), (unsigned long long)counters.bytesRecorded.load(), (unsigned long long)counters.bytesFairMQ.load()); }
+void ReadoutStats::print() {
+  theLog.log(LogInfoSupport_(3003), "Readout global stats: numberOfSubtimeframes=%llu bytesReadout=%llu bytesRecorded=%llu bytesFairMQ=%llu",
+    (unsigned long long)counters.numberOfSubtimeframes.load(),
+    (unsigned long long)counters.bytesReadout.load(),
+    (unsigned long long)counters.bytesRecorded.load(),
+    (unsigned long long)counters.bytesFairMQ.load());
+}
+
+uint64_t stringToUint64(const char *in) {
+  char res[8] = {0};
+  strncpy(res, in, sizeof(res)-1);
+  return *((uint64_t *)res);
+}

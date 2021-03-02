@@ -14,6 +14,8 @@
 #include "MemoryPagesPool.h"
 #include "ReadoutStats.h"
 #include "ReadoutUtils.h"
+#include <atomic>
+#include <chrono>
 
 #ifdef WITH_FAIRMQ
 
@@ -32,10 +34,55 @@ void msgcleanupCallback(void* data, void* object)
 {
   if ((object != nullptr) && (data != nullptr)) {
     DataBlockContainerReference* ptr = (DataBlockContainerReference*)object;
-    // printf("ptr %p: use_count=%d\n",ptr,ptr->use_count());
+    // printf("ptr %p: use_count=%d\n",ptr,(int)ptr->use_count());
     delete ptr;
   }
 }
+
+// a structure to be stored in DataBlock.userSpace at runtime
+// to monitor usage of memory pages passed to FMQ
+struct DataBlockFMQStats {
+  uint8_t magic;
+  std::atomic<int> countRef;
+  uint64_t t0;
+};
+static_assert(std::is_pod<DataBlockFMQStats>::value, "DataBlockFMQStats is not a POD");
+static_assert(sizeof(DataBlockFMQStats)<=DataBlockHeaderUserSpace, "DataBlockFMQStats does not fit in DataBlock.userSpace");
+
+#define timeNowMicrosec (std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now().time_since_epoch())).count
+
+void initDataBlockStats(DataBlock *b) {
+  DataBlockFMQStats *s=(DataBlockFMQStats *)&(b->header.userSpace);
+  s->magic=0xAA;
+  s->countRef = 0;
+}
+
+void incDataBlockStats(DataBlock *b) {
+  //printf("inc %p\n",b);
+  DataBlockFMQStats *s=(DataBlockFMQStats *)&(b->header.userSpace);
+  if (s->magic!=0xAA) return;
+  if ((s->countRef++) == 0) {
+    s->t0 = timeNowMicrosec();	
+    gReadoutStats.counters.pagesPendingFairMQ++;
+    // printf("init %p\n",b);
+  }
+}
+
+void decDataBlockStats(DataBlock *b) {
+  DataBlockFMQStats *s=(DataBlockFMQStats *)&(b->header.userSpace);
+  //printf("dec %p\n",b);
+  if (s->magic!=0xAA) return;
+  if ((--s->countRef)==0) {
+    // printf("done with %p\n",b);
+    gReadoutStats.counters.pagesPendingFairMQ--;
+    gReadoutStats.counters.pagesPendingFairMQreleased++;
+    uint64_t timeUsed = (timeNowMicrosec() - s->t0);
+    gReadoutStats.counters.pagesPendingFairMQtime += timeUsed;
+    //printf("ack after %.6lfs (pending: %lu)\n", timeUsed/1000000.0, gReadoutStats.counters.pagesPendingFairMQ.load());
+    s->magic=0x00;
+  }
+}
+
 
 class ConsumerFMQchannel : public Consumer
 {
@@ -53,7 +100,7 @@ class ConsumerFMQchannel : public Consumer
 
   int memoryPoolPageSize;
   int memoryPoolNumberOfPages;
-
+  
  public:
   std::vector<FairMQMessagePtr> messagesToSend; // collect HBF messages of each update
   uint64_t messagesToSendSize;                  // size (bytes) of messagesToSend payload
@@ -133,10 +180,10 @@ class ConsumerFMQchannel : public Consumer
     long long mMemorySize = ReadoutUtils::getNumberOfBytesFromString(cfgUnmanagedMemorySize.c_str());
     if (mMemorySize > 0) {
       memoryBuffer = sendingChannel->Transport()->CreateUnmanagedRegion(mMemorySize, [](void* /*data*/, size_t /*size*/, void* hint) { // cleanup callback
-        // printf("ack %p (size %d) hint=%p\n",data,(int)size,hint);
-
         if (hint != nullptr) {
           DataBlockContainerReference* blockRef = (DataBlockContainerReference*)hint;
+          //printf("ack hint=%p page %p\n",hint,(*blockRef)->getData());
+	  decDataBlockStats((*blockRef)->getData());
           delete blockRef;
         }
       });
@@ -427,6 +474,9 @@ class ConsumerFMQchannel : public Consumer
     // std::unique_ptr<FairMQMessage> msgHeader(transportFactory->CreateMessage((void *)stfHeader, sizeof(SubTimeframe), cleanupCallback, (void *)(blockRef)));
     assert(messagesToSend.empty());
     if (memoryBuffer) {
+      // printf("send H %p\n", blockRef);
+      initDataBlockStats((*blockRef)->getData());
+      incDataBlockStats((*blockRef)->getData());
       messagesToSend.emplace_back(sendingChannel->NewMessage(memoryBuffer, (void*)stfHeader, sizeof(SubTimeframe), (void*)(blockRef)));
     } else {
       messagesToSend.emplace_back(sendingChannel->NewMessage((void*)stfHeader, sizeof(SubTimeframe), msgcleanupCallback, (void*)(blockRef)));
@@ -478,7 +528,9 @@ class ConsumerFMQchannel : public Consumer
 
         // create and queue a fmq message
         if (memoryBuffer) {
-          messagesToSend.emplace_back(sendingChannel->NewMessage(memoryBuffer, (void*)(&(b->data[ix])), (size_t)(l), hint));
+          // printf("send D %p\n", hint);
+          incDataBlockStats((*(pendingFrames[0].blockRef))->getData());
+          messagesToSend.emplace_back(sendingChannel->NewMessage(memoryBuffer, (void*)(&(b->data[ix])), (size_t)(l), hint));	  
         } else {
           messagesToSend.emplace_back(sendingChannel->NewMessage((void*)(&(b->data[ix])), (size_t)(l), msgcleanupCallback, hint));
         }
@@ -531,6 +583,9 @@ class ConsumerFMQchannel : public Consumer
 
         // create and queue a fmq message
         if (memoryBuffer) {
+          // printf("send D2 %p\n", blockRef);
+          initDataBlockStats((*blockRef)->getData());
+	  incDataBlockStats((*blockRef)->getData());
           messagesToSend.emplace_back(sendingChannel->NewMessage(memoryBuffer, (void*)newBlock, totalSize, (void*)(blockRef)));
         } else {
           messagesToSend.emplace_back(sendingChannel->NewMessage((void*)newBlock, totalSize, msgcleanupCallback, (void*)(blockRef)));
@@ -545,6 +600,8 @@ class ConsumerFMQchannel : public Consumer
     try {
       for (auto& br : *bc) {
         DataBlock* b = br->getData();
+        initDataBlockStats(b);
+	
         unsigned int HBstart = 0;
         for (int offset = 0; offset + sizeof(o2::Header::RAWDataHeader) <= b->header.dataSize;) {
           o2::Header::RAWDataHeader* rdh = (o2::Header::RAWDataHeader*)&b->data[offset];

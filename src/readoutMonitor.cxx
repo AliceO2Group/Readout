@@ -139,11 +139,24 @@ int main(int argc, const char** argv)
     }
     
     ReadoutStatsCounters *counters = (ReadoutStatsCounters *)zmqBuffer;
-    printf("%llu\t%llu\t%llu\t%llu\n",
+    uint64_t state=counters->state.load();
+    ((char *)&state)[7]=0;
+    time_t t = (time_t)counters->timestamp.load();
+    unsigned long long nRfmq = counters->pagesPendingFairMQreleased.load();    
+    double avgTfmq = 0.0;
+    if (nRfmq) {
+      avgTfmq = (counters->pagesPendingFairMQtime.load() / nRfmq) / 1000000.0;
+    }
+    printf("%s\t%s\t%llu\t%llu\t%llu\t%llu\tFMQ\t%llu\t%llu\t%.6lf\n",
+      t ? ctime(&t) : "-",
+      (char *)&state,
       (unsigned long long)counters->numberOfSubtimeframes.load(),
       (unsigned long long)counters->bytesReadout.load(),
       (unsigned long long)counters->bytesRecorded.load(),
-      (unsigned long long)counters->bytesFairMQ.load()
+      (unsigned long long)counters->bytesFairMQ.load(),
+      (unsigned long long)counters->pagesPendingFairMQ.load(),
+      nRfmq,
+      avgTfmq
     );
   }
   

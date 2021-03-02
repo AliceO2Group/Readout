@@ -145,7 +145,10 @@ class ConsumerStats : public Consumer
     
     #ifdef WITH_ZMQ
     if (zmqEnabled) {
+      gReadoutStats.counters.timestamp=time(NULL);
       zmq_send (zmqHandle, &gReadoutStats.counters , sizeof(gReadoutStats.counters), ZMQ_DONTWAIT);
+      gReadoutStats.counters.pagesPendingFairMQtime = 0;
+      gReadoutStats.counters.pagesPendingFairMQreleased = 0;
     }
     #endif
 
