@@ -215,7 +215,7 @@ DataBlockContainerReference ReadoutEquipmentPlayer::getNextBlock()
           }
           if (feof(fp)) {
             if ((!autoChunkLoop) || ((loopCount + 1 + autoChunkLoop) == 0)) {
-              theLog.log(LogInfoDevel, "File %s replay completed (%lu loops)", name.c_str(), loopCount + 1);
+              theLog.log(LogInfoDevel, "File %s replay completed (%lu loops)", name.c_str(), (unsigned long)(loopCount + 1));
             } else {
               // replay file
               if (fseek(fp, 0, SEEK_SET)) {
