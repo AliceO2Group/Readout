@@ -37,6 +37,10 @@ void ReadoutStats::reset()
   counters.timestamp = time(nullptr);
   counters.bytesReadoutRate = 0;
   counters.state = 0;
+  
+  counters.pagesPendingFairMQ = 0;
+  counters.pagesPendingFairMQreleased = 0;
+  counters.pagesPendingFairMQtime = 0;
 }
 
 void ReadoutStats::print() {
