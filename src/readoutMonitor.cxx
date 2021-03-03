@@ -5,7 +5,6 @@
 #include <zmq.h>
 #include "ReadoutStats.h"
 
-
 // definition of a global for logging
 using namespace AliceO2::InfoLogger;
 InfoLogger theLog;
@@ -36,7 +35,6 @@ class ZmqReadoutMonitorServer : public ZmqServer {
 };
 */
 
-
 // program main
 int main(int argc, const char** argv)
 {
@@ -50,9 +48,9 @@ int main(int argc, const char** argv)
   }
   cfgFileURI = argv[1];
   cfgEntryPoint = argv[2];
-  
-  theLog.setContext(InfoLoggerContext({{InfoLoggerContext::FieldName::Facility, (std::string) "readout/monitor"}}));
-  
+
+  theLog.setContext(InfoLoggerContext({ { InfoLoggerContext::FieldName::Facility, (std::string) "readout/monitor" } }));
+
   // load configuration file
   theLog.log(LogInfoDevel_(3002), "Reading configuration from %s", cfgFileURI);
   try {
@@ -61,7 +59,7 @@ int main(int argc, const char** argv)
     theLog.log(LogErrorSupport_(3100), "Error : %s", err.c_str());
     return -1;
   }
-  
+
   // configuration parameter: | readout-monitor | monitorAddress | string | tcp://127.0.0.1:6008 | Address of the receiving ZeroMQ channel to receive readout statistics. |
   std::string cfgMonitorAddress = "tcp://127.0.0.1:6008";
   cfg.getOptionalValue<std::string>(cfgEntryPoint + ".monitorAddress", cfgMonitorAddress);
@@ -89,13 +87,13 @@ int main(int argc, const char** argv)
       zmqError = zmq_errno();
       throw __LINE__;
     }
-    
+
     zmqHandle = zmq_socket(zmqContext, ZMQ_PULL);
     if (zmqHandle == nullptr) {
       zmqError = zmq_errno();
       throw __LINE__;
     }
- 
+
     zmqError = zmq_setsockopt(zmqHandle, ZMQ_RCVTIMEO, (void*)&cfgRxTimeout, sizeof(int));
     if (zmqError) {
       throw __LINE__;
@@ -104,8 +102,7 @@ int main(int argc, const char** argv)
     if (zmqError) {
       throw __LINE__;
     }
-  }
-  catch (int lineErr) {
+  } catch (int lineErr) {
     if (zmqError) {
       theLog.log(LogErrorDevel, "ZeroMQ error @%d : (%d) %s", lineErr, zmqError, zmq_strerror(zmqError));
     } else {
@@ -113,7 +110,7 @@ int main(int argc, const char** argv)
     }
     return -1;
   }
-    
+
   // configure signal handlers for clean exit
   struct sigaction signalSettings;
   bzero(&signalSettings, sizeof(signalSettings));
@@ -121,7 +118,6 @@ int main(int argc, const char** argv)
   sigaction(SIGTERM, &signalSettings, NULL);
   sigaction(SIGQUIT, &signalSettings, NULL);
   sigaction(SIGINT, &signalSettings, NULL);
-
 
   theLog.log(LogInfoDevel_(3006), "Entering monitoring loop");
 
@@ -137,18 +133,30 @@ int main(int argc, const char** argv)
       theLog.log(LogWarningDevel, "ZMQ message: unexpected size %d", nb);
       continue;
     }
-    
-    ReadoutStatsCounters *counters = (ReadoutStatsCounters *)zmqBuffer;
-    printf("%llu\t%llu\t%llu\t%llu\n",
-      (unsigned long long)counters->numberOfSubtimeframes.load(),
-      (unsigned long long)counters->bytesReadout.load(),
-      (unsigned long long)counters->bytesRecorded.load(),
-      (unsigned long long)counters->bytesFairMQ.load()
-    );
+
+    ReadoutStatsCounters* counters = (ReadoutStatsCounters*)zmqBuffer;
+    uint64_t state = counters->state.load();
+    ((char*)&state)[7] = 0;
+    time_t t = (time_t)counters->timestamp.load();
+    unsigned long long nRfmq = counters->pagesPendingFairMQreleased.load();
+    double avgTfmq = 0.0;
+    if (nRfmq) {
+      avgTfmq = (counters->pagesPendingFairMQtime.load() / nRfmq) / 1000000.0;
+    }
+    printf("%s\t%s\t%llu\t%llu\t%llu\t%llu\tFMQ\t%llu\t%llu\t%.6lf\n",
+           t ? ctime(&t) : "-",
+           (char*)&state,
+           (unsigned long long)counters->numberOfSubtimeframes.load(),
+           (unsigned long long)counters->bytesReadout.load(),
+           (unsigned long long)counters->bytesRecorded.load(),
+           (unsigned long long)counters->bytesFairMQ.load(),
+           (unsigned long long)counters->pagesPendingFairMQ.load(),
+           nRfmq,
+           avgTfmq);
   }
-  
+
   theLog.log(LogInfoDevel_(3006), "Execution completed");
-  
+
   if (zmqHandle != nullptr) {
     zmq_close(zmqHandle);
     zmqHandle = nullptr;
@@ -161,7 +169,6 @@ int main(int argc, const char** argv)
     free(zmqBuffer);
     zmqBuffer = nullptr;
   }
-  
+
   return 0;
 }
-

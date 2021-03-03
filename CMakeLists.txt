@@ -59,7 +59,8 @@ find_package(FairMQ)
 find_package(ZLIB)
 find_package(RDMA)
 find_package(Occ)
-find_package(JiskefetApiCpp)
+#find_package(BookkeepingApiCpp)
+#find_package(cpprestsdk)
 find_package(ZMQ)
 
 # extract include directories from targets
@@ -101,14 +102,14 @@ else ()
   message(STATUS "Control-OCCPlugin not found, corresponding features will be disabled.")
 endif(Occ_FOUND)
 
-# check Jiskefet
-if (JiskefetApiCpp_FOUND)
-  get_target_property(JiskefetApiCpp_INCLUDES JiskefetApiCpp INTERFACE_INCLUDE_DIRECTORIES)
-#  get_target_property(JiskefetApiCpp_LIBRARIES JiskefetApiCpp INTERFACE_LINK_LIBRARIES)
-  message(STATUS "Jiskefet found")
+# check Bookkeeping
+if (BookkeepingApiCpp_FOUND)
+  get_target_property(BookkeepingApiCpp_INCLUDES BookkeepingApiCpp INTERFACE_INCLUDE_DIRECTORIES)
+#  get_target_property(BookkeepingApiCpp_LIBRARIES BookkeepingApiCpp INTERFACE_LINK_LIBRARIES)
+  message(STATUS "Bookkeeping found")
 else ()
-  message(STATUS "Jiskefet not found, corresponding features will be disabled.")
-endif(JiskefetApiCpp_FOUND)
+  message(STATUS "Bookkeeping not found, corresponding features will be disabled.")
+endif(BookkeepingApiCpp_FOUND)
 
 # check ZMQ
 if(${ZMQ_FOUND})
@@ -120,7 +121,7 @@ else ()
 endif()
 
 # add flags to enable optional features in Readout, based on available dependencies
-add_compile_definitions($<$<BOOL:${Numa_FOUND}>:WITH_NUMA> $<$<BOOL:${RDMA_FOUND}>:WITH_RDMA> $<$<BOOL:${Configuration_FOUND}>:WITH_CONFIG> $<$<BOOL:${FairMQ_FOUND}>:WITH_FAIRMQ> $<$<BOOL:${Occ_FOUND}>:WITH_OCC> $<$<BOOL:${JiskefetApiCpp_FOUND}>:WITH_LOGBOOK> $<$<BOOL:${ZMQ_FOUND}>:WITH_ZMQ> $<$<BOOL:${ReadoutCard_FOUND}>:WITH_READOUTCARD> )
+add_compile_definitions($<$<BOOL:${Numa_FOUND}>:WITH_NUMA> $<$<BOOL:${RDMA_FOUND}>:WITH_RDMA> $<$<BOOL:${Configuration_FOUND}>:WITH_CONFIG> $<$<BOOL:${FairMQ_FOUND}>:WITH_FAIRMQ> $<$<BOOL:${Occ_FOUND}>:WITH_OCC> $<$<BOOL:${BookkeepingApiCpp_FOUND}>:WITH_LOGBOOK> $<$<BOOL:${ZMQ_FOUND}>:WITH_ZMQ> $<$<BOOL:${ReadoutCard_FOUND}>:WITH_READOUTCARD> )
 
 # define include directories
 set(READOUT_INCLUDE_DIRS
@@ -132,7 +133,7 @@ set(READOUT_INCLUDE_DIRS
  ${Configuration_INCLUDE_DIRS}
  ${FairMQ_INCLUDE_DIRS}
  ${Occ_INCLUDE_DIRS}
- ${JiskefetApiCpp_INCLUDES}
+ ${BookkeepingApiCpp_INCLUDES}
 )
 
 # define liraries to be linked
@@ -144,7 +145,7 @@ set(READOUT_LINK_LIBRARIES
   $<$<BOOL:${Configuration_FOUND}>:AliceO2::Configuration>
   $<$<BOOL:${FairMQ_FOUND}>:FairMQ::FairMQ>
   $<$<BOOL:${Occ_FOUND}>:AliceO2::Occ>
-  $<$<BOOL:${JiskefetApiCpp_FOUND}>:JiskefetApiCpp> 
+  $<$<BOOL:${BookkeepingApiCpp_FOUND}>:BookkeepingApiCpp>
 )
 if(Numa_FOUND)
   list(APPEND READOUT_LINK_LIBRARIES ${Numa_LIBRARIES})

@@ -307,6 +307,11 @@ This file describes the main feature changes for each readout.exe released versi
   - added consumer-stats.zmqPublishAddress : to publish readout statistics by ZMQ.
 - Added readoutMonitor.exe, a server to collect and display statistics published by ZMQ from multiple readout processes.
 
-##  next version
+##  v1.6.0 - 03/03/2021
 - readoutAutoConfigure: using virtual ipc address for FMQ. Config generator versioning now indepedent from readout version (now 2.1) for better tracking of generated config files.
 - optimized flush of TF buffer on stop.
+- Updated configuration parameters:
+  - changed equipment-player-*.autoChunkLoop: when negative value set, stop the replay after corresponding number of iterations. (e.g. -5 -> 5x replay).
+  - added readout.tfRateLimit:  when set, the output (of the aggregator) is limited to a given timeframe rate.
+  - added readout.timeStart and readout.timeStop: when set, in standalone mode, readout will execute START and STOP at given time.
+  - added stats for data pages given to consumer-FMQchannel (number in use, release latency).

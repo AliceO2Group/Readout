@@ -22,14 +22,19 @@ struct ReadoutStatsCounters {
   std::atomic<uint64_t> bytesReadout;
   std::atomic<uint64_t> bytesRecorded;
   std::atomic<uint64_t> bytesFairMQ;
-  double timestamp;
-  double bytesReadoutRate;
+  std::atomic<double> timestamp;
+  std::atomic<double> bytesReadoutRate;
   std::atomic<uint64_t> state;
+  std::atomic<uint64_t> pagesPendingFairMQ;         // number of pages pending in ConsumerFMQ
+  std::atomic<uint64_t> pagesPendingFairMQreleased; // number of pages which have been released by ConsumerFMQ
+  std::atomic<uint64_t> pagesPendingFairMQtime;     // latency in FMQ, in microseconds, total for all released pages
 };
 
 // need to be able to easily transmit this struct as a whole
 static_assert(std::is_pod<ReadoutStatsCounters>::value);
 
+// utility to assign strings to uint64
+uint64_t stringToUint64(const char*);
 
 class ReadoutStats
 {
@@ -43,4 +48,3 @@ class ReadoutStats
 };
 
 extern ReadoutStats gReadoutStats;
-

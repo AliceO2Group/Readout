@@ -20,31 +20,33 @@ class DataBlockContainer
   // NB: may use std::bind to add extra arguments
 
   // default constructor
-  DataBlockContainer(DataBlock* v_data = nullptr, uint64_t v_dataBufferSize = 0) : data(v_data), dataBufferSize(v_dataBufferSize), releaseCallback(nullptr) {};
+  DataBlockContainer(DataBlock* v_data = nullptr, uint64_t v_dataBufferSize = 0) : data(v_data), dataBufferSize(v_dataBufferSize), releaseCallback(nullptr){};
 
   // this constructor allows to specify a callback which is invoked when container is destroyed
-  DataBlockContainer(ReleaseCallback v_callback = nullptr, DataBlock* v_data = nullptr, uint64_t v_dataBufferSize = 0) : data(v_data), dataBufferSize(v_dataBufferSize), releaseCallback(v_callback) {};
-  
+  DataBlockContainer(ReleaseCallback v_callback = nullptr, DataBlock* v_data = nullptr, uint64_t v_dataBufferSize = 0) : data(v_data), dataBufferSize(v_dataBufferSize), releaseCallback(v_callback){};
+
   // destructor
-  virtual ~DataBlockContainer() {
+  virtual ~DataBlockContainer()
+  {
     if (releaseCallback != nullptr) {
       releaseCallback();
     }
   };
-  
-  DataBlock* getData() {
+
+  DataBlock* getData()
+  {
     return data;
   };
-  
-  uint64_t getDataBufferSize() {
+
+  uint64_t getDataBufferSize()
+  {
     return dataBufferSize;
   };
 
  protected:
-  DataBlock* data; // The DataBlock in use
-  uint64_t dataBufferSize = 0; // Usable memory size pointed by data. Unspecified if zero.
-  ReleaseCallback releaseCallback;  // Function called on object destroy, to release dataBlock.
+  DataBlock* data;                 // The DataBlock in use
+  uint64_t dataBufferSize = 0;     // Usable memory size pointed by data. Unspecified if zero.
+  ReleaseCallback releaseCallback; // Function called on object destroy, to release dataBlock.
 };
-
 
 #endif

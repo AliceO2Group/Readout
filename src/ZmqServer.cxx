@@ -54,7 +54,7 @@ ZmqServer::~ZmqServer()
     th->join();
     th = nullptr;
   }
-  
+
   if (zh != nullptr) {
     zmq_close(zh);
     zh = nullptr;

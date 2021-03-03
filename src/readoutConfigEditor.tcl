@@ -58,6 +58,7 @@ set configurationParametersDescriptor {
 | consumer-stats-* | monitoringUpdatePeriod | double | 10 | Period of readout monitoring updates, in seconds. | 
 | consumer-stats-* | monitoringURI | string | | URI to connect O2 monitoring service. c.f. o2::monitoring. | 
 | consumer-stats-* | processMonitoringInterval | int | 0 | Period of process monitoring updates (O2 standard metrics). If zero (default), disabled.| 
+| consumer-stats-* | zmqPublishAddress | string | | If defined, readout statistics are also published periodically (at rate defined in monitoringUpdatePeriod) to a ZMQ server. Suggested value: tcp://127.0.0.1:6008 (for use by readoutMonitor.exe). | 
 | consumer-tcp-* | host | string | localhost | Remote server IP name to connect to. | 
 | consumer-tcp-* | ncx | int | 1 | Number of parallel streams (and threads) to use. The port number specified in 'port' parameter will be increased by 1 for each extra connection. | 
 | consumer-tcp-* | port | int | 10001 | Remote server TCP port number to connect to. | 
@@ -97,7 +98,7 @@ set configurationParametersDescriptor {
 | equipment-dummy-* | eventMinSize | bytes | 128k | Minimum size of randomly generated event. | 
 | equipment-dummy-* | fillData | int | 0 | Pattern used to fill data page: (0) no pattern used, data page is left untouched, with whatever values were in memory (1) incremental byte pattern (2) incremental word pattern, with one random word out of 5. | 
 | equipment-player-* | autoChunk | int | 0 | When set, the file is replayed once, and cut automatically in data pages compatible with memory bank settings and RDH information. In this mode the preLoad and fillPage options have no effect. | 
-| equipment-player-* | autoChunkLoop | int | 0 | When set, the file is replayed in loops. Trigger orbit counter in RDH are modified for iterations after the first one, so that they keep increasing. | 
+| equipment-player-* | autoChunkLoop | int | 0 | When set, the file is replayed in loops. Trigger orbit counter in RDH are modified for iterations after the first one, so that they keep increasing. If value is negative, only that number of loop is executed (-5 -> 5x replay). | 
 | equipment-player-* | filePath | string | | Path of file containing data to be injected in readout. | 
 | equipment-player-* | fillPage | int | 1 | If 1, content of data file is copied multiple time in each data page until page is full (or almost full: on the last iteration, there is no partial copy if remaining space is smaller than full file size). If 0, data file is copied exactly once in each data page. | 
 | equipment-player-* | preLoad | int | 1 | If 1, data pages preloaded with file content on startup. If 0, data is copied at runtime. | 
@@ -120,7 +121,11 @@ set configurationParametersDescriptor {
 | readout | logbookUrl | string | | The address to be used for the logbook API. | 
 | readout | memoryPoolStatsEnabled | int | 0 | Global debugging flag to enable statistics on memory pool usage (printed to stdout when pool released). | 
 | readout | rate | double | -1 | Data rate limit, per equipment, in Hertz. -1 for unlimited. | 
+| readout | tfRateLimit | double | 0 | When set, the output is limited to a given timeframe rate. | 
 | readout | timeframeServerUrl | string | | The address to be used to publish current timeframe, e.g. to be used as reference clock for other readout instances. | 
+| readout | timeStart | string | | In standalone mode, time at which to execute start. If not set, immediately. | 
+| readout | timeStop | string | | In standalone mode, time at which to execute stop. If not set, on int/term/quit signal. | 
+| readout-monitor | monitorAddress | string | tcp://127.0.0.1:6008 | Address of the receiving ZeroMQ channel to receive readout statistics. | 
 | receiverFMQ | channelAddress | string | ipc:///tmp/pipe-readout | c.f. parameter with same name in consumer-FairMQchannel-* | 
 | receiverFMQ | channelName | string | readout | c.f. parameter with same name in consumer-FairMQchannel-* | 
 | receiverFMQ | channelType | string | pair | c.f. parameter with same name in consumer-FairMQchannel-* | 

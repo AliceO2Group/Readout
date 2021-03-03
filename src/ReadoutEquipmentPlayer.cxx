@@ -97,7 +97,7 @@ ReadoutEquipmentPlayer::ReadoutEquipmentPlayer(ConfigFile& cfg, std::string cfgE
   cfg.getOptionalValue<int>(cfgEntryPoint + ".fillPage", fillPage, 1);
   // configuration parameter: | equipment-player-* | autoChunk | int | 0 | When set, the file is replayed once, and cut automatically in data pages compatible with memory bank settings and RDH information. In this mode the preLoad and fillPage options have no effect. |
   cfg.getOptionalValue<int>(cfgEntryPoint + ".autoChunk", autoChunk, 0);
-  // configuration parameter: | equipment-player-* | autoChunkLoop | int | 0 | When set, the file is replayed in loops. Trigger orbit counter in RDH are modified for iterations after the first one, so that they keep increasing. |
+  // configuration parameter: | equipment-player-* | autoChunkLoop | int | 0 | When set, the file is replayed in loops. Trigger orbit counter in RDH are modified for iterations after the first one, so that they keep increasing. If value is negative, only that number of loop is executed (-5 -> 5x replay). |
   cfg.getOptionalValue<int>(cfgEntryPoint + ".autoChunkLoop", autoChunkLoop, 0);
 
   // log config summary
@@ -214,8 +214,8 @@ DataBlockContainerReference ReadoutEquipmentPlayer::getNextBlock()
             theLog.log(LogErrorSupport_(3232), "File %s read error, aborting replay", name.c_str());
           }
           if (feof(fp)) {
-            if (!autoChunkLoop) {
-              theLog.log(LogInfoDevel, "File %s replay completed", name.c_str());
+            if ((!autoChunkLoop) || ((loopCount + 1 + autoChunkLoop) == 0)) {
+              theLog.log(LogInfoDevel, "File %s replay completed (%lu loops)", name.c_str(), loopCount + 1);
             } else {
               // replay file
               if (fseek(fp, 0, SEEK_SET)) {

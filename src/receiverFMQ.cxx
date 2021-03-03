@@ -329,10 +329,6 @@ int main(int argc, const char** argv)
 
           int nPart = msgParts.size();
           nMsgParts += nPart;
-          if (nPart < 2) {
-            theLog.log(LogErrorSupport_(3237), "Only %d parts in message, need at least 2", nPart);
-            continue;
-          }
 
           int i = 0;
           bool dumpNext = false;

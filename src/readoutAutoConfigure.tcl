@@ -406,6 +406,7 @@ memoryPoolPageSize=${readoutPageSize}
   # general config params
   lappend config " 
 \[readout\]
+flushEquipmentTimeout=2
 aggregatorStfTimeout=0.5
 aggregatorSliceTimeout=1
  
