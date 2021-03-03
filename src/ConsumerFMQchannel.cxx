@@ -47,42 +47,46 @@ struct DataBlockFMQStats {
   uint64_t t0;
 };
 static_assert(std::is_pod<DataBlockFMQStats>::value, "DataBlockFMQStats is not a POD");
-static_assert(sizeof(DataBlockFMQStats)<=DataBlockHeaderUserSpace, "DataBlockFMQStats does not fit in DataBlock.userSpace");
+static_assert(sizeof(DataBlockFMQStats) <= DataBlockHeaderUserSpace, "DataBlockFMQStats does not fit in DataBlock.userSpace");
 
 #define timeNowMicrosec (std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now().time_since_epoch())).count
 
-void initDataBlockStats(DataBlock *b) {
-  DataBlockFMQStats *s=(DataBlockFMQStats *)&(b->header.userSpace);
-  s->magic=0xAA;
+void initDataBlockStats(DataBlock* b)
+{
+  DataBlockFMQStats* s = (DataBlockFMQStats*)&(b->header.userSpace);
+  s->magic = 0xAA;
   s->countRef = 0;
 }
 
-void incDataBlockStats(DataBlock *b) {
+void incDataBlockStats(DataBlock* b)
+{
   //printf("inc %p\n",b);
-  DataBlockFMQStats *s=(DataBlockFMQStats *)&(b->header.userSpace);
-  if (s->magic!=0xAA) return;
+  DataBlockFMQStats* s = (DataBlockFMQStats*)&(b->header.userSpace);
+  if (s->magic != 0xAA)
+    return;
   if ((s->countRef++) == 0) {
-    s->t0 = timeNowMicrosec();	
+    s->t0 = timeNowMicrosec();
     gReadoutStats.counters.pagesPendingFairMQ++;
     // printf("init %p\n",b);
   }
 }
 
-void decDataBlockStats(DataBlock *b) {
-  DataBlockFMQStats *s=(DataBlockFMQStats *)&(b->header.userSpace);
+void decDataBlockStats(DataBlock* b)
+{
+  DataBlockFMQStats* s = (DataBlockFMQStats*)&(b->header.userSpace);
   //printf("dec %p\n",b);
-  if (s->magic!=0xAA) return;
-  if ((--s->countRef)==0) {
+  if (s->magic != 0xAA)
+    return;
+  if ((--s->countRef) == 0) {
     // printf("done with %p\n",b);
     gReadoutStats.counters.pagesPendingFairMQ--;
     gReadoutStats.counters.pagesPendingFairMQreleased++;
     uint64_t timeUsed = (timeNowMicrosec() - s->t0);
     gReadoutStats.counters.pagesPendingFairMQtime += timeUsed;
     //printf("ack after %.6lfs (pending: %lu)\n", timeUsed/1000000.0, gReadoutStats.counters.pagesPendingFairMQ.load());
-    s->magic=0x00;
+    s->magic = 0x00;
   }
 }
-
 
 class ConsumerFMQchannel : public Consumer
 {
@@ -100,7 +104,7 @@ class ConsumerFMQchannel : public Consumer
 
   int memoryPoolPageSize;
   int memoryPoolNumberOfPages;
-  
+
  public:
   std::vector<FairMQMessagePtr> messagesToSend; // collect HBF messages of each update
   uint64_t messagesToSendSize;                  // size (bytes) of messagesToSend payload
@@ -183,7 +187,7 @@ class ConsumerFMQchannel : public Consumer
         if (hint != nullptr) {
           DataBlockContainerReference* blockRef = (DataBlockContainerReference*)hint;
           //printf("ack hint=%p page %p\n",hint,(*blockRef)->getData());
-	  decDataBlockStats((*blockRef)->getData());
+          decDataBlockStats((*blockRef)->getData());
           delete blockRef;
         }
       });
@@ -530,7 +534,7 @@ class ConsumerFMQchannel : public Consumer
         if (memoryBuffer) {
           // printf("send D %p\n", hint);
           incDataBlockStats((*(pendingFrames[0].blockRef))->getData());
-          messagesToSend.emplace_back(sendingChannel->NewMessage(memoryBuffer, (void*)(&(b->data[ix])), (size_t)(l), hint));	  
+          messagesToSend.emplace_back(sendingChannel->NewMessage(memoryBuffer, (void*)(&(b->data[ix])), (size_t)(l), hint));
         } else {
           messagesToSend.emplace_back(sendingChannel->NewMessage((void*)(&(b->data[ix])), (size_t)(l), msgcleanupCallback, hint));
         }
@@ -585,7 +589,7 @@ class ConsumerFMQchannel : public Consumer
         if (memoryBuffer) {
           // printf("send D2 %p\n", blockRef);
           initDataBlockStats((*blockRef)->getData());
-	  incDataBlockStats((*blockRef)->getData());
+          incDataBlockStats((*blockRef)->getData());
           messagesToSend.emplace_back(sendingChannel->NewMessage(memoryBuffer, (void*)newBlock, totalSize, (void*)(blockRef)));
         } else {
           messagesToSend.emplace_back(sendingChannel->NewMessage((void*)newBlock, totalSize, msgcleanupCallback, (void*)(blockRef)));
@@ -601,7 +605,7 @@ class ConsumerFMQchannel : public Consumer
       for (auto& br : *bc) {
         DataBlock* b = br->getData();
         initDataBlockStats(b);
-	
+
         unsigned int HBstart = 0;
         for (int offset = 0; offset + sizeof(o2::Header::RAWDataHeader) <= b->header.dataSize;) {
           o2::Header::RAWDataHeader* rdh = (o2::Header::RAWDataHeader*)&b->data[offset];

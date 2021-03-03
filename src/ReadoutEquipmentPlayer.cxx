@@ -214,7 +214,7 @@ DataBlockContainerReference ReadoutEquipmentPlayer::getNextBlock()
             theLog.log(LogErrorSupport_(3232), "File %s read error, aborting replay", name.c_str());
           }
           if (feof(fp)) {
-            if ((!autoChunkLoop)||((loopCount + 1 + autoChunkLoop) == 0)) {
+            if ((!autoChunkLoop) || ((loopCount + 1 + autoChunkLoop) == 0)) {
               theLog.log(LogInfoDevel, "File %s replay completed (%lu loops)", name.c_str(), loopCount + 1);
             } else {
               // replay file

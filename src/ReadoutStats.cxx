@@ -33,26 +33,28 @@ void ReadoutStats::reset()
   counters.bytesReadout = 0;
   counters.bytesRecorded = 0;
   counters.bytesFairMQ = 0;
-  
+
   counters.timestamp = time(nullptr);
   counters.bytesReadoutRate = 0;
   counters.state = 0;
-  
+
   counters.pagesPendingFairMQ = 0;
   counters.pagesPendingFairMQreleased = 0;
   counters.pagesPendingFairMQtime = 0;
 }
 
-void ReadoutStats::print() {
+void ReadoutStats::print()
+{
   theLog.log(LogInfoSupport_(3003), "Readout global stats: numberOfSubtimeframes=%llu bytesReadout=%llu bytesRecorded=%llu bytesFairMQ=%llu",
-    (unsigned long long)counters.numberOfSubtimeframes.load(),
-    (unsigned long long)counters.bytesReadout.load(),
-    (unsigned long long)counters.bytesRecorded.load(),
-    (unsigned long long)counters.bytesFairMQ.load());
+             (unsigned long long)counters.numberOfSubtimeframes.load(),
+             (unsigned long long)counters.bytesReadout.load(),
+             (unsigned long long)counters.bytesRecorded.load(),
+             (unsigned long long)counters.bytesFairMQ.load());
 }
 
-uint64_t stringToUint64(const char *in) {
-  char res[8] = {0};
-  strncpy(res, in, sizeof(res)-1);
-  return *((uint64_t *)res);
+uint64_t stringToUint64(const char* in)
+{
+  char res[8] = { 0 };
+  strncpy(res, in, sizeof(res) - 1);
+  return *((uint64_t*)res);
 }
