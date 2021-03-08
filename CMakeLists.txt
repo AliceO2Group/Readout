@@ -10,10 +10,17 @@ cmake_policy(VERSION ${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION})
 project(
   Readout
   DESCRIPTION "O2 Readout process"
-  LANGUAGES CXX
+  LANGUAGES NONE
 )
 
+# simplified build mode for doc only
+if(ONLYDOC)
+  add_subdirectory(doc)
+  return()
+endif()
+
 # global compilation options
+enable_language(CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -34,6 +41,7 @@ set(EXECUTABLE_OUTPUT_PATH "${CMAKE_BINARY_DIR}/bin")
 # local sources
 set(SOURCE_DIR src)
 # installation of libraries
+include(GNUInstallDirs)
 set(CMAKE_INSTALL_LIBDIR lib)
 
 # add local modules directory
@@ -166,7 +174,6 @@ endif()
 ####################################
 # Handle RPATH
 ####################################
-include(GNUInstallDirs)
 
 # Build targets with install rpath on Mac to dramatically speed up installation
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
