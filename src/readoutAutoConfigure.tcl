@@ -38,7 +38,7 @@ set monitoringURI ""
 set logEnabled 1
 
 # version of this script
-set version "2.1"
+set version "2.1.1"
 
 # defaults
 set generateQC 0
@@ -49,7 +49,7 @@ set disableSending 0
 set rdhCheckEnabled 0
 
 # channels to configure per card, if CRORC
-# string in the form "serial1:channel1,channel2, serial2:channel1,..."
+# string in the form "serial1:channel1,channel2;serial2:channel1,..."
 set channelMask ""
 
 # log function
@@ -111,7 +111,7 @@ proc matchMask {serial channel} {
   if {"$channelMask"==""} {
     return 1
   }
-  foreach e [split $channelMask " "] {
+  foreach e [split $channelMask ";"] {
     set ls [split $e ":"]
     if {[llength $ls]!=2} {continue}
     set s [lindex $ls 0]
