@@ -316,5 +316,5 @@ This file describes the main feature changes for each readout.exe released versi
   - added readout.timeStart and readout.timeStop: when set, in standalone mode, readout will execute START and STOP at given time.
   - added stats for data pages given to consumer-FMQchannel (number in use, release latency).
 
-## v1.6.1 - 
+## v1.6.1 - 09/03/2021
 - readoutAutoConf
