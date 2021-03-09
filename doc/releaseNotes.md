@@ -317,4 +317,4 @@ This file describes the main feature changes for each readout.exe released versi
   - added stats for data pages given to consumer-FMQchannel (number in use, release latency).
 
 ## v1.6.1 - 09/03/2021
-- readoutAutoConf
+- readoutAutoConf v2.1.1
