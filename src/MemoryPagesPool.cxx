@@ -10,7 +10,8 @@
 
 #include "MemoryPagesPool.h"
 
-#include <assert.h>
+#include <cassert>
+#include <cstdio>
 
 int MemoryPagesPoolStatsEnabled = 0; // flag to control memory stats
 
