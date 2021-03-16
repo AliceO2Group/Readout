@@ -15,8 +15,13 @@
 #include "MemoryBank.h"
 #include "MemoryBankManager.h"
 
+#include <InfoLogger/InfoLogger.hxx>
+AliceO2::InfoLogger::InfoLogger theLog;
+
 int main()
 {
+  setenv("INFOLOGGER_MODE", "stdout", 1);
+
   MemoryBankManager bm;
 
   size_t poolPages = 100;
