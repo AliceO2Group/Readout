@@ -8,7 +8,7 @@ cmake_policy(VERSION ${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION})
 
 # define project
 project(
-  Readout
+  o2-readout
   DESCRIPTION "O2 Readout process"
   LANGUAGES NONE
 )
@@ -251,13 +251,13 @@ target_include_directories(objReadoutConsumers PRIVATE ${READOUT_INCLUDE_DIRS})
 find_package(ZLIB)
 if (ZLIB_FOUND)
   add_library(
-          ProcessorZlibCompress
+          O2ReadoutProcessorZlibCompress
           SHARED
           ${SOURCE_DIR}/ProcessorZlibCompress.cxx
   )
-  target_include_directories(ProcessorZlibCompress PRIVATE ${READOUT_INCLUDE_DIRS} ${ZLIB_INCLUDE_DIRS})
-  target_link_libraries(ProcessorZlibCompress ZLIB::ZLIB)
-  list(APPEND libraries ProcessorZlibCompress)
+  target_include_directories(O2ReadoutProcessorZlibCompress PRIVATE ${READOUT_INCLUDE_DIRS} ${ZLIB_INCLUDE_DIRS})
+  target_link_libraries(O2ReadoutProcessorZlibCompress ZLIB::ZLIB)
+  list(APPEND libraries O2ReadoutProcessorZlibCompress)
 endif()
 
 # LZ4 compression
@@ -266,16 +266,16 @@ find_path (LZ4_INCLUDE_DIR NAMES lz4.h PATHS ${LZ4_DIR}/include)
 if ( LZ4_LIB AND LZ4_INCLUDE_DIR )
   message(STATUS "Found lz4 (library: ${LZ4_LIB} include: ${LZ4_INCLUDE_DIR})")
   add_library(
-    ProcessorLZ4Compress
+    O2ReadoutProcessorLZ4Compress
     SHARED
     ${SOURCE_DIR}/ProcessorLZ4Compress.cxx
   )
-  target_include_directories(ProcessorLZ4Compress PRIVATE ${READOUT_INCLUDE_DIRS} ${LZ4_INCLUDE_DIR})
-  target_link_libraries(ProcessorLZ4Compress ${LZ4_LIB})
-  list(APPEND libraries ProcessorLZ4Compress)
+  target_include_directories(O2ReadoutProcessorLZ4Compress PRIVATE ${READOUT_INCLUDE_DIRS} ${LZ4_INCLUDE_DIR})
+  target_link_libraries(O2ReadoutProcessorLZ4Compress ${LZ4_LIB})
+  list(APPEND libraries O2ReadoutProcessorLZ4Compress)
   list(APPEND READOUT_INCLUDE_DIRS ${LZ4_INCLUDE_DIR})
   list(APPEND READOUT_LINK_LIBRARIES ${LZ4_LIB})
-  set_property(TARGET ProcessorLZ4Compress PROPERTY POSITION_INDEPENDENT_CODE ON)
+  set_property(TARGET O2ReadoutProcessorLZ4Compress PROPERTY POSITION_INDEPENDENT_CODE ON)
 else()
   message(STATUS "lz4 not found")
 endif()
@@ -295,9 +295,9 @@ endif()
 # executables
 ###################################################
 
-# readout.exe : main executable
+# o2-readout-exe : main executable
 add_executable(
-	readout.exe
+	o2-readout-exe
 	${SOURCE_DIR}/mainReadout.cxx
         ${SOURCE_DIR}/ReadoutStats.cxx
 	$<TARGET_OBJECTS:objReadoutEquipment>
@@ -308,33 +308,33 @@ add_executable(
 
 # a test FMQ device receiver
 add_executable(
-	receiverFMQ.exe
+	o2-readout-receiver
         ${SOURCE_DIR}/receiverFMQ.cxx
 	$<TARGET_OBJECTS:objReadoutUtils>
 )
 
 # a test FMQ channel sender
 add_executable(
-	testTxFMQ.exe
+	o2-readout-test-fmq-tx
         ${SOURCE_DIR}/testTxFMQ.cxx
 	$<TARGET_OBJECTS:objReadoutUtils>
 )
 
 # a test FMQ channel receiver
 add_executable(
-	testRxFMQ.exe
+	o2-readout-test-fmq-rx
         ${SOURCE_DIR}/testRxFMQ.cxx
 	$<TARGET_OBJECTS:objReadoutUtils>
 )
 
 # Tx/Rx FMQ channel performance testers
 add_executable(
-	testTxPerfFMQ.exe
+	o2-readout-test-fmq-perf-tx
         ${SOURCE_DIR}/testTxPerfFMQ.cxx
 	$<TARGET_OBJECTS:objReadoutUtils>
 )
 add_executable(
-	testRxPerfFMQ.exe
+	o2-readout-test-fmq-perf-rx
         ${SOURCE_DIR}/testRxPerfFMQ.cxx
 	$<TARGET_OBJECTS:objReadoutUtils>
 )
@@ -342,14 +342,14 @@ add_executable(
 
 # a test to check memory banks
 add_executable(
-        testMemoryBanks.exe
+        o2-readout-test-memorybanks
         ${SOURCE_DIR}/testMemoryBanks.cxx
 	$<TARGET_OBJECTS:objReadoutUtils>
 )
 
 # a RAW data file reader/checker
 add_executable(
-        readRaw.exe
+        o2-readout-rawreader
         ${SOURCE_DIR}/readRaw.cxx
 	$<TARGET_OBJECTS:objReadoutUtils>
 )
@@ -357,7 +357,7 @@ add_executable(
 # a minimal test program to readout a ROC device
 if (ReadoutCard_FOUND)
 add_executable(
-	testROC.exe
+	o2-readout-test-roc
         ${SOURCE_DIR}/testROC.cxx
 	$<TARGET_OBJECTS:objReadoutUtils>
 )
@@ -366,17 +366,17 @@ endif()
 # a test program to test ZMQ client
 if (${ZMQ_FOUND})
 add_executable(
-	testZmqClient.exe
+	o2-readout-test-zmq-client
         ${SOURCE_DIR}/testZmqClient.cxx
 	$<TARGET_OBJECTS:objReadoutUtils>
 )
 add_executable(
-	testZmqServer.exe
+	o2-readout-test-zmq-server
         ${SOURCE_DIR}/testZmqServer.cxx
 	$<TARGET_OBJECTS:objReadoutUtils>
 )
 add_executable(
-	eventDump.exe
+	o2-readout-eventdump
         ${SOURCE_DIR}/eventDump.cxx
 	$<TARGET_OBJECTS:objReadoutUtils>
 	
@@ -384,40 +384,40 @@ add_executable(
 
 # a process to monitor stats of remote readout processes
 add_executable(
-	readoutMonitor.exe
+	o2-readout-monitor
         ${SOURCE_DIR}/readoutMonitor.cxx
 	$<$<BOOL:${ZMQ_FOUND}>:${SOURCE_DIR}/ZmqClient.cxx>
 )
-target_include_directories(readoutMonitor.exe PRIVATE ${READOUT_INCLUDE_DIRS})
-target_link_libraries(readoutMonitor.exe PRIVATE AliceO2::InfoLogger AliceO2::Common ${ZMQ_LIBRARIES})
+target_include_directories(o2-readout-monitor PRIVATE ${READOUT_INCLUDE_DIRS})
+target_link_libraries(o2-readout-monitor PRIVATE AliceO2::InfoLogger AliceO2::Common ${ZMQ_LIBRARIES})
 
 endif()
 
 # a minimal test program to check Monitoring library
 add_executable(
-	testMonitor.exe
+	o2-readout-test-lib-monitoring
         ${SOURCE_DIR}/testMonitor.cxx
 )
 
 # disable some executables when corresponding dependencies not found
 if (NOT FairMQ_FOUND)
-	set_target_properties(testTxFMQ.exe testRxFMQ.exe testTxPerfFMQ.exe testRxPerfFMQ.exe PROPERTIES EXCLUDE_FROM_ALL 1)
+	set_target_properties(o2-readout-test-fmq-tx o2-readout-test-fmq-rx o2-readout-test-fmq-perf-tx o2-readout-test-fmq-perf-rx PROPERTIES EXCLUDE_FROM_ALL 1)
 endif ()
 
 # set include and libraries for all
-set(executables readout.exe receiverFMQ.exe testTxFMQ.exe testRxFMQ.exe testTxPerfFMQ.exe testRxPerfFMQ.exe testMemoryBanks.exe readRaw.exe testMonitor.exe)
+set(executables o2-readout-exe o2-readout-receiver o2-readout-test-fmq-tx o2-readout-test-fmq-rx o2-readout-test-fmq-perf-tx o2-readout-test-fmq-perf-rx o2-readout-test-memorybanks o2-readout-rawreader o2-readout-test-lib-monitoring)
 if (ReadoutCard_FOUND)
-  list (APPEND executables testROC.exe)
+  list (APPEND executables o2-readout-test-roc)
 endif()
 if (${ZMQ_FOUND})
-  list (APPEND executables testZmqClient.exe testZmqServer.exe eventDump.exe)
+  list (APPEND executables o2-readout-test-zmq-client o2-readout-test-zmq-server o2-readout-eventdump)
 endif()
 foreach (exe ${executables})
 	target_include_directories(${exe} PRIVATE ${READOUT_INCLUDE_DIRS})
 	target_link_libraries(${exe} PRIVATE ${READOUT_LINK_LIBRARIES})
 endforeach ()
 if (${ZMQ_FOUND})
-  list (APPEND executables readoutMonitor.exe)
+  list (APPEND executables o2-readout-monitor)
 endif()
 
 
@@ -427,7 +427,7 @@ endif()
 
 install(
         FILES readout.cfg readout-cru.cfg readout-dummy.cfg readout-player.cfg readout-dcs.cfg readout-qc.cfg readout-stfb-emu.cfg
-        DESTINATION ${CMAKE_INSTALL_PREFIX}/etc
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/etc/o2.d/readout
         PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
 )
 	
@@ -451,11 +451,11 @@ endforeach ()
 install(
 	PROGRAMS src/readoutAutoConfigure.tcl
 	DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
-	RENAME readoutAutoConfigure
+	RENAME o2-readout-config-generator
 )
 
 install(
 	PROGRAMS src/readoutConfigEditor.tcl
 	DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
-	RENAME readoutConfigEditor
+	RENAME o2-readout-config-editor
 )
