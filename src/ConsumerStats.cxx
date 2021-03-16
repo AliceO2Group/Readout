@@ -216,7 +216,7 @@ class ConsumerStats : public Consumer
     }
 
 #ifdef WITH_ZMQ
-    // configuration parameter: | consumer-stats-* | zmqPublishAddress | string | | If defined, readout statistics are also published periodically (at rate defined in monitoringUpdatePeriod) to a ZMQ server. Suggested value: tcp://127.0.0.1:6008 (for use by readoutMonitor.exe). |
+    // configuration parameter: | consumer-stats-* | zmqPublishAddress | string | | If defined, readout statistics are also published periodically (at rate defined in monitoringUpdatePeriod) to a ZMQ server. Suggested value: tcp://127.0.0.1:6008 (for use by o2-readout-monitor). |
     std::string cfgZmqPublishAddress = "";
     cfg.getOptionalValue<std::string>(cfgEntryPoint + ".zmqPublishAddress", cfgZmqPublishAddress);
     if (cfgZmqPublishAddress != "") {

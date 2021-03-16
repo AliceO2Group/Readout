@@ -58,7 +58,7 @@ set configurationParametersDescriptor {
 | consumer-stats-* | monitoringUpdatePeriod | double | 10 | Period of readout monitoring updates, in seconds. | 
 | consumer-stats-* | monitoringURI | string | | URI to connect O2 monitoring service. c.f. o2::monitoring. | 
 | consumer-stats-* | processMonitoringInterval | int | 0 | Period of process monitoring updates (O2 standard metrics). If zero (default), disabled.| 
-| consumer-stats-* | zmqPublishAddress | string | | If defined, readout statistics are also published periodically (at rate defined in monitoringUpdatePeriod) to a ZMQ server. Suggested value: tcp://127.0.0.1:6008 (for use by readoutMonitor.exe). | 
+| consumer-stats-* | zmqPublishAddress | string | | If defined, readout statistics are also published periodically (at rate defined in monitoringUpdatePeriod) to a ZMQ server. Suggested value: tcp://127.0.0.1:6008 (for use by o2-readout-monitor). | 
 | consumer-tcp-* | host | string | localhost | Remote server IP name to connect to. | 
 | consumer-tcp-* | ncx | int | 1 | Number of parallel streams (and threads) to use. The port number specified in 'port' parameter will be increased by 1 for each extra connection. | 
 | consumer-tcp-* | port | int | 10001 | Remote server TCP port number to connect to. | 
@@ -273,7 +273,7 @@ if {[file exists $configFile]} {
 ################################################################
 
 # Create Window
-wm title . "Readout.exe - configuration editor"
+wm title . "o2-readout configuration editor"
 wm protocol . WM_DELETE_WINDOW cmd_Quit
 
 set w .
