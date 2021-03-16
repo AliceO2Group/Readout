@@ -8,7 +8,7 @@ cmake_policy(VERSION ${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION})
 
 # define project
 project(
-  o2-readout
+  Readout
   DESCRIPTION "O2 Readout process"
   LANGUAGES NONE
 )
