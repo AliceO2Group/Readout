@@ -318,3 +318,6 @@ This file describes the main feature changes for each readout.exe released versi
 
 ## v1.6.1 - 09/03/2021
 - readoutAutoConf v2.1.1
+
+## next version
+- Adapted to follow o2-flp conventions: renaming of executables, libraries, paths.
