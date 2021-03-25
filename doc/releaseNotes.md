@@ -321,3 +321,4 @@ This file describes the main feature changes for each readout.exe released versi
 
 ## next version
 - Adapted to follow o2-flp conventions: renaming of executables, libraries, paths.
+- Fix file replay spurious warning on loop (was harmless and occuring only in some conditions).
