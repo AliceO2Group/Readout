@@ -704,7 +704,7 @@ int Readout::configure(const boost::property_tree::ptree& properties)
   }
 
   if (nConsumerFailures) {
-    theLog.log(LogErrorSupport_(3100), "Some consumers failed to initialize, exiting");
+    theLog.log(LogErrorSupport_(3100), "Some consumers failed to initialize");
     return -1;
   }
 
@@ -774,7 +774,7 @@ int Readout::configure(const boost::property_tree::ptree& properties)
   }
 
   if (nEquipmentFailures) {
-    theLog.log(LogErrorSupport_(3100), "Some equipments failed to initialize, exiting");
+    theLog.log(LogErrorSupport_(3100), "Some equipments failed to initialize");
     return -1;
   }
 
