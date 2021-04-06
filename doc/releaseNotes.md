@@ -322,3 +322,6 @@ This file describes the main feature changes for each readout.exe released versi
 ## v2.0.0 - 06/04/2021
 - Adapted to follow o2-flp conventions: renaming of executables, libraries, paths. In particular, _readout.exe_ is now _o2-readout-exe_.
 - Fix file replay spurious warning on loop (was harmless and occuring only in some conditions).
+
+## v2.0.1 - 06/04/2021
+- Added run number tag to monitoring metrics.

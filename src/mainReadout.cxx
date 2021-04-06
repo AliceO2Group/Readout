@@ -114,7 +114,7 @@ static void signalHandler(int signalId)
 
 // some globals needed in other components
 std::string occRole;     // OCC role name
-tRunNumber occRunNumber; // OCC run number
+tRunNumber occRunNumber = 0; // OCC run number
 
 class Readout
 {

@@ -32,6 +32,8 @@ using namespace o2::monitoring;
 // macro to get number of element in static array
 #define STATIC_ARRAY_ELEMENT_COUNT(x) sizeof(x) / sizeof(x[0])
 
+extern tRunNumber occRunNumber;
+
 class ConsumerStats : public Consumer
 {
  private:
@@ -316,6 +318,12 @@ class ConsumerStats : public Consumer
     Consumer::start();
     theLog.log(LogInfoDevel_(3006), "Starting stats clock");
     reset();
+
+    if (monitoringEnabled) {
+      // set run number
+      // run number = 0 means not set.
+      monitoringCollector->setRunNumber(occRunNumber);
+    }
 
     // publish once on start
     publishStats();
