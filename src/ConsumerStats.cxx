@@ -32,6 +32,8 @@ using namespace o2::monitoring;
 // macro to get number of element in static array
 #define STATIC_ARRAY_ELEMENT_COUNT(x) sizeof(x) / sizeof(x[0])
 
+extern tRunNumber occRunNumber;
+
 class ConsumerStats : public Consumer
 {
  private:
@@ -199,7 +201,10 @@ class ConsumerStats : public Consumer
       theLog.log(LogInfoDevel_(3002), "Monitoring enabled - period %.2fs - using %s", monitoringUpdatePeriod, configURI.c_str());
       monitoringCollector = MonitoringFactory::Get(configURI.c_str());
       monitoringCollector->addGlobalTag(tags::Key::Subsystem, tags::Value::Readout);
-
+      if (occRunNumber>0) {
+        monitoringCollector->setRunNumber(occRunNumber);
+      }
+      
       // enable process monitoring
       // configuration parameter: | consumer-stats-* | processMonitoringInterval | int | 0 | Period of process monitoring updates (O2 standard metrics). If zero (default), disabled.|
       int processMonitoringInterval = 0;
