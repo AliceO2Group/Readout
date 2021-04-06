@@ -326,8 +326,15 @@ DataBlockContainerReference ReadoutEquipmentPlayer::getNextBlock()
       // update header metadata
       b->header.dataSize = bytesPerPage;
     }
+    
+    // filter out empty pages
+    if (b->header.dataSize == 0) {
+      nextBlock = nullptr;
+    }
+
   }
 
+  
   return nextBlock;
 }
 
