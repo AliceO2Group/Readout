@@ -277,7 +277,7 @@ if {$err>0} {
 doLog "Generating config optimized for readout $mode operation"
 set config {}
 
-lappend config "# readout.exe configuration file
+lappend config "# Configuration file for o2-readout-exe
 # auto-generated v${version}
 # on ${hostname}
 # [clock format [clock seconds]]
@@ -525,7 +525,7 @@ set config [join $config ""]
 
 
 if {$configFile==""} {
-  doLog "readout.exe configuration template:"
+  doLog "o2-readout-exe configuration template:"
   puts $config
   
 } else {
