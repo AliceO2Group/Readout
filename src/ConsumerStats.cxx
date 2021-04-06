@@ -201,10 +201,7 @@ class ConsumerStats : public Consumer
       theLog.log(LogInfoDevel_(3002), "Monitoring enabled - period %.2fs - using %s", monitoringUpdatePeriod, configURI.c_str());
       monitoringCollector = MonitoringFactory::Get(configURI.c_str());
       monitoringCollector->addGlobalTag(tags::Key::Subsystem, tags::Value::Readout);
-      if (occRunNumber>0) {
-        monitoringCollector->setRunNumber(occRunNumber);
-      }
-      
+
       // enable process monitoring
       // configuration parameter: | consumer-stats-* | processMonitoringInterval | int | 0 | Period of process monitoring updates (O2 standard metrics). If zero (default), disabled.|
       int processMonitoringInterval = 0;
@@ -321,6 +318,12 @@ class ConsumerStats : public Consumer
     Consumer::start();
     theLog.log(LogInfoDevel_(3006), "Starting stats clock");
     reset();
+
+    if (monitoringEnabled) {
+      // set run number
+      // run number = 0 means not set.
+      monitoringCollector->setRunNumber(occRunNumber);
+    }
 
     // publish once on start
     publishStats();
