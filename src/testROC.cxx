@@ -10,6 +10,10 @@
 
 // a simple test program to readout ROC card
 
+// logs in console mode
+#include "TtyChecker.h"
+TtyChecker theTtyChecker;
+
 #include <InfoLogger/InfoLogger.hxx>
 #include <InfoLogger/InfoLoggerMacros.hxx>
 using namespace AliceO2::InfoLogger;

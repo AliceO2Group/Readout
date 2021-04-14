@@ -5,6 +5,10 @@
 #include <zmq.h>
 #include "ReadoutStats.h"
 
+// logs in console mode
+#include "TtyChecker.h"
+TtyChecker theTtyChecker;
+
 // definition of a global for logging
 using namespace AliceO2::InfoLogger;
 InfoLogger theLog;
