@@ -15,13 +15,15 @@
 #include "MemoryBank.h"
 #include "MemoryBankManager.h"
 
+// logs in console mode
+#include "TtyChecker.h"
+TtyChecker theTtyChecker;
+
 #include <InfoLogger/InfoLogger.hxx>
 AliceO2::InfoLogger::InfoLogger theLog;
 
 int main()
 {
-  setenv("INFOLOGGER_MODE", "stdout", 1);
-
   MemoryBankManager bm;
 
   size_t poolPages = 100;

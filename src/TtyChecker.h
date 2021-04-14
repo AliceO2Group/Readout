@@ -16,6 +16,7 @@
 #pragma once
 
 #include <termios.h>
+#include <unistd.h>
 
 class TtyChecker
 {
@@ -28,9 +29,9 @@ class TtyChecker
   {
     // if launched from terminal, force logs to terminal
     if (isatty(fileno(stdin))) {
-      if (getenv("INFOLOGGER_MODE") == nullptr) {
-        printf("Launching from terminal, logging here\n");
-        setenv("INFOLOGGER_MODE", "stdout", 1);
+      if (getenv("O2_INFOLOGGER_MODE") == nullptr) {
+        //printf("Launching from terminal, logging here\n");
+        setenv("O2_INFOLOGGER_MODE", "stdout", 1);
       }
       isInteractive = true;
     }
