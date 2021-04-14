@@ -17,6 +17,8 @@
 
 #include <termios.h>
 #include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 class TtyChecker
 {
