@@ -325,3 +325,6 @@ This file describes the main feature changes for each readout.exe released versi
 
 ## v2.0.1 - 06/04/2021
 - Added run number tag to monitoring metrics.
+
+## v2.0.2 - 14/04/2021
+- Fix for automatic logging to console.
