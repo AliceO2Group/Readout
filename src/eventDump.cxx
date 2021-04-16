@@ -18,7 +18,9 @@ int main(int argc, const char* argv[])
   std::string port = "tcp://127.0.0.1:50001"; // ZMQ server address
   int pageSize = 2 * 1024L * 1024L;           // ZMQ RX buffer size, should be big enough to receive a full superpage
   int maxRdhPerPage = 0;                      // set maximum number of RDH printed per page. 0 means all.
-
+  int dumpPayload = 0;                        // when set, dump full payload in hexa format
+  int dumpRdh = 1;                            // when set, dump RDH
+  
   // parse options
   for (int i = 1; i < argc; i++) {
     const char* option = argv[i];
@@ -39,11 +41,18 @@ int main(int argc, const char* argv[])
     if (key == "maxRdhPerPage") {
       maxRdhPerPage = atoi(value.c_str());
     }
+    if (key == "dumpPayload") {
+      dumpPayload = atoi(value.c_str());
+    }
+    if (key == "dumpRdh") {
+      dumpRdh = atoi(value.c_str());
+    }
   }
 
   theLog.log(LogInfoOps, "Starting eventDump");
   theLog.log(LogInfoDevel, "Connecting to %s, page size = %d, maxRdhPerPage = %d", port.c_str(), pageSize, maxRdhPerPage);
-  theLog.log(LogInfoOps, "Interactive keyboard commands: (s) start (d) stop (n) next page (x) exit");
+  theLog.log(LogInfoDevel, "dumpRdh = %d, dumpPayload = %d", dumpRdh, dumpPayload);
+  theLog.log(LogInfoOps, "Interactive keyboard commands: (s) start (d) stop (n) next page (x) exit (p) toggle dumpPayload (r) toggle dumpRdh");
 
   std::unique_ptr<ZmqClient> tfClient;
   tfClient = std::make_unique<ZmqClient>(port, pageSize);
@@ -72,7 +81,19 @@ int main(int argc, const char* argv[])
       }
       void* rdh = &((uint8_t*)msg)[pageOffset];
       RdhHandle h(rdh);
-      h.dumpRdh(pageOffset, 1);
+      if (dumpRdh) {
+        h.dumpRdh(pageOffset, 1);
+      }
+      
+      if (dumpPayload) {
+	for (unsigned int k = 0; k < h.getMemorySize(); k++) {
+	  if ((k%16) == 0 ) {
+	    printf("\n%08X    ", (unsigned int) (pageOffset + k));
+	  }
+	  printf("  %02X", ((unsigned char *)rdh)[k]);
+	}
+	printf("\n\n");
+      }
       // go to next RDH
       uint16_t offsetNextPacket = h.getOffsetNextPacket();
       if (offsetNextPacket == 0) {
@@ -112,6 +133,22 @@ int main(int argc, const char* argv[])
         case 'd':
           tfClient->setPause(1);
           break;
+	case 'p':
+	  if (dumpPayload) {
+	    dumpPayload = 0;
+	  } else {
+	    dumpPayload = 1;
+	  }
+	  theLog.log(LogInfoOps, "dumpPayload = %d", dumpPayload);
+	  break;
+	case 'r':
+	  if (dumpRdh) {
+	    dumpRdh = 0;
+	  } else {
+	    dumpRdh = 1;
+	  }
+	  theLog.log(LogInfoOps, "dumpRdh = %d", dumpRdh);
+	  break;
         default:
           break;
       }

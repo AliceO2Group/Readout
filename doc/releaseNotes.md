@@ -328,3 +328,6 @@ This file describes the main feature changes for each readout.exe released versi
 
 ## v2.0.2 - 14/04/2021
 - Fix for automatic logging to console.
+
+## next version
+- o2-readout-eventdump: added options dumpRdh / dumpPayload.
