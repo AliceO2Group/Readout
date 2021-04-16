@@ -223,15 +223,48 @@ List of options:
    
 ## EventDump
 
-   Provide means to check/display content of online data taken with readout. It needs a consumer defined in readout ocnfig with consumerType=zmq and an address (e.g. address=ipc:///tmp/readout-out).
-   The interactive client can then be started with parameter port=(same port has given in consumer address) and pageSize=(maximum super page size configured for readout equipments).
-   Available keyboard commands are: (s) start page dump continuous (d) stop page dump (n) dump next page only (x) exit.
-   Each page received is printed in the console (selection of RDH fields only, no payload).
-   
-   Optional parameters: (key=value format)
-     - port: ZMQ address to connect.
-     - pageSize: maximum page size to be received.
-     - maxRdhPerPage: number of RDH to print for each page (0 = all).
+This is an interactive program providing means to check/display content of online data taken with readout. It needs a special consumer defined in Readout configuration, to publish data pages over ZeroMQ:
+
+```
+[consumer-eventdump]
+consumerType=zmq
+address=ipc:///tmp/o2-readout-out
+```
+
+The `address` parameter can be of any sort accepted by ZeroMQ, and is used to serve data to (possibly multiple) EventDump clients.
+Example valid values: 
+
+  * `ipc:///tmp/o2-readout-out` (local access only, beware of file permissions if running under different accounts)
+  * `tcp://127.0.0.1:50001` (for local/remote access, if firewall allows)
+
+When enabled, Readout will copy the datapages to connected clients (copy overhead, but not blocking for main data stream).
+
+The interactive EventDump client can be started with parameter `port=...` (use the same as readout consumer address parameter) and `pageSize=...` (maximum super page size configured for readout equipments). Example launch command:
+
+```
+  o2-readout-eventDump port=ipc:///tmp/o2-readout-out
+```
+
+Once running, the program accepts the following interactive keyboard commands:
+
+  * (s) start page dump continuous
+  * (d) stop page dump
+  * (n) dump next page only
+  * (x) exit
+  * (p) toggle payload hexa dump on/off
+  * (r) toggle RDH dump on/off
+  
+Each page received is printed in the console (a selection of RDH fields, and possibly full payload in hexa format when enabled).
+
+Optional parameters for EventDump client: (key=value format on the command line)
+
+| Key name | Default value | Description |
+| -- | -- | -- |
+| port | tcp://127.0.0.1:50001 | address of ZMQ server providing data (as configured in Readout) |
+| pageSize | 2097152 | maximum page size to be received (set a value compatible with the maximum memoryPoolPageSize parameter found in Readout configuration) |
+| maxRdhPerPage | 0 | number of RDH packets to print for each page (0 = all) |
+| dumpPayload | 0 | when set, enable the hexadecimal dump of payload |
+| dumpRdh | 1 | when set, enable the human-readable dump of RDH |
 
 
 
