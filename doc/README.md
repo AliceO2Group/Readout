@@ -204,8 +204,7 @@ o2-readout-monitor
 
 ## RawReader
 
- Provides means to check/display content of data files recorded with readout (consumerType=fileRecorder). To be usable with readRaw.exe, these files must be created with the
- consumer option dataBlockHeaderEnabled=1, so that file content can be accessed page-by-page.
+ Provides means to check/display content of data files recorded with readout (consumerType=fileRecorder).
   
 ```
 Usage: o2-readout-rawreader [rawFilePath] [options]
