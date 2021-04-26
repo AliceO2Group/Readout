@@ -18,6 +18,15 @@ The following executables, presented with the _nicknames_ used below, are part o
 There are also some readout internal test components, not used in normal runtime conditions, for development and debugging purpose (_o2-readout-test-*_)
 The source code repository is [https://github.com/AliceO2Group/Readout].
 
+## _Setup_
+
+To use any of the tools described here, when using the FLP suite binary packages, you need first to load the correct software environment with:
+
+```
+module load Readout
+```
+
+
 ## _Readout_
 
 A detailed description of _Readout_ is available in the CHEP2018 paper [Readout Software for the Alice Integrated Online-Offline (O2) System](https://doi.org/10.1051/epjconf/201921401041).
@@ -68,7 +77,7 @@ The consumers are threads making use of the data. The following have been implem
   - ConsumerFairMQChannel : pushes data outside readout process as a FairMQ channel - with the WP5 format. This consumer may also create shared memory banks (see Memory management) to be used by equipments.
   - ConsumerTCP: pushes the raw data payload by TCP/IP socket(s). This is meant to be used for network tests, not for production (FMQ is the supported O2 transport mechanism).
   - ConsumerRDMA: pushes the raw data payload by RDMA with ibVerbs library. This is meant to be used for network tests, not for production (FMQ is the supported O2 transport mechanism).
-  - ConsumerDataProcessor: allows to call a user-provided function (dynamically loaded at runtime from library) on each data page produced by readout. See ConsumerDataProcessor.cxx for function footprint and ProcessorZlibCompress.cxx for example compression implementation. Note that the option 'consumerOutput' can be useful to forward the result of this processing function to another consumer (e.g. file recorder, transport, etc). The following processor libraries are provided with readout: libO2ReadoutProcessorZlibCompress, libO2ReadoutProcessorLZ4Compress.
+  - ConsumerDataProcessor: allows to call a user-provided function (dynamically loaded at runtime from library) on each data page produced by readout. See ConsumerDataProcessor.cxx for function footprint and ProcessorZlibCompress.cxx for example compression implementation. Note that the option 'consumerOutput' can be useful to forward the result of this processing function to another consumer (e.g. file recorder, transport, etc). The following processor libraries are provided with Readout: libO2ReadoutProcessorZlibCompress, libO2ReadoutProcessorLZ4Compress.
   - ConsumerZMQ: pushes raw data payload by ZMQ. Used to push data to _EventDump_.
   
 They all follow the interface defined in the base Consumer Class.
@@ -204,8 +213,7 @@ o2-readout-monitor
 
 ## RawReader
 
- Provides means to check/display content of data files recorded with readout (consumerType=fileRecorder). To be usable with readRaw.exe, these files must be created with the
- consumer option dataBlockHeaderEnabled=1, so that file content can be accessed page-by-page.
+This is a console utility to check/display content of data files recorded with Readout (consumerType=fileRecorder).
   
 ```
 Usage: o2-readout-rawreader [rawFilePath] [options]
@@ -219,11 +227,16 @@ List of options:
      dumpData=(int) : dump the data pages. If -1, all bytes. Otherwise, the first bytes only, as specified.
 ```
 
+Example launch command:
 
+```
+o2-readout-rawreader /tmp/data.raw dumpRDH=1 dumpData=-1 | less
+```
+   
    
 ## EventDump
 
-This is an interactive program providing means to check/display content of online data taken with readout. It needs a special consumer defined in Readout configuration, to publish data pages over ZeroMQ:
+This is an interactive program to check/display content of online data taken with Readout. It needs a special consumer defined in Readout configuration, to publish data pages over ZeroMQ:
 
 ```
 [consumer-eventdump]
@@ -260,11 +273,11 @@ Optional parameters for EventDump client: (key=value format on the command line)
 
 | Key name | Default value | Description |
 | -- | -- | -- |
-| port | tcp://127.0.0.1:50001 | address of ZMQ server providing data (as configured in Readout) |
-| pageSize | 2097152 | maximum page size to be received (set a value compatible with the maximum memoryPoolPageSize parameter found in Readout configuration) |
-| maxRdhPerPage | 0 | number of RDH packets to print for each page (0 = all) |
-| dumpPayload | 0 | when set, enable the hexadecimal dump of payload |
-| dumpRdh | 1 | when set, enable the human-readable dump of RDH |
+| port | tcp://127.0.0.1:50001 | Address of ZMQ server providing data (as configured in Readout) |
+| pageSize | 2097152 | Maximum page size to be received (set a value compatible with the maximum memoryPoolPageSize parameter found in Readout configuration) |
+| maxRdhPerPage | 0 | Number of RDH packets to print for each page (0 = all) |
+| dumpPayload | 0 | When set, enable the hexadecimal dump of payload. Can also be changed at runtime. |
+| dumpRdh | 1 | When set, enable the human-readable dump of RDH. Can also be changed at runtime. |
 
 
 
