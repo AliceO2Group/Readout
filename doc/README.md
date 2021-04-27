@@ -336,6 +336,9 @@ Optionally, the data pages in recorded file might be interleaved with internal r
 but this is used mainly for debugging and not recommended for production, as it's an internal
 format subject to change without notice.
 
+The file names used for recording are fully configurable: see 'consumer-fileRecorder-*.fileName' syntax in the [reference guide](configurationParameters.md). Data can be distributed to different files, based on link id (%l) and equipment id (%i).
+A timestamp can be included (%T). Environment variables can also be used as part of the file name, with ${MYVAR} syntax. In particular, the variable ${O2_RUN} can be used to include the run number in the recorded file name (when readout is started with AliECS, or if another external component defines it):
+```fileName=/tmp/data-${O2_RUN}-%i-%l.raw```
 
 ### File replay
 
