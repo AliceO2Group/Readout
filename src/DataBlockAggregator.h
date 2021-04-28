@@ -48,7 +48,11 @@ class DataBlockSlicer
   // returns the number of slices flushed
   int completeSliceOnTimeout(double timestamp);
 
-  int slicerId = -1;
+  // reset all internal variables/state
+  // buffered data is released
+  void reset();
+  
+  int slicerId;
 
  private:
   // data source id used to group data
@@ -106,6 +110,8 @@ class DataBlockAggregator
   bool enableStfBuilding = 0; // when set, STF are buffered until all sources have participated. Data from late sources are discarded.
   double cfgStfTimeout = 0;   // timeout used with enableStfBuilding
   int nSources = 0;           // accounted number of sources, on first timeframe
+
+  void reset(); // reset all internal buffers, counters and states
 
  private:
   std::vector<std::shared_ptr<AliceO2::Common::Fifo<DataBlockContainerReference>>> inputs;
