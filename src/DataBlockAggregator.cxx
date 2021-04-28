@@ -48,11 +48,7 @@ Thread::CallbackResult DataBlockAggregator::threadCallback(void* arg)
 
 void DataBlockAggregator::start()
 {
-  for (unsigned int ix = 0; ix < inputs.size(); ix++) {
-    slicers[ix].slicerId = ix;
-  }
-  doFlush = 0;
-  timeNow.reset();
+  reset();
   aggregateThread->start();
 }
 
@@ -79,6 +75,8 @@ void DataBlockAggregator::stop(int waitStop)
     bc->clear();
   }
   output->clear();
+  
+  reset();
 }
 
 Thread::CallbackResult DataBlockAggregator::executeCallback()
@@ -245,7 +243,9 @@ Thread::CallbackResult DataBlockAggregator::executeCallback()
   return Thread::CallbackResult::Ok;
 }
 
-DataBlockSlicer::DataBlockSlicer() {}
+DataBlockSlicer::DataBlockSlicer() {
+  reset();
+}
 
 DataBlockSlicer::~DataBlockSlicer() {}
 
@@ -328,4 +328,47 @@ int DataBlockSlicer::completeSliceOnTimeout(double timestamp)
     }
   }
   return nFlushed;
+}
+
+void DataBlockSlicer::reset()
+{
+  slicerId = -1;
+  
+  // empty buffers
+  while(!slices.empty()) {
+    auto bc = slices.front();
+    bc->clear();
+    slices.pop();
+  }
+  for (auto& s : partialSlices) {
+    s.second.currentDataSet = nullptr;
+  }
+  partialSlices.clear();
+}
+
+void DataBlockAggregator::reset()
+{
+  // reset slicers
+  for (unsigned int ix = 0; ix < inputs.size(); ix++) {
+    slicers[ix].reset();
+    slicers[ix].slicerId = ix;
+  }
+  
+  // reset buffers
+  for(auto const & m : stfBuffer) {
+    auto vsstf = m.second.sstf;
+    for (auto& sstf : vsstf) {
+      sstf.data = nullptr;
+    }
+    vsstf.clear();
+  }
+  stfBuffer.clear();
+  
+  // reset counters
+  doFlush = 0;
+  timeNow.reset();
+  nSources = 0;
+  nextIndex = 0;
+  totalBlocksIn = 0;
+  lastTimeframeId = 0;
 }
