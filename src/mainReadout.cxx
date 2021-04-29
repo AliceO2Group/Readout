@@ -993,6 +993,7 @@ int Readout::stop()
   if (cfgFlushEquipmentTimeout > 0) {
     usleep(cfgFlushEquipmentTimeout * 1000000 / 2);
     agg->doFlush = true;
+    theLog.log(LogInfoDevel, "Flushing aggregator");
   }
 
   // wait main thread completed
