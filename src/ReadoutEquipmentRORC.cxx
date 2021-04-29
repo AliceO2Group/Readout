@@ -303,42 +303,52 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock()
   // channel->fillSuperpages();
 
   // check for completed page
-  if ((channel->getReadyQueueSize() > 0)) {
-    // get next page from FIFO
-    auto superpage = channel->popSuperpage();
-    void* mpPageAddress = (void*)(superpage.getUserData());
-    if (superpage.isReady()) {
-      std::shared_ptr<DataBlockContainer> d = nullptr;
-      // printf ("received a page with %d bytes - isFilled=%d isREady=%d\n", (int)superpage.getReceived(),(int)superpage.isFilled(),(int)superpage.isReady());
-      if (!mp->isPageValid(mpPageAddress)) {
-        theLog.log(LogWarningSupport_(3008), "Got an invalid page from RORC : %p", mpPageAddress);
-      } else {
-        try {
-          // there is some space reserved at beginning of page for a DataBlock
-          d = mp->getNewDataBlockContainer(mpPageAddress);
-        } catch (...) {
-        }
-      }
-      if (d != nullptr) {
-        statsNumberOfPages++;
-        nextBlock = d;
-        d->getData()->header.dataSize = superpage.getReceived();
+  const int maxLoop = 2000;
+  for(int loop = 0; loop < maxLoop; loop++) {
+    bool doLoop = 0;
+    if ((channel->getReadyQueueSize() > 0)) {
+      // get next page from FIFO
+      auto superpage = channel->popSuperpage();
+      void* mpPageAddress = (void*)(superpage.getUserData());
+      if (superpage.isReady()) {
+	std::shared_ptr<DataBlockContainer> d = nullptr;
+	// printf ("received a page with %d bytes - isFilled=%d isREady=%d\n", (int)superpage.getReceived(),(int)superpage.isFilled(),(int)superpage.isReady());
+	if (!mp->isPageValid(mpPageAddress)) {
+          theLog.log(LogWarningSupport_(3008), "Got an invalid page from RORC : %p", mpPageAddress);
+	} else {
+          try {
+            // there is some space reserved at beginning of page for a DataBlock
+            d = mp->getNewDataBlockContainer(mpPageAddress);
+          } catch (...) {
+          }
+	}
+	if (d != nullptr) {
+          statsNumberOfPages++;
+          nextBlock = d;
+          d->getData()->header.dataSize = superpage.getReceived();
 
-        // printf("\nPage %llu\n",statsNumberOfPages);
+          // printf("\nPage %llu\n",statsNumberOfPages);
+	} else {
+          // there is a ready superpage, but we are not able to keep it
+          statsNumberOfPagesLost++;
+	}
       } else {
-        // there is a ready superpage, but we are not able to keep it
-        statsNumberOfPagesLost++;
+	// these are leftover pages not ready, simply discard them
+	statsNumberOfPagesEmpty++;
       }
-    } else {
-      // these are leftover pages not ready, simply discard them
-      statsNumberOfPagesEmpty++;
+
+      if (nextBlock == nullptr) {
+	// the superpage is not used, release it
+	mp->releasePage(mpPageAddress);
+	// try again to get a non-empty page, without sleeping idle
+	doLoop = 1;
+      }
     }
-
-    if (nextBlock == nullptr) {
-      // the superpage is not used, release it
-      mp->releasePage(mpPageAddress);
+    if (!doLoop) {
+      break;
     }
   }
+
   return nextBlock;
 }
 

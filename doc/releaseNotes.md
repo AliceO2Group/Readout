@@ -332,4 +332,5 @@ This file describes the main feature changes for each readout.exe released versi
 ## next version
 - o2-readout-eventdump: added options dumpRdh / dumpPayload.
 - o2-readout-rawreader: added print of RDH field systemId.
-- fix for aggregator start/stop sequences: extended cleanup.
+- Aggregator: extended cleanup (fix start/stop cycles), TF flushing (fix dicard warning on stop when multiple euipments).
+- RORC equipment: empty pages flushing mechanism improved (fix pages in use stats after stop when idleSleepTime is large).

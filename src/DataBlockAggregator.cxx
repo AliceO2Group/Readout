@@ -184,10 +184,11 @@ Thread::CallbackResult DataBlockAggregator::executeCallback()
       }
 
       nSlicesOut++;
-      nextIndex = i + 1;
       // printf("Pushed STF : %d chunks\n",(int)bcv->size());
     }
   }
+  // on next iteration, start from a different input to balance equipments emptying order
+  nextIndex = (nextIndex + 1) % nInputs;
 
   // in TF buffering mode, are there some complete timeframes?
   if (enableStfBuilding) {
@@ -197,7 +198,7 @@ Thread::CallbackResult DataBlockAggregator::executeCallback()
     while (it != stfBuffer.end()) {
       double age = now - it->second.updateTime;
       if ((age >= cfgStfTimeout) || (executeFlush)) {
-        // printf("pushing age %.3f tf %d -> %d sources\n",age,it->second.tfId,it->second.sstf.size());
+        // printf("pushing age %.3f tf %d -> %d sources\n",age,(int)it->second.tfId,(int)it->second.sstf.size());
         double tmin = it->second.updateTime;
         double tmax = it->second.updateTime;
         int ix = 0;
