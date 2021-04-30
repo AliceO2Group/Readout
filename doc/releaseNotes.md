@@ -336,3 +336,4 @@ This file describes the main feature changes for each readout.exe released versi
 - RORC equipment: empty pages flushing mechanism improved (fix pages in use stats after stop when idleSleepTime is large).
 - receiver-fmq: added option releaseDelay, to add a delay before releasing data pages received.
 - o2-readout-monitor: improved formatting.
+- consumer-stats: publish/print statistics of memory pages locked by STFB.
