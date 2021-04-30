@@ -54,7 +54,7 @@ long long ReadoutUtils::getNumberOfBytesFromString(const char* inputString)
 
 std::string ReadoutUtils::NumberOfBytesToString(double value, const char* suffix)
 {
-  const char* prefixes[] = { "", "k", "M", "G", "T", "P" };
+  const char* prefixes[] = { " ", "k", "M", "G", "T", "P" };
   int maxPrefixIndex = STATIC_ARRAY_ELEMENT_COUNT(prefixes) - 1;
   int prefixIndex = log(value) / log(1024);
   if (prefixIndex > maxPrefixIndex) {

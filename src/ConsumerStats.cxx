@@ -54,7 +54,6 @@ class ConsumerStats : public Consumer
 
   struct rusage previousUsage;    // variable to keep track of last getrusage() result
   struct rusage currentUsage;     // variable to keep track of last getrusage() result
-  double timePreviousGetrusage;   // variable storing 'runningTime' value when getrusage was previously called (0 if not called yet)
   double cpuUsedOverLastInterval; // average CPU usage over latest measurement interval
 
   // per-equipment statistics
@@ -84,7 +83,6 @@ class ConsumerStats : public Consumer
     counterBytesDiff = 0;
     elapsedTime = 0.0;
     intervalStartTime = 0;
-    timePreviousGetrusage = 0;
     cpuUsedOverLastInterval = 0.0;
     equipmentStatsMap.clear();
     monitoringUpdateTimer.reset(monitoringUpdatePeriod * 1000000);
@@ -102,31 +100,42 @@ class ConsumerStats : public Consumer
 
   void publishStats()
   {
-
+    // time for current interval
     double now = runningTime.getTime();
+    double deltaT = 0.0;  // time elapsed since last call, in seconds
+    if (intervalStartTime) {
+      deltaT = now - intervalStartTime;
+    }
+    intervalStartTime = now;
+
+    // fraction CPU used	
     getrusage(RUSAGE_SELF, &currentUsage);
-    if (timePreviousGetrusage != 0) {
-      double tDiff = (now - timePreviousGetrusage) * 1000000.0; // delta time in microseconds
-      double fractionCpuUsed = (currentUsage.ru_utime.tv_sec * 1000000.0 + currentUsage.ru_utime.tv_usec - (previousUsage.ru_utime.tv_sec * 1000000.0 + previousUsage.ru_utime.tv_usec) + currentUsage.ru_stime.tv_sec * 1000000.0 + currentUsage.ru_stime.tv_usec - (previousUsage.ru_stime.tv_sec * 1000000.0 + previousUsage.ru_stime.tv_usec)) / tDiff;
+    if (deltaT > 0) {
+      double fractionCpuUsed = (currentUsage.ru_utime.tv_sec * 1000000.0 + currentUsage.ru_utime.tv_usec - (previousUsage.ru_utime.tv_sec * 1000000.0 + previousUsage.ru_utime.tv_usec) + currentUsage.ru_stime.tv_sec * 1000000.0 + currentUsage.ru_stime.tv_usec - (previousUsage.ru_stime.tv_sec * 1000000.0 + previousUsage.ru_stime.tv_usec)) / (deltaT * 1000000.0);
       if (monitoringEnabled) {
         sendMetricNoException({ fractionCpuUsed * 100, "readout.percentCpuUsed" });
         // theLog.log(LogDebugTrace,"CPU used = %.2f %%",100*fractionCpuUsed);
       }
     }
-    timePreviousGetrusage = now;
     previousUsage = currentUsage;
     // todo: per thread? -> add feature in Thread class
 
-    if (consoleUpdate) {
-      if (intervalStartTime) {
-        double intervalTime = now - intervalStartTime;
-        if (intervalTime > 0) {
-          theLog.log(LogInfoOps_(3003), "Last interval (%.2fs): blocksRx=%llu, block rate=%.2lf, bytesRx=%llu, rate=%s", intervalTime, (unsigned long long)counterBlocksDiff, counterBlocksDiff / intervalTime, (unsigned long long)counterBytesDiff, NumberOfBytesToString(counterBytesDiff * 8 / intervalTime, "b/s", 1000).c_str());
-        }
-      }
-      intervalStartTime = now;
+    // snapshot of current counters
+    ReadoutStatsCounters snapshot;
+    memcpy(&snapshot, &gReadoutStats.counters, sizeof(snapshot));
+    snapshot.timestamp = time(NULL);
+    gReadoutStats.counters.pagesPendingFairMQtime = 0;
+    gReadoutStats.counters.pagesPendingFairMQreleased = 0;
+    unsigned long long nRfmq = snapshot.pagesPendingFairMQreleased.load();
+    double avgTfmq = 0.0;
+    double rRfmq = 0.0;
+    if (nRfmq) {
+      avgTfmq = (snapshot.pagesPendingFairMQtime.load() / nRfmq) / (1000000.0);
     }
-
+    if (deltaT > 0) {
+      rRfmq = nRfmq / deltaT;
+    }
+    
     if (monitoringEnabled) {
       // todo: support for long long types
       // https://alice.its.cern.ch/jira/browse/FLPPROT-69
@@ -143,16 +152,26 @@ class ConsumerStats : public Consumer
         // sendMetricNoException(Metric{it.second.counterBytesPayload, "readout.BytesEquipment"}.addTags({(unsigned int)it.first}), DerivedMetricMode::RATE);
         sendMetricNoException(Metric{ it.second.counterBytesPayload, metricName }, DerivedMetricMode::RATE);
       }
+      
+      // FMQ stats
+      sendMetricNoException({ snapshot.pagesPendingFairMQ, "readout.stfbMemoryPagesLocked"});
+      sendMetricNoException({ avgTfmq, "readout.stfbMemoryPagesReleaseLatency"});
+      sendMetricNoException({ rRfmq, "readout.stfbMemoryPagesReleaseRate"});
     }
 
 #ifdef WITH_ZMQ
     if (zmqEnabled) {
       gReadoutStats.counters.timestamp = time(NULL);
-      zmq_send(zmqHandle, &gReadoutStats.counters, sizeof(gReadoutStats.counters), ZMQ_DONTWAIT);
-      gReadoutStats.counters.pagesPendingFairMQtime = 0;
-      gReadoutStats.counters.pagesPendingFairMQreleased = 0;
+      zmq_send(zmqHandle, &snapshot, sizeof(snapshot), ZMQ_DONTWAIT);
     }
 #endif
+
+    if (consoleUpdate) {
+      if (deltaT > 0) {
+        theLog.log(LogInfoOps_(3003), "Last interval (%.2fs): blocksRx=%llu, block rate=%.2lf, bytesRx=%llu, rate=%s", deltaT, (unsigned long long)counterBlocksDiff, counterBlocksDiff / deltaT, (unsigned long long)counterBytesDiff, NumberOfBytesToString(counterBytesDiff * 8 / deltaT, "b/s", 1000).c_str());
+        theLog.log(LogInfoOps_(3003), "STFB locked pages: current=%llu, release rate=%.2lf Hz, latency=%.3lf s", nRfmq, rRfmq, avgTfmq);
+      }
+    }
 
     counterBytesDiff = 0;
     counterBlocksDiff = 0;

@@ -334,3 +334,6 @@ This file describes the main feature changes for each readout.exe released versi
 - o2-readout-rawreader: added print of RDH field systemId.
 - Aggregator: extended cleanup (fix start/stop cycles), TF flushing (fix dicard warning on stop when multiple euipments).
 - RORC equipment: empty pages flushing mechanism improved (fix pages in use stats after stop when idleSleepTime is large).
+- receiver-fmq: added option releaseDelay, to add a delay before releasing data pages received.
+- o2-readout-monitor: improved formatting.
+- consumer-stats: publish/print statistics of memory pages locked by STFB.

@@ -278,7 +278,11 @@ int main(int argc, const char** argv)
   int cfgDumpSTF = 0;
   cfg.getOptionalValue<int>(cfgEntryPoint + ".dumpSTF", cfgDumpSTF, 0);
 
-  theLog.log(LogInfoDevel_(3002), "dumpRDH = %d dumpTF = %d dump STF = %d", cfgDumpRDH, cfgDumpTF, cfgDumpSTF);
+  // configuration parameter: | receiverFMQ | releaseDelay | double | 0 | When set, the messages received are not immediately released, but kept for specified time (s).|
+  double cfgReleaseDelay = 0;
+  cfg.getOptionalValue<double>(cfgEntryPoint + ".releaseDelay", cfgReleaseDelay, 0);  
+
+  theLog.log(LogInfoDevel_(3002), "dumpRDH = %d dumpTF = %d dump STF = %d releaseDelay = %.3f", cfgDumpRDH, cfgDumpTF, cfgDumpSTF, cfgReleaseDelay);
 
   // create FMQ receiving channel
   theLog.log(LogInfoDevel_(3002), "Creating FMQ RX channel %s type %s @ %s", cfgChannelName.c_str(), cfgChannelType.c_str(), cfgChannelAddress.c_str());
@@ -312,11 +316,14 @@ int main(int argc, const char** argv)
     isMultiPart = true;
   }
 
+  std::queue<std::pair<std::vector<FairMQMessagePtr>, double>> delayedMsgBuffer; // storing pairs of FMQ msg vector / timestamp for delayed releasing  
+  AliceO2::Common::Timer delayedClock;
+   
   theLog.log(LogInfoDevel_(3006), "Entering receiving loop");
 
   for (; !ShutdownRequest;) {
     auto msg = pull.NewMessage();
-    int timeout = 1000;
+    int timeout = 10;
 
     if (isMultiPart) {
       std::vector<FairMQMessagePtr> msgParts;
@@ -462,7 +469,14 @@ int main(int argc, const char** argv)
             }
           }
         }
+
+        // delay messages deletion
+	if (cfgReleaseDelay>0) {
+          delayedMsgBuffer.push({std::move(msgParts), delayedClock.getTime()});
+	}
+
       }
+            
     } else {
       if (pull.Receive(msg, 0) > 0) {
         if (msg->GetSize() == 0) {
@@ -479,6 +493,7 @@ int main(int argc, const char** argv)
     // std::cout << " received message of size " << msg->GetSize() << std::endl;
     // access data via inputMsg->GetData()
 
+
     // print regularly the current throughput
     if (runningTime.isTimeout()) {
       double t = runningTime.getTime();
@@ -490,6 +505,18 @@ int main(int argc, const char** argv)
       nMsg = 0;
       nMsgParts = 0;
       nBytes = 0;
+    }
+    
+    if (cfgReleaseDelay>0) {
+      double now = delayedClock.getTime();
+      while (!delayedMsgBuffer.empty()) {
+        double dt = now - delayedMsgBuffer.front().second;
+        if ( dt >= cfgReleaseDelay ) {
+	  delayedMsgBuffer.pop();
+	} else {
+	  break;
+	}
+      }
     }
   }
 

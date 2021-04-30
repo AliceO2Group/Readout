@@ -155,4 +155,5 @@ The parameters related to 3rd-party libraries are described here for convenience
 | receiverFMQ | dumpRDH | int | 0 | When set, the RDH of data received are printed (needs decodingMode=readout).| 
 | receiverFMQ | dumpSTF | int | 0 | When set, the STF header of data received are printed (needs decodingMode=stfHbf).| 
 | receiverFMQ | dumpTF | int | 0 | When set, a message is printed when a new timeframe is received. If the value is bigger than one, this specifies a periodic interval between TF print after the first one. (e.g. 100 would print TF 1, 100, 200, etc). | 
+| receiverFMQ | releaseDelay | double | 0 | When set, the messages received are not immediately released, but kept for specified time (s).|
 | receiverFMQ | transportType | string | shmem | c.f. parameter with same name in consumer-FairMQchannel-* | 
