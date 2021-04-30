@@ -39,6 +39,56 @@ class ZmqReadoutMonitorServer : public ZmqServer {
 };
 */
 
+std::string getStringTime(double timestamp) {
+  time_t t=(time_t)timestamp;
+  struct tm tm_str;
+  localtime_r(&t, &tm_str);
+  // double fractionOfSecond = timestamp - t;
+  int ix=0;
+  const int bufferSize = 64;
+  char buffer[bufferSize];  
+  ix += strftime(&buffer[ix], bufferSize - ix, "%Y-%m-%d %T", &tm_str);
+  // ix += snprintf(&buffer[ix], bufferSize - ix, ".%.3lf", fractionOfSecond);
+  if (ix > bufferSize) {
+    ix = bufferSize;
+  }
+  buffer[ix]=0;
+  return buffer;
+}
+
+// macro to get number of element in static array
+#define STATIC_ARRAY_ELEMENT_COUNT(x) sizeof(x) / sizeof(x[0])
+
+std::string NumberOfBytesToString(double value, const char* suffix)
+{
+  const char* prefixes[] = { " ", "k", "M", "G", "T", "P" };
+  int maxPrefixIndex = STATIC_ARRAY_ELEMENT_COUNT(prefixes) - 1;
+  int prefixIndex = log(value) / log(1024);
+  if (prefixIndex > maxPrefixIndex) {
+    prefixIndex = maxPrefixIndex;
+  }
+  if (prefixIndex < 0) {
+    prefixIndex = 0;
+  }
+  double scaledValue = value / pow(1024, prefixIndex);
+  char bufStr[64];
+  if (suffix == nullptr) {
+    suffix = "";
+  }
+  // optimize number of digits displayed
+  int l = (int)floor(log10(fabs(scaledValue)));
+  if (l < 0) {
+    l = 3;
+  } else if (l <= 3) {
+    l = 3 - l;
+  } else {
+    l = 0;
+  }
+  snprintf(bufStr, sizeof(bufStr) - 1, "%.*lf %s%s", l, scaledValue, prefixes[prefixIndex], suffix);
+  return std::string(bufStr);
+}
+
+
 // program main
 int main(int argc, const char** argv)
 {
@@ -68,6 +118,11 @@ int main(int argc, const char** argv)
   std::string cfgMonitorAddress = "tcp://127.0.0.1:6008";
   cfg.getOptionalValue<std::string>(cfgEntryPoint + ".monitorAddress", cfgMonitorAddress);
 
+  // output format
+  // configuration parameter: | readout-monitor | outputFormat | int | 0 | 0: default, human readable. 1: raw bytes. |
+  int cfgRawBytes = 0;
+  cfg.getOptionalValue<int>(cfgEntryPoint + ".outputFormat", cfgRawBytes);  
+  
   // maximum size of incoming ZMQ messages
   const int cfgMaxMsgSize = sizeof(ReadoutStatsCounters);
   // ZMQ rx timeout in message loop
@@ -78,7 +133,7 @@ int main(int argc, const char** argv)
   void* zmqContext = nullptr;
   void* zmqHandle = nullptr;
   void* zmqBuffer = nullptr;
-
+ 
   int zmqError = 0;
   try {
     zmqBuffer = malloc(cfgMaxMsgSize);
@@ -124,7 +179,15 @@ int main(int argc, const char** argv)
   sigaction(SIGINT, &signalSettings, NULL);
 
   theLog.log(LogInfoDevel_(3006), "Entering monitoring loop");
+  double previousSampleTime = 0;
 
+  // header
+  printf("               Time    State         nStf   Readout  Recorder      STFB      STFB        STFB      STFB\n");
+  printf("                                              total     total     total    memory      memory    memory\n");
+  printf("                                                                           locked     release   release\n");
+  printf("                                                                                         rate   latency\n");
+  printf("                                            (bytes)   (bytes)   (bytes)    (pages)  (pages/s)       (s)\n");
+  
   for (; !ShutdownRequest;) {
     int nb = 0;
     nb = zmq_recv(zmqHandle, zmqBuffer, cfgMaxMsgSize, 0);
@@ -142,13 +205,17 @@ int main(int argc, const char** argv)
     uint64_t state = counters->state.load();
     ((char*)&state)[7] = 0;
     time_t t = (time_t)counters->timestamp.load();
-    unsigned long long nRfmq = counters->pagesPendingFairMQreleased.load();
+    double nRfmq = counters->pagesPendingFairMQreleased.load();
     double avgTfmq = 0.0;
-    if (nRfmq) {
-      avgTfmq = (counters->pagesPendingFairMQtime.load() / nRfmq) / 1000000.0;
-    }
-    printf("%s\t%s\t%llu\t%llu\t%llu\t%llu\tFMQ\t%llu\t%llu\t%.6lf\n",
-           t ? ctime(&t) : "-",
+    if (previousSampleTime > 0) {
+      double deltaT = t - previousSampleTime;
+      nRfmq = nRfmq / deltaT;
+      if (nRfmq) {
+	avgTfmq = (counters->pagesPendingFairMQtime.load() / nRfmq) / (deltaT * 1000000.0);
+      }
+      if (cfgRawBytes) {
+        printf("%s\t%s\t%llu\t%llu\t%llu\t%llu\t%llu\t%.2lf\t%.6lf\n",
+           t ? getStringTime(t).c_str() : "-",
            (char*)&state,
            (unsigned long long)counters->numberOfSubtimeframes.load(),
            (unsigned long long)counters->bytesReadout.load(),
@@ -157,6 +224,20 @@ int main(int argc, const char** argv)
            (unsigned long long)counters->pagesPendingFairMQ.load(),
            nRfmq,
            avgTfmq);
+      } else {
+        printf("%s  %s     %8llu     %s   %s   %s   %6llu    %7.2lf    %6.4lf\n",
+           t ? getStringTime(t).c_str() : "-",
+           (char*)&state,
+           (unsigned long long)counters->numberOfSubtimeframes.load(),
+           NumberOfBytesToString(counters->bytesReadout.load(),"").c_str(),
+           NumberOfBytesToString(counters->bytesRecorded.load(),"").c_str(),
+           NumberOfBytesToString(counters->bytesFairMQ.load(),"").c_str(),
+           (unsigned long long)counters->pagesPendingFairMQ.load(),
+           nRfmq,
+           avgTfmq);
+      }
+    }
+    previousSampleTime = t;
   }
 
   theLog.log(LogInfoDevel_(3006), "Execution completed");
