@@ -329,7 +329,7 @@ This file describes the main feature changes for each readout.exe released versi
 ## v2.0.2 - 14/04/2021
 - Fix for automatic logging to console.
 
-## next version
+## v2.1.0 - 04/05/2021
 - o2-readout-eventdump: added options dumpRdh / dumpPayload.
 - o2-readout-rawreader: added print of RDH field systemId.
 - Aggregator: extended cleanup (fix start/stop cycles), TF flushing (fix dicard warning on stop when multiple euipments).
