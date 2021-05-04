@@ -154,9 +154,9 @@ class ConsumerStats : public Consumer
       }
       
       // FMQ stats
-      sendMetricNoException({ snapshot.pagesPendingFairMQ, "readout.stfbMemoryPagesLocked"});
-      sendMetricNoException({ avgTfmq, "readout.stfbMemoryPagesReleaseLatency"});
+      sendMetricNoException({ (int)nRfmq, "readout.stfbMemoryPagesLocked"});
       sendMetricNoException({ rRfmq, "readout.stfbMemoryPagesReleaseRate"});
+      sendMetricNoException({ avgTfmq, "readout.stfbMemoryPagesReleaseLatency"});
     }
 
 #ifdef WITH_ZMQ
