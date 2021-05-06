@@ -122,7 +122,7 @@ class ConsumerStats : public Consumer
 
     // snapshot of current counters
     ReadoutStatsCounters snapshot;
-    memcpy(&snapshot, &gReadoutStats.counters, sizeof(snapshot));
+    memcpy((void *)&snapshot, (void *)&gReadoutStats.counters, sizeof(snapshot));
     snapshot.timestamp = time(NULL);
     gReadoutStats.counters.pagesPendingFairMQtime = 0;
     gReadoutStats.counters.pagesPendingFairMQreleased = 0;
