@@ -242,6 +242,8 @@ This is an interactive program to check/display content of online data taken wit
 [consumer-eventdump]
 consumerType=zmq
 address=ipc:///tmp/o2-readout-out
+maxRate=10
+pagesInBurst=3
 ```
 
 The `address` parameter can be of any sort accepted by ZeroMQ, and is used to serve data to (possibly multiple) EventDump clients.
@@ -275,6 +277,7 @@ Optional parameters for EventDump client: (key=value format on the command line)
 | -- | -- | -- |
 | port | tcp://127.0.0.1:50001 | Address of ZMQ server providing data (as configured in Readout) |
 | pageSize | 2097152 | Maximum page size to be received (set a value compatible with the maximum memoryPoolPageSize parameter found in Readout configuration) |
+| maxQueue | -1 | ZMQ receive queue size (ZMQ_RCVHWM) (-1 = default) |
 | maxRdhPerPage | 0 | Number of RDH packets to print for each page (0 = all) |
 | dumpPayload | 0 | When set, enable the hexadecimal dump of payload. Can also be changed at runtime. |
 | dumpRdh | 1 | When set, enable the human-readable dump of RDH. Can also be changed at runtime. |

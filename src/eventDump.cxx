@@ -17,6 +17,7 @@ int main(int argc, const char* argv[])
 {
   std::string port = "tcp://127.0.0.1:50001"; // ZMQ server address
   int pageSize = 2 * 1024L * 1024L;           // ZMQ RX buffer size, should be big enough to receive a full superpage
+  int maxQueue = -1;                          // ZMQ input queue size
   int maxRdhPerPage = 0;                      // set maximum number of RDH printed per page. 0 means all.
   int dumpPayload = 0;                        // when set, dump full payload in hexa format
   int dumpRdh = 1;                            // when set, dump RDH
@@ -38,6 +39,9 @@ int main(int argc, const char* argv[])
     if (key == "pageSize") {
       pageSize = atoi(value.c_str());
     }
+    if (key == "maxQueue") {
+      maxQueue = atoi(value.c_str());
+    }
     if (key == "maxRdhPerPage") {
       maxRdhPerPage = atoi(value.c_str());
     }
@@ -50,24 +54,26 @@ int main(int argc, const char* argv[])
   }
 
   theLog.log(LogInfoOps, "Starting eventDump");
-  theLog.log(LogInfoDevel, "Connecting to %s, page size = %d, maxRdhPerPage = %d", port.c_str(), pageSize, maxRdhPerPage);
+  theLog.log(LogInfoDevel, "Connecting to %s, page size = %d, queue = %d, maxRdhPerPage = %d", port.c_str(), pageSize, maxQueue, maxRdhPerPage);
   theLog.log(LogInfoDevel, "dumpRdh = %d, dumpPayload = %d", dumpRdh, dumpPayload);
   theLog.log(LogInfoOps, "Interactive keyboard commands: (s) start (d) stop (n) next page (x) exit (p) toggle dumpPayload (r) toggle dumpRdh");
 
   std::unique_ptr<ZmqClient> tfClient;
-  tfClient = std::make_unique<ZmqClient>(port, pageSize);
+  tfClient = std::make_unique<ZmqClient>(port, pageSize, maxQueue);
 
   if (tfClient == nullptr) {
     theLog.log(LogErrorOps, "Failed to connect");
   }
 
   int pageCount = 0;
+  int totalPageCount = 0;
 
   int maxPages = 0;
 
   auto processMessage = [&](void* msg, int msgSize) {
     pageCount++;
-    printf("# Page %d - %d bytes\n", pageCount, msgSize);
+    totalPageCount++;
+    printf("# Page %d (%d) - %d bytes\n", pageCount, totalPageCount, msgSize);
 
     std::string errorDescription;
     int lines = 0;
@@ -121,16 +127,19 @@ int main(int argc, const char* argv[])
           shutdown = 1;
           break;
         case 'n':
+          theLog.log(LogInfoOps, "Get next page");
           pageCount = 0;
           maxPages = 1;
           tfClient->setPause(0);
           break;
         case 's':
+          theLog.log(LogInfoOps, "Start getting pages");
           pageCount = 0;
           maxPages = 0;
           tfClient->setPause(0);
           break;
         case 'd':
+          theLog.log(LogInfoOps, "Stop getting pages");
           tfClient->setPause(1);
           break;
 	case 'p':

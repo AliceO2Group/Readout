@@ -8,7 +8,7 @@
 using namespace AliceO2::InfoLogger;
 extern InfoLogger theLog;
 
-ZmqClient::ZmqClient(const std::string& url, int maxMsgSize)
+ZmqClient::ZmqClient(const std::string& url, int maxMsgSize, int zmqMaxQueue)
 {
 
   cfgAddress = url;
@@ -38,6 +38,9 @@ ZmqClient::ZmqClient(const std::string& url, int maxMsgSize)
     if (zmqerr) {
       linerr = __LINE__;
       break;
+    }
+    if (zmqMaxQueue >=0 ) {
+      zmq_setsockopt(zh, ZMQ_RCVHWM, (void*)&zmqMaxQueue, sizeof(int));
     }
     zmqerr = zmq_connect(zh, cfgAddress.c_str());
     if (zmqerr) {

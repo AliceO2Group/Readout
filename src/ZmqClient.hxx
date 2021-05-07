@@ -7,7 +7,7 @@
 class ZmqClient
 {
  public:
-  ZmqClient(const std::string& url = "tcp://127.0.0.1:50001", const int maxMsgSize = 1024L * 1024L);
+  ZmqClient(const std::string& url = "tcp://127.0.0.1:50001", const int maxMsgSize = 1024L * 1024L, const int zmqMaxQueue = -1);
   ~ZmqClient();
 
   int setCallback(std::function<int(void* msg, int msgSize)>);
