@@ -338,5 +338,5 @@ This file describes the main feature changes for each readout.exe released versi
 - o2-readout-monitor: improved formatting.
 - consumer-stats: publish/print statistics of memory pages locked by STFB.
 
-## next version
+## v2.2.0
 - Added rate limit for eventDump: see consumer-zmq.maxRate and consumer-zmq.pagesPerBurst.
