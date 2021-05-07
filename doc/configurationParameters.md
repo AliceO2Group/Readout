@@ -80,10 +80,13 @@ The parameters related to 3rd-party libraries are described here for convenience
 | consumer-stats-* | monitoringUpdatePeriod | double | 10 | Period of readout monitoring updates, in seconds. | 
 | consumer-stats-* | monitoringURI | string | | URI to connect O2 monitoring service. c.f. o2::monitoring. | 
 | consumer-stats-* | processMonitoringInterval | int | 0 | Period of process monitoring updates (O2 standard metrics). If zero (default), disabled.| 
-| consumer-stats-* | zmqPublishAddress | string | | If defined, readout statistics are also published periodically (at rate defined in monitoringUpdatePeriod) to a ZMQ server. Suggested value: tcp://127.0.0.1:6008 (for use by readoutMonitor.exe). | 
+| consumer-stats-* | zmqPublishAddress | string | | If defined, readout statistics are also published periodically (at rate defined in monitoringUpdatePeriod) to a ZMQ server. Suggested value: tcp://127.0.0.1:6008 (for use by o2-readout-monitor). | 
 | consumer-tcp-* | host | string | localhost | Remote server IP name to connect to. | 
 | consumer-tcp-* | ncx | int | 1 | Number of parallel streams (and threads) to use. The port number specified in 'port' parameter will be increased by 1 for each extra connection. | 
 | consumer-tcp-* | port | int | 10001 | Remote server TCP port number to connect to. | 
+| consumer-zmq-* | address | string| tcp://127.0.0.1:50001 | ZMQ address where to publish (PUB) data pages, eg ipc://@readout-eventDump | 
+| consumer-zmq-* | maxRate | int| 0 | Maximum number of pages to publish per second. The associated memory copy has an impact on cpu load, so this should be limited when one does not use all the data (eg for eventDump). | 
+| consumer-zmq-* | pagesPerBurst | int | 1 | Number of consecutive pages guaranteed to be part of each publish sequence. The maxRate limit is checked at the end of each burst. | 
 | equipment-* | blockAlign | bytes | 2M | Alignment of the beginning of the big memory block from which the pool is created. Pool will start at a multiple of this value. Each page will then begin at a multiple of memoryPoolPageSize from the beginning of big block. | 
 | equipment-* | consoleStatsUpdateTime | double | 0 | If set, number of seconds between printing statistics on console. | 
 | equipment-* | debugFirstPages | int | 0 | If set, print debug information for first (given number of) data pages readout. | 
@@ -148,6 +151,7 @@ The parameters related to 3rd-party libraries are described here for convenience
 | readout | timeStart | string | | In standalone mode, time at which to execute start. If not set, immediately. | 
 | readout | timeStop | string | | In standalone mode, time at which to execute stop. If not set, on int/term/quit signal. | 
 | readout-monitor | monitorAddress | string | tcp://127.0.0.1:6008 | Address of the receiving ZeroMQ channel to receive readout statistics. | 
+| readout-monitor | outputFormat | int | 0 | 0: default, human readable. 1: raw bytes. | 
 | receiverFMQ | channelAddress | string | ipc:///tmp/pipe-readout | c.f. parameter with same name in consumer-FairMQchannel-* | 
 | receiverFMQ | channelName | string | readout | c.f. parameter with same name in consumer-FairMQchannel-* | 
 | receiverFMQ | channelType | string | pair | c.f. parameter with same name in consumer-FairMQchannel-* | 
@@ -155,5 +159,5 @@ The parameters related to 3rd-party libraries are described here for convenience
 | receiverFMQ | dumpRDH | int | 0 | When set, the RDH of data received are printed (needs decodingMode=readout).| 
 | receiverFMQ | dumpSTF | int | 0 | When set, the STF header of data received are printed (needs decodingMode=stfHbf).| 
 | receiverFMQ | dumpTF | int | 0 | When set, a message is printed when a new timeframe is received. If the value is bigger than one, this specifies a periodic interval between TF print after the first one. (e.g. 100 would print TF 1, 100, 200, etc). | 
-| receiverFMQ | releaseDelay | double | 0 | When set, the messages received are not immediately released, but kept for specified time (s).|
+| receiverFMQ | releaseDelay | double | 0 | When set, the messages received are not immediately released, but kept for specified time (s).| 
 | receiverFMQ | transportType | string | shmem | c.f. parameter with same name in consumer-FairMQchannel-* | 
