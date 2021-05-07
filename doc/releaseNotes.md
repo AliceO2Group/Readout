@@ -337,3 +337,6 @@ This file describes the main feature changes for each readout.exe released versi
 - receiver-fmq: added option releaseDelay, to add a delay before releasing data pages received.
 - o2-readout-monitor: improved formatting.
 - consumer-stats: publish/print statistics of memory pages locked by STFB.
+
+## next version
+- Added rate limit for eventDump: see consumer-zmq.maxRate and consumer-zmq.pagesPerBurst.
