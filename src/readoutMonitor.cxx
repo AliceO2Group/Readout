@@ -182,11 +182,11 @@ int main(int argc, const char** argv)
   double previousSampleTime = 0;
 
   // header
-  printf("               Time    State         nStf   Readout  Recorder      STFB      STFB        STFB      STFB\n");
-  printf("                                              total     total     total    memory      memory    memory\n");
-  printf("                                                                           locked     release   release\n");
-  printf("                                                                                         rate   latency\n");
-  printf("                                            (bytes)   (bytes)   (bytes)    (pages)  (pages/s)       (s)\n");
+  printf("               Time    State         nStf   Readout  Recorder      STFB      STFB        STFB      STFB      STFB\n");
+  printf("                                              total     total     total    memory      memory    memory       tf \n");
+  printf("                                                                           locked     release   release       id \n");
+  printf("                                                                                         rate   latency          \n");
+  printf("                                            (bytes)   (bytes)   (bytes)    (pages)  (pages/s)       (s)          \n");
   
   for (; !ShutdownRequest;) {
     int nb = 0;
@@ -214,7 +214,7 @@ int main(int argc, const char** argv)
 	avgTfmq = (counters->pagesPendingFairMQtime.load() / nRfmq) / (deltaT * 1000000.0);
       }
       if (cfgRawBytes) {
-        printf("%s\t%s\t%llu\t%llu\t%llu\t%llu\t%llu\t%.2lf\t%.6lf\n",
+        printf("%s\t%s\t%llu\t%llu\t%llu\t%llu\t%llu\t%.2lf\t%.6lf\t%d\n",
            t ? getStringTime(t).c_str() : "-",
            (char*)&state,
            (unsigned long long)counters->numberOfSubtimeframes.load(),
@@ -223,9 +223,10 @@ int main(int argc, const char** argv)
            (unsigned long long)counters->bytesFairMQ.load(),
            (unsigned long long)counters->pagesPendingFairMQ.load(),
            nRfmq,
-           avgTfmq);
+           avgTfmq,
+           (int)counters->timeframeIdFairMQ.load());
       } else {
-        printf("%s  %s     %8llu     %s   %s   %s   %6llu    %7.2lf    %6.4lf\n",
+        printf("%s  %s     %8llu     %s   %s   %s   %6llu    %7.2lf    %6.4lf %8d\n",
            t ? getStringTime(t).c_str() : "-",
            (char*)&state,
            (unsigned long long)counters->numberOfSubtimeframes.load(),
@@ -234,7 +235,8 @@ int main(int argc, const char** argv)
            NumberOfBytesToString(counters->bytesFairMQ.load(),"").c_str(),
            (unsigned long long)counters->pagesPendingFairMQ.load(),
            nRfmq,
-           avgTfmq);
+           avgTfmq,
+	   (int)counters->timeframeIdFairMQ.load());
       }
     }
     previousSampleTime = t;

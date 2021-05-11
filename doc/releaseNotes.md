@@ -340,3 +340,6 @@ This file describes the main feature changes for each readout.exe released versi
 
 ## v2.2.0 - 07/05/2021
 - Added rate limit for eventDump: see consumer-zmq.maxRate and consumer-zmq.pagesPerBurst.
+
+## next version
+- consumer-stats: publish/print the current timeframe Id sent to STFB.

@@ -646,6 +646,7 @@ class ConsumerFMQchannel : public Consumer
         messagesToSend.clear();
         gReadoutStats.counters.bytesFairMQ += messagesToSendSize;
         messagesToSendSize = 0;
+	gReadoutStats.counters.timeframeIdFairMQ = stfHeader->timeframeId;
       } else {
         theLog.log(LogErrorSupport_(3233), "Sending failed");
       }

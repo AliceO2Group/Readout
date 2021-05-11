@@ -127,6 +127,7 @@ class ConsumerStats : public Consumer
     gReadoutStats.counters.pagesPendingFairMQtime = 0;
     gReadoutStats.counters.pagesPendingFairMQreleased = 0;
     unsigned long long nRfmq = snapshot.pagesPendingFairMQreleased.load();
+    int tfidfmq = (int)snapshot.timeframeIdFairMQ.load();
     double avgTfmq = 0.0;
     double rRfmq = 0.0;
     if (nRfmq) {
@@ -157,6 +158,7 @@ class ConsumerStats : public Consumer
       sendMetricNoException({ (int)nRfmq, "readout.stfbMemoryPagesLocked"});
       sendMetricNoException({ rRfmq, "readout.stfbMemoryPagesReleaseRate"});
       sendMetricNoException({ avgTfmq, "readout.stfbMemoryPagesReleaseLatency"});
+      sendMetricNoException({ tfidfmq, "readout.stfbTimeframeId"});
     }
 
 #ifdef WITH_ZMQ
@@ -169,7 +171,7 @@ class ConsumerStats : public Consumer
     if (consoleUpdate) {
       if (deltaT > 0) {
         theLog.log(LogInfoOps_(3003), "Last interval (%.2fs): blocksRx=%llu, block rate=%.2lf, bytesRx=%llu, rate=%s", deltaT, (unsigned long long)counterBlocksDiff, counterBlocksDiff / deltaT, (unsigned long long)counterBytesDiff, NumberOfBytesToString(counterBytesDiff * 8 / deltaT, "b/s", 1000).c_str());
-        theLog.log(LogInfoOps_(3003), "STFB locked pages: current=%llu, release rate=%.2lf Hz, latency=%.3lf s", nRfmq, rRfmq, avgTfmq);
+        theLog.log(LogInfoOps_(3003), "STFB locked pages: current=%llu, release rate=%.2lf Hz, latency=%.3lf s, current TF = %d", nRfmq, rRfmq, avgTfmq, tfidfmq );
       }
     }
 
