@@ -41,6 +41,7 @@ void ReadoutStats::reset()
   counters.pagesPendingFairMQ = 0;
   counters.pagesPendingFairMQreleased = 0;
   counters.pagesPendingFairMQtime = 0;
+  counters.timeframeIdFairMQ = 0;
 }
 
 void ReadoutStats::print()

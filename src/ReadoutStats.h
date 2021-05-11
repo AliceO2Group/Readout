@@ -28,6 +28,7 @@ struct ReadoutStatsCounters {
   std::atomic<uint64_t> pagesPendingFairMQ;         // number of pages pending in ConsumerFMQ
   std::atomic<uint64_t> pagesPendingFairMQreleased; // number of pages which have been released by ConsumerFMQ
   std::atomic<uint64_t> pagesPendingFairMQtime;     // latency in FMQ, in microseconds, total for all released pages
+  std::atomic<uint32_t> timeframeIdFairMQ;          // last timeframe pushed to ConsumerFMQ
 };
 
 // need to be able to easily transmit this struct as a whole

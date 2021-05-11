@@ -460,7 +460,8 @@ class ConsumerFMQchannel : public Consumer
           // printf("offset %d - HBid=%d\n",offset,lastHBid);
         }
         if (stfHeader->linkId != rdh->linkId) {
-          theLog.log(LogWarningSupport_(3004), "TF%d link Id mismatch %d != %d @ page offset %d", (int)stfHeader->timeframeId, (int)stfHeader->linkId, (int)rdh->linkId, (int)offset);
+          static InfoLogger::AutoMuteToken token(LogWarningSupport_(3004));
+          theLog.log(token, "TF%d equipment %d link Id mismatch %d != %d @ page offset %d", (int)stfHeader->timeframeId, (int)stfHeader->equipmentId, (int)stfHeader->linkId, (int)rdh->linkId, (int)offset);
           // dumpRDH(rdh);
           // printf("block %p : offset %d = %p\n",b,offset,rdh);
         }
@@ -646,6 +647,7 @@ class ConsumerFMQchannel : public Consumer
         messagesToSend.clear();
         gReadoutStats.counters.bytesFairMQ += messagesToSendSize;
         messagesToSendSize = 0;
+	gReadoutStats.counters.timeframeIdFairMQ = stfHeader->timeframeId;
       } else {
         theLog.log(LogErrorSupport_(3233), "Sending failed");
       }
