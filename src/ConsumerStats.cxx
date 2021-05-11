@@ -258,6 +258,12 @@ class ConsumerStats : public Consumer
           throw __LINE__;
         }
 
+	const int cfgZmqLinger = 1000;
+        zmqError = zmq_setsockopt(zmqHandle, ZMQ_LINGER, (void*)&cfgZmqLinger, sizeof(cfgZmqLinger)); // close timeout
+        if (zmqError) {
+          throw __LINE__;
+        }
+	
         zmqError = zmq_connect(zmqHandle, cfgZmqPublishAddress.c_str());
         if (zmqError) {
           throw __LINE__;
