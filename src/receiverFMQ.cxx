@@ -512,6 +512,12 @@ int main(int argc, const char** argv)
       while (!delayedMsgBuffer.empty()) {
         double dt = now - delayedMsgBuffer.front().second;
         if ( dt >= cfgReleaseDelay ) {
+          auto stf = (SubTimeframe*)(delayedMsgBuffer.front().first[0]->GetData());
+          if (cfgDumpTF) {
+            if ((stf->timeframeId == 1) || (stf->timeframeId % cfgDumpTF == 0)) {
+              printf("Releasing TF %d link %d\n", (int)stf->timeframeId, (int)stf->linkId);
+            }
+          }
 	  delayedMsgBuffer.pop();
 	} else {
 	  break;
