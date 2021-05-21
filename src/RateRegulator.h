@@ -1,4 +1,5 @@
 #include <chrono>
+#include <math.h>
 
 // helper class to count items and check compliance with a rate limit
 // optimized to be lightweight (high rates) and precise over time

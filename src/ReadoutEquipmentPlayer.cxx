@@ -257,8 +257,6 @@ DataBlockContainerReference ReadoutEquipmentPlayer::getNextBlock()
             currentPacketHeader.linkId = (int)h.getLinkId();
             currentPacketHeader.equipmentId = (int)(h.getCruId() * 10 + h.getEndPointId());
 
-            bool isFirst = (fileOffset == 0) && (pageOffset == 0);
-
             int hbOrbit = h.getHbOrbit();
             currentPacketHeader.timeframeId = getTimeframeFromOrbit(hbOrbit);
 
@@ -270,9 +268,9 @@ DataBlockContainerReference ReadoutEquipmentPlayer::getNextBlock()
               b->header.timeframeId = currentPacketHeader.timeframeId;
             }
 
-            // changing link/cruid or TF -> change page
+            // changing link/cruid or TF -> change page (unless at the beginning of the page)
             bool changePage = 0;
-            if (!isFirst) {
+            if (pageOffset != 0) {
               if ((currentPacketHeader.linkId != lastPacketHeader.linkId) || (currentPacketHeader.equipmentId != lastPacketHeader.equipmentId) || (currentPacketHeader.timeframeId != lastPacketHeader.timeframeId)) {
                 // printf("%d : %d -> %d : %d\n",currentPacketHeader.linkId,currentPacketHeader.timeframeId,lastPacketHeader.linkId,lastPacketHeader.timeframeId);
                 changePage = 1;
