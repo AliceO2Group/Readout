@@ -345,3 +345,6 @@ This file describes the main feature changes for each readout.exe released versi
 - consumer-stats: publish/print the current timeframe Id sent to STFB.
 - consumer-stats: ZMQ stats client cleanup timeout, to avoid blocking on exit.
 - auto-mute RDH warnings: verbosity reduced if many successive logs done in a short time.
+
+## next version
+- equipment-player: fixed bug in "autochunk" replay mode. There was a "last packet invalid" error wrongly reported (and aborting replay) in the rare case when a link change would occur exactly at the beginning of a page.
