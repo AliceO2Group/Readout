@@ -67,8 +67,7 @@ find_package(FairMQ)
 find_package(ZLIB)
 find_package(RDMA)
 find_package(Occ)
-#find_package(BookkeepingApiCpp)
-#find_package(cpprestsdk)
+find_package(BookkeepingApiCpp)
 find_package(ZMQ)
 
 # extract include directories from targets
