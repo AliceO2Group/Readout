@@ -70,11 +70,8 @@ class ReadoutEquipmentRORC : public ReadoutEquipment
 struct ReadoutEquipmentRORCException : virtual Exception {
 };
 
-ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile& cfg, std::string name) : ReadoutEquipment(cfg, name)
+ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile& cfg, std::string name) : ReadoutEquipment(cfg, name, 1)  // this is RDH-data equipment
 {
-
-  // declare RDH equipment
-  initRdhEquipment();
 
   try {
 

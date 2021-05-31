@@ -348,3 +348,7 @@ This file describes the main feature changes for each readout.exe released versi
 
 ## next version
 - equipment-player: fixed bug in "autochunk" replay mode. There was a "last packet invalid" error wrongly reported (and aborting replay) in the rare case when a link change would occur exactly at the beginning of a page.
+- Default value of equipment-rorc.rdhUseFirstInPageEnabled is now 1 for all RDH equipments (RORC, emu, player).
+- FMQ stats not printed when consoleUpdate=1 unless there is a running consumerFMQchannel with disableSending=0.
+- tfRateLimit is handled in the equipment directly and avoid potential issues with timeframe slicing at very slow rates.
+- equipment-cruemulator: TF id extracted from trigger counters (single timer source for improved coherency).

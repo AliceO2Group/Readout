@@ -118,6 +118,8 @@ class ConsumerFMQchannel : public Consumer
     if (cfgDisableSending) {
       theLog.log(LogInfoDevel_(3002), "FMQ message sending disabled");
       disableSending = true;
+    } else {
+      gReadoutStats.isFairMQ = 1; // enable FMQ stats
     }
 
     // configuration parameter: | consumer-FairMQChannel-* | enableRawFormat | int | 0 | If 0, data is pushed 1 STF header + 1 part per HBF. If 1, data is pushed in raw format without STF headers, 1 FMQ message per data page. If 2, format is 1 STF header + 1 part per data page.|

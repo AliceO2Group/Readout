@@ -75,11 +75,8 @@ void ReadoutEquipmentPlayer::copyFileDataToPage(void* page)
   }
 }
 
-ReadoutEquipmentPlayer::ReadoutEquipmentPlayer(ConfigFile& cfg, std::string cfgEntryPoint) : ReadoutEquipment(cfg, cfgEntryPoint)
+ReadoutEquipmentPlayer::ReadoutEquipmentPlayer(ConfigFile& cfg, std::string cfgEntryPoint) : ReadoutEquipment(cfg, cfgEntryPoint, 1)  // this is RDH-data equipment
 {
-
-  // declare RDH equipment
-  initRdhEquipment();
 
   auto errorHandler = [&](const std::string& err) {
     if (fp != nullptr) {

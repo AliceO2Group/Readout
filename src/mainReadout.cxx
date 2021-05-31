@@ -295,6 +295,9 @@ int Readout::configure(const boost::property_tree::ptree& properties)
 {
   theLog.log(LogInfoSupport_(3005), "Readout executing CONFIGURE");
 
+  // reset some flags
+  gReadoutStats.isFairMQ = 0; // disable FMQ stats
+
   // load configuration file
   theLog.log(LogInfoSupport, "Reading configuration from %s %s", cfgFileURI, cfgFileEntryPoint);
   try {
