@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
+#include <chrono>
 
 #include <fairmq/FairMQDevice.h>
 #include <fairmq/FairMQTransportFactory.h>
@@ -34,19 +35,43 @@ int main(int argc, const char* argv[]) {
 
   printf("Get unmanaged memory\n");
   long long mMemorySize = ngb GB;
-  memoryBuffer = sendingChannel->Transport()->CreateUnmanagedRegion(mMemorySize, [](void* /*data*/, size_t /*size*/, void* /*hint*/) {});
+  auto t00 = std::chrono::steady_clock::now();
+  try {
+//  memoryBuffer = sendingChannel->Transport()->CreateUnmanagedRegion(mMemorySize, [](void* /*data*/, size_t /*size*/, void* /*hint*/) {});
+  memoryBuffer = sendingChannel->Transport()->CreateUnmanagedRegion(mMemorySize, [](void* /*data*/, size_t /*size*/, void* /*hint*/) {},
+  "",0,fair::mq::RegionConfig{true, false}); // lock / zero
+  }
+  catch(...) {
+    printf("Failed to get buffer (exception)\n"); return 1; 
+  }
   if (memoryBuffer==nullptr) { printf("Failed to get buffer\n"); return 1; }
-  printf("Got %p : %llu\n", memoryBuffer->GetData(), (unsigned long long)memoryBuffer->GetSize());
+  memoryBuffer->SetLinger(1);
+  std::chrono::duration<double> tdiff0 = std::chrono::steady_clock::now() - t00;
+  printf("Got %p : %llu - %.2lf GB/s\n", memoryBuffer->GetData(), (unsigned long long)memoryBuffer->GetSize(), ngb * 1.0/tdiff0.count());
   WAITHERE;
 
-  printf("Write to memory\n");
+  printf("Write to memory, by chunks of 1GB\n");
   for (unsigned int i=0; i<ngb; i++) {
+    auto t0 = std::chrono::steady_clock::now();
     char *ptr=(char *)memoryBuffer->GetData();
     ptr=&ptr[i GB];
-    printf("#%u : writing @%p\n",i+1, ptr);
-    memset(ptr,0,1 GB);
+    printf("#%u : writing @%p ... ",i+1, ptr);
+    //memset(ptr,0,1 GB);
+    //bzero(ptr,1 GB);
+    // marginally faster to write one byte per memory page
+    if (1) {
+      for(size_t j=0; j<1 GB; j += getpagesize()) {
+	ptr[j]=0;
+      }
+    }
+    std::chrono::duration<double> tdiff = std::chrono::steady_clock::now() - t0;
+    printf(" %.2lf GB/s\n", 1.0/tdiff.count());
   }
   printf("Done writing\n");
+
+  tdiff0 = std::chrono::steady_clock::now() - t00;
+  printf("Average: %.2lf GB/s (including alloc)\n", ngb * 1.0/(tdiff0.count()-SLEEPTIME));
+
   WAITHERE;
 
   printf("Cleanup FMQ unmanaged region\n");
