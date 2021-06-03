@@ -23,6 +23,7 @@
 #include <boost/property_tree/ptree.hpp>
 #include <thread>
 #include <time.h>
+#include <sys/mman.h>
 
 #include "DataBlock.h"
 #include "DataBlockContainer.h"
@@ -1235,6 +1236,11 @@ class ReadoutOCCStateMachine : public RuntimeControlledObject
 // the main program loop
 int main(int argc, char* argv[])
 {
+  // before anything, ensure all memory used by readout is kept in RAM
+  bool memLockSuccess = false;
+  if (mlockall(MCL_CURRENT | MCL_FUTURE) == 0) {
+    memLockSuccess = true;
+  }
 
   // check environment settings
 
@@ -1263,6 +1269,11 @@ int main(int argc, char* argv[])
   err = theReadout->init(argc, argv);
   if (err) {
     return err;
+  }
+
+  // report memlock status
+  if (!memLockSuccess) {
+    theLog.log(LogWarningSupport_(3230), "Failed to lock readout memory");
   }
 
   if (occMode) {
