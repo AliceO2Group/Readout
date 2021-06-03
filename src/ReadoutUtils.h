@@ -56,5 +56,15 @@ int getProcessStats(double& uTime, double& sTime);
 typedef uint32_t tRunNumber;
 typedef uint32_t tTimeframeId;
 
+// function to retrieve amount of free memory on the system
+// Works only when /proc/meminfo available
+// returns 0 on success, -1 on error
+int getStatsFreeMemory(unsigned long long &freeBytes);
+
+// function to retrieve amount of free memory on the system
+// Works only when /dev/shm available
+// returns 0 on success, -1 on error
+int getStatsFreeSHM(unsigned long long &freeBytes);
+
 // end of _READOUTUTILS_H
 #endif
