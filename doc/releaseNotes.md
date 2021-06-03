@@ -352,3 +352,5 @@ This file describes the main feature changes for each readout.exe released versi
 - FMQ stats not printed when consoleUpdate=1 unless there is a running consumerFMQchannel with disableSending=0.
 - tfRateLimit is handled in the equipment directly and avoid potential issues with timeframe slicing at very slow rates.
 - equipment-cruemulator: TF id extracted from trigger counters (single timer source for improved coherency).
+- Memory allocation policy updated: all readout memory is locked (RAM only, can not be swapped). A warning is reported if not.
+- consumer-FMQchannel: checks are done before FMQ shared memory region is created, to avoid going in a state with over-committed memory (no checks done in FMQ library about the validity of the region created, which can cause severe crash when trying to access it). Both /proc/meminfo (MemFree) and /dev/shm (if using shmem transport type) should report enough available memory before proceeding. Memory is also immediately locked and zeroed to avoid later crashes.
