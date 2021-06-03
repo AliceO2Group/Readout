@@ -345,3 +345,12 @@ This file describes the main feature changes for each readout.exe released versi
 - consumer-stats: publish/print the current timeframe Id sent to STFB.
 - consumer-stats: ZMQ stats client cleanup timeout, to avoid blocking on exit.
 - auto-mute RDH warnings: verbosity reduced if many successive logs done in a short time.
+
+## v2.4.0 - 03/06/2021
+- equipment-player: fixed bug in "autochunk" replay mode. There was a "last packet invalid" error wrongly reported (and aborting replay) in the rare case when a link change would occur exactly at the beginning of a page.
+- Default value of equipment-rorc.rdhUseFirstInPageEnabled is now 1 for all RDH equipments (RORC, emu, player).
+- FMQ stats not printed when consoleUpdate=1 unless there is a running consumerFMQchannel with disableSending=0.
+- tfRateLimit is handled in the equipment directly and avoid potential issues with timeframe slicing at very slow rates.
+- equipment-cruemulator: TF id extracted from trigger counters (single timer source for improved coherency).
+- Memory allocation policy updated: all readout memory is locked (RAM only, can not be swapped). A warning is reported if not.
+- consumer-FMQchannel: checks are done before FMQ shared memory region is created, to avoid going in a state with over-committed memory (no checks done in FMQ library about the validity of the region created, which can cause severe crash when trying to access it). Both /proc/meminfo (MemFree) and /dev/shm (if using shmem transport type) should report enough available memory before proceeding. Memory is also immediately locked and zeroed to avoid later crashes.

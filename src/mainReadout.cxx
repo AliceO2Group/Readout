@@ -23,6 +23,7 @@
 #include <boost/property_tree/ptree.hpp>
 #include <thread>
 #include <time.h>
+#include <sys/mman.h>
 
 #include "DataBlock.h"
 #include "DataBlockContainer.h"
@@ -185,14 +186,25 @@ class Readout
 #endif
 };
 
+bool testLogbook = false; // flag for logbook test mode
+
 void Readout::publishLogbookStats()
 {
 #ifdef WITH_LOGBOOK
   if (logbookHandle != nullptr) {
     bool isOk = false;
     try {
-      // virtual void runStart(int64_t runNumber, boost::posix_time::ptime o2Start, boost::posix_time::ptime triggerStart, std::string activityId, RunType runType, int64_t nDetectors, int64_t nFlps, int64_t nEpns) override; logbookHandle->flpAdd(occRunNumber, occRole, "localhost");
-      // virtual void flpUpdateCounters(int64_t runNumber, std::string flpName, int64_t nSubtimeframes, int64_t nEquipmentBytes, int64_t nRecordingBytes, int64_t nFairMqBytes) override;
+      // interface: https://github.com/AliceO2Group/Bookkeeping/blob/master/cpp-api-client/src/BookkeepingApi.h
+      if (testLogbook) {
+        // in test mode, create a dummy run entry in logbook
+        if (occRole.length() == 0) { occRole = "flp-test"; }
+	if (occRunNumber == 0) { occRunNumber = 999999999; }
+        theLog.log(LogInfoDevel_(3210), "Logbook in test mode: create run number/flp %d / %s", (int)occRunNumber, occRole.c_str());
+	std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+        logbookHandle->runStart(occRunNumber, now, now, "readout", RunType::TECHNICAL, 0, 0, 0);
+        logbookHandle->flpAdd(occRole, "localhost", occRunNumber);
+	testLogbook=0;
+      }
       logbookHandle->flpUpdateCounters(occRunNumber, occRole, (int64_t)gReadoutStats.counters.numberOfSubtimeframes, (int64_t)gReadoutStats.counters.bytesReadout, (int64_t)gReadoutStats.counters.bytesRecorded, (int64_t)gReadoutStats.counters.bytesFairMQ);
       isOk = true;
     } catch (const std::exception& ex) {
@@ -206,7 +218,7 @@ void Readout::publishLogbookStats()
       theLog.log(LogErrorSupport_(3210), "Logbook now disabled");
     }
   }
-  gReadoutStats.print();
+//  gReadoutStats.print();
 #endif
 }
 
@@ -283,6 +295,9 @@ int Readout::init(int argc, char* argv[])
 int Readout::configure(const boost::property_tree::ptree& properties)
 {
   theLog.log(LogInfoSupport_(3005), "Readout executing CONFIGURE");
+
+  // reset some flags
+  gReadoutStats.isFairMQ = 0; // disable FMQ stats
 
   // load configuration file
   theLog.log(LogInfoSupport, "Reading configuration from %s %s", cfgFileURI, cfgFileEntryPoint);
@@ -1221,6 +1236,11 @@ class ReadoutOCCStateMachine : public RuntimeControlledObject
 // the main program loop
 int main(int argc, char* argv[])
 {
+  // before anything, ensure all memory used by readout is kept in RAM
+  bool memLockSuccess = false;
+  if (mlockall(MCL_CURRENT | MCL_FUTURE) == 0) {
+    memLockSuccess = true;
+  }
 
   // check environment settings
 
@@ -1249,6 +1269,11 @@ int main(int argc, char* argv[])
   err = theReadout->init(argc, argv);
   if (err) {
     return err;
+  }
+
+  // report memlock status
+  if (!memLockSuccess) {
+    theLog.log(LogWarningSupport_(3230), "Failed to lock readout memory");
   }
 
   if (occMode) {

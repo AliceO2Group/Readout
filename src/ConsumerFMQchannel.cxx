@@ -118,6 +118,8 @@ class ConsumerFMQchannel : public Consumer
     if (cfgDisableSending) {
       theLog.log(LogInfoDevel_(3002), "FMQ message sending disabled");
       disableSending = true;
+    } else {
+      gReadoutStats.isFairMQ = 1; // enable FMQ stats
     }
 
     // configuration parameter: | consumer-FairMQChannel-* | enableRawFormat | int | 0 | If 0, data is pushed 1 STF header + 1 part per HBF. If 1, data is pushed in raw format without STF headers, 1 FMQ message per data page. If 2, format is 1 STF header + 1 part per data page.|
@@ -183,6 +185,39 @@ class ConsumerFMQchannel : public Consumer
     cfg.getOptionalValue<std::string>(cfgEntryPoint + ".unmanagedMemorySize", cfgUnmanagedMemorySize);
     long long mMemorySize = ReadoutUtils::getNumberOfBytesFromString(cfgUnmanagedMemorySize.c_str());
     if (mMemorySize > 0) {
+    
+      // check system resources first, as region creation does not check available memory, so bad crash could occur later      
+      theLog.log(LogInfoDevel_(3002), "Configuring memory buffer %lld MB", (long long)(mMemorySize/1048576LL));
+	    
+      // free system memory
+      unsigned long long freeBytes;
+      if (getStatsFreeMemory(freeBytes)) {
+        theLog.log(LogWarningSupport_(3230), "Can not get stats about system free memory available");
+      } else {
+          theLog.log(LogInfoSupport_(3230), "Stats free memory available: %lld MB", (long long)(freeBytes/1048576LL));
+	  if ((long long)freeBytes < mMemorySize) {
+          theLog.log(LogErrorSupport_(3230), "Not enough system memory available - check /proc/meminfo");
+          throw "ConsumerFMQ: can not allocate shared memory region";
+	} else {
+
+	}
+      }
+            
+      // free SHM memory
+      // check only if transport is of type shmem
+      if (cfgTransportType == "shmem") {
+	if (getStatsFreeSHM(freeBytes)) {
+          theLog.log(LogWarningSupport_(3230), "Can not get stats about shared memory available");
+	} else {
+          theLog.log(LogInfoSupport_(3230), "Stats shared memory available: %lld MB", (long long)(freeBytes/1048576LL));
+          if ((long long)freeBytes < mMemorySize) {
+            theLog.log(LogErrorSupport_(3230), "Not enough shared memory available - check /dev/shm");
+            throw "ConsumerFMQ: can not allocate shared memory region";
+	  }
+	}
+      }
+            
+      theLog.log(LogInfoDevel_(3008), "Creating FMQ unmanaged memory region");
       memoryBuffer = sendingChannel->Transport()->CreateUnmanagedRegion(mMemorySize, [](void* /*data*/, size_t /*size*/, void* hint) { // cleanup callback
         if (hint != nullptr) {
           DataBlockContainerReference* blockRef = (DataBlockContainerReference*)hint;
@@ -190,7 +225,7 @@ class ConsumerFMQchannel : public Consumer
           decDataBlockStats((*blockRef)->getData());
           delete blockRef;
         }
-      });
+      },"",0,fair::mq::RegionConfig{true, true});  // lock / zero
 
       theLog.log(LogInfoDevel_(3008), "Got FMQ unmanaged memory buffer size %lu @ %p", memoryBuffer->GetSize(), memoryBuffer->GetData());
     }

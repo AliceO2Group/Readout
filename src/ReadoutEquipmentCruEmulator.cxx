@@ -73,11 +73,8 @@ class ReadoutEquipmentCruEmulator : public ReadoutEquipment
   std::vector<DataBlockContainerReference> pendingBlocks;                          // pages being filled (1 per link)
 };
 
-ReadoutEquipmentCruEmulator::ReadoutEquipmentCruEmulator(ConfigFile& cfg, std::string cfgEntryPoint) : ReadoutEquipment(cfg, cfgEntryPoint)
+ReadoutEquipmentCruEmulator::ReadoutEquipmentCruEmulator(ConfigFile& cfg, std::string cfgEntryPoint) : ReadoutEquipment(cfg, cfgEntryPoint, 1) // this is RDH-data equipment
 {
-
-  // declare RDH equipment
-  initRdhEquipment();
 
   // get configuration values
   // configuration parameter: | equipment-cruemulator-* | maxBlocksPerPage | int | 0 | [obsolete- not used]. Maximum number of blocks per page. |
@@ -182,7 +179,7 @@ Thread::CallbackResult ReadoutEquipmentCruEmulator::prepareBlocks()
 
     nowOrbit = LHCorbit;
     nowBc = LHCbc;
-    uint64_t nowId = getCurrentTimeframe();
+    uint64_t nowId = getTimeframeFromOrbit(nowOrbit);
 
     int linkId = cfgLinkId + currentLink;
     int bytesAvailableInPage = b->header.dataSize; // a bit less than memoryPoolPageSize;
@@ -287,7 +284,6 @@ Thread::CallbackResult ReadoutEquipmentCruEmulator::prepareBlocks()
     // no need to fill header defaults, this is done by getNewDataBlockContainer()
     // only adjust payload size
     b->header.dataSize = dSize;
-    b->header.timeframeId = nowId;
     b->header.linkId = linkId;
 
     readyBlocks->push(pendingBlocks[currentLink]);

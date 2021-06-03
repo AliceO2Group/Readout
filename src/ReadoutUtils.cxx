@@ -14,6 +14,7 @@
 #include <sstream>
 #include <stdio.h>
 #include <unistd.h>
+#include <filesystem>
 
 #include "RAWDataHeader.h"
 
@@ -178,4 +179,48 @@ int getIntegerListFromString(const std::string& input, std::vector<int>& output)
     }
   }
   return 0;
+}
+
+int getStatsFreeMemory(unsigned long long &freeBytes) {
+  FILE *fp;
+  const int lineBufSz = 128;
+  char lineBuf[lineBufSz];
+  long long value;
+  int success = 0;
+  freeBytes = 0;
+  
+  if ((fp = fopen("/proc/meminfo", "r")) != NULL) {
+
+    while (fgets(lineBuf, lineBufSz, fp) != NULL) {
+      if ( sscanf(lineBuf, "MemFree: %lld kB", &value) == 1) {
+	freeBytes = ((unsigned long long)value) * 1024;
+	success = 1;
+	break;
+      }
+    }
+  
+    fclose(fp);
+  }
+
+  if (!success) {
+    return -1;
+  }
+  return 0;
+}
+
+int getStatsFreeSHM(unsigned long long &freeBytes) {
+  int success = 0;
+  freeBytes = 0;
+  
+  try {
+    freeBytes = (unsigned long long) (std::filesystem::space("/dev/shm")).free;
+    success = 1;
+  }
+  catch (...) {
+  }
+  
+  if (!success) {
+    return -1;
+  }
+  return 0; 
 }

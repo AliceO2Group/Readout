@@ -21,13 +21,16 @@
 #include "MemoryBankManager.h"
 #include "MemoryHandler.h"
 #include "RdhUtils.h"
+#include "RateRegulator.h"
 
 using namespace AliceO2::Common;
 
 class ReadoutEquipment
 {
  public:
-  ReadoutEquipment(ConfigFile& cfg, std::string cfgEntryPoint);
+  // constructor parameters:
+  // - isRdhEquipment: to be set by equipments producing RDH-formatted data. Done here so that appropriate defaults can be used in constructor.
+  ReadoutEquipment(ConfigFile& cfg, std::string cfgEntryPoint, bool isRdhEquipment = 0);
   virtual ~ReadoutEquipment();
 
   DataBlockContainerReference getBlock();
@@ -136,7 +139,8 @@ class ReadoutEquipment
   AliceO2::Common::Timer timeframeClock; // timeframe id should be increased at each clock cycle
   uint64_t currentTimeframe = 0;         // id of current timeframe
   bool usingSoftwareClock = false;       // if set, using internal software clock to generate timeframe id
-
+  uint64_t lastTimeframe = 0;            // id of last timeframe (in data)
+  
   //const unsigned int LHCBunches = 3564;    // number of bunches in LHC
   const unsigned int LHCOrbitRate = 11246; // LHC orbit rate, in Hz. 299792458 / 26659
   uint32_t timeframePeriodOrbits = 256;    // timeframe interval duration in number of LHC orbits
@@ -150,6 +154,9 @@ class ReadoutEquipment
   int cfgRdhDumpWarningEnabled = 0;    // flag to enable RDH warning log at runtime
   int cfgRdhUseFirstInPageEnabled = 0; // flag to enable reading of first RDH in page to populate readout headers
   //int cfgRdhCheckPacketCounterContiguous = 1; // flag to enable checking if RDH packetCounter value contiguous (done link-by-link)
+  double cfgTfRateLimit = 0;           // TF rate limit, to throttle data readout
+  RateRegulator TFregulator;           // clock counter for TF rate checks
+  DataBlockContainerReference throttlePendingBlock; // in case TF rate limit was reached, a block may be set aside for later (when it belongs to next TF)
 
   bool isRdhEquipment = false; // to be set true for RDH equipments
 
@@ -165,8 +172,6 @@ class ReadoutEquipment
 
   // compute range of orbits for given timeframe
   void getTimeframeOrbitRange(uint64_t tfId, uint32_t& hbOrbitMin, uint32_t& hbOrbitMax);
-
-  void initRdhEquipment(); // to be called by equipments producing RDH-formatted data
 
   unsigned long long statsRdhCheckOk = 0;        // number of RDH structs which have passed check ok
   unsigned long long statsRdhCheckErr = 0;       // number of RDH structs which have not passed check

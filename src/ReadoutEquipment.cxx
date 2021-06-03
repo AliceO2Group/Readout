@@ -15,7 +15,7 @@
 
 extern tRunNumber occRunNumber;
 
-ReadoutEquipment::ReadoutEquipment(ConfigFile& cfg, std::string cfgEntryPoint)
+ReadoutEquipment::ReadoutEquipment(ConfigFile& cfg, std::string cfgEntryPoint, bool setRdhEquipment)
 {
 
   // example: browse config keys
@@ -27,6 +27,13 @@ ReadoutEquipment::ReadoutEquipment(ConfigFile& cfg, std::string cfgEntryPoint)
   // by default, name the equipment as the config node entry point
   // configuration parameter: | equipment-* | name | string| | Name used to identify this equipment (in logs). By default, it takes the name of the configuration section, equipment-xxx |
   cfg.getOptionalValue<std::string>(cfgEntryPoint + ".name", name, cfgEntryPoint);
+
+  // change defaults for equipments generating data with RDH
+  if (setRdhEquipment) {
+    theLog.log(LogInfoDevel_(3002), "Equipment %s: generates data with RDH, using specific defaults", name.c_str());
+    isRdhEquipment = true;
+    cfgRdhUseFirstInPageEnabled = 1; // by default, use first RDH in page
+  }
 
   // configuration parameter: | equipment-* | id | int| | Optional. Number used to identify equipment (used e.g. in file recording). Range 1-65535.|
   int cfgEquipmentId = undefinedEquipmentId;
@@ -89,6 +96,10 @@ ReadoutEquipment::ReadoutEquipment(ConfigFile& cfg, std::string cfgEntryPoint)
     this->debugFirstPages = cfgDebugFirstPages;
   }
 
+  // get TF rate from toplevel config
+  cfgTfRateLimit = 0;
+  cfg.getOptionalValue<double>("readout.tfRateLimit", cfgTfRateLimit);
+
   // log config summary
   theLog.log(LogInfoDevel_(3002), "Equipment %s: from config [%s], max rate=%lf Hz, idleSleepTime=%d us, outputFifoSize=%d", name.c_str(), cfgEntryPoint.c_str(), readoutRate, cfgIdleSleepTime, cfgOutputFifoSize);
   theLog.log(LogInfoDevel_(3008), "Equipment %s: requesting memory pool %d pages x %d bytes from bank '%s', block aligned @ 0x%X, 1st page offset @ 0x%X", name.c_str(), (int)memoryPoolNumberOfPages, (int)memoryPoolPageSize, memoryBankName.c_str(), (int)cfgBlockAlign, (int)cfgFirstPageOffset);
@@ -105,7 +116,7 @@ ReadoutEquipment::ReadoutEquipment(ConfigFile& cfg, std::string cfgEntryPoint)
   cfg.getOptionalValue<int>(cfgEntryPoint + ".rdhDumpErrorEnabled", cfgRdhDumpErrorEnabled);
   // configuration parameter: | equipment-* | rdhDumpWarningEnabled | int | 0 | If set, a log message is printed for each RDH header warning found.|
   cfg.getOptionalValue<int>(cfgEntryPoint + ".rdhDumpWarningEnabled", cfgRdhDumpWarningEnabled);
-  // configuration parameter: | equipment-* | rdhUseFirstInPageEnabled | int | 0 | If set, the first RDH in each data page is used to populate readout headers (e.g. linkId).|
+  // configuration parameter: | equipment-* | rdhUseFirstInPageEnabled | int | 0 or 1 | If set, the first RDH in each data page is used to populate readout headers (e.g. linkId). Default is 1 for  equipments generating data with RDH, 0 otherwsise. |
   cfg.getOptionalValue<int>(cfgEntryPoint + ".rdhUseFirstInPageEnabled", cfgRdhUseFirstInPageEnabled);
   theLog.log(LogInfoDevel_(3002), "RDH settings: rdhCheckEnabled=%d rdhDumpEnabled=%d rdhDumpErrorEnabled=%d rdhDumpWarningEnabled=%d rdhUseFirstInPageEnabled=%d", cfgRdhCheckEnabled, cfgRdhDumpEnabled, cfgRdhDumpErrorEnabled, cfgRdhDumpWarningEnabled, cfgRdhUseFirstInPageEnabled);
 
@@ -194,6 +205,10 @@ void ReadoutEquipment::start()
   }
   clk0.reset();
 
+  // reset TF rate clock
+  TFregulator.init(cfgTfRateLimit);
+  throttlePendingBlock = nullptr;
+  
   // reset stats timer
   consoleStatsTimer.reset(cfgConsoleStatsUpdateTime * 1000000);
 
@@ -213,6 +228,9 @@ void ReadoutEquipment::stop()
 
   this->finalCounters();
   ReadoutEquipment::finalCounters();
+
+  // cleanup
+  throttlePendingBlock = nullptr;
 
   for (int i = 0; i < (int)EquipmentStatsIndexes::maxIndex; i++) {
     if (equipmentStats[i].getCount()) {
@@ -253,7 +271,6 @@ Thread::CallbackResult ReadoutEquipment::threadCallback(void* arg)
   if (ptr->usingSoftwareClock) {
     if (ptr->timeframeClock.isTimeout()) {
       ptr->currentTimeframe++;
-      ptr->statsNumberOfTimeframes++;
       ptr->timeframeClock.increment();
     }
   }
@@ -301,38 +318,63 @@ Thread::CallbackResult ReadoutEquipment::threadCallback(void* arg)
 
       // get next block
       DataBlockContainerReference nextBlock = nullptr;
-      try {
-        nextBlock = ptr->getNextBlock();
-      } catch (...) {
-        theLog.log(LogWarningDevel_(3230), "getNextBlock() exception");
-        break;
-      }
-      // printf("getNextBlock=%p\n",nextBlock);
-      if (nextBlock == nullptr) {
-        break;
-      }
+      if (ptr->throttlePendingBlock != nullptr) {      
+        nextBlock = std::move(ptr->throttlePendingBlock);
+      } else {
+	try {
+          nextBlock = ptr->getNextBlock();
+	} catch (...) {
+          theLog.log(LogWarningDevel_(3230), "getNextBlock() exception");
+          break;
+	}
 
-      // handle RDH-formatted data
-      if (ptr->isRdhEquipment) {
-        ptr->processRdh(nextBlock);
+	if (nextBlock == nullptr) {
+          break;
+	}
+
+	// handle RDH-formatted data
+	if (ptr->isRdhEquipment) {
+          ptr->processRdh(nextBlock);
+	}
+	
+	// tag data with equipment Id, if set (will overwrite field if was already set by equipment)
+	if (ptr->id != undefinedEquipmentId) {
+          nextBlock->getData()->header.equipmentId = ptr->id;
+	}
+
+	// tag data with block id
+	ptr->currentBlockId++; // don't start from 0
+	nextBlock->getData()->header.blockId = ptr->currentBlockId;
+
+	// tag data with (dummy) timeframeid, if none set
+	if (nextBlock->getData()->header.timeframeId == undefinedTimeframeId) {
+          nextBlock->getData()->header.timeframeId = ptr->getCurrentTimeframe();
+	}
+
+	// tag data with run number
+	nextBlock->getData()->header.runNumber = occRunNumber;
       }
+      
+      // check TF id of new block
+      uint64_t tfId = nextBlock->getData()->header.timeframeId;
+      if (tfId != ptr->lastTimeframe) {
+	// regulate TF rate if needed
+	if (!ptr->TFregulator.next()) {
+          ptr->throttlePendingBlock = std::move(nextBlock); // keep block with new TF for later
+	  isActive = false; // ask for delay before retry
+	  break;
+	}
 
-      // tag data with equipment Id, if set (will overwrite field if was already set by equipment)
-      if (ptr->id != undefinedEquipmentId) {
-        nextBlock->getData()->header.equipmentId = ptr->id;
+	ptr->statsNumberOfTimeframes++;
+
+	// detect gaps in TF id continuity
+	if (tfId != ptr->lastTimeframe + 1) {
+	  if (ptr->cfgRdhDumpWarningEnabled) {
+            theLog.log(LogWarningSupport_(3004), "Non-contiguous timeframe IDs %llu ... %llu", (unsigned long long)ptr->lastTimeframe, (unsigned long long)tfId);
+	  }
+	}
       }
-
-      // tag data with block id
-      ptr->currentBlockId++; // don't start from 0
-      nextBlock->getData()->header.blockId = ptr->currentBlockId;
-
-      // tag data with (dummy) timeframeid, if none set
-      if (nextBlock->getData()->header.timeframeId == undefinedTimeframeId) {
-        nextBlock->getData()->header.timeframeId = ptr->getCurrentTimeframe();
-      }
-
-      // tag data with run number
-      nextBlock->getData()->header.runNumber = occRunNumber;
+      ptr->lastTimeframe = tfId;
 
       // update rate-limit clock
       if (ptr->readoutRate > 0) {
@@ -433,13 +475,15 @@ void ReadoutEquipment::initCounters()
   statsNumberOfTimeframes = 0;
 
   // reset timeframe clock
-  if (usingSoftwareClock) {
-    timeframeClock.reset(1000000 / timeframeRate);
-  }
-
   currentTimeframe = undefinedTimeframeId;
+  lastTimeframe = undefinedTimeframeId;
   firstTimeframeHbOrbitBegin = undefinedOrbit;
   isDefinedFirstTimeframeHbOrbitBegin = 0;
+  if (usingSoftwareClock) {
+    timeframeClock.reset(1000000 / timeframeRate);
+    currentTimeframe = 1;
+  }
+
 };
 
 void ReadoutEquipment::finalCounters()
@@ -449,8 +493,6 @@ void ReadoutEquipment::finalCounters()
   }
 };
 
-void ReadoutEquipment::initRdhEquipment() { isRdhEquipment = true; }
-
 uint64_t ReadoutEquipment::getTimeframeFromOrbit(uint32_t hbOrbit)
 {
   if (!isDefinedFirstTimeframeHbOrbitBegin) {
@@ -458,18 +500,6 @@ uint64_t ReadoutEquipment::getTimeframeFromOrbit(uint32_t hbOrbit)
     isDefinedFirstTimeframeHbOrbitBegin = 1;
   }
   uint64_t tfId = 1 + (hbOrbit - firstTimeframeHbOrbitBegin) / getTimeframePeriodOrbits();
-  if (tfId != currentTimeframe) {
-    // theLog.log(LogDebugTrace, "TF %lu", tfId);
-    statsNumberOfTimeframes++;
-
-    // detect gaps in TF id continuity
-    if (tfId != currentTimeframe + 1) {
-      if (cfgRdhDumpWarningEnabled) {
-        theLog.log(LogWarningSupport_(3004), "Non-contiguous timeframe IDs %llu ... %llu", (unsigned long long)currentTimeframe, (unsigned long long)tfId);
-      }
-    }
-  }
-  currentTimeframe = tfId;
   return tfId;
 }
 

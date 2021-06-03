@@ -46,6 +46,7 @@ class ReadoutStats
   void print();
 
   ReadoutStatsCounters counters;
+  bool isFairMQ; // flag to report when FairMQ used
 };
 
 extern ReadoutStats gReadoutStats;

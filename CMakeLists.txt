@@ -67,8 +67,7 @@ find_package(FairMQ)
 find_package(ZLIB)
 find_package(RDMA)
 find_package(Occ)
-#find_package(BookkeepingApiCpp)
-#find_package(cpprestsdk)
+find_package(BookkeepingApiCpp)
 find_package(ZMQ)
 
 # extract include directories from targets
@@ -339,6 +338,12 @@ add_executable(
 	$<TARGET_OBJECTS:objReadoutUtils>
 )
 
+# a test for FMQ memory
+add_executable(
+	o2-readout-test-fmq-memory
+        ${SOURCE_DIR}/testFmqMemory.cxx
+)
+
 
 # a test to check memory banks
 add_executable(
@@ -401,7 +406,7 @@ add_executable(
 
 # disable some executables when corresponding dependencies not found
 if (NOT FairMQ_FOUND)
-	set_target_properties(o2-readout-test-fmq-tx o2-readout-test-fmq-rx o2-readout-test-fmq-perf-tx o2-readout-test-fmq-perf-rx PROPERTIES EXCLUDE_FROM_ALL 1)
+	set_target_properties(o2-readout-test-fmq-tx o2-readout-test-fmq-rx o2-readout-test-fmq-perf-tx o2-readout-test-fmq-perf-rx  o2-readout-test-fmq-memory PROPERTIES EXCLUDE_FROM_ALL 1)
 endif ()
 
 # set include and libraries for all
@@ -420,6 +425,12 @@ if (${ZMQ_FOUND})
   list (APPEND executables o2-readout-monitor)
 endif()
 
+# special minimal build for test-fmq-memory (to avoid grpc garbage from occ when using valgrind)
+foreach (exe o2-readout-test-fmq-memory)
+  list (APPEND executables ${exe})
+  target_include_directories(${exe} PRIVATE ${READOUT_INCLUDE_DIRS})
+  target_link_libraries(${exe} PRIVATE $<$<BOOL:${FairMQ_FOUND}>:FairMQ::FairMQ>)
+endforeach()
 
 ###################################################
 # files installation
