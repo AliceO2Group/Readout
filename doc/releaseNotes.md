@@ -346,7 +346,7 @@ This file describes the main feature changes for each readout.exe released versi
 - consumer-stats: ZMQ stats client cleanup timeout, to avoid blocking on exit.
 - auto-mute RDH warnings: verbosity reduced if many successive logs done in a short time.
 
-## next version
+## v2.4.0 - 03/06/2021
 - equipment-player: fixed bug in "autochunk" replay mode. There was a "last packet invalid" error wrongly reported (and aborting replay) in the rare case when a link change would occur exactly at the beginning of a page.
 - Default value of equipment-rorc.rdhUseFirstInPageEnabled is now 1 for all RDH equipments (RORC, emu, player).
 - FMQ stats not printed when consoleUpdate=1 unless there is a running consumerFMQchannel with disableSending=0.
