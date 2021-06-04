@@ -14,7 +14,7 @@
 #include <sstream>
 #include <stdio.h>
 #include <unistd.h>
-#include <filesystem>
+#include <boost/filesystem.hpp>
 
 #include "RAWDataHeader.h"
 
@@ -213,7 +213,7 @@ int getStatsFreeSHM(unsigned long long &freeBytes) {
   freeBytes = 0;
   
   try {
-    freeBytes = (unsigned long long) (std::filesystem::space("/dev/shm")).free;
+    freeBytes = (unsigned long long) (boost::filesystem::space("/dev/shm")).free;
     success = 1;
   }
   catch (...) {
