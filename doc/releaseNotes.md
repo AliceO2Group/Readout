@@ -358,3 +358,4 @@ This file describes the main feature changes for each readout.exe released versi
 ## Next version
 - Updated configuration parameters:
   - added readout.disableTimefarmes:  when set, all timeframe-related features are disabled (STF slicing, TF rate limits, etc). All data are tagged with TF id = 0. To be used for some calibration runs not using a central trigger clock.
+  - added consumer-FMQchannel.checkResources: controls which resources are checked for fitting unmanaged region. This is a comma-separated list of items to be checked. By default, no checks are done. Recommended value: /dev/shm, MemAvailable.
