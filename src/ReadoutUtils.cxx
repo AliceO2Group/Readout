@@ -181,7 +181,31 @@ int getIntegerListFromString(const std::string& input, std::vector<int>& output)
   return 0;
 }
 
-int getStatsFreeMemory(unsigned long long &freeBytes) {
+
+// check if a string made of only of simple chars
+// arbitrary selection: letters, digits, ()_
+bool isSimpleString(const std::string &str) {
+     return find_if_not(str.begin(), str.end(), 
+        [](char c) { return (isalnum(c) || (c == '(') || (c == ')')|| (c == '_')); }) == str.end();
+}
+
+
+int getListFromString(const std::string& input, std::vector<std::string>& output)
+{
+  // coma-separated list of simple strings
+  std::istringstream f(input);
+  std::string s;
+  while (std::getline(f, s, ',')) {
+    // trim
+    const std::string blanks = "\t\n\v\f\r ";
+    s.erase(s.find_last_not_of(blanks) + 1);
+    s.erase(0, s.find_first_not_of(blanks));
+    output.push_back(s);
+  }
+  return 0;
+}
+
+int getStatsMemory(unsigned long long &freeBytes, const std::string &keyword) {
   FILE *fp;
   const int lineBufSz = 128;
   char lineBuf[lineBufSz];
@@ -189,10 +213,16 @@ int getStatsFreeMemory(unsigned long long &freeBytes) {
   int success = 0;
   freeBytes = 0;
   
+  // check if keyword looks suspicious
+  if (!isSimpleString(keyword)) {
+    return -1;
+  }
+    
   if ((fp = fopen("/proc/meminfo", "r")) != NULL) {
 
+    std::string entryLine = keyword + ": %lld kB";
     while (fgets(lineBuf, lineBufSz, fp) != NULL) {
-      if ( sscanf(lineBuf, "MemFree: %lld kB", &value) == 1) {
+      if ( sscanf(lineBuf, entryLine.c_str(), &value) == 1) {
 	freeBytes = ((unsigned long long)value) * 1024;
 	success = 1;
 	break;
@@ -208,12 +238,12 @@ int getStatsFreeMemory(unsigned long long &freeBytes) {
   return 0;
 }
 
-int getStatsFreeSHM(unsigned long long &freeBytes) {
+int getStatsFilesystem(unsigned long long &freeBytes, const std::string &path) {
   int success = 0;
   freeBytes = 0;
   
   try {
-    freeBytes = (unsigned long long) (std::filesystem::space("/dev/shm")).free;
+    freeBytes = (unsigned long long) (std::filesystem::space(path)).free;
     success = 1;
   }
   catch (...) {

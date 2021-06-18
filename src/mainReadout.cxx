@@ -143,6 +143,7 @@ class Readout
   // configuration parameters
   double cfgExitTimeout;
   double cfgFlushEquipmentTimeout;
+  int cfgDisableTimeframes;
   int cfgDisableAggregatorSlicing;
   double cfgAggregatorSliceTimeout;
   double cfgAggregatorStfTimeout;
@@ -468,9 +469,20 @@ int Readout::configure(const boost::property_tree::ptree& properties)
   // configuration parameter: | readout | tfRateLimit | double | 0 | When set, the output is limited to a given timeframe rate. |
   cfgTfRateLimit = 0;
   cfg.getOptionalValue<double>("readout.tfRateLimit", cfgTfRateLimit);
+
+  // configuration parameter: | readout | disableTimeframes | int | 0 | When set, all timeframe related features are disabled (this may supersede other config parameters). |
+  cfgDisableTimeframes = 0;
+  cfg.getOptionalValue<int>("readout.disableTimeframes", cfgDisableTimeframes);
+  if (cfgDisableTimeframes) {
+    cfgDisableAggregatorSlicing = 1;
+    cfgTfRateLimit = 0;
+    theLog.log(LogInfoDevel, "Timeframes disabled");
+  }
+
   if (cfgTfRateLimit > 0) {
     theLog.log(LogInfoDevel, "Timeframe rate limit = % .2lf Hz", cfgTfRateLimit);
   }
+
 
   // configuration parameter: | readout | logbookEnabled | int | 0 | When set, the logbook is enabled and populated with readout stats at runtime. |
   cfgLogbookEnabled = 0;
@@ -828,15 +840,16 @@ int Readout::start()
   if (cfgDisableAggregatorSlicing) {
     theLog.log(LogInfoDevel, "Aggregator slicing disabled");
     agg->disableSlicing = 1;
-  }
-  if (cfgAggregatorSliceTimeout > 0) {
-    theLog.log(LogInfoDevel, "Aggregator slice timeout = %.2lf seconds", cfgAggregatorSliceTimeout);
-    agg->cfgSliceTimeout = cfgAggregatorSliceTimeout;
-  }
-  if (cfgAggregatorStfTimeout > 0) {
-    theLog.log(LogInfoDevel, "Aggregator subtimeframe timeout = %.2lf seconds", cfgAggregatorStfTimeout);
-    agg->cfgStfTimeout = cfgAggregatorStfTimeout;
-    agg->enableStfBuilding = 1;
+  } else {
+    if (cfgAggregatorSliceTimeout > 0) {
+      theLog.log(LogInfoDevel, "Aggregator slice timeout = %.2lf seconds", cfgAggregatorSliceTimeout);
+      agg->cfgSliceTimeout = cfgAggregatorSliceTimeout;
+    }
+    if (cfgAggregatorStfTimeout > 0) {
+      theLog.log(LogInfoDevel, "Aggregator subtimeframe timeout = %.2lf seconds", cfgAggregatorStfTimeout);
+      agg->cfgStfTimeout = cfgAggregatorStfTimeout;
+      agg->enableStfBuilding = 1;
+    }
   }
 
   agg->start();

@@ -188,34 +188,44 @@ class ConsumerFMQchannel : public Consumer
     
       // check system resources first, as region creation does not check available memory, so bad crash could occur later      
       theLog.log(LogInfoDevel_(3002), "Configuring memory buffer %lld MB", (long long)(mMemorySize/1048576LL));
-	    
-      // free system memory
-      unsigned long long freeBytes;
-      if (getStatsFreeMemory(freeBytes)) {
-        theLog.log(LogWarningSupport_(3230), "Can not get stats about system free memory available");
-      } else {
-          theLog.log(LogInfoSupport_(3230), "Stats free memory available: %lld MB", (long long)(freeBytes/1048576LL));
-	  if ((long long)freeBytes < mMemorySize) {
-          theLog.log(LogErrorSupport_(3230), "Not enough system memory available - check /proc/meminfo");
-          throw "ConsumerFMQ: can not allocate shared memory region";
-	} else {
 
-	}
+      // configuration parameter: | consumer-FairMQChannel-* | checkResources | string | | Check beforehand if unmanaged region would fit in given list of resources. Comma-separated list of items to be checked: eg /dev/shm, MemFree, MemAvailable. (any filesystem path, and any /proc/meminfo entry).|
+      std::string cfgCheckResources;
+      cfg.getOptionalValue<std::string>(cfgEntryPoint + ".checkResources", cfgCheckResources);
+      bool isResourceError = 0;
+      std::vector<std::string> resources;
+      
+      if (getListFromString(cfgCheckResources, resources)) {
+        throw("Can not parse configuration item checkResources");
       }
-            
-      // free SHM memory
-      // check only if transport is of type shmem
-      if (cfgTransportType == "shmem") {
-	if (getStatsFreeSHM(freeBytes)) {
-          theLog.log(LogWarningSupport_(3230), "Can not get stats about shared memory available");
+      
+      for(auto r : resources) {
+        unsigned long long freeBytes;
+
+	int getStatsErr = 0;
+        if (r.find_first_of("/")!=std::string::npos) {
+	  // this is a path
+	  getStatsErr = getStatsFilesystem(freeBytes, r);
 	} else {
-          theLog.log(LogInfoSupport_(3230), "Stats shared memory available: %lld MB", (long long)(freeBytes/1048576LL));
+	  // look in /proc/meminfo
+	  getStatsErr = getStatsMemory(freeBytes, r);
+	  r = "/proc/meminfo " + r;
+	}
+	
+	if (getStatsErr) {
+            theLog.log(LogWarningSupport_(3230), "Can not get stats for %s", r.c_str());
+	} else {
+          theLog.log(LogInfoSupport_(3230), "Stats for %s : %lld MB available", r.c_str(), (long long)(freeBytes/1048576LL));
           if ((long long)freeBytes < mMemorySize) {
-            theLog.log(LogErrorSupport_(3230), "Not enough shared memory available - check /dev/shm");
-            throw "ConsumerFMQ: can not allocate shared memory region";
+            theLog.log(LogErrorSupport_(3230), "Not enough space on %s", r.c_str());
+            isResourceError = 1;
 	  }
 	}
       }
+
+      if (isResourceError) {
+        throw "ConsumerFMQ: can not allocate shared memory region, system resources check failed";
+      }      
             
       theLog.log(LogInfoDevel_(3008), "Creating FMQ unmanaged memory region");
       memoryBuffer = sendingChannel->Transport()->CreateUnmanagedRegion(mMemorySize, [](void* /*data*/, size_t /*size*/, void* hint) { // cleanup callback

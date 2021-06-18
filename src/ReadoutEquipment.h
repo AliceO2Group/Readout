@@ -155,6 +155,7 @@ class ReadoutEquipment
   int cfgRdhUseFirstInPageEnabled = 0; // flag to enable reading of first RDH in page to populate readout headers
   //int cfgRdhCheckPacketCounterContiguous = 1; // flag to enable checking if RDH packetCounter value contiguous (done link-by-link)
   double cfgTfRateLimit = 0;           // TF rate limit, to throttle data readout
+  int cfgDisableTimeframes = 0;        // When set, all TF features disabled
   RateRegulator TFregulator;           // clock counter for TF rate checks
   DataBlockContainerReference throttlePendingBlock; // in case TF rate limit was reached, a block may be set aside for later (when it belongs to next TF)
 
