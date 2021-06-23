@@ -1,1 +1,1 @@
-#define READOUT_VERSION "2.4.0"
+#define READOUT_VERSION "2.4.1"
