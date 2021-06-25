@@ -339,7 +339,7 @@ Thread::CallbackResult ReadoutEquipment::threadCallback(void* arg)
 	}
 
 	// handle RDH-formatted data
-	if (ptr->isRdhEquipment) {
+	if (ptr->cfgRdhUseFirstInPageEnabled) {
           ptr->processRdh(nextBlock);
 	}
 	
