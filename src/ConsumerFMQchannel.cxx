@@ -14,8 +14,10 @@
 #include "MemoryPagesPool.h"
 #include "ReadoutStats.h"
 #include "ReadoutUtils.h"
+#include "CounterStats.h"
 #include <atomic>
 #include <chrono>
+#include <inttypes.h>
 
 #ifdef WITH_FAIRMQ
 
@@ -104,6 +106,8 @@ class ConsumerFMQchannel : public Consumer
 
   int memoryPoolPageSize;
   int memoryPoolNumberOfPages;
+
+  CounterStats repackSizeStats; // keep track of page size used when repacking
 
  public:
   std::vector<FairMQMessagePtr> messagesToSend; // collect HBF messages of each update
@@ -277,6 +281,12 @@ class ConsumerFMQchannel : public Consumer
 
   ~ConsumerFMQchannel()
   {
+    // log memory pool statistics
+    if (mp!=nullptr) {
+      theLog.log(LogInfoDevel_(3003), "Consumer %s - memory pool statistics ... %s", name.c_str(), mp->getStats().c_str());
+      theLog.log(LogInfoDevel_(3003), "Consumer %s - STFB repacking statistics ... number: %" PRIu64 " average page size: %" PRIu64 " max page size: %" PRIu64, name.c_str(), repackSizeStats.getCount(), (uint64_t)repackSizeStats.getAverage(), repackSizeStats.getMaximum());
+    }
+    
     // release in reverse order
     mp = nullptr;
     memoryBuffer = nullptr; // warning: data range may still be referenced in memory bank manager
@@ -596,6 +606,10 @@ class ConsumerFMQchannel : public Consumer
         for (auto& f : pendingFrames) {
           totalSize += f.HBlength;
         }
+	
+	// keep stats on repack page size
+	repackSizeStats.set(totalSize);
+	
         // allocate
         // todo: same code as for header -> create func/lambda
         // todo: send empty message if no page left in buffer
