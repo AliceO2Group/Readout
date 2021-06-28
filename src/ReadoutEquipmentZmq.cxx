@@ -12,6 +12,7 @@
 #include <functional>
 #include <thread>
 #include <zmq.h>
+#include <inttypes.h>
 
 #include "MemoryBankManager.h"
 #include "ReadoutEquipment.h"
@@ -33,6 +34,8 @@ class ReadoutEquipmentZmq : public ReadoutEquipment
   void* context = nullptr;
   void* zh = nullptr;
 
+  int snapshotMode = 0;
+
   std::atomic<int> shutdownSnapshotThread = 0;
   std::unique_ptr<std::thread> snapshotThread;
   void loopSnapshot(void);
@@ -53,15 +56,38 @@ class ReadoutEquipmentZmq : public ReadoutEquipment
   std::atomic<int> tfUpdateTime = 0;
   std::atomic<int> tfUpdateTimeWarning = 0;
   int nBlocks = 0;
+  
+  uint64_t bytesRx = 0;
+  uint64_t blocksRx = 0;
 };
 
 ReadoutEquipmentZmq::ReadoutEquipmentZmq(ConfigFile& cfg, std::string cfgEntryPoint) : ReadoutEquipment(cfg, cfgEntryPoint)
 {
-
+  int zmqTimeout = 0;
+  int zmqMaxQueue = 0;
+  int zmqRxBuffer = 16 * 1024 * 1024;
+  
+  std::string cfgMode = "stream";
+  // configuration parameter: | equipment-zmq-* | mode | string | stream | Possible values: stream (1 input ZMQ message = 1 output data page), snapshot (last ZMQ message = one output data page per TF). |
+  cfg.getOptionalValue<std::string>(cfgEntryPoint + ".mode", cfgMode);
+  theLog.log(LogInfoDevel_(3002), "Using mode %s", cfgMode.c_str());
+  if (cfgMode == "snapshot") {
+    snapshotMode = 1;
+    zmqTimeout = 5000;
+  } else if (cfgMode == "stream") {
+  } else {
+    throw std::string("Wrong mode");
+  }
+  
   std::string cfgAddress = "";
   // configuration parameter: | equipment-zmq-* | address | string | | Address of remote server to connect, eg tcp://remoteHost:12345. |
   cfg.getValue<std::string>(cfgEntryPoint + ".address", cfgAddress);
-  theLog.log(LogInfoDevel_(3002), "Connecting to %s", cfgAddress.c_str());
+
+  std::string cfgType = "SUB";
+  // configuration parameter: | equipment-zmq-* | type | string | SUB | Type of ZMQ socket to use to get data (PULL, SUB). |
+  cfg.getOptionalValue<std::string>(cfgEntryPoint + ".type", cfgType);
+
+  theLog.log(LogInfoDevel_(3002), "Connecting to %s : %s", cfgAddress.c_str(), cfgType.c_str());
 
   int linerr = 0;
   int zmqerr = 0;
@@ -72,23 +98,49 @@ ReadoutEquipmentZmq::ReadoutEquipmentZmq(ConfigFile& cfg, std::string cfgEntryPo
       zmqerr = zmq_errno();
       break;
     }
-    zh = zmq_socket(context, ZMQ_PULL);
+    if (cfgType == "PULL") {
+      zh = zmq_socket(context, ZMQ_PULL);
+    } else if (cfgType == "SUB") {
+      zh = zmq_socket(context, ZMQ_SUB);    
+    }
     if (zh == nullptr) {
       linerr = __LINE__;
       zmqerr = zmq_errno();
       break;
     }
-    int timeout = 5000;
-    zmqerr = zmq_setsockopt(zh, ZMQ_RCVTIMEO, (void*)&timeout, sizeof(int));
+    zmqerr = zmq_setsockopt(zh, ZMQ_RCVTIMEO, (void*)&zmqTimeout, sizeof(int));
+    if (zmqerr) {
+      linerr = __LINE__;
+      break;
+    }
+    if (zmqMaxQueue >=0 ) {
+      zmqerr = zmq_setsockopt(zh, ZMQ_RCVHWM, (void*)&zmqMaxQueue, sizeof(int));
+      if (zmqerr) {
+	linerr = __LINE__;
+	break;
+      }
+    }
+    if (zmqRxBuffer >=0 ) {
+      zmqerr = zmq_setsockopt(zh, ZMQ_RCVBUF, (void*)&zmqRxBuffer, sizeof(int));
+      if (zmqerr) {
+	linerr = __LINE__;
+	break;
+      }
+    }
+    
+    zmqerr = zmq_connect(zh, cfgAddress.c_str());
     if (zmqerr) {
       linerr = __LINE__;
       break;
     }
 
-    zmqerr = zmq_connect(zh, cfgAddress.c_str());
-    if (zmqerr) {
-      linerr = __LINE__;
-      break;
+    if (cfgType == "SUB") {
+      // subscribe to all published messages
+      zmqerr = zmq_setsockopt(zh, ZMQ_SUBSCRIBE, "", 0);
+      if (zmqerr) {
+	linerr = __LINE__;
+	break;
+      }
     }
 
     break;
@@ -98,39 +150,41 @@ ReadoutEquipmentZmq::ReadoutEquipmentZmq(ConfigFile& cfg, std::string cfgEntryPo
     theLog.log(LogErrorSupport_(3236), "ZeroMQ error @%d : (%d) %s", linerr, zmqerr, zmq_strerror(zmqerr));
     throw __LINE__;
   }
-
-  // configuration parameter: | equipment-zmq-* | timeframeClientUrl | string | | The address to be used to retrieve current timeframe. When set, data is published only once for each TF id published by remote server. |
-  std::string cfgTimeframeClientUrl;
-  cfg.getOptionalValue<std::string>(cfgEntryPoint + ".timeframeClientUrl", cfgTimeframeClientUrl);
-  if (cfgTimeframeClientUrl.length() > 0) {
-    theLog.log(LogInfoDevel_(3002), "Creating Timeframe client @ %s", cfgTimeframeClientUrl.c_str());
-    tfClient = std::make_unique<ZmqClient>(cfgTimeframeClientUrl);
-    if (tfClient == nullptr) {
-      theLog.log(LogErrorSupport_(3236), "Failed to create TF client");
-    } else {
-      maxTf = 0;
-      tfUpdateTime = time(NULL);
-      std::function<int(void*, int)> cb = std::bind(&ReadoutEquipmentZmq::tfClientCallback, this, std::placeholders::_1, std::placeholders::_2);
-      tfClient->setCallback(cb);
+  
+  if (snapshotMode) {
+    // configuration parameter: | equipment-zmq-* | timeframeClientUrl | string | | The address to be used to retrieve current timeframe. When set, data is published only once for each TF id published by remote server. |
+    std::string cfgTimeframeClientUrl;
+    cfg.getOptionalValue<std::string>(cfgEntryPoint + ".timeframeClientUrl", cfgTimeframeClientUrl);
+    if (cfgTimeframeClientUrl.length() > 0) {
+      theLog.log(LogInfoDevel_(3002), "Creating Timeframe client @ %s", cfgTimeframeClientUrl.c_str());
+      tfClient = std::make_unique<ZmqClient>(cfgTimeframeClientUrl);
+      if (tfClient == nullptr) {
+	theLog.log(LogErrorSupport_(3236), "Failed to create TF client");
+      } else {
+	maxTf = 0;
+	tfUpdateTime = time(NULL);
+	std::function<int(void*, int)> cb = std::bind(&ReadoutEquipmentZmq::tfClientCallback, this, std::placeholders::_1, std::placeholders::_2);
+	tfClient->setCallback(cb);
+      }
     }
+
+    // allocate data for snapshot
+    snapshotMetadata.maxSize = memoryPoolPageSize;
+    snapshotMetadata.currentSize = 0;
+    snapshotMetadata.timestamp = 0;
+    snapshotData = std::make_unique<unsigned char[]>(snapshotMetadata.maxSize);
+    if (snapshotData == nullptr) {
+      theLog.log(LogErrorSupport_(3230), "Failed to allocate memory (%d bytes)", snapshotMetadata.maxSize);
+      throw __LINE__;
+    }
+
+    // starting snapshot thread
+    shutdownSnapshotThread = 0;
+    std::function<void(void)> l = std::bind(&ReadoutEquipmentZmq::loopSnapshot, this);
+    snapshotThread = std::make_unique<std::thread>(l);
+
+    // wait that we have at least one snapshot with success
   }
-
-  // allocate data for snapshot
-  snapshotMetadata.maxSize = memoryPoolPageSize;
-  snapshotMetadata.currentSize = 0;
-  snapshotMetadata.timestamp = 0;
-  snapshotData = std::make_unique<unsigned char[]>(snapshotMetadata.maxSize);
-  if (snapshotData == nullptr) {
-    theLog.log(LogErrorSupport_(3230), "Failed to allocate memory (%d bytes)", snapshotMetadata.maxSize);
-    throw __LINE__;
-  }
-
-  // starting snapshot thread
-  shutdownSnapshotThread = 0;
-  std::function<void(void)> l = std::bind(&ReadoutEquipmentZmq::loopSnapshot, this);
-  snapshotThread = std::make_unique<std::thread>(l);
-
-  // wait that we have at least one snapshot with success
 }
 
 ReadoutEquipmentZmq::~ReadoutEquipmentZmq()
@@ -158,6 +212,8 @@ ReadoutEquipmentZmq::~ReadoutEquipmentZmq()
   snapshotLock.unlock();
 
   tfClient = nullptr;
+  
+  theLog.log(LogInfoDevel_(3003), "ZeroMQ subscribe stats: %" PRIu64 " blocks %" PRIu64 " bytes", blocksRx, bytesRx);
 }
 
 void ReadoutEquipmentZmq::loopSnapshot(void)
@@ -221,16 +277,42 @@ DataBlockContainerReference ReadoutEquipmentZmq::getNextBlock()
     return nullptr;
   }
 
-  // check TF rate... do we produce data now ?
-  if (maxTf >= 0) {
-    const int tfTimeout = 5;
-    if ((time(NULL) > tfUpdateTime + tfTimeout) && (!tfUpdateTimeWarning)) {
-      tfUpdateTimeWarning = 1;
-      theLog.log(LogWarningSupport_(3236), "No TF id received from TF server for the past %d seconds", tfTimeout);
+  if (snapshotMode) {
+    // check TF rate... do we produce data now ?
+    if (maxTf >= 0) {
+      const int tfTimeout = 5;
+      if ((time(NULL) > tfUpdateTime + tfTimeout) && (!tfUpdateTimeWarning)) {
+	tfUpdateTimeWarning = 1;
+	theLog.log(LogWarningSupport_(3236), "No TF id received from TF server for the past %d seconds", tfTimeout);
+      }
+      if (nBlocks >= maxTf) {
+	return nullptr;
+      }
     }
-    if (nBlocks >= maxTf) {
-      return nullptr;
+
+    // query memory pool for a free block
+    DataBlockContainerReference nextBlock = nullptr;
+    try {
+      nextBlock = mp->getNewDataBlockContainer();
+    } catch (...) {
     }
+
+    // format data block
+    if (nextBlock != nullptr) {
+      DataBlock* b = nextBlock->getData();
+
+      snapshotLock.lock();
+      if ((time(NULL) - snapshotMetadata.timestamp < 5) && (snapshotMetadata.currentSize < (int)b->header.dataSize)) {
+	b->header.dataSize = snapshotMetadata.currentSize;
+	memcpy(b->data, snapshotData.get(), snapshotMetadata.currentSize);
+      }
+      snapshotLock.unlock();
+
+      // TODO: set TF id, timestamp, etc
+      nBlocks++;
+      // printf("publish DCS for tf %d / maxTf %d\n", nBlocks, (int)maxTf);
+    }
+    return nextBlock;
   }
 
   // query memory pool for a free block
@@ -240,22 +322,26 @@ DataBlockContainerReference ReadoutEquipmentZmq::getNextBlock()
   } catch (...) {
   }
 
-  // format data block
+  // get data from ZMQ
   if (nextBlock != nullptr) {
     DataBlock* b = nextBlock->getData();
-
-    snapshotLock.lock();
-    if ((time(NULL) - snapshotMetadata.timestamp < 5) && (snapshotMetadata.currentSize < (int)b->header.dataSize)) {
-      b->header.dataSize = snapshotMetadata.currentSize;
-      memcpy(b->data, snapshotData.get(), snapshotMetadata.currentSize);
+    int bsz = nextBlock->getDataBufferSize();
+    
+    int nb = 0;
+    nb = zmq_recv(zh, b->data, bsz, ZMQ_DONTWAIT);
+    if (nb >= bsz) {
+      // buffer was too small to get full message
+      theLog.log(LogWarningDevel, "ZMQ message bigger than buffer, skipping");
+      nextBlock = nullptr;
+    } else if (nb <= 0) {
+      nextBlock = nullptr;
+    } else {
+      b->header.dataSize = nb;
+      bytesRx += nb;
+      blocksRx++;
     }
-    snapshotLock.unlock();
-
-    // TODO: set TF id, timestamp, etc
-    nBlocks++;
-    // printf("publish DCS for tf %d / maxTf %d\n", nBlocks, (int)maxTf);
   }
-
+  
   return nextBlock;
 }
 

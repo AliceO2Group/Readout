@@ -359,3 +359,9 @@ This file describes the main feature changes for each readout.exe released versi
 - Updated configuration parameters:
   - added readout.disableTimefarmes:  when set, all timeframe-related features are disabled (STF slicing, TF rate limits, etc). All data are tagged with TF id = 0. To be used for some calibration runs not using a central trigger clock.
   - added consumer-FMQchannel.checkResources: controls which resources are checked for fitting unmanaged region. This is a comma-separated list of items to be checked. By default, no checks are done. Recommended value: /dev/shm, MemAvailable.
+
+## v2.4.2 - 28/06/2021
+- verbose logs auto-mute (aggregator, consumer-FMQchannel).
+- consumer-FMQchannel: drop TF on error (to avoid unhappy STFB when sending incomplete data, eg on "data page too small" or "no page left" conditions).
+- added memory pool usage statistics (to help tuning buffer pages count and size).
+- added some ZeroMQ options for consumerZMQ and equipmentZMQ.

@@ -16,6 +16,7 @@
 #include <functional>
 #include <map>
 #include <memory>
+#include <string>
 
 #include "CounterStats.h"
 #include "DataBlockContainer.h"
@@ -69,6 +70,8 @@ class MemoryPagesPool
 
   bool isPageValid(void* page); // check to see if a page address is valid
 
+  std::string getStats(); // return a string summarizing memory pool usage statistics
+
  private:
   std::unique_ptr<AliceO2::Common::Fifo<void*>> pagesAvailable; // a buffer to keep track of individual pages
 
@@ -104,6 +107,8 @@ class MemoryPagesPool
   // t3: releasepage->getpage
   // t4: getpage->releasepage
   CounterStats t1, t2, t3, t4;
+  
+  CounterStats poolStats; // keep track of number of free pages in the pool 
 };
 
 #endif // #ifndef _MEMORYPAGESPOOL_H

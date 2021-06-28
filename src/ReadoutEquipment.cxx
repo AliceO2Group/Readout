@@ -253,6 +253,10 @@ void ReadoutEquipment::stop()
 
 ReadoutEquipment::~ReadoutEquipment()
 {
+  if (mp != nullptr) {
+    theLog.log(LogInfoDevel_(3003), "Equipment %s - memory pool statistics ... %s", name.c_str(), mp->getStats().c_str());
+  }
+	
   // check if mempool still referenced
   if (!mp.unique()) {
     theLog.log(LogInfoDevel_(3008), "Equipment %s :  mempool still has %d references\n", name.c_str(), (int)mp.use_count());
@@ -339,7 +343,7 @@ Thread::CallbackResult ReadoutEquipment::threadCallback(void* arg)
 	}
 
 	// handle RDH-formatted data
-	if (ptr->isRdhEquipment) {
+	if (ptr->cfgRdhUseFirstInPageEnabled) {
           ptr->processRdh(nextBlock);
 	}
 	

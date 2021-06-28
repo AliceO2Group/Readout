@@ -19,6 +19,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <fcntl.h>
 
 class TtyChecker
 {
@@ -39,6 +40,7 @@ class TtyChecker
     }
     if (isInteractive) {
       // set non-blocking input
+      fcntl(0, F_SETFL, O_NONBLOCK);
       struct termios new_settings;
       tcgetattr(0, &initial_settings);
       new_settings = initial_settings;
@@ -46,8 +48,9 @@ class TtyChecker
       new_settings.c_lflag &= ~ECHO;
       // do not disable ctrl+c signal
       // new_settings.c_lflag &= ~ISIG;
-      new_settings.c_cc[VMIN] = 0;
-      new_settings.c_cc[VTIME] = 0;
+      // The following controls buffer timeouts, but seem not ok on CS8
+//      new_settings.c_cc[VMIN] = 0;
+//      new_settings.c_cc[VTIME] = 0;
       tcsetattr(0, TCSANOW, &new_settings);
     }
   };

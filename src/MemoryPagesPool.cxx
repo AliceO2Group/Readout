@@ -140,6 +140,9 @@ MemoryPagesPool::~MemoryPagesPool()
 
 void* MemoryPagesPool::getPage()
 {
+  // update statistics
+  poolStats.set((CounterValue)getNumberOfPagesAvailable());
+
   // get a page from fifo, if available
   void* ptr = nullptr;
   pagesAvailable->pop(ptr);
@@ -260,3 +263,7 @@ bool MemoryPagesPool::isPageValid(void* pagePtr)
 }
 
 size_t MemoryPagesPool::getDataBlockMaxSize() { return pageSize - headerReservedSpace; }
+
+std::string MemoryPagesPool::getStats() {
+  return "number of pages used: " + std::to_string(poolStats.getTotal()) + " average free pages: " + std::to_string((uint64_t)poolStats.getAverage()) + " minimum free pages: " + std::to_string(poolStats.getMinimum());
+}
