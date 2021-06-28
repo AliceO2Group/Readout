@@ -364,3 +364,4 @@ This file describes the main feature changes for each readout.exe released versi
 - verbose logs auto-mute (aggregator, consumer-FMQchannel).
 - consumer-FMQchannel: drop TF on error (to avoid unhappy STFB when sending incomplete data, eg on "data page too small" or "no page left" conditions).
 - added memory pool usage statistics (to help tuning buffer pages count and size).
+- added some ZeroMQ options for consumerZMQ and equipmentZMQ.
