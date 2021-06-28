@@ -170,7 +170,8 @@ Thread::CallbackResult DataBlockAggregator::executeCallback()
         uint64_t tfId = db->header.timeframeId;
         uint64_t sourceId = (((uint64_t)db->header.equipmentId) << 32) | ((uint64_t)db->header.linkId);
         if (tfId <= lastTimeframeId) {
-          theLog.log(LogWarningSupport_(3235), "Discarding late data for TF %" PRIu64 " (source = 0x%" PRIx64 ")", tfId, sourceId);
+	  static InfoLogger::AutoMuteToken token(LogWarningSupport_(3004));
+          theLog.log(token, "Discarding late data for TF %" PRIu64 " (source = 0x%" PRIx64 ")", tfId, sourceId);
         } else {
           tStf& stf = stfBuffer[tfId];
           stf.tfId = tfId;
@@ -221,7 +222,12 @@ Thread::CallbackResult DataBlockAggregator::executeCallback()
           nSources = it->second.sstf.size(); // keep track of number of sources in first TF
         }
         nStfPushed++;
-        lastTimeframeId = it->second.tfId;
+	uint64_t newTimeframeId = it->second.tfId;
+	if (newTimeframeId > lastTimeframeId + 1) {
+	  static InfoLogger::AutoMuteToken token(LogWarningSupport_(3004));
+          theLog.log(token, "Gap in timeframe ids detected: previous = %" PRIu64 " new = %" PRIu64, lastTimeframeId, newTimeframeId);
+	}
+        lastTimeframeId = newTimeframeId;
         /*
         if (lastTimeframeId % 10 == 1) {
           theLog.log(LogDebugTrace, "LastTimeframeId=%lu deltaT=%f",lastTimeframeId,tmax-tmin);
@@ -259,7 +265,8 @@ int DataBlockSlicer::appendBlock(DataBlockContainerReference const& block, doubl
 
   if (sourceId.linkId != undefinedLinkId) {
     if (sourceId.linkId >= maxLinks) {
-      theLog.log(LogWarningSupport_(3004), "wrong link id %d > %d", sourceId.linkId, maxLinks - 1);
+      static InfoLogger::AutoMuteToken token(LogWarningSupport_(3004));
+      theLog.log(token, "wrong link id %d > %d", sourceId.linkId, maxLinks - 1);
       return -1;
     }
   }
