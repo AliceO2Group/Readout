@@ -600,7 +600,8 @@ class ConsumerFMQchannel : public Consumer
         // todo: same code as for header -> create func/lambda
         // todo: send empty message if no page left in buffer
         if (memoryPoolPageSize < totalSize) {
-          theLog.log(LogWarningSupport_(3230), "page size too small %d < %d", memoryPoolPageSize, totalSize);
+	  static InfoLogger::AutoMuteToken token(LogWarningSupport_(3230));
+          theLog.log(token, "page size too small %d < %d", memoryPoolPageSize, totalSize);
           throw __LINE__;
         }
         DataBlockContainerReference copyBlock = nullptr;
@@ -609,7 +610,8 @@ class ConsumerFMQchannel : public Consumer
         } catch (...) {
         }
         if (copyBlock == nullptr) {
-          theLog.log(LogWarningSupport_(3230), "no page left");
+	  static InfoLogger::AutoMuteToken token(LogWarningSupport_(3230));
+          theLog.log(token, "no page left");
           throw __LINE__;
         }
         auto blockRef = new DataBlockContainerReference(copyBlock);
@@ -705,8 +707,10 @@ class ConsumerFMQchannel : public Consumer
         }
       }
       pendingFrames.clear();
-
-      theLog.log(LogErrorSupport_(3233), "ConsumerFMQ : error %d", err);
+      static InfoLogger::AutoMuteToken token(LogErrorSupport_(3233));
+      theLog.log(token, "ConsumerFMQ : error %d", err);
+      // cleanup buffer, and start fresh (in particular: avoid sending empty message parts)
+      messagesToSend.clear();
       totalPushError++;
       return -1;
     }
