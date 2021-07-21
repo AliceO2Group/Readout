@@ -12,6 +12,8 @@
 #include "ReadoutStats.h"
 #include "readoutInfoLogger.h"
 #include <inttypes.h>
+#include <string.h>
+#include <errno.h>
 
 extern tRunNumber occRunNumber;
 
@@ -104,6 +106,14 @@ ReadoutEquipment::ReadoutEquipment(ConfigFile& cfg, std::string cfgEntryPoint, b
   cfgDisableTimeframes = 0;
   cfg.getOptionalValue<int>("readout.disableTimeframes", cfgDisableTimeframes);
 
+  // get superpage debug settings
+  // configuration parameter: | equipment-* | saveErrorPagesMax | int | 0 | If set, pages found with data error are saved to disk up to given maximum. |
+  cfgSaveErrorPagesMax = 0;
+  cfg.getOptionalValue<int>(cfgEntryPoint + ".saveErrorPagesMax", cfgSaveErrorPagesMax);
+  // configuration parameter: | equipment-* | saveErrorPagesPath | string |  | Path where to save data pages with errors (when feature enabled). |
+  cfgSaveErrorPagesPath = "";
+  cfg.getOptionalValue<std::string>(cfgEntryPoint + ".saveErrorPagesPath", cfgSaveErrorPagesPath);
+  
   // log config summary
   theLog.log(LogInfoDevel_(3002), "Equipment %s: from config [%s], max rate=%lf Hz, idleSleepTime=%d us, outputFifoSize=%d", name.c_str(), cfgEntryPoint.c_str(), readoutRate, cfgIdleSleepTime, cfgOutputFifoSize);
   theLog.log(LogInfoDevel_(3008), "Equipment %s: requesting memory pool %d pages x %d bytes from bank '%s', block aligned @ 0x%X, 1st page offset @ 0x%X", name.c_str(), (int)memoryPoolNumberOfPages, (int)memoryPoolPageSize, memoryBankName.c_str(), (int)cfgBlockAlign, (int)cfgFirstPageOffset);
@@ -118,7 +128,7 @@ ReadoutEquipment::ReadoutEquipment(ConfigFile& cfg, std::string cfgEntryPoint, b
   cfg.getOptionalValue<int>(cfgEntryPoint + ".rdhDumpEnabled", cfgRdhDumpEnabled);
   // configuration parameter: | equipment-* | rdhDumpErrorEnabled | int | 1 | If set, a log message is printed for each RDH header error found.|
   cfg.getOptionalValue<int>(cfgEntryPoint + ".rdhDumpErrorEnabled", cfgRdhDumpErrorEnabled);
-  // configuration parameter: | equipment-* | rdhDumpWarningEnabled | int | 0 | If set, a log message is printed for each RDH header warning found.|
+  // configuration parameter: | equipment-* | rdhDumpWarningEnabled | int | 1 | If set, a log message is printed for each RDH header warning found.|
   cfg.getOptionalValue<int>(cfgEntryPoint + ".rdhDumpWarningEnabled", cfgRdhDumpWarningEnabled);
   // configuration parameter: | equipment-* | rdhUseFirstInPageEnabled | int | 0 or 1 | If set, the first RDH in each data page is used to populate readout headers (e.g. linkId). Default is 1 for  equipments generating data with RDH, 0 otherwsise. |
   cfg.getOptionalValue<int>(cfgEntryPoint + ".rdhUseFirstInPageEnabled", cfgRdhUseFirstInPageEnabled);
@@ -200,7 +210,8 @@ void ReadoutEquipment::start()
   isError = 0;
   currentBlockId = 0;
   isDataOn = false;
-
+  saveErrorPagesCount = 0;
+  
   // reset equipment counters
   ReadoutEquipment::initCounters();
   this->initCounters();
@@ -513,6 +524,7 @@ uint64_t ReadoutEquipment::getTimeframeFromOrbit(uint32_t hbOrbit)
   if (!isDefinedFirstTimeframeHbOrbitBegin) {
     firstTimeframeHbOrbitBegin = hbOrbit;
     isDefinedFirstTimeframeHbOrbitBegin = 1;
+    theLog.log(LogInfoDevel_(3003), "Equipment %s : first HB orbit = %X", name.c_str(), (unsigned int)firstTimeframeHbOrbitBegin);
   }
   uint64_t tfId = 1 + (hbOrbit - firstTimeframeHbOrbitBegin) / getTimeframePeriodOrbits();
   return tfId;
@@ -582,7 +594,8 @@ int ReadoutEquipment::tagDatablockFromRdh(RdhHandle& h, DataBlockHeader& bh)
 
 int ReadoutEquipment::processRdh(DataBlockContainerReference& block)
 {
-
+  bool isPageError = 0; // flag set when some errors found
+  
   DataBlockHeader& blockHeader = block->getData()->header;
   void* blockData = block->getData()->data;
   if (blockData == nullptr) {
@@ -635,6 +648,8 @@ int ReadoutEquipment::processRdh(DataBlockContainerReference& block)
           errorDescription.clear();
         }
         statsRdhCheckErr++;
+	isPageError = 1;
+        theLog.log(logRdhErrorsToken, "Equipment %d RDH #%d @ 0x%X : invalid RDH: %s", id, rdhIndexInPage, (unsigned int)pageOffset, errorDescription.c_str());
         // stop on first RDH error (should distinguich valid/invalid block length)
         break;
       } else {
@@ -656,6 +671,7 @@ int ReadoutEquipment::processRdh(DataBlockContainerReference& block)
       if (linkId != h.getLinkId()) {
         if (cfgRdhDumpWarningEnabled) {
           theLog.log(logRdhErrorsToken, "Equipment %d RDH #%d @ 0x%X : inconsistent link ids: %d != %d", id, rdhIndexInPage, (unsigned int)pageOffset, linkId, h.getLinkId());
+          isPageError = 1;
         }
         statsRdhCheckStreamErr++;
         break; // stop checking this page
@@ -666,6 +682,7 @@ int ReadoutEquipment::processRdh(DataBlockContainerReference& block)
 	if (((blockHeader.timeframeOrbitFirst < blockHeader.timeframeOrbitLast) && ((h.getTriggerOrbit() < blockHeader.timeframeOrbitFirst) || (h.getTriggerOrbit() > blockHeader.timeframeOrbitLast))) || ((blockHeader.timeframeOrbitFirst > blockHeader.timeframeOrbitLast) && ((h.getTriggerOrbit() < blockHeader.timeframeOrbitFirst) && (h.getTriggerOrbit() > blockHeader.timeframeOrbitLast)))) {
           if (cfgRdhDumpErrorEnabled) {
             theLog.log(logRdhErrorsToken, "Equipment %d RDH #%d @ 0x%X : TimeFrame ID change in page not allowed : orbit 0x%08X not in range [0x%08X,0x%08X]", id, rdhIndexInPage, (unsigned int)pageOffset, (int)h.getTriggerOrbit(), (int)blockHeader.timeframeOrbitFirst, (int)blockHeader.timeframeOrbitLast);
+            isPageError = 1;
           }
           statsRdhCheckStreamErr++;
           break; // stop checking this page
@@ -700,5 +717,26 @@ int ReadoutEquipment::processRdh(DataBlockContainerReference& block)
       pageOffset += offsetNextPacket;
     }
   }
+  
+  if (isPageError) {
+    if (saveErrorPagesCount < cfgSaveErrorPagesMax) {
+      saveErrorPagesCount++;
+      std::string fn = cfgSaveErrorPagesPath + "/readout.superpage." + std::to_string(saveErrorPagesCount) + ".raw";
+      theLog.log(LogInfoSupport, "Equipment %d : saving superpage %p with errors to disk : %s (%d bytes)", id, blockData, fn.c_str(), blockHeader.dataSize);
+      FILE *fp;
+      bool success = 0;
+      fp = fopen(fn.c_str(), "wb");
+      if (fp != nullptr) {
+        if (fwrite(blockData, blockHeader.dataSize, 1, fp) == 1) {
+	  success = 1;
+        }
+        fclose(fp);
+      }
+      if (!success) {
+        theLog.log(LogErrorSupport_(3132), "Failed to save superpage to file : %s", strerror(errno));
+      }
+    }
+  }
+  
   return 0;
 }

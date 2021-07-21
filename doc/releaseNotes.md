@@ -365,3 +365,7 @@ This file describes the main feature changes for each readout.exe released versi
 - consumer-FMQchannel: drop TF on error (to avoid unhappy STFB when sending incomplete data, eg on "data page too small" or "no page left" conditions).
 - added memory pool usage statistics (to help tuning buffer pages count and size).
 - added some ZeroMQ options for consumerZMQ and equipmentZMQ.
+
+## next version
+- Updated configuration parameters:
+  - added equipment-*.saveErrorPagesMax and equipment-*.saveErrorPagesPath to save to disk data pages found with errors (up to given maximum, in given path).

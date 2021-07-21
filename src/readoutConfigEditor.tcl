@@ -84,6 +84,8 @@ set configurationParametersDescriptor {
 | equipment-* | rdhDumpErrorEnabled | int | 1 | If set, a log message is printed for each RDH header error found.| 
 | equipment-* | rdhDumpWarningEnabled | int | 0 | If set, a log message is printed for each RDH header warning found.| 
 | equipment-* | rdhUseFirstInPageEnabled | int | 0 | If set, the first RDH in each data page is used to populate readout headers (e.g. linkId).| 
+| equipment-* | saveErrorPagesMax | int | 0 | If set, pages found with data error are saved to disk up to given maximum. |
+| equipment-* | saveErrorPagesPath | string |  | Path where to save data pages with errors (when feature enabled). |
 | equipment-* | stopOnError | int | 0 | If 1, readout will stop automatically on equipment error. | 
 | equipment-* | TFperiod | int | 256 | Duration of a timeframe, in number of LHC orbits. | 
 | equipment-cruemulator-* | cruBlockSize | int | 8192 | Size of a RDH block. | 
