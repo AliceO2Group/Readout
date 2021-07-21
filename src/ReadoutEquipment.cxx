@@ -115,7 +115,7 @@ ReadoutEquipment::ReadoutEquipment(ConfigFile& cfg, std::string cfgEntryPoint, b
   cfg.getOptionalValue<std::string>(cfgEntryPoint + ".saveErrorPagesPath", cfgSaveErrorPagesPath);
   
   // log config summary
-  theLog.log(LogInfoDevel_(3002), "Equipment %s: from config [%s], max rate=%lf Hz, idleSleepTime=%d us, outputFifoSize=%d", name.c_str(), cfgEntryPoint.c_str(), readoutRate, cfgIdleSleepTime, cfgOutputFifoSize);
+  theLog.log(LogInfoDevel_(3002), "Equipment %s: from config [%s], id=%d, max rate=%lf Hz, idleSleepTime=%d us, outputFifoSize=%d", name.c_str(), cfgEntryPoint.c_str(), (int)cfgEquipmentId, readoutRate, cfgIdleSleepTime, cfgOutputFifoSize);
   theLog.log(LogInfoDevel_(3008), "Equipment %s: requesting memory pool %d pages x %d bytes from bank '%s', block aligned @ 0x%X, 1st page offset @ 0x%X", name.c_str(), (int)memoryPoolNumberOfPages, (int)memoryPoolPageSize, memoryBankName.c_str(), (int)cfgBlockAlign, (int)cfgFirstPageOffset);
   if (disableOutput) {
     theLog.log(LogWarningDevel_(3002), "Equipment %s: output DISABLED ! Data will be readout and dropped immediately", name.c_str());
