@@ -369,3 +369,4 @@ This file describes the main feature changes for each readout.exe released versi
 ## next version
 - Updated configuration parameters:
   - added equipment-*.saveErrorPagesMax and equipment-*.saveErrorPagesPath to save to disk data pages found with errors (up to given maximum, in given path).
+  - equipment-*.rdhDumpWarningEnabled default set to 1 (now that RDH warning messages auto-muted on flood).
