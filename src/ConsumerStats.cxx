@@ -149,9 +149,7 @@ class ConsumerStats : public Consumer
 
       // per-equipment stats
       for (auto& it : equipmentStatsMap) {
-        std::string metricName = "readout.BytesEquipment." + std::to_string(it.first);
-        // sendMetricNoException(Metric{it.second.counterBytesPayload, "readout.BytesEquipment"}.addTags({(unsigned int)it.first}), DerivedMetricMode::RATE);
-        sendMetricNoException(Metric{ it.second.counterBytesPayload, metricName }, DerivedMetricMode::RATE);
+	sendMetricNoException(Metric{it.second.counterBytesPayload, "readout.BytesEquipment"}.addTag(tags::Key::ID, (unsigned int)it.first), DerivedMetricMode::RATE);
       }
       
       // FMQ stats
