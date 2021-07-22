@@ -60,8 +60,14 @@ class RdhHandle
   inline uint16_t getCruId() { return (uint16_t)rdhPtr->cruId; }
   inline uint8_t getEndPointId() { return (uint8_t)rdhPtr->dpwId; }
 
+  uint64_t computeTimeframeId(const uint32_t firstTimeframeHbOrbitBegin, const uint32_t timeframePeriodOrbits) {
+    tfId = 1 + (getHbOrbit() - firstTimeframeHbOrbitBegin) / timeframePeriodOrbits;
+    return tfId;
+  }
+
  private:
   o2::Header::RAWDataHeader* rdhPtr; // pointer to RDH in memory
+  uint64_t tfId = 0; // computed timeframeId
 };
 
 // Utility class to access/parse/check the content of a contiguous memory block consisting of RDH+data

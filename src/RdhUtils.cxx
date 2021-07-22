@@ -19,8 +19,13 @@ void RdhHandle::dumpRdh(long offset, bool singleLine)
 {
   if (singleLine) {
     if (!RdhHeaderPrinted) {
-      printf("    Offset  RDH  Header   Block  Offset System   FEE   CRU  Link         Trigger     Trigger  Pages Stop Packet\n");
-      printf("              v    size    size    next     id    id    id    id       orbit  BC        type  count  bit  count\n");
+      printf("    Offset  RDH  Header   Block  Offset System    FEE   CRU  Link         Trigger     Trigger  Pages Stop Packet");
+      if (tfId) {
+        printf("     TF");
+      }
+      printf("\n");
+
+      printf("              v    size    size    next     id     id    id    id       orbit  BC        type  count  bit  count\n");
       RdhHeaderPrinted = true;
     }
     if (offset == -1) {
@@ -28,11 +33,15 @@ void RdhHandle::dumpRdh(long offset, bool singleLine)
     } else {
       printf("0x%08lX", offset);
     }
-    printf("   %02d      %02d %7d %7d  %5d  %4d  %4d  %4d  0x%08X:%03X  0x%08X     %2d   %2d    %03d\n",
+    printf("   %02d      %02d %7d %7d  %5d  %5d  %4d  %4d  0x%08X:%03X  0x%08X     %2d   %2d    %03d",
            (int)getHeaderVersion(), (int)getHeaderSize(), (int)getMemorySize(), (int)getOffsetNextPacket(),
            (int)getSystemId(), (int)getFeeId(), (int)getCruId(), (int)getLinkId(),
            getTriggerOrbit(), getTriggerBC(), (int)getTriggerType(),
            (int)getPagesCounter(), (int)getStopBit(), (int)getPacketCounter());
+    if (tfId) {
+      printf(" %6d", (int)tfId);
+    }
+    printf("\n");
 
   } else {
     if (offset == -1) {

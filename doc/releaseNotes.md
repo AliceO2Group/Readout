@@ -370,3 +370,4 @@ This file describes the main feature changes for each readout.exe released versi
 - Updated configuration parameters:
   - added equipment-*.saveErrorPagesMax and equipment-*.saveErrorPagesPath to save to disk data pages found with errors (up to given maximum, in given path).
   - equipment-*.rdhDumpWarningEnabled default set to 1 (now that RDH warning messages auto-muted on flood).
+- o2-readout-rawreader: added print of TF id when RDH dump enabled. To enable this feature, one must specify a value for timeframePeriodOrbits (typically 128 or 256) in the command line parameters. TF ids generated are relative to the beginning of the file.
