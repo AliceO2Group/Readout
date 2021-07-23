@@ -28,6 +28,7 @@ set configurationParametersDescriptor {
 | consumer-* | filterLinksInclude | string |  | Defines a filter based on link ids. Only data belonging to the links in this list (coma separated values) are accepted. If empty, all link ids are fine. | 
 | consumer-* | stopOnError | int | 0 | If 1, readout will stop automatically on consumer error. | 
 | consumer-data-sampling-* | address | string | ipc:///tmp/readout-pipe-1 | Address of the data sampling. | 
+| consumer-FairMQChannel-* | checkResources | string | | Check beforehand if unmanaged region would fit in given list of resources. Comma-separated list of items to be checked: eg /dev/shm, MemFree, MemAvailable. (any filesystem path, and any /proc/meminfo entry).| 
 | consumer-FairMQChannel-* | disableSending | int | 0 | If set, no data is output to FMQ channel. Used for performance test to create FMQ shared memory segment without pushing the data. | 
 | consumer-FairMQChannel-* | enableRawFormat | int | 0 | If 0, data is pushed 1 STF header + 1 part per HBF. If 1, data is pushed in raw format without STF headers, 1 FMQ message per data page. If 2, format is 1 STF header + 1 part per data page.| 
 | consumer-FairMQChannel-* | fmq-address | string | ipc:///tmp/pipe-readout | Address of the FMQ channel. Depends on transportType. c.f. FairMQ::FairMQChannel.h | 
@@ -65,6 +66,7 @@ set configurationParametersDescriptor {
 | consumer-zmq-* | address | string| tcp://127.0.0.1:50001 | ZMQ address where to publish (PUB) data pages, eg ipc://@readout-eventDump | 
 | consumer-zmq-* | maxRate | int| 0 | Maximum number of pages to publish per second. The associated memory copy has an impact on cpu load, so this should be limited when one does not use all the data (eg for eventDump). | 
 | consumer-zmq-* | pagesPerBurst | int | 1 | Number of consecutive pages guaranteed to be part of each publish sequence. The maxRate limit is checked at the end of each burst. | 
+| consumer-zmq-* | zmqOptions | string |  | Additional ZMQ options, as a comma-separated list of key=value pairs. Possible keys: ZMQ_CONFLATE, ZMQ_IO_THREADS, ZMQ_LINGER, ZMQ_SNDBUF, ZMQ_SNDHWM, ZMQ_SNDTIMEO. | 
 | equipment-* | blockAlign | bytes | 2M | Alignment of the beginning of the big memory block from which the pool is created. Pool will start at a multiple of this value. Each page will then begin at a multiple of memoryPoolPageSize from the beginning of big block. | 
 | equipment-* | consoleStatsUpdateTime | double | 0 | If set, number of seconds between printing statistics on console. | 
 | equipment-* | debugFirstPages | int | 0 | If set, print debug information for first (given number of) data pages readout. | 
@@ -82,8 +84,10 @@ set configurationParametersDescriptor {
 | equipment-* | rdhCheckEnabled | int | 0 | If set, data pages are parsed and RDH headers checked. Errors are reported in logs. | 
 | equipment-* | rdhDumpEnabled | int | 0 | If set, data pages are parsed and RDH headers summary printed. Setting a negative number will print only the first N RDH.| 
 | equipment-* | rdhDumpErrorEnabled | int | 1 | If set, a log message is printed for each RDH header error found.| 
-| equipment-* | rdhDumpWarningEnabled | int | 0 | If set, a log message is printed for each RDH header warning found.| 
-| equipment-* | rdhUseFirstInPageEnabled | int | 0 | If set, the first RDH in each data page is used to populate readout headers (e.g. linkId).| 
+| equipment-* | rdhDumpWarningEnabled | int | 1 | If set, a log message is printed for each RDH header warning found.| 
+| equipment-* | rdhUseFirstInPageEnabled | int | 0 or 1 | If set, the first RDH in each data page is used to populate readout headers (e.g. linkId). Default is 1 for  equipments generating data with RDH, 0 otherwsise. | 
+| equipment-* | saveErrorPagesMax | int | 0 | If set, pages found with data error are saved to disk up to given maximum. | 
+| equipment-* | saveErrorPagesPath | string |  | Path where to save data pages with errors (when feature enabled). | 
 | equipment-* | stopOnError | int | 0 | If 1, readout will stop automatically on equipment error. | 
 | equipment-* | TFperiod | int | 256 | Duration of a timeframe, in number of LHC orbits. | 
 | equipment-cruemulator-* | cruBlockSize | int | 8192 | Size of a RDH block. | 
@@ -112,10 +116,13 @@ set configurationParametersDescriptor {
 | equipment-rorc-* | debugStatsEnabled | int | 0 | If set, enable extra statistics about internal buffers status. (printed to stdout when stopping) | 
 | equipment-rorc-* | firmwareCheckEnabled | int | 1 | If set, RORC driver checks compatibility with detected firmware. Use 0 to bypass this check (eg new fw version not yet recognized by ReadoutCard version). | 
 | equipment-zmq-* | address | string | | Address of remote server to connect, eg tcp://remoteHost:12345. | 
+| equipment-zmq-* | mode | string | stream | Possible values: stream (1 input ZMQ message = 1 output data page), snapshot (last ZMQ message = one output data page per TF). | 
 | equipment-zmq-* | timeframeClientUrl | string | | The address to be used to retrieve current timeframe. When set, data is published only once for each TF id published by remote server. | 
+| equipment-zmq-* | type | string | SUB | Type of ZMQ socket to use to get data (PULL, SUB). | 
 | readout | aggregatorSliceTimeout | double | 0 | When set, slices (groups) of pages are flushed if not updated after given timeout (otherwise closed only on beginning of next TF, or on stop). | 
 | readout | aggregatorStfTimeout | double | 0 | When set, subtimeframes are buffered until timeout (otherwise, sent immediately and independently for each data source). | 
 | readout | disableAggregatorSlicing | int | 0 | When set, the aggregator slicing is disabled, data pages are passed through without grouping/slicing. | 
+| readout | disableTimeframes | int | 0 | When set, all timeframe related features are disabled (this may supersede other config parameters). | 
 | readout | exitTimeout | double | -1 | Time in seconds after which the program exits automatically. -1 for unlimited. | 
 | readout | flushEquipmentTimeout | double | 1 | Time in seconds to wait for data once the equipments are stopped. 0 means stop immediately. | 
 | readout | logbookApiToken | string | | The token to be used for the logbook API. | 

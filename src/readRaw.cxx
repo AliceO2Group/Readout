@@ -1,8 +1,9 @@
-// Copyright CERN and copyright holders of ALICE O2. This software is
-// distributed under the terms of the GNU General Public License v3 (GPL
-// Version 3), copied verbatim in the file "COPYING".
+// Copyright 2019-2020 CERN and copyright holders of ALICE O2.
+// See https://alice-o2.web.cern.ch/copyright for details of the copyright holders.
+// All rights not expressly granted are reserved.
 //
-// See http://alice-o2.web.cern.ch/license for full licensing information.
+// This software is distributed under the terms of the GNU General Public
+// License v3 (GPL Version 3), copied verbatim in the file "COPYING".
 //
 // In applying this license CERN does not waive the privileges and immunities
 // granted to it by virtue of its status as an Intergovernmental Organization
@@ -40,6 +41,10 @@ int main(int argc, const char* argv[])
   bool checkContinuousTriggerOrder = false;
   bool isAutoPageSize = false; // flag set when no known page size in file
 
+  uint32_t timeframePeriodOrbits = 0;
+  uint32_t firstTimeframeHbOrbitBegin = 0;
+  bool isDefinedFirstTimeframeHbOrbitBegin = 0;
+
   // parse input arguments
   // format is a list of key=value pairs
 
@@ -56,6 +61,7 @@ int main(int argc, const char* argv[])
       "    dumpData=(int) : dump the data pages. If -1, all bytes. Otherwise, the first bytes only, as specified.\n"
       "    dumpDataInline=(int) : if set, each packet raw content is printed (hex dump style).\n"
       "    fileReadVerbose=(int) : if set, more information is printed when reading/decoding file.\n"
+      "    timeframePeriodOrbits=(int) : if set, TF id computed (and printed, when dump enabled) for each RDH. Typically, 128 or 256.\n"
       "    \n",
       argv[0]);
     return -1;
@@ -104,6 +110,8 @@ int main(int argc, const char* argv[])
       fileReadVerbose = std::stoi(value);
     } else if (key == "checkContinuousTriggerOrder") {
       checkContinuousTriggerOrder = std::stoi(value);
+    } else if (key == "timeframePeriodOrbits") {
+      timeframePeriodOrbits = (uint32_t) std::stoi(value);
     } else {
       ERRLOG("unknown option %s\n", key.c_str());
     }
@@ -328,6 +336,16 @@ int main(int argc, const char* argv[])
         RDHBlockCount++;
         RdhHandle h(((uint8_t*)data) + pageOffset);
 
+        // guess TF id
+        if (timeframePeriodOrbits) {
+          if (!isDefinedFirstTimeframeHbOrbitBegin) {
+	    // use first orbit for TF id computation
+	    firstTimeframeHbOrbitBegin = h.getHbOrbit();
+	    isDefinedFirstTimeframeHbOrbitBegin = 1;
+	  }
+	  h.computeTimeframeId(firstTimeframeHbOrbitBegin, timeframePeriodOrbits);
+        }
+
         if (dumpRDH) {
           h.dumpRdh(pageOffset + blockOffset, 1);
         }
@@ -442,3 +460,4 @@ int main(int argc, const char* argv[])
   // close file
   fclose(fp);
 }
+

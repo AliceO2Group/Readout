@@ -1,8 +1,9 @@
-// Copyright CERN and copyright holders of ALICE O2. This software is
-// distributed under the terms of the GNU General Public License v3 (GPL
-// Version 3), copied verbatim in the file "COPYING".
+// Copyright 2019-2020 CERN and copyright holders of ALICE O2.
+// See https://alice-o2.web.cern.ch/copyright for details of the copyright holders.
+// All rights not expressly granted are reserved.
 //
-// See http://alice-o2.web.cern.ch/license for full licensing information.
+// This software is distributed under the terms of the GNU General Public
+// License v3 (GPL Version 3), copied verbatim in the file "COPYING".
 //
 // In applying this license CERN does not waive the privileges and immunities
 // granted to it by virtue of its status as an Intergovernmental Organization
@@ -60,8 +61,14 @@ class RdhHandle
   inline uint16_t getCruId() { return (uint16_t)rdhPtr->cruId; }
   inline uint8_t getEndPointId() { return (uint8_t)rdhPtr->dpwId; }
 
+  uint64_t computeTimeframeId(const uint32_t firstTimeframeHbOrbitBegin, const uint32_t timeframePeriodOrbits) {
+    tfId = 1 + (getHbOrbit() - firstTimeframeHbOrbitBegin) / timeframePeriodOrbits;
+    return tfId;
+  }
+
  private:
   o2::Header::RAWDataHeader* rdhPtr; // pointer to RDH in memory
+  uint64_t tfId = 0; // computed timeframeId
 };
 
 // Utility class to access/parse/check the content of a contiguous memory block consisting of RDH+data
@@ -84,3 +91,4 @@ class RdhBlockHandle
 };
 
 #endif
+

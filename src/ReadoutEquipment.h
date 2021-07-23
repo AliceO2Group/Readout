@@ -1,8 +1,9 @@
-// Copyright CERN and copyright holders of ALICE O2. This software is
-// distributed under the terms of the GNU General Public License v3 (GPL
-// Version 3), copied verbatim in the file "COPYING".
+// Copyright 2019-2020 CERN and copyright holders of ALICE O2.
+// See https://alice-o2.web.cern.ch/copyright for details of the copyright holders.
+// All rights not expressly granted are reserved.
 //
-// See http://alice-o2.web.cern.ch/license for full licensing information.
+// This software is distributed under the terms of the GNU General Public
+// License v3 (GPL Version 3), copied verbatim in the file "COPYING".
 //
 // In applying this license CERN does not waive the privileges and immunities
 // granted to it by virtue of its status as an Intergovernmental Organization
@@ -151,7 +152,7 @@ class ReadoutEquipment
   int cfgRdhCheckEnabled = 0;          // flag to enable RDH check at runtime
   int cfgRdhDumpEnabled = 0;           // flag to enable RDH dump at runtime
   int cfgRdhDumpErrorEnabled = 1;      // flag to enable RDH error log at runtime
-  int cfgRdhDumpWarningEnabled = 0;    // flag to enable RDH warning log at runtime
+  int cfgRdhDumpWarningEnabled = 1;    // flag to enable RDH warning log at runtime
   int cfgRdhUseFirstInPageEnabled = 0; // flag to enable reading of first RDH in page to populate readout headers
   //int cfgRdhCheckPacketCounterContiguous = 1; // flag to enable checking if RDH packetCounter value contiguous (done link-by-link)
   double cfgTfRateLimit = 0;           // TF rate limit, to throttle data readout
@@ -163,6 +164,11 @@ class ReadoutEquipment
 
   int processRdh(DataBlockContainerReference& nextBlock);
 
+  // data debugging to disk
+  int cfgSaveErrorPagesMax; // maximum number of pages to write to disk for debugging, in case of data error
+  std::string cfgSaveErrorPagesPath; // path to write data pages
+  int saveErrorPagesCount; // counter for number of pages dumped so far
+  
  protected:
   // get timeframe from orbit
   // orbit of TF 1 is set on first call
@@ -184,3 +190,4 @@ std::unique_ptr<ReadoutEquipment> getReadoutEquipmentRORC(ConfigFile& cfg, std::
 std::unique_ptr<ReadoutEquipment> getReadoutEquipmentCruEmulator(ConfigFile& cfg, std::string cfgEntryPoint);
 std::unique_ptr<ReadoutEquipment> getReadoutEquipmentPlayer(ConfigFile& cfg, std::string cfgEntryPoint);
 std::unique_ptr<ReadoutEquipment> getReadoutEquipmentZmq(ConfigFile& cfg, std::string cfgEntryPoint);
+
