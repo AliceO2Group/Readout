@@ -366,7 +366,7 @@ This file describes the main feature changes for each readout.exe released versi
 - added memory pool usage statistics (to help tuning buffer pages count and size).
 - added some ZeroMQ options for consumerZMQ and equipmentZMQ.
 
-## next version
+## v2.5.0 - 27/07/2021
 - Updated configuration parameters:
   - added equipment-*.saveErrorPagesMax and equipment-*.saveErrorPagesPath to save to disk data pages found with errors (up to given maximum, in given path).
   - equipment-*.rdhDumpWarningEnabled default set to 1 (now that RDH warning messages auto-muted on flood).

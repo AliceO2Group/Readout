@@ -13,6 +13,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <chrono>
+#include <sys/types.h>
 
 #include <fairmq/FairMQDevice.h>
 #include <fairmq/FairMQTransportFactory.h>
@@ -32,6 +33,9 @@ int main(int argc, const char* argv[]) {
     printf("Usage: %s numberOfGigabytes\n",argv[0]);
     return -1;
   }
+  
+  printf("Startup %d\n",(int)getpid());
+  WAITHERE;
 
   std::unique_ptr<FairMQChannel> sendingChannel;
   std::shared_ptr<FairMQTransportFactory> transportFactory;
