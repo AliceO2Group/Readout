@@ -308,6 +308,8 @@ int main(int argc, const char** argv)
   unsigned long long nMsg = 0;
   unsigned long long nMsgParts = 0;
   unsigned long long nBytes = 0;
+  unsigned long long nTF = 0;
+  unsigned long long lastTFid = 0;
   bool isMultiPart = false;
 
   double copyRatio = 0;
@@ -379,6 +381,10 @@ int main(int argc, const char** argv)
                   dumpNext = true;
                 }
               }
+	      if (stf->timeframeId != lastTFid) {
+	        lastTFid = stf->timeframeId;
+	        nTF++;
+	      }
             } else {
               if ((numberOfHBF != 0) && (stf->isRdhFormat)) {
                 // then we have 1 part per HBF
@@ -498,7 +504,7 @@ int main(int argc, const char** argv)
     // print regularly the current throughput
     if (runningTime.isTimeout()) {
       double t = runningTime.getTime();
-      theLog.log(LogInfoDevel_(3003), "%.3lf msg/s %.3lf parts/s %.3lfMB/s", nMsg / t, nMsgParts / t, nBytes / (1024.0 * 1024.0 * t));
+      theLog.log(LogInfoDevel_(3003), "%.3lf msg/s %.3lf parts/s %.3lfMB/s %.3lfTF/s", nMsg / t, nMsgParts / t, nBytes / (1024.0 * 1024.0 * t), nTF / t);
       if (copyRatioCount) {
         theLog.log(LogInfoDevel_(3003), "HBF copy ratio = %.3lf %%", copyRatio * 100 / copyRatioCount);
       }
@@ -506,6 +512,7 @@ int main(int argc, const char** argv)
       nMsg = 0;
       nMsgParts = 0;
       nBytes = 0;
+      nTF = 0;
     }
     
     if (cfgReleaseDelay>0) {
