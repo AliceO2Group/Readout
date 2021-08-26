@@ -53,6 +53,7 @@ int main(int argc, const char* argv[])
       "Usage: %s [rawFilePath] [options]\n"
       "List of options:\n"
       "    filePath=(string) : path to file.\n"
+      "    fileTypePath=(string) : file format, one of: plain, lz4\n"
       "    dataBlockEnabled=0|1: specify if file is with/without internal readout data block headers.\n"
       "    dumpRDH=0|1 : dump the RDH headers.\n"
       "    validateRDH=0|1 : check the RDH headers.\n"
