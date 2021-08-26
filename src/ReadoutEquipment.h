@@ -168,6 +168,8 @@ class ReadoutEquipment
   int cfgSaveErrorPagesMax; // maximum number of pages to write to disk for debugging, in case of data error
   std::string cfgSaveErrorPagesPath; // path to write data pages
   int saveErrorPagesCount; // counter for number of pages dumped so far
+  std::string cfgDataPagesLogPath; // path to write to disk a summary for each data page received
+  FILE *fpDataPagesLog = nullptr; // handle to data page log file
   
  protected:
   // get timeframe from orbit
