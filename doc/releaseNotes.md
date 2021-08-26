@@ -375,3 +375,4 @@ This file describes the main feature changes for each readout.exe released versi
 ## next version
 - Updated configuration parameters:
   - added equipment-*.dataPagesLogPath to allow saving to disk summary debug info for all data pages received.
+- Fixed spurious "Non-contiguous timeframe IDs" warning: the check was too strict, having some links 1 TF behind is fine.

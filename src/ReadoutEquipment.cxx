@@ -402,7 +402,12 @@ Thread::CallbackResult ReadoutEquipment::threadCallback(void* arg)
       
       // check TF id of new block
       uint64_t tfId = nextBlock->getData()->header.timeframeId;
-      if (tfId != ptr->lastTimeframe) {
+      if (tfId > ptr->lastTimeframe) {
+        // data from all links are not necessarily synchronized:
+	// at a given point in time the tfIds might be mixed between different links, some beeing still sending data for previous TF
+        // tfId != ptr->lastTimeframe instead of > is too strict, as there could be some (small) jumps back (usually lastTimeframe-1)
+	// the data aggregator buffer will reorder them later when needed
+
 	// regulate TF rate if needed
 	if (!ptr->TFregulator.next()) {
           ptr->throttlePendingBlock = std::move(nextBlock); // keep block with new TF for later
@@ -417,8 +422,8 @@ Thread::CallbackResult ReadoutEquipment::threadCallback(void* arg)
             theLog.log(LogWarningSupport_(3004), "Non-contiguous timeframe IDs %llu ... %llu", (unsigned long long)ptr->lastTimeframe, (unsigned long long)tfId);
 	  }
 	}
+	ptr->lastTimeframe = tfId;
       }
-      ptr->lastTimeframe = tfId;
 
       // update rate-limit clock
       if (ptr->readoutRate > 0) {
