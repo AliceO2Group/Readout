@@ -140,8 +140,8 @@ ReadoutEquipment::ReadoutEquipment(ConfigFile& cfg, std::string cfgEntryPoint, b
   theLog.log(LogInfoDevel_(3002), "RDH settings: rdhCheckEnabled=%d rdhDumpEnabled=%d rdhDumpErrorEnabled=%d rdhDumpWarningEnabled=%d rdhUseFirstInPageEnabled=%d", cfgRdhCheckEnabled, cfgRdhDumpEnabled, cfgRdhDumpErrorEnabled, cfgRdhDumpWarningEnabled, cfgRdhUseFirstInPageEnabled);
 
   if (!cfgDisableTimeframes) {
-    // configuration parameter: | equipment-* | TFperiod | int | 256 | Duration of a timeframe, in number of LHC orbits. |
-    int cfgTFperiod = 256;
+    // configuration parameter: | equipment-* | TFperiod | int | 128 | Duration of a timeframe, in number of LHC orbits. |
+    int cfgTFperiod = 128;
     cfg.getOptionalValue<int>(cfgEntryPoint + ".TFperiod", cfgTFperiod);
     timeframePeriodOrbits = cfgTFperiod;
 

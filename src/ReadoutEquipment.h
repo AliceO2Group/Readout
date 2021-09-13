@@ -144,7 +144,7 @@ class ReadoutEquipment
   
   //const unsigned int LHCBunches = 3564;    // number of bunches in LHC
   const unsigned int LHCOrbitRate = 11246; // LHC orbit rate, in Hz. 299792458 / 26659
-  uint32_t timeframePeriodOrbits = 256;    // timeframe interval duration in number of LHC orbits
+  uint32_t timeframePeriodOrbits = 128;    // timeframe interval duration in number of LHC orbits
   double timeframeRate = 0;                // timeframe rate, when generated internally
 
   // RDH-related configuration parameters
