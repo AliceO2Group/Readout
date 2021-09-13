@@ -377,6 +377,6 @@ This file describes the main feature changes for each readout.exe released versi
   - added equipment-*.dataPagesLogPath to allow saving to disk summary debug info for all data pages received.
 - Fixed spurious "Non-contiguous timeframe IDs" warning: the check was too strict, having some links 1 TF behind is fine.
 
-## next
+## v2.5.2 - 13/09/2021
 - Updated configuration parameters:
   - equipment.TFperiod is now set to 128 by default, instead of 256 previously. This is the duration of a timeframe, in number of LHC orbits.
