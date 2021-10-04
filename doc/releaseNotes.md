@@ -380,3 +380,6 @@ This file describes the main feature changes for each readout.exe released versi
 ## v2.5.2 - 13/09/2021
 - Updated configuration parameters:
   - equipment.TFperiod is now set to 128 by default, instead of 256 previously. This is the duration of a timeframe, in number of LHC orbits.
+
+## next version
+- Built-in memory usage reporting for o2-readout-test-fmq-memory
