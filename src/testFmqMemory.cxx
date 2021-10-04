@@ -14,14 +14,41 @@
 #include <string.h>
 #include <chrono>
 #include <sys/types.h>
+#include <sys/mman.h>
+#include <unistd.h>
 
 #include <fairmq/FairMQDevice.h>
 #include <fairmq/FairMQTransportFactory.h>
 //#include <fairmq/tools/Unique.h>
 
+void logMemoryUsage() {
+  double memPageSize = getpagesize() / (1024.0*1024.0);
+  const int maxpath = 256;
+  char fn[maxpath];
+  snprintf(fn, maxpath, "/proc/%d/statm", getpid());
+  FILE *fp=fopen(fn,"r");
+  const int maxline = 256;
+  char buf[maxline];
+  if (fgets(buf, maxline, fp) != NULL) {
+    int vsize, vresident, vshared, vtext, vlib, vdata, vdt;
+    if (sscanf(buf, "%d %d %d %d %d %d %d", &vsize, &vresident, &vshared, &vtext, &vlib, &vdata, &vdt) == 7) {    
+      printf("Memory stats: size = %6.2f MB\tresident = %6.2f MB\tshared = %6.2f MB\n", vsize * memPageSize, vresident * memPageSize, vshared * memPageSize);
+    }
+  }
+  fclose(fp);
+}
+
+
 #define GB *1073741824LLU
 #define SLEEPTIME 3
-#define WAITHERE printf("Waiting %ds ",SLEEPTIME); for(int k=0; k<SLEEPTIME; k++) {printf(".");fflush(stdout);usleep(1000000);} printf("\n");
+//#define WAITHERE printf("Waiting %ds ",SLEEPTIME); for(int k=0; k<SLEEPTIME; k++) {printf(".");fflush(stdout);usleep(1000000);} printf("\n");
+#define WAITHERE logMemoryUsage();
+
+
+// memory settings
+const bool memlock = false;	// lock the whole process memory
+const bool fmqMemLock = true;	// lock FMQ region
+const bool fmqMemZero = false;	// zero FMQ region
 
 
 int main(int argc, const char* argv[]) {
@@ -34,7 +61,14 @@ int main(int argc, const char* argv[]) {
     return -1;
   }
   
-  printf("Startup %d\n",(int)getpid());
+  printf("Locking process memory: %s\n", memlock ? "yes" : "no");
+  if (memlock) {
+    if (mlockall(MCL_CURRENT | MCL_FUTURE) != 0) {
+      printf("failed to lock memory\n");
+    }
+  }
+
+  printf("Startup pid %d\n",(int)getpid());
   WAITHERE;
 
   std::unique_ptr<FairMQChannel> sendingChannel;
@@ -48,13 +82,13 @@ int main(int argc, const char* argv[]) {
   sendingChannel = std::make_unique<FairMQChannel>("readout-test", "pair", transportFactory);
   WAITHERE;
 
-  printf("Get unmanaged memory\n");
+  printf("Get unmanaged memory (lock=%s, zero=%s)\n", fmqMemLock ? "yes" : "no", fmqMemZero ? "yes" : "no");
   long long mMemorySize = ngb GB;
   auto t00 = std::chrono::steady_clock::now();
   try {
 //  memoryBuffer = sendingChannel->Transport()->CreateUnmanagedRegion(mMemorySize, [](void* /*data*/, size_t /*size*/, void* /*hint*/) {});
   memoryBuffer = sendingChannel->Transport()->CreateUnmanagedRegion(mMemorySize, [](void* /*data*/, size_t /*size*/, void* /*hint*/) {},
-  "",0,fair::mq::RegionConfig{true, false}); // lock / zero
+  "",0,fair::mq::RegionConfig{fmqMemLock, fmqMemZero}); // lock / zero
   }
   catch(...) {
     printf("Failed to get buffer (exception)\n"); return 1; 
@@ -66,6 +100,7 @@ int main(int argc, const char* argv[]) {
   WAITHERE;
 
   printf("Write to memory, by chunks of 1GB\n");
+  t00 = std::chrono::steady_clock::now();
   for (unsigned int i=0; i<ngb; i++) {
     auto t0 = std::chrono::steady_clock::now();
     char *ptr=(char *)memoryBuffer->GetData();
@@ -82,11 +117,10 @@ int main(int argc, const char* argv[]) {
     std::chrono::duration<double> tdiff = std::chrono::steady_clock::now() - t0;
     printf(" %.2lf GB/s\n", 1.0/tdiff.count());
   }
+  std::chrono::duration<double> tdiff1 = std::chrono::steady_clock::now() - t00;
   printf("Done writing\n");
-
-  tdiff0 = std::chrono::steady_clock::now() - t00;
-  printf("Average: %.2lf GB/s (including alloc)\n", ngb * 1.0/(tdiff0.count()-SLEEPTIME));
-
+  printf("Average: %.2lf GB/s (writing)\n", ngb * 1.0/tdiff1.count());
+  printf("Average: %.2lf GB/s (writing + malloc)\n", ngb * 1.0/(tdiff0.count() + tdiff1.count()));
   WAITHERE;
 
   printf("Cleanup FMQ unmanaged region\n");
