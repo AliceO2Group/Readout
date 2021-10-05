@@ -154,6 +154,7 @@ class Readout
   std::string cfgLogbookApiToken;
   int cfgLogbookUpdateInterval;
   std::string cfgTimeframeServerUrl;
+  int cfgVerbose = 0;
 
   // runtime entities
   std::vector<std::unique_ptr<Consumer>> dataConsumers;
@@ -226,6 +227,59 @@ void Readout::publishLogbookStats()
 
 int Readout::init(int argc, char* argv[])
 {
+  int doMemLock = 0; // when set, ensure all allocated memory is locked in ram
+  std::string readoutExe = ""; // when set, use specified executable
+  std::string readoutConfig = ""; // when set, use specified executable
+
+  // cache of logs - delay startup messages
+  std::vector<std::pair<AliceO2::InfoLogger::InfoLogger::InfoLoggerMessageOption, std::string>> initLogs;
+
+  // load configuration defaults
+  ConfigFile cfgDefaults;
+  const std::string cfgDefaultsPath = "file:/etc/o2.d/readout-defaults.cfg"; // path to default configuration file
+  const std::string cfgDefaultsEntryPoint = "readout"; // entry point for default configuration variables (e.g. section named [readout])
+  try {
+    cfgDefaults.load(cfgDefaultsPath.c_str());
+    initLogs.push_back({LogInfoDevel, "Defaults loaded from " + cfgDefaultsPath});
+    cfgDefaults.getOptionalValue<int>(cfgDefaultsEntryPoint + ".memLock", doMemLock, doMemLock);
+    cfgDefaults.getOptionalValue<std::string>(cfgDefaultsEntryPoint + ".readoutExe", readoutExe, readoutExe);
+    cfgDefaults.getOptionalValue<std::string>(cfgDefaultsEntryPoint + ".readoutConfig", readoutConfig, readoutConfig);
+    cfgDefaults.getOptionalValue<int>(cfgDefaultsEntryPoint + ".verbose", cfgVerbose, cfgVerbose);
+  }
+  catch(...) {
+    //initLogs.push_back({LogWarningSupport_(3100), std::string("Error loading defaults")});
+  }
+
+  // redirect executable (if different from self!)
+  if (readoutExe.length() && readoutExe!=argv[0]) {
+    std::vector<char*> argv2;
+    argv2.push_back((char *)readoutExe.c_str());
+    if (readoutConfig.length()) {
+      argv2.push_back((char *)readoutConfig.c_str());
+    }
+    for (int i=argv2.size(); i<argc; i++) {
+      argv2.push_back(argv[i]);
+    }
+    printf("Launching ");
+    for (auto const &a : argv2) {
+      printf("%s ",a);
+    }
+    printf("\n");
+    argv2.push_back(NULL);
+    execv(readoutExe.c_str(), &argv2[0]);
+    printf("Failed to execute : %s\n",strerror(errno));
+    exit(1);
+  }
+
+  // before anything, ensure all memory used by readout is kept in RAM
+  if (doMemLock) {
+    if (mlockall(MCL_CURRENT | MCL_FUTURE) == 0) {
+      initLogs.push_back({LogInfoDevel, "Memory locked"});
+    } else {
+      initLogs.push_back({LogWarningSupport_(3230), "Failed to lock memory"});
+    }
+  }
+
   if (argc < 2) {
     printf("Please provide path to configuration file\n");
     return -1;
@@ -245,49 +299,56 @@ int Readout::init(int argc, char* argv[])
 
   // log startup and options
   theLog.log(LogInfoSupport_(3001), "Readout " READOUT_VERSION " - process starting, pid %d", getpid());
-  theLog.log(LogInfoDevel, "Optional built features enabled:");
-#ifdef WITH_READOUTCARD
-  theLog.log(LogInfoDevel, "READOUTCARD : yes");
-#else
-  theLog.log(LogInfoDevel, "READOUTCARD : no");
-#endif
-#ifdef WITH_CONFIG
-  theLog.log(LogInfoDevel, "CONFIG : yes");
-#else
-  theLog.log(LogInfoDevel, "CONFIG : no");
-#endif
-#ifdef WITH_FAIRMQ
-  theLog.log(LogInfoDevel, "FAIRMQ : yes");
-  // redirect FMQ logs to infologger
-  setFMQLogsToInfoLogger(&theLog);
-#else
-  theLog.log(LogInfoDevel, "FAIRMQ : no");
-#endif
-#ifdef WITH_NUMA
-  theLog.log(LogInfoDevel, "NUMA : yes");
-#else
-  theLog.log(LogInfoDevel, "NUMA : no");
-#endif
-#ifdef WITH_RDMA
-  theLog.log(LogInfoDevel, "RDMA : yes");
-#else
-  theLog.log(LogInfoDevel, "RDMA : no");
-#endif
-#ifdef WITH_OCC
-  theLog.log(LogInfoDevel, "OCC : yes");
-#else
-  theLog.log(LogInfoDevel, "OCC : no");
-#endif
-#ifdef WITH_LOGBOOK
-  theLog.log(LogInfoDevel, "LOGBOOK : yes");
-#else
-  theLog.log(LogInfoDevel, "LOGBOOK : no");
-#endif
-#ifdef WITH_ZMQ
-  theLog.log(LogInfoDevel, "ZMQ : yes");
-#else
-  theLog.log(LogInfoDevel, "ZMQ : no");
-#endif
+  if (cfgVerbose) {
+    theLog.log(LogInfoDevel, "Optional built features enabled:");
+    #ifdef WITH_READOUTCARD
+      theLog.log(LogInfoDevel, "READOUTCARD : yes");
+    #else
+      theLog.log(LogInfoDevel, "READOUTCARD : no");
+    #endif
+    #ifdef WITH_CONFIG
+      theLog.log(LogInfoDevel, "CONFIG : yes");
+    #else
+      theLog.log(LogInfoDevel, "CONFIG : no");
+    #endif
+    #ifdef WITH_FAIRMQ
+      theLog.log(LogInfoDevel, "FAIRMQ : yes");
+      // redirect FMQ logs to infologger
+      setFMQLogsToInfoLogger(&theLog);
+    #else
+      theLog.log(LogInfoDevel, "FAIRMQ : no");
+    #endif
+    #ifdef WITH_NUMA
+      theLog.log(LogInfoDevel, "NUMA : yes");
+    #else
+      theLog.log(LogInfoDevel, "NUMA : no");
+    #endif
+    #ifdef WITH_RDMA
+      theLog.log(LogInfoDevel, "RDMA : yes");
+    #else
+      theLog.log(LogInfoDevel, "RDMA : no");
+    #endif
+    #ifdef WITH_OCC
+      theLog.log(LogInfoDevel, "OCC : yes");
+    #else
+      theLog.log(LogInfoDevel, "OCC : no");
+    #endif
+    #ifdef WITH_LOGBOOK
+      theLog.log(LogInfoDevel, "LOGBOOK : yes");
+    #else
+      theLog.log(LogInfoDevel, "LOGBOOK : no");
+    #endif
+    #ifdef WITH_ZMQ
+      theLog.log(LogInfoDevel, "ZMQ : yes");
+    #else
+      theLog.log(LogInfoDevel, "ZMQ : no");
+    #endif
+  }
+  
+  // report cached logs
+  for(auto const &l : initLogs) {
+    theLog.log(l.first, "%s", l.second.c_str());
+  }
 
   return 0;
 }
@@ -1250,12 +1311,8 @@ class ReadoutOCCStateMachine : public RuntimeControlledObject
 // the main program loop
 int main(int argc, char* argv[])
 {
-  // before anything, ensure all memory used by readout is kept in RAM
-  bool memLockSuccess = false;
-  if (mlockall(MCL_CURRENT | MCL_FUTURE) == 0) {
-    memLockSuccess = true;
-  }
-
+  //printf("Starting %s - %d\n",argv[0], (int)getpid());
+  
   // check environment settings
 
   // OCC control port. If set, use OCClib to handle Readout states.
@@ -1283,11 +1340,6 @@ int main(int argc, char* argv[])
   err = theReadout->init(argc, argv);
   if (err) {
     return err;
-  }
-
-  // report memlock status
-  if (!memLockSuccess) {
-    theLog.log(LogWarningSupport_(3230), "Failed to lock readout memory");
   }
 
   if (occMode) {
