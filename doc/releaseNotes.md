@@ -385,3 +385,6 @@ This file describes the main feature changes for each readout.exe released versi
 - Built-in memory usage reporting for o2-readout-test-fmq-memory
 - Added a default configuration file (/etc/o2.d/readout-defaults.cfg) to store some global settings, loaded on process startup. This is independent from the CONFIGURE time configuration file.
 - Process memory lock is now disabled by default (saves 2GB of unused FMQ virtual memory created for each channel).
+
+## v2.6.1 - 11/10/2021
+- Fix monitoring statistics: memlocked pages.
