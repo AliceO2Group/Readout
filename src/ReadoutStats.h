@@ -17,6 +17,7 @@
 // This defines a class to keep trakc of some readout counters,
 
 #include <atomic>
+#include <mutex>
 
 struct ReadoutStatsCounters {
   std::atomic<uint64_t> numberOfSubtimeframes;
@@ -30,6 +31,7 @@ struct ReadoutStatsCounters {
   std::atomic<uint64_t> pagesPendingFairMQreleased; // number of pages which have been released by ConsumerFMQ
   std::atomic<uint64_t> pagesPendingFairMQtime;     // latency in FMQ, in microseconds, total for all released pages
   std::atomic<uint32_t> timeframeIdFairMQ;          // last timeframe pushed to ConsumerFMQ
+  std::atomic<uint32_t> firstOrbit;                 // value of first orbit received
 };
 
 // need to be able to easily transmit this struct as a whole
@@ -51,4 +53,5 @@ class ReadoutStats
 };
 
 extern ReadoutStats gReadoutStats;
+extern std::mutex gReadoutStatsMutex;
 

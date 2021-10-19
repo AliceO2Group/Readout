@@ -20,9 +20,11 @@
 #include "ReadoutStats.h"
 
 #include "readoutInfoLogger.h"
+#include "DataBlock.h"
 
 // the global stats instance
 ReadoutStats gReadoutStats;
+std::mutex gReadoutStatsMutex;
 
 ReadoutStats::ReadoutStats() { reset(); }
 
@@ -43,6 +45,8 @@ void ReadoutStats::reset()
   counters.pagesPendingFairMQreleased = 0;
   counters.pagesPendingFairMQtime = 0;
   counters.timeframeIdFairMQ = 0;
+
+  counters.firstOrbit = undefinedOrbit;
 }
 
 void ReadoutStats::print()

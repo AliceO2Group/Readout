@@ -130,6 +130,8 @@ set configurationParametersDescriptor {
 | readout | logbookEnabled | int | 0 | When set, the logbook is enabled and populated with readout stats at runtime. | 
 | readout | logbookUpdateInterval | int | 30 | Amount of time (in seconds) between logbook publish updates. | 
 | readout | logbookUrl | string | | The address to be used for the logbook API. | 
+| readout | maxMsgError | int | 0 | If non-zero, maximum number of error messages allowed while running. Readout stops when threshold is reached. |
+| readout | maxMsgWarning | int | 0 | If non-zero, maximum number of error messages allowed while running. Readout stops when threshold is reached. |
 | readout | memoryPoolStatsEnabled | int | 0 | Global debugging flag to enable statistics on memory pool usage (printed to stdout when pool released). | 
 | readout | rate | double | -1 | Data rate limit, per equipment, in Hertz. -1 for unlimited. | 
 | readout | tfRateLimit | double | 0 | When set, the output is limited to a given timeframe rate. | 

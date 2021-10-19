@@ -554,7 +554,18 @@ uint64_t ReadoutEquipment::getTimeframeFromOrbit(uint32_t hbOrbit)
   if (!isDefinedFirstTimeframeHbOrbitBegin) {
     firstTimeframeHbOrbitBegin = hbOrbit;
     isDefinedFirstTimeframeHbOrbitBegin = 1;
+    bool isOk = true;
+    gReadoutStatsMutex.lock();
+    if (gReadoutStats.counters.firstOrbit == undefinedOrbit) {
+      gReadoutStats.counters.firstOrbit = firstTimeframeHbOrbitBegin;
+    } else if (gReadoutStats.counters.firstOrbit != firstTimeframeHbOrbitBegin) {
+      isOk = false;
+    }
+    gReadoutStatsMutex.unlock();
     theLog.log(LogInfoDevel_(3003), "Equipment %s : first HB orbit = %X", name.c_str(), (unsigned int)firstTimeframeHbOrbitBegin);
+    if (!isOk) {
+      theLog.log(LogErrorDevel_(3241), "Equipment %s : first HB orbit is different from other equipments", name.c_str());
+    }
   }
   uint64_t tfId = 1 + (hbOrbit - firstTimeframeHbOrbitBegin) / getTimeframePeriodOrbits();
   return tfId;
@@ -711,7 +722,7 @@ int ReadoutEquipment::processRdh(DataBlockContainerReference& block)
       if (!cfgDisableTimeframes) {
 	if (((blockHeader.timeframeOrbitFirst < blockHeader.timeframeOrbitLast) && ((h.getTriggerOrbit() < blockHeader.timeframeOrbitFirst) || (h.getTriggerOrbit() > blockHeader.timeframeOrbitLast))) || ((blockHeader.timeframeOrbitFirst > blockHeader.timeframeOrbitLast) && ((h.getTriggerOrbit() < blockHeader.timeframeOrbitFirst) && (h.getTriggerOrbit() > blockHeader.timeframeOrbitLast)))) {
           if (cfgRdhDumpErrorEnabled) {
-            theLog.log(logRdhErrorsToken, "Equipment %d RDH #%d @ 0x%X : TimeFrame ID change in page not allowed : orbit 0x%08X not in range [0x%08X,0x%08X]", id, rdhIndexInPage, (unsigned int)pageOffset, (int)h.getTriggerOrbit(), (int)blockHeader.timeframeOrbitFirst, (int)blockHeader.timeframeOrbitLast);
+            theLog.log(logRdhErrorsToken, "Equipment %d Link %d RDH %d @ 0x%X : TimeFrame ID change in page not allowed : orbit 0x%08X not in range [0x%08X,0x%08X]", id, (int)blockHeader.linkId, rdhIndexInPage, (unsigned int)pageOffset, (int)h.getTriggerOrbit(), (int)blockHeader.timeframeOrbitFirst, (int)blockHeader.timeframeOrbitLast);
             isPageError = 1;
           }
           statsRdhCheckStreamErr++;
