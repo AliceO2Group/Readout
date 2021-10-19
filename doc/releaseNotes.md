@@ -388,3 +388,8 @@ This file describes the main feature changes for each readout.exe released versi
 
 ## v2.6.1 - 11/10/2021
 - Fix monitoring statistics: memlocked pages.
+
+## v2.7.0 - 19/10/201
+- Added linkId in RDH error reporting.
+- Updated configuration parameters:
+  - readout.maxMsgError and readout.maxMsgWarning: when set, readout will stop when reaching the number of error or warning messages defined as threshold.
