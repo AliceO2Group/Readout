@@ -554,7 +554,18 @@ uint64_t ReadoutEquipment::getTimeframeFromOrbit(uint32_t hbOrbit)
   if (!isDefinedFirstTimeframeHbOrbitBegin) {
     firstTimeframeHbOrbitBegin = hbOrbit;
     isDefinedFirstTimeframeHbOrbitBegin = 1;
+    bool isOk = true;
+    gReadoutStatsMutex.lock();
+    if (gReadoutStats.counters.firstOrbit == undefinedOrbit) {
+      gReadoutStats.counters.firstOrbit = firstTimeframeHbOrbitBegin;
+    } else if (gReadoutStats.counters.firstOrbit != firstTimeframeHbOrbitBegin) {
+      isOk = false;
+    }
+    gReadoutStatsMutex.unlock();
     theLog.log(LogInfoDevel_(3003), "Equipment %s : first HB orbit = %X", name.c_str(), (unsigned int)firstTimeframeHbOrbitBegin);
+    if (!isOk) {
+      theLog.log(LogErrorDevel_(3241), "Equipment %s : first HB orbit is different from other equipments", name.c_str());
+    }
   }
   uint64_t tfId = 1 + (hbOrbit - firstTimeframeHbOrbitBegin) / getTimeframePeriodOrbits();
   return tfId;

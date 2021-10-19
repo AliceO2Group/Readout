@@ -44,5 +44,6 @@
   { 3238, "Data format error", nullptr},
   { 3239, "TCP/IP problem", nullptr},
   { 3240, "Readout card problem", nullptr},
+  { 3241, "Inconsistent data", nullptr},
 */
 
