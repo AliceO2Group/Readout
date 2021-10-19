@@ -155,6 +155,8 @@ class Readout
   int cfgLogbookUpdateInterval;
   std::string cfgTimeframeServerUrl;
   int cfgVerbose = 0;
+  int cfgMaxMsgError; // maximum number of error messages before stopping run
+  int cfgMaxMsgWarning; // maximum number of warning messages before stopping run
 
   // runtime entities
   std::vector<std::unique_ptr<Consumer>> dataConsumers;
@@ -510,6 +512,13 @@ int Readout::configure(const boost::property_tree::ptree& properties)
     // configuration parameter: | readout | timeStop | string | | In standalone mode, time at which to execute stop. If not set, on int/term/quit signal. |
     scanTime("readout.timeStop", cfgTimeStop);
   }
+
+  cfgMaxMsgError = 0;
+  cfgMaxMsgWarning = 0;
+  // configuration parameter: | readout | maxMsgError | int | 0 | If non-zero, maximum number of error messages allowed while running. Readout stops when threshold is reached. |
+  cfg.getOptionalValue<int>("readout.maxMsgError", cfgMaxMsgError);
+  // configuration parameter: | readout | maxMsgWarning | int | 0 | If non-zero, maximum number of error messages allowed while running. Readout stops when threshold is reached. |
+  cfg.getOptionalValue<int>("readout.maxMsgWarning", cfgMaxMsgWarning);
 
   // configuration parameter: | readout | flushEquipmentTimeout | double | 1 | Time in seconds to wait for data once the equipments are stopped. 0 means stop immediately. |
   cfgFlushEquipmentTimeout = 1;
@@ -886,6 +895,7 @@ int Readout::configure(const boost::property_tree::ptree& properties)
 
 int Readout::start()
 {
+  theLog.resetMessageCount();
   theLog.log(LogInfoSupport_(3005), "Readout executing START");
 
   // publish initial logbook statistics
@@ -1038,6 +1048,13 @@ int Readout::iterateCheck()
   if (isError) {
     return -1;
   }
+  if ((cfgMaxMsgError > 0) && (theLog.getMessageCount(InfoLogger::Severity::Error) >= (unsigned long) cfgMaxMsgError)) {
+    theLog.log(LogErrorSupport_(3231), "Maximum number of Error messages reached, stopping");
+    isError = 1;
+  } else if ((cfgMaxMsgWarning > 0) && (theLog.getMessageCount(InfoLogger::Severity::Warning) >= (unsigned long) cfgMaxMsgWarning)) {
+    theLog.log(LogErrorSupport_(3231), "Maximum number of Warning messages reached, stopping");
+    isError = 1;
+  }
   return 0;
 }
 
@@ -1116,6 +1133,9 @@ int Readout::stop()
       theLog.log(LogInfoDevel_(3003), "Equipment %s : %d/%d pages (%.2f%%) still in use", readoutDevice->getName().c_str(), (int)nPagesUsed, (int)nPagesTotal, nPagesUsed * 100.0 / nPagesTotal);
     }
   }
+
+  // report log statistics
+  theLog.log("Errors: %lu Warnings: %lu", theLog.getMessageCount(InfoLogger::Severity::Error), theLog.getMessageCount(InfoLogger::Severity::Warning));
 
   // publish final logbook statistics
   gReadoutStats.counters.state = stringToUint64("stopped");
