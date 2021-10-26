@@ -394,3 +394,7 @@ This file describes the main feature changes for each readout.exe released versi
 - Error reported when first orbit received by equipments mismatch.
 - Updated configuration parameters:
   - readout.maxMsgError and readout.maxMsgWarning: when set, readout will stop when reaching the number of error or warning messages defined as threshold.
+
+
+## next version
+- Added a [howto guide](howto.md) to document some typical use cases.
