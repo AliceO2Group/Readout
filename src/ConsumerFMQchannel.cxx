@@ -70,6 +70,7 @@ void incDataBlockStats(DataBlock* b)
   if ((s->countRef++) == 0) {
     s->t0 = timeNowMicrosec();
     gReadoutStats.counters.pagesPendingFairMQ++;
+    gReadoutStats.counters.notify++;
     // printf("init %p\n",b);
   }
 }
@@ -86,6 +87,7 @@ void decDataBlockStats(DataBlock* b)
     gReadoutStats.counters.pagesPendingFairMQreleased++;
     uint64_t timeUsed = (timeNowMicrosec() - s->t0);
     gReadoutStats.counters.pagesPendingFairMQtime += timeUsed;
+    gReadoutStats.counters.notify++;
     //printf("ack after %.6lfs (pending: %lu)\n", timeUsed/1000000.0, gReadoutStats.counters.pagesPendingFairMQ.load());
     s->magic = 0x00;
   }
@@ -337,6 +339,7 @@ class ConsumerFMQchannel : public Consumer
           sendingChannel->Send(msg);
         }
         gReadoutStats.counters.bytesFairMQ += blobSize;
+	gReadoutStats.counters.notify++;
       }
       totalPushSuccess++;
       return 0;
@@ -710,6 +713,7 @@ class ConsumerFMQchannel : public Consumer
         gReadoutStats.counters.bytesFairMQ += messagesToSendSize;
         messagesToSendSize = 0;
 	gReadoutStats.counters.timeframeIdFairMQ = stfHeader->timeframeId;
+	gReadoutStats.counters.notify++;
       } else {
         theLog.log(LogErrorSupport_(3233), "Sending failed");
       }

@@ -136,8 +136,12 @@ int main(int argc, const char** argv)
   
   // maximum size of incoming ZMQ messages
   const int cfgMaxMsgSize = sizeof(ReadoutStatsCounters);
-  // ZMQ rx timeout in message loop
-  const int cfgRxTimeout = 1000;
+
+  // default ZMQ settings
+  int cfg_ZMQ_CONFLATE = 0; // buffer last message only
+  int cfg_ZMQ_IO_THREADS = 1; // number of IO threads
+  int cfg_ZMQ_LINGER = 1000; // close timeout
+  int cfg_ZMQ_RCVTIMEO = 1000; // receive timeout
 
   theLog.log(LogInfoDevel_(3002), "Creating ZeroMQ server @ %s", cfgMonitorAddress.c_str());
 
@@ -145,38 +149,47 @@ int main(int argc, const char** argv)
   void* zmqHandle = nullptr;
   void* zmqBuffer = nullptr;
  
-  int zmqError = 0;
-  try {
+  int linerr = 0;
+  int zmqerr = 0;
+  for (;;) {
     zmqBuffer = malloc(cfgMaxMsgSize);
     if (zmqBuffer == nullptr) {
-      throw __LINE__;
+      linerr = __LINE__;
+      break;
     }
 
     zmqContext = zmq_ctx_new();
     if (zmqContext == nullptr) {
-      zmqError = zmq_errno();
-      throw __LINE__;
+      linerr = __LINE__;
+      zmqerr = zmq_errno();
+      break;
     }
 
+    zmq_ctx_set(zmqContext, ZMQ_IO_THREADS, cfg_ZMQ_IO_THREADS);
+    if (zmq_ctx_get(zmqContext, ZMQ_IO_THREADS) != cfg_ZMQ_IO_THREADS) {
+      linerr = __LINE__;
+      break;
+    }
     zmqHandle = zmq_socket(zmqContext, ZMQ_PULL);
-    if (zmqHandle == nullptr) {
-      zmqError = zmq_errno();
-      throw __LINE__;
-    }
+    if (zmqHandle==nullptr) { linerr=__LINE__; zmqerr=zmq_errno(); break; }
+    zmqerr = zmq_setsockopt(zmqHandle, ZMQ_CONFLATE, &cfg_ZMQ_CONFLATE, sizeof(cfg_ZMQ_CONFLATE));
+    if (zmqerr) { linerr=__LINE__; break; }
+    zmqerr = zmq_setsockopt(zmqHandle, ZMQ_LINGER, (void*)&cfg_ZMQ_LINGER, sizeof(cfg_ZMQ_LINGER));
+    if (zmqerr) { linerr=__LINE__; break; }
+    zmqerr = zmq_setsockopt(zmqHandle, ZMQ_RCVTIMEO, (void*)&cfg_ZMQ_RCVTIMEO, sizeof(cfg_ZMQ_RCVTIMEO));
+    if (zmqerr) { linerr=__LINE__; break; }
 
-    zmqError = zmq_setsockopt(zmqHandle, ZMQ_RCVTIMEO, (void*)&cfgRxTimeout, sizeof(int));
-    if (zmqError) {
-      throw __LINE__;
-    }
-    zmqError = zmq_bind(zmqHandle, cfgMonitorAddress.c_str());
-    if (zmqError) {
-      throw __LINE__;
-    }
-  } catch (int lineErr) {
-    if (zmqError) {
-      theLog.log(LogErrorDevel, "ZeroMQ error @%d : (%d) %s", lineErr, zmqError, zmq_strerror(zmqError));
+    zmqerr = zmq_bind(zmqHandle, cfgMonitorAddress.c_str());
+    if (zmqerr) { linerr=__LINE__; break; }
+
+    break;
+  }
+
+  if ((zmqerr) || (linerr)) {
+    if (zmqerr) {
+      theLog.log(LogErrorDevel, "ZeroMQ error @%d : (%d) %s", linerr, zmqerr, zmq_strerror(zmqerr));
     } else {
-      theLog.log(LogErrorDevel, "Error @%d", lineErr);
+      theLog.log(LogErrorDevel, "Error @%d", linerr);
     }
     return -1;
   }
@@ -193,12 +206,14 @@ int main(int argc, const char** argv)
   double previousSampleTime = 0;
 
   // header
-  printf("               Time    State         nStf   Readout  Recorder      STFB      STFB        STFB      STFB      STFB\n");
-  printf("                                              total     total     total    memory      memory    memory       tf \n");
-  printf("                                                                           locked     release   release       id \n");
-  printf("                                                                                         rate   latency          \n");
-  printf("                                            (bytes)   (bytes)   (bytes)    (pages)  (pages/s)       (s)          \n");
-  
+  if (!cfgRawBytes) {
+    printf("               Time    State         nStf   Readout  Recorder      STFB      STFB        STFB      STFB      STFB\n");
+    printf("                                              total     total     total    memory      memory    memory       tf \n");
+    printf("                                                                           locked     release   release       id \n");
+    printf("                                                                                         rate   latency          \n");
+    printf("                                            (bytes)   (bytes)   (bytes)    (pages)  (pages/s)       (s)          \n");
+  }
+    
   for (; !ShutdownRequest;) {
     int nb = 0;
     nb = zmq_recv(zmqHandle, zmqBuffer, cfgMaxMsgSize, 0);
@@ -225,8 +240,9 @@ int main(int argc, const char** argv)
 	avgTfmq = (counters->pagesPendingFairMQtime.load() / nRfmq) / (deltaT * 1000000.0);
       }
       if (cfgRawBytes) {
-        printf("%s\t%s\t%llu\t%llu\t%llu\t%llu\t%llu\t%.2lf\t%.6lf\t%d\n",
-           t ? getStringTime(t).c_str() : "-",
+        printf("%llu\t%s\t%s\t%llu\t%llu\t%llu\t%llu\t%llu\t%.2lf\t%.6lf\t%d\n",
+           (unsigned long long)t,
+	   counters->source,
            (char*)&state,
            (unsigned long long)counters->numberOfSubtimeframes.load(),
            (unsigned long long)counters->bytesReadout.load(),
@@ -236,9 +252,11 @@ int main(int argc, const char** argv)
            nRfmq,
            avgTfmq,
            (int)counters->timeframeIdFairMQ.load());
+	   fflush(stdout);
       } else {
-        printf("%s  %s     %8llu     %s   %s   %s   %6llu    %7.2lf    %6.4lf %8d\n",
+        printf("%s  %s %s     %8llu     %s   %s   %s   %6llu    %7.2lf    %6.4lf %8d\n",
            t ? getStringTime(t).c_str() : "-",
+	   counters->source,
            (char*)&state,
            (unsigned long long)counters->numberOfSubtimeframes.load(),
            NumberOfBytesToString(counters->bytesReadout.load(),"").c_str(),

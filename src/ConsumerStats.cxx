@@ -30,9 +30,6 @@ using namespace o2::monitoring;
 #include <zmq.h>
 #endif
 
-// macro to get number of element in static array
-#define STATIC_ARRAY_ELEMENT_COUNT(x) sizeof(x) / sizeof(x[0])
-
 extern tRunNumber occRunNumber;
 
 class ConsumerStats : public Consumer
@@ -127,6 +124,7 @@ class ConsumerStats : public Consumer
     snapshot.timestamp = time(NULL);
     gReadoutStats.counters.pagesPendingFairMQtime = 0;
     gReadoutStats.counters.pagesPendingFairMQreleased = 0;
+    gReadoutStats.counters.notify++;
     unsigned long long nRfmq = snapshot.pagesPendingFairMQreleased.load();
     int tfidfmq = (int)snapshot.timeframeIdFairMQ.load();
     double avgTfmq = 0.0;
