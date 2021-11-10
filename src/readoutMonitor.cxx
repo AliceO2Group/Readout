@@ -230,7 +230,7 @@ int main(int argc, const char** argv)
     ReadoutStatsCounters* counters = (ReadoutStatsCounters*)zmqBuffer;
     uint64_t state = counters->state.load();
     ((char*)&state)[7] = 0;
-    time_t t = (time_t)counters->timestamp.load();
+    double t = counters->timestamp.load();
     double nRfmq = counters->pagesPendingFairMQreleased.load();
     double avgTfmq = 0.0;
     if (previousSampleTime > 0) {
@@ -240,8 +240,8 @@ int main(int argc, const char** argv)
 	avgTfmq = (counters->pagesPendingFairMQtime.load() / nRfmq) / (deltaT * 1000000.0);
       }
       if (cfgRawBytes) {
-        printf("%llu\t%s\t%s\t%llu\t%llu\t%llu\t%llu\t%llu\t%.2lf\t%.6lf\t%d\n",
-           (unsigned long long)t,
+        printf("%f\t%s\t%s\t%llu\t%llu\t%llu\t%llu\t%llu\t%.2lf\t%.6lf\t%d\n",
+           (double)t,
 	   counters->source,
            (char*)&state,
            (unsigned long long)counters->numberOfSubtimeframes.load(),

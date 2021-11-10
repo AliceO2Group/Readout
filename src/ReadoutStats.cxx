@@ -170,7 +170,7 @@ void ReadoutStats::publishNow() {
     uint64_t newUpdate = counters.notify.load();
     ReadoutStatsCounters snapshot;
     memcpy((void *)&snapshot, (void *)&gReadoutStats.counters, sizeof(snapshot));
-    snapshot.timestamp = time(NULL);
+    snapshot.timestamp = ((std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch())).count())/1000000.0;
     mutex.lock();
     if (newUpdate != lastUpdate) {
       zmq_send(zmqHandle, &snapshot, sizeof(snapshot), ZMQ_DONTWAIT);
