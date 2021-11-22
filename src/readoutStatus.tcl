@@ -48,6 +48,8 @@ foreach {det host imin imax comment} $flps {
 	incr v_nflp($det)
 	set lastState($h) "Undefined"
 	set lastTime($h) 0
+	set lastBytes($h) {}
+	set lastDraw($h) 0
   }
   
 }
@@ -131,27 +133,107 @@ proc drawState {n} {
    global v_color bgcolor_highlight activeC
    global nodes
    global lastState
+   global lastBytes
+   global y0_bytes y1_bytes x_tscale
+   global lastDraw
+   
+   set now [expr [clock milliseconds]/1000.0]
+   set lastDraw($n) $now
    
    set s $lastState($n)
+   if {$v_ix($n)==$activeC} {
+     set color "$bgcolor_highlight"
+   } else {
+     set color $v_color($n)
+   }
+   set x1 [expr $v_x($n)]
+   set x2 [expr $x1 + $cw]
 
    set i 0
    foreach {ss c} {Undefined "#666666" Standby "#007700" Ready "#00bb00" Running "#00ff00" Error red} {
      if {[string tolower $s]==[string tolower $ss]} {
-       set x1 [expr $v_x($n)]
-       set x2 [expr $x1 + $cw]
        set y1 [expr $y0_states + $i * $rowh]
        set y2 [expr $y1 + $rowh]
-       if {$v_ix($n)==$activeC} {
-         set color "$bgcolor_highlight"
-       } else {
-         set color $v_color($n)
-       }
       .fMain.can create rect $x1 $y0_states $x2 [expr $y0_states + 5 * $rowh] -fill "$color" -width 0  
       .fMain.can create rect $x1 $y1 $x2 $y2 -fill "$c" -width 0  
       break
      }
      incr i
    }
+
+  
+  set i 0
+  set newlist {}
+  set vals {}
+  set lastt -1
+  set lastb -1
+  foreach {t b} $lastBytes($n) {
+    set x [expr round($cw - ($now - $t) * $x_tscale - 1)]
+    if {$x<0} {
+      continue
+    }
+    if {$lastt>0} {
+      if {([expr $t - $lastt] > 0)} {
+        if {($b >= $lastb)} {
+          # rate in bytes/sec
+          set r [expr ($b - $lastb) / ($t - $lastt)]
+	} else {
+	  set r 0
+	}
+	# scale to log. Maxval = 10GB/s
+	if {$r<=1} {
+	  set y 0
+	} else {
+	  # log(10GB) = 23
+	  set y [expr round(log($r)*$y1_bytes/23)]
+	}
+	if {$y>$y1_bytes} {
+	  set y $y1_bytes	  
+	}
+        lappend vals $x $y
+      }
+    }
+    lappend newlist $t $b
+    set lastt $t
+    set lastb $b
+  }
+  set lastBytes($n) $newlist
+  #puts "\n$vals"
+  
+  # group by x
+  for {set i 0} {$i <= $cw} {incr i} {
+    set px($i) 0
+    set py($i) 0
+  }
+  foreach {x y} $vals {
+    incr px($x)
+    incr py($x) $y
+  }
+  
+  set y1 $y0_bytes
+  set y2 [expr $y1 + $y1_bytes]
+ 
+  #.fMain.can create rect $x1 $y1 $x2 $y2 -fill "$c" -width 0 -fill "$color"
+  for {set i 1} {$i < $cw} {incr i} {
+    set x [expr $x1 + $i]
+    if {$px($i)>0} {
+      set y [expr $y2 - ($py($i) / $px($i))]
+      .fMain.can create line $x $y2 $x $y -fill "blue"
+      .fMain.can create line $x $y1 $x $y -fill "$color"
+    } else {
+      .fMain.can create line $x $y1 $x $y2 -fill "$color"
+    }
+  }
+
+  
+  if {0} {  
+  foreach {x y} $vals {
+    incr x $x1
+    set y [expr $y2-$y]
+    .fMain.can create line $x $y2 $x $y
+  }
+  }
+  
 }
 
 proc drawFlp {f highlight} {
@@ -191,6 +273,13 @@ if {1} {
 
   # y top position of 1st line states
   set y0_states [expr $hh*2]
+
+  set y0_bytes [expr $y0_states + 5 * $rowh]
+  # timescale 1 pix = X sec
+  set x_tscale [expr 1.0 / 1]
+  # space reserved for bytes plot
+  set y1_bytes 20
+    
 
   .fMain.can create rect 0 0 $hw $fy -fill "#DDDDDD" -width 0
   font create font_head -family verdana -size [expr $cw - 2] -weight bold
@@ -254,6 +343,8 @@ if {1} {
     #.fMain.can create text [expr $hw-50] [expr $yy + $rowh/2] -text "$s" -anchor w -justify left -font font_rhead
     incr rowix
   }
+  
+  .fMain.can create text [expr $hw-5] [expr $y0_bytes + $y1_bytes/2] -text "Rate" -anchor e -justify right -font font_rhead
 
 }
 
@@ -266,7 +357,7 @@ proc updateNode {metrics} {
     global cw rowh y0_states
     global v_color bgcolor_highlight activeC
     global nodes
-    global lastState lastTime
+    global lastState lastTime lastBytes
     
     if {[lsearch $nodes $n]<0} {
       continue
@@ -274,31 +365,46 @@ proc updateNode {metrics} {
 
     set lastState($n) $s
     set lastTime($n) $t
+    lappend lastBytes($n) $t $bytesReadout
     drawState $n
  
     if {$v_ix($n)==$activeC} {
      global description
-     set description "FLP $n\nLast update: [clock format $t]\nState: $s\nbytesReadout = $bytesReadout"
+     set description "FLP $n\nLast update: [clock format [expr int($t)]]\nState: $s\nbytesReadout = $bytesReadout"
     }
   }
 }
 
 
-# routine to process stdin
+# routine to process input data
 proc processInput {} {
+  global server_fd
   while {1} {
-    if {[gets stdin msg]==-1} {break}
+    if {[gets $server_fd msg]==-1} {break}
     set lm [split $msg "\t"]
     if {[llength $lm]!=11} {break}
     updateNode $lm
   }
-  fileevent stdin readable processInput
+  fileevent $server_fd readable processInput
+}
+
+set loghost flpdev1
+set logport 10001
+if {$loghost==""} {
+  set server_fd stdin
+} else {
+  if {[catch {set server_fd [socket $loghost $logport]} err]} {
+    puts "Failed to connect ${loghost}:${logport}: $err"
+    return -1
+  } else {
+    puts "Connected to ${loghost}:${logport}"
+  }
 }
 
 # setup stdin for input
-fconfigure stdin -blocking false   
-fconfigure stdin -buffersize 1000000
-fileevent stdin readable processInput
+fconfigure $server_fd -blocking false   
+fconfigure $server_fd -buffersize 1000000
+fileevent $server_fd readable processInput
 
 
 # set nodes without fresh data to undefined state 
@@ -307,9 +413,9 @@ proc periodicCleanup {} {
   global lastTime
   global nodes
 
-  set timeout 5
+  set timeout 3
   
-  set now [clock seconds]
+  set now [expr [clock milliseconds]/1000.0]
   foreach n $nodes {
     set dt [expr $now - $lastTime($n)]
     if {$lastTime($n)>$timeout} {
@@ -321,6 +427,22 @@ proc periodicCleanup {} {
     }
   }
   
-  after [expr $timeout*500] {periodicCleanup}
+  after [expr $timeout*1000/2] {periodicCleanup}
 }
 periodicCleanup
+
+proc periodicDraw {} {
+  global lastDraw
+  global nodes
+  
+  set now [expr [clock milliseconds]/1000.0]
+  set timeout 2
+  foreach n $nodes {
+    set dt [expr $now - $lastDraw($n)]
+    if {$dt>=$timeout} {
+      drawState $n
+    }
+  }
+  after [expr int($timeout*1000)] {periodicDraw}
+}
+periodicDraw
