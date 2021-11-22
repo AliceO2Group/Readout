@@ -22,6 +22,7 @@
 #include "readoutInfoLogger.h"
 #include "DataBlock.h"
 #include <string.h>
+#include <Common/Timer.h>
 
 // the global stats instance
 ReadoutStats gReadoutStats;
@@ -30,10 +31,20 @@ ReadoutStats::ReadoutStats() {
   counters.version = ReadoutStatsCountersVersion;
   bzero(&counters.source, sizeof(counters.source));
   reset();
+
+  shutdownThread = 0;
+  std::function<void(void)> l = std::bind(&ReadoutStats::threadLoop, this);
+  publishThread = std::make_unique<std::thread>(l);
 }
 
 ReadoutStats::~ReadoutStats() {
   stopPublish();
+
+  if (publishThread != nullptr) {
+    shutdownThread = 1;
+    publishThread->join();
+    publishThread = nullptr;
+  }
 }
 
 void ReadoutStats::reset()
@@ -45,7 +56,7 @@ void ReadoutStats::reset()
   counters.bytesRecorded = 0;
   counters.bytesFairMQ = 0;
 
-  counters.timestamp = time(nullptr);
+  counters.timestamp = 0;
   counters.bytesReadoutRate = 0;
   counters.state = 0;
 
@@ -73,10 +84,9 @@ uint64_t stringToUint64(const char* in)
   return *((uint64_t*)res);
 }
 
-int ReadoutStats::startPublish() {
-  if (publishThread != nullptr) {
-    return -1;
-  }
+int ReadoutStats::startPublish(const std::string &cfgZmqPublishAddress, double cfgZmqPublishInterval) {
+
+  if (zmqEnabled) return __LINE__;
 
   #ifdef WITH_ZMQ
 
@@ -88,12 +98,13 @@ int ReadoutStats::startPublish() {
   int cfg_ZMQ_SNDHWM = 10; // max send queue size
   int cfg_ZMQ_SNDTIMEO = 2000; // send timeout
 
-  std::string cfgZmqPublishAddress="tcp://127.0.0.1:6008";
   if (cfgZmqPublishAddress != "") {
-    theLog.log(LogInfoDevel_(3002), "ReadoutStats ZMQ publishing enabled - using %s", cfgZmqPublishAddress.c_str());
+
+    //theLog.log(LogInfoDevel_(3002), "ReadoutStats publishing enabled - using %s period %fs", cfgZmqPublishAddress.c_str(), cfgZmqPublishInterval);
 
     int linerr = 0;
     int zmqerr = 0;
+    publishMutex.lock();
     for (;;) {
       zmqContext = zmq_ctx_new();
       if (zmqContext == nullptr) {
@@ -122,44 +133,81 @@ int ReadoutStats::startPublish() {
 
       zmqerr = zmq_connect(zmqHandle, cfgZmqPublishAddress.c_str());
       if (zmqerr) { linerr=__LINE__; break; }
-
+      
+      publishInterval = cfgZmqPublishInterval;
       zmqEnabled = 1;
 
       break;
     }
+    publishMutex.unlock();
 
     if ((zmqerr) || (linerr)) {
       theLog.log(LogErrorSupport_(3236), "ZeroMQ error @%d : (%d) %s", linerr, zmqerr, zmq_strerror(zmqerr));
-      theLog.log(LogErrorDevel, "ReadoutStats ZMQ publishing disabled");
+      // theLog.log(LogErrorDevel, "ReadoutStats publishing disabled");
+      zmqCleanup();
+      return __LINE__;
     }
+  } else {
+    return -1; //disabled
   }
   #endif
 
   publishNow();
-
-  shutdownThread = 0;
-  std::function<void(void)> l = std::bind(&ReadoutStats::threadLoop, this);
-  publishThread = std::make_unique<std::thread>(l);  
   return 0;
 }
 
+#ifdef WITH_ZMQ
+void ReadoutStats::zmqCleanup() {
+  publishMutex.lock();
+  if (zmqHandle != nullptr) {
+    zmq_close(zmqHandle);
+    zmqHandle = nullptr;
+  }
+  if (zmqContext != nullptr) {
+    zmq_ctx_destroy(zmqContext);
+    zmqContext = nullptr;
+  }
+  zmqEnabled = 0;
+  publishMutex.unlock();
+}
+#endif
+
+
 int ReadoutStats::stopPublish() {
   publishNow();
-
-  if (publishThread != nullptr) {
-    shutdownThread = 1;
-    publishThread->join();
-    publishThread = nullptr;
-  }
-  
-  zmqEnabled = 0;
+  zmqCleanup();
   return 0;
 }
 
 void ReadoutStats::threadLoop() {
+
+  // loop period in microseconds
+  unsigned int loopPeriod = (unsigned int) 200000;
+  unsigned long long t0 = 0;
+  unsigned int periodCount = 0;
+  
   for(;shutdownThread.load() == 0;) {
-    publishNow();
-    usleep(1000000);
+  
+    // align it to system clock seconds
+    unsigned int sleeptime = loopPeriod - ((std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch())).count() % loopPeriod);
+    std::this_thread::sleep_for(std::chrono::microseconds(sleeptime));
+    
+    unsigned long long microseconds = (std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now().time_since_epoch())).count();
+        
+    // compute rates on last interval
+    unsigned long long dt = microseconds - t0;
+    if (t0) {
+	counters.bytesReadoutRate = counters.bytesReadout / dt;
+    }
+    t0 = microseconds;
+  
+    // publish at specified interval
+    periodCount++;
+    if (periodCount * loopPeriod / 1000000.0 >= publishInterval) {
+      publishNow();
+      periodCount = 0;
+    }
+    
   }
 }
 
@@ -171,12 +219,12 @@ void ReadoutStats::publishNow() {
     ReadoutStatsCounters snapshot;
     memcpy((void *)&snapshot, (void *)&gReadoutStats.counters, sizeof(snapshot));
     snapshot.timestamp = ((std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch())).count())/1000000.0;
-    mutex.lock();
+    publishMutex.lock();
     if (newUpdate != lastUpdate) {
       zmq_send(zmqHandle, &snapshot, sizeof(snapshot), ZMQ_DONTWAIT);
       lastUpdate = newUpdate;
     }   
-    mutex.unlock();
+    publishMutex.unlock();
   }
  #endif
 }

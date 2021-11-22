@@ -33,7 +33,7 @@ struct ReadoutStatsCounters {
   std::atomic<uint64_t> bytesReadout;
   std::atomic<uint64_t> bytesRecorded;
   std::atomic<uint64_t> bytesFairMQ;
-  std::atomic<double> timestamp;
+   std::atomic<double> timestamp;
   std::atomic<double> bytesReadoutRate;
   std::atomic<uint64_t> state;
   std::atomic<uint64_t> pagesPendingFairMQ;         // number of pages pending in ConsumerFMQ
@@ -63,7 +63,7 @@ class ReadoutStats
   ReadoutStatsCounters counters;
   bool isFairMQ; // flag to report when FairMQ used
   
-  int startPublish();
+  int startPublish(const std::string &cfgZmqPublishAddress, double cfgZmqPublishInterval);
   int stopPublish();
   void publishNow();
 
@@ -73,10 +73,14 @@ class ReadoutStats
   std::unique_ptr<std::thread> publishThread;
   std::atomic<int> shutdownThread = 0;
   void threadLoop();
+  double publishInterval;
+  std::mutex publishMutex;
+    
   #ifdef WITH_ZMQ
   void* zmqContext = nullptr;
   void* zmqHandle = nullptr;
   bool zmqEnabled = 0;
+  void zmqCleanup();
   #endif
   uint64_t lastUpdate = (uint64_t)-1;
 };

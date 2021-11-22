@@ -242,6 +242,8 @@ int Readout::init(int argc, char* argv[])
   ConfigFile cfgDefaults;
   const std::string cfgDefaultsPath = "file:/etc/o2.d/readout-defaults.cfg"; // path to default configuration file
   const std::string cfgDefaultsEntryPoint = "readout"; // entry point for default configuration variables (e.g. section named [readout])
+  std::string cfgStatsPublishAddress; // address where to publish readout stats, eg "tcp://127.0.0.1:6008"
+  double cfgStatsPublishInterval = 5.0; // interval for readout stats publish, in seconds
   try {
     cfgDefaults.load(cfgDefaultsPath.c_str());
     initLogs.push_back({LogInfoDevel, "Defaults loaded from " + cfgDefaultsPath});
@@ -249,6 +251,8 @@ int Readout::init(int argc, char* argv[])
     cfgDefaults.getOptionalValue<std::string>(cfgDefaultsEntryPoint + ".readoutExe", readoutExe, readoutExe);
     cfgDefaults.getOptionalValue<std::string>(cfgDefaultsEntryPoint + ".readoutConfig", readoutConfig, readoutConfig);
     cfgDefaults.getOptionalValue<int>(cfgDefaultsEntryPoint + ".verbose", cfgVerbose, cfgVerbose);
+    cfgDefaults.getOptionalValue<std::string>(cfgDefaultsEntryPoint + ".statsPublishAddress", cfgStatsPublishAddress, cfgStatsPublishAddress);
+    cfgDefaults.getOptionalValue<double>(cfgDefaultsEntryPoint + ".statsPublishInterval", cfgStatsPublishInterval, cfgStatsPublishInterval);
   }
   catch(...) {
     //initLogs.push_back({LogWarningSupport_(3100), std::string("Error loading defaults")});
@@ -297,7 +301,12 @@ int Readout::init(int argc, char* argv[])
   memcpy(gReadoutStats.counters.source, occRole.c_str(),
     occRole.length() >= sizeof(gReadoutStats.counters.source) ? (sizeof(gReadoutStats.counters.source) - 1) : occRole.length());
   gReadoutStats.counters.state = stringToUint64("standby");
-  gReadoutStats.startPublish();
+  int readoutStatsErr = gReadoutStats.startPublish(cfgStatsPublishAddress, cfgStatsPublishInterval);
+  if (readoutStatsErr == 0) {
+    initLogs.push_back({LogInfoSupport, "Started Stats publish @ " + cfgStatsPublishAddress});
+  } else if (readoutStatsErr > 0) {  
+    initLogs.push_back({LogWarningSupport_(3236), "Failed to start Stats publish"});
+  } //otherwise: disabled
   
 
   // configure signal handlers for clean exit
@@ -1248,7 +1257,6 @@ int Readout::reset()
 }
 
 Readout::~Readout() {
-  gReadoutStats.stopPublish();
 }
 
 #ifdef WITH_OCC
