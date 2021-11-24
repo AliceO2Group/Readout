@@ -18,13 +18,22 @@
 
 #include <atomic>
 #include <mutex>
+#include <thread>
+#include <queue>
+#ifdef WITH_ZMQ
+#include <zmq.h>
+#endif
 
 struct ReadoutStatsCounters {
+  uint32_t version; // version number of this header
+  char source[32]; // name of the source providing these counters
+  std::atomic<uint64_t> notify; // counter updated each time there is a change in the struct
+
   std::atomic<uint64_t> numberOfSubtimeframes;
   std::atomic<uint64_t> bytesReadout;
   std::atomic<uint64_t> bytesRecorded;
   std::atomic<uint64_t> bytesFairMQ;
-  std::atomic<double> timestamp;
+   std::atomic<double> timestamp;
   std::atomic<double> bytesReadoutRate;
   std::atomic<uint64_t> state;
   std::atomic<uint64_t> pagesPendingFairMQ;         // number of pages pending in ConsumerFMQ
@@ -32,7 +41,13 @@ struct ReadoutStatsCounters {
   std::atomic<uint64_t> pagesPendingFairMQtime;     // latency in FMQ, in microseconds, total for all released pages
   std::atomic<uint32_t> timeframeIdFairMQ;          // last timeframe pushed to ConsumerFMQ
   std::atomic<uint32_t> firstOrbit;                 // value of first orbit received
+  std::atomic<uint32_t> logMessages;                // number of log messages (severity: any)
+  std::atomic<uint32_t> logMessagesWarning;         // number of log messages (severity: warning)
+  std::atomic<uint32_t> logMessagesError;           // number of log messages (severity: error)
 };
+
+// version number of this struct
+const uint32_t ReadoutStatsCountersVersion = 0xA0000001;
 
 // need to be able to easily transmit this struct as a whole
 static_assert(std::is_pod<ReadoutStatsCounters>::value);
@@ -50,8 +65,28 @@ class ReadoutStats
 
   ReadoutStatsCounters counters;
   bool isFairMQ; // flag to report when FairMQ used
+  
+  int startPublish(const std::string &cfgZmqPublishAddress, double cfgZmqPublishInterval);
+  int stopPublish();
+  void publishNow();
+
+  std::mutex mutex; // a general purpose lock for shared counters, eg to set firstOrbit
+
+ private:
+  std::unique_ptr<std::thread> publishThread;
+  std::atomic<int> shutdownThread = 0;
+  void threadLoop();
+  double publishInterval;
+  std::mutex publishMutex;
+    
+  #ifdef WITH_ZMQ
+  void* zmqContext = nullptr;
+  void* zmqHandle = nullptr;
+  bool zmqEnabled = 0;
+  void zmqCleanup();
+  #endif
+  uint64_t lastUpdate = (uint64_t)-1;
 };
 
 extern ReadoutStats gReadoutStats;
-extern std::mutex gReadoutStatsMutex;
 

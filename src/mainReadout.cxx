@@ -24,6 +24,7 @@
 #include <boost/property_tree/ptree.hpp>
 #include <thread>
 #include <time.h>
+#include <string.h>
 #include <sys/mman.h>
 
 #include "DataBlock.h"
@@ -122,6 +123,7 @@ class Readout
 {
 
  public:
+  ~Readout();
   int init(int argc, char* argv[]);
   int configure(const boost::property_tree::ptree& properties);
   int reset(); // as opposed to configure()
@@ -240,6 +242,8 @@ int Readout::init(int argc, char* argv[])
   ConfigFile cfgDefaults;
   const std::string cfgDefaultsPath = "file:/etc/o2.d/readout-defaults.cfg"; // path to default configuration file
   const std::string cfgDefaultsEntryPoint = "readout"; // entry point for default configuration variables (e.g. section named [readout])
+  std::string cfgStatsPublishAddress; // address where to publish readout stats, eg "tcp://127.0.0.1:6008"
+  double cfgStatsPublishInterval = 5.0; // interval for readout stats publish, in seconds
   try {
     cfgDefaults.load(cfgDefaultsPath.c_str());
     initLogs.push_back({LogInfoDevel, "Defaults loaded from " + cfgDefaultsPath});
@@ -247,6 +251,8 @@ int Readout::init(int argc, char* argv[])
     cfgDefaults.getOptionalValue<std::string>(cfgDefaultsEntryPoint + ".readoutExe", readoutExe, readoutExe);
     cfgDefaults.getOptionalValue<std::string>(cfgDefaultsEntryPoint + ".readoutConfig", readoutConfig, readoutConfig);
     cfgDefaults.getOptionalValue<int>(cfgDefaultsEntryPoint + ".verbose", cfgVerbose, cfgVerbose);
+    cfgDefaults.getOptionalValue<std::string>(cfgDefaultsEntryPoint + ".statsPublishAddress", cfgStatsPublishAddress, cfgStatsPublishAddress);
+    cfgDefaults.getOptionalValue<double>(cfgDefaultsEntryPoint + ".statsPublishInterval", cfgStatsPublishInterval, cfgStatsPublishInterval);
   }
   catch(...) {
     //initLogs.push_back({LogWarningSupport_(3100), std::string("Error loading defaults")});
@@ -290,6 +296,18 @@ int Readout::init(int argc, char* argv[])
   if (argc > 2) {
     cfgFileEntryPoint = argv[2];
   }
+
+  // init stats
+  memcpy(gReadoutStats.counters.source, occRole.c_str(),
+    occRole.length() >= sizeof(gReadoutStats.counters.source) ? (sizeof(gReadoutStats.counters.source) - 1) : occRole.length());
+  gReadoutStats.counters.state = stringToUint64("standby");
+  int readoutStatsErr = gReadoutStats.startPublish(cfgStatsPublishAddress, cfgStatsPublishInterval);
+  if (readoutStatsErr == 0) {
+    initLogs.push_back({LogInfoSupport, "Started Stats publish @ " + cfgStatsPublishAddress});
+  } else if (readoutStatsErr > 0) {  
+    initLogs.push_back({LogWarningSupport_(3236), "Failed to start Stats publish"});
+  } //otherwise: disabled
+  
 
   // configure signal handlers for clean exit
   struct sigaction signalSettings;
@@ -360,6 +378,9 @@ int Readout::init(int argc, char* argv[])
 int Readout::configure(const boost::property_tree::ptree& properties)
 {
   theLog.log(LogInfoSupport_(3005), "Readout executing CONFIGURE");
+  gReadoutStats.counters.state = stringToUint64("> conf");
+  gReadoutStats.counters.notify++;
+  gReadoutStats.publishNow();
 
   // reset some flags
   gReadoutStats.isFairMQ = 0; // disable FMQ stats
@@ -890,6 +911,10 @@ int Readout::configure(const boost::property_tree::ptree& properties)
   theLog.log(LogInfoDevel, "Aggregator: %d equipments", nEquipmentsAggregated);
 
   theLog.log(LogInfoSupport_(3005), "Readout completed CONFIGURE");
+  gReadoutStats.counters.state = stringToUint64("ready");
+  gReadoutStats.counters.notify++;
+  gReadoutStats.publishNow();
+
   return 0;
 }
 
@@ -897,10 +922,12 @@ int Readout::start()
 {
   theLog.resetMessageCount();
   theLog.log(LogInfoSupport_(3005), "Readout executing START");
+  gReadoutStats.reset();
+  gReadoutStats.counters.state = stringToUint64("> start");
+  gReadoutStats.counters.notify++;
+  gReadoutStats.publishNow();
 
   // publish initial logbook statistics
-  gReadoutStats.reset();
-  gReadoutStats.counters.state = stringToUint64("start...");
   publishLogbookStats();
   logbookTimer.reset(cfgLogbookUpdateInterval * 1000000);
   maxTimeframeId = 0;
@@ -957,6 +984,8 @@ int Readout::start()
 
   theLog.log(LogInfoSupport_(3005), "Readout completed START");
   gReadoutStats.counters.state = stringToUint64("running");
+  gReadoutStats.counters.notify++;
+  gReadoutStats.publishNow();
   return 0;
 }
 
@@ -998,6 +1027,7 @@ void Readout::loopRunning()
               }
 #endif
               gReadoutStats.counters.numberOfSubtimeframes++;
+	      gReadoutStats.counters.notify++;
             }
           }
         }
@@ -1085,7 +1115,9 @@ int Readout::stop()
 {
 
   theLog.log(LogInfoSupport_(3005), "Readout executing STOP");
-  gReadoutStats.counters.state = stringToUint64("stop...");
+  gReadoutStats.counters.state = stringToUint64("> stop");
+  gReadoutStats.counters.notify++;
+  gReadoutStats.publishNow();
 
   // raise flag
   stopTimer.reset(cfgFlushEquipmentTimeout * 1000000); // add a delay before stopping aggregator - continune to empty FIFOs
@@ -1138,11 +1170,13 @@ int Readout::stop()
   theLog.log("Errors: %lu Warnings: %lu", theLog.getMessageCount(InfoLogger::Severity::Error), theLog.getMessageCount(InfoLogger::Severity::Warning));
 
   // publish final logbook statistics
-  gReadoutStats.counters.state = stringToUint64("stopped");
   publishLogbookStats();
-  gReadoutStats.reset();
 
   theLog.log(LogInfoSupport_(3005), "Readout completed STOP");
+  gReadoutStats.counters.state = stringToUint64("ready");
+  gReadoutStats.counters.notify++;
+  gReadoutStats.publishNow();
+
   return 0;
 }
 
@@ -1150,6 +1184,9 @@ int Readout::reset()
 {
 
   theLog.log(LogInfoSupport_(3005), "Readout executing RESET");
+  gReadoutStats.counters.state = stringToUint64("> reset");
+  gReadoutStats.counters.notify++;
+  gReadoutStats.publishNow();
 
   // close consumers before closing readout equipments (owner of data blocks)
   theLog.log(LogInfoDevel, "Releasing primary consumers");
@@ -1211,7 +1248,15 @@ int Readout::reset()
 #endif
 
   theLog.log(LogInfoSupport_(3005), "Readout completed RESET");
+  gReadoutStats.reset();
+  gReadoutStats.counters.state = stringToUint64("standby");
+  gReadoutStats.counters.notify++;
+  gReadoutStats.publishNow();
+
   return 0;
+}
+
+Readout::~Readout() {
 }
 
 #ifdef WITH_OCC
@@ -1348,6 +1393,17 @@ int main(int argc, char* argv[])
     occMode = false;
   }
 
+  // set default role name
+  const char *role = getenv("OCC_ROLE");
+  if (role != nullptr) {
+    occRole = role;
+  } else {
+    char hostname[128];
+    if (gethostname(hostname, sizeof(hostname)) == 0) {
+      occRole = hostname + std::string(":") + std::to_string(getpid());
+    }
+  }
+  
   // initialize logging
   theLogContext.setField(InfoLoggerContext::FieldName::Facility, "readout");
   theLog.setContext(theLogContext);

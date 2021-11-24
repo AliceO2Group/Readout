@@ -96,6 +96,7 @@ class FileHandle
     }
     counterBytesTotal += size;
     gReadoutStats.counters.bytesRecorded += size;
+    gReadoutStats.counters.notify++;
     if (isPage) {
       counterPages++;
     }
@@ -168,7 +169,7 @@ class ConsumerFileRecorder : public Consumer
     cfg.getOptionalValue(cfgEntryPoint + ".dataBlockHeaderEnabled", recordWithDataBlockHeader, 0);
     theLog.log(LogInfoDevel_(3002), "Recording internal data block headers = %d", recordWithDataBlockHeader);
 
-    // configuration parameter: | consumer-fileRecorder-* | filesMax | int | 1 | If 1 (default), file splitting is disabled: file is closed whenever a limit is reached on a given recording stream. Otherwise, file splitting is enabled: whenever the current file reaches a limit, it is closed an new one is created (with an incremental name). If <=0, an unlimited number of incremental chunks can be created. If non-zero, it defines the maximum number of chunks. The file name is suffixed with chunk number (by default, ".001, .002, ..." at the end of the file name. One may use "%c" in the file name to define where this incremental file counter is printed. |
+    // configuration parameter: | consumer-fileRecorder-* | filesMax | int | 1 | If 1 (default), file splitting is disabled: file is closed whenever a limit is reached on a given recording stream. Otherwise, file splitting is enabled: whenever the current file reaches a limit, it is closed an new one is created (with an incremental name). If <=0, an unlimited number of incremental chunks can be created. If non-zero, it defines the maximum number of chunks. The file name is suffixed with chunk number (by default, ".001, .002, ..." at the end of the file name. One may use "%f" in the file name to define where this incremental file counter is printed. |
     filesMax = 1;
     if (cfg.getOptionalValue<int>(cfgEntryPoint + ".filesMax", filesMax) == 0) {
       if (filesMax == 1) {

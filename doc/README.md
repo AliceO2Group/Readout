@@ -372,5 +372,10 @@ In all replay modes, ReadoutEquipmentPlayer does not support LZ4 files or files 
 Readout can cope with input files containing data from multiple CRUs. The data pages will be split and tagged accordingly to the RDH fields (respecting the "1 single link per page" CRU specification).
 
 
+### Frequently asked questions
+
+The [howto guide](howto.md) documents some typical use cases and will be extended according to users feedback.
+
+
 ## Contact
 sylvain.chapeland@cern.ch

@@ -434,6 +434,7 @@ Thread::CallbackResult ReadoutEquipment::threadCallback(void* arg)
       nPushedOut++;
       ptr->equipmentStats[EquipmentStatsIndexes::nBytesOut].increment(nextBlock->getData()->header.dataSize);
       gReadoutStats.counters.bytesReadout += nextBlock->getData()->header.dataSize;
+      gReadoutStats.counters.notify++;
       isActive = true;
 
       // print block debug info
@@ -555,13 +556,14 @@ uint64_t ReadoutEquipment::getTimeframeFromOrbit(uint32_t hbOrbit)
     firstTimeframeHbOrbitBegin = hbOrbit;
     isDefinedFirstTimeframeHbOrbitBegin = 1;
     bool isOk = true;
-    gReadoutStatsMutex.lock();
+    gReadoutStats.mutex.lock();
     if (gReadoutStats.counters.firstOrbit == undefinedOrbit) {
       gReadoutStats.counters.firstOrbit = firstTimeframeHbOrbitBegin;
+      gReadoutStats.counters.notify++;
     } else if (gReadoutStats.counters.firstOrbit != firstTimeframeHbOrbitBegin) {
       isOk = false;
     }
-    gReadoutStatsMutex.unlock();
+    gReadoutStats.mutex.unlock();
     theLog.log(LogInfoDevel_(3003), "Equipment %s : first HB orbit = %X", name.c_str(), (unsigned int)firstTimeframeHbOrbitBegin);
     if (!isOk) {
       theLog.log(LogErrorDevel_(3241), "Equipment %s : first HB orbit is different from other equipments", name.c_str());
