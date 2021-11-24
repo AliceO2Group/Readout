@@ -395,6 +395,6 @@ This file describes the main feature changes for each readout.exe released versi
 - Updated configuration parameters:
   - readout.maxMsgError and readout.maxMsgWarning: when set, readout will stop when reaching the number of error or warning messages defined as threshold.
 
-
-## next version
+## v2.8.0 - 24/11/2021
 - Added a [howto guide](howto.md) to document some typical use cases.
+- Updated readout counters published by ZMQ and added an online status display. 
