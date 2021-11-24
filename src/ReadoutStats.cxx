@@ -201,6 +201,10 @@ void ReadoutStats::threadLoop() {
     }
     t0 = microseconds;
   
+    counters.logMessages=theLog.getMessageCount(InfoLogger::Severity::Undefined);
+    counters.logMessagesWarning=theLog.getMessageCount(InfoLogger::Severity::Warning);
+    counters.logMessagesError=theLog.getMessageCount(InfoLogger::Severity::Error);
+  
     // publish at specified interval
     periodCount++;
     if (periodCount * loopPeriod / 1000000.0 >= publishInterval) {

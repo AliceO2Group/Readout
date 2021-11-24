@@ -41,6 +41,9 @@ struct ReadoutStatsCounters {
   std::atomic<uint64_t> pagesPendingFairMQtime;     // latency in FMQ, in microseconds, total for all released pages
   std::atomic<uint32_t> timeframeIdFairMQ;          // last timeframe pushed to ConsumerFMQ
   std::atomic<uint32_t> firstOrbit;                 // value of first orbit received
+  std::atomic<uint32_t> logMessages;                // number of log messages (severity: any)
+  std::atomic<uint32_t> logMessagesWarning;         // number of log messages (severity: warning)
+  std::atomic<uint32_t> logMessagesError;           // number of log messages (severity: error)
 };
 
 // version number of this struct
