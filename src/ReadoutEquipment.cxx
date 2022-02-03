@@ -415,11 +415,13 @@ Thread::CallbackResult ReadoutEquipment::threadCallback(void* arg)
 	  break;
 	}
 
+        static InfoLogger::AutoMuteToken logTFdiscontinuityToken(LogWarningSupport_(3004), 10, 60);
+
 	ptr->statsNumberOfTimeframes++;
 	// detect gaps in TF id continuity
 	if (tfId != ptr->lastTimeframe + 1) {
 	  if (ptr->cfgRdhDumpWarningEnabled) {
-            theLog.log(LogWarningSupport_(3004), "Non-contiguous timeframe IDs %llu ... %llu", (unsigned long long)ptr->lastTimeframe, (unsigned long long)tfId);
+            theLog.log(logTFdiscontinuityToken, "Non-contiguous timeframe IDs %llu ... %llu", (unsigned long long)ptr->lastTimeframe, (unsigned long long)tfId);
 	  }
 	}
 	ptr->lastTimeframe = tfId;
