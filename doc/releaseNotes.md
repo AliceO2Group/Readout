@@ -398,3 +398,8 @@ This file describes the main feature changes for each readout.exe released versi
 ## v2.8.0 - 24/11/2021
 - Added a [howto guide](howto.md) to document some typical use cases.
 - Updated readout counters published by ZMQ and added an online status display. 
+
+## v2.8.1 - 03/02/2022
+- Updated configuration parameters:
+  - equipment-cruemulator-*.triggerRate: when set, the equipment HBF rate is limited to given value (eg to emulate slow triggers).
+- Fixed verbosity for non-contiguous TF warnings.
