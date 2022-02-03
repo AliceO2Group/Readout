@@ -55,12 +55,16 @@ class ReadoutEquipmentCruEmulator : public ReadoutEquipment
   double cfgEmptyHbRatio = 0.0;   // amount of empty HB frames
   int cfgPayloadSize = 64 * 1024; // maximum payload size, randomized
 
+  double cfgTriggerRate = 0.0; // if set, generate blocks at given rate instead of continuously
+  unsigned long long nBlocksPerLink = 0; // number of blocks sent
+
   class linkState
   {
    public:
     int HBpagecount = 0;
     int isEmpty = 0;
     int payloadBytesLeft = -1;
+    unsigned char packetCounter = 0;
   };
   std::map<int, linkState> perLinkState;
 
@@ -89,6 +93,7 @@ ReadoutEquipmentCruEmulator::ReadoutEquipmentCruEmulator(ConfigFile& cfg, std::s
   // configuration parameter: | equipment-cruemulator-* | HBperiod | int | 1 | Interval between 2 HeartBeat triggers, in number of LHC orbits. |
   // configuration parameter: | equipment-cruemulator-* | EmptyHbRatio | double | 0 | Fraction of empty HBframes, to simulate triggered detectors. |
   // configuration parameter: | equipment-cruemulator-* | PayloadSize | int | 64k | Maximum payload size for each trigger. Actual size is randomized, and then split in a number of (cruBlockSize) packets. |
+  // configuration parameter: | equipment-cruemulator-* | triggerRate | double | 0 | If set, the HB frame rate is limited to given value in Hz (1 HBF per data page). |
   cfg.getOptionalValue<int>(cfgEntryPoint + ".maxBlocksPerPage", cfgMaxBlocksPerPage, (int)0);
   cfg.getOptionalValue<int>(cfgEntryPoint + ".cruBlockSize", cruBlockSize, (int)8192);
   cfg.getOptionalValue<int>(cfgEntryPoint + ".numberOfLinks", cfgNumberOfLinks, (int)1);
@@ -100,9 +105,10 @@ ReadoutEquipmentCruEmulator::ReadoutEquipmentCruEmulator(ConfigFile& cfg, std::s
   cfg.getOptionalValue<int>(cfgEntryPoint + ".HBperiod", cfgHBperiod);
   cfg.getOptionalValue<double>(cfgEntryPoint + ".EmptyHbRatio", cfgEmptyHbRatio);
   cfg.getOptionalValue<int>(cfgEntryPoint + ".PayloadSize", cfgPayloadSize);
+  cfg.getOptionalValue<double>(cfgEntryPoint + ".triggerRate", cfgTriggerRate);
 
   // log config summary
-  theLog.log(LogInfoDevel_(3002), "Equipment %s: maxBlocksPerPage=%d cruBlockSize=%d numberOfLinks=%d systemId=%d cruId=%d dpwId=%d feeId=%d linkId=%d HBperiod=%d EmptyHbRatio=%f PayloadSize=%d", name.c_str(), cfgMaxBlocksPerPage, cruBlockSize, cfgNumberOfLinks, cfgSystemId, cfgCruId, cfgDpwId, cfgFeeId, cfgLinkId, cfgHBperiod, cfgEmptyHbRatio, cfgPayloadSize);
+  theLog.log(LogInfoDevel_(3002), "Equipment %s: maxBlocksPerPage=%d cruBlockSize=%d numberOfLinks=%d systemId=%d cruId=%d dpwId=%d feeId=%d linkId=%d HBperiod=%d EmptyHbRatio=%f PayloadSize=%d TriggerRate=%f", name.c_str(), cfgMaxBlocksPerPage, cruBlockSize, cfgNumberOfLinks, cfgSystemId, cfgCruId, cfgDpwId, cfgFeeId, cfgLinkId, cfgHBperiod, cfgEmptyHbRatio, cfgPayloadSize, cfgTriggerRate);
 
   // initialize array of pending blocks (to be filled with data)
   pendingBlocks.resize(cfgNumberOfLinks);
@@ -130,6 +136,13 @@ Thread::CallbackResult ReadoutEquipmentCruEmulator::prepareBlocks()
   if (t0 == 0) {
     t0 = t;
   }
+  if (cfgTriggerRate != 0.0) {
+    LHCorbit = (t-t0) * LHCOrbitRate;
+    if (nBlocksPerLink > cfgTriggerRate * (t-t0)) {
+      return Thread::CallbackResult::Idle;
+    }
+  }
+
   if (LHCorbit > (uint32_t)((t - t0) * LHCOrbitRate)) {
     return Thread::CallbackResult::Idle;
   }
@@ -194,6 +207,11 @@ Thread::CallbackResult ReadoutEquipmentCruEmulator::prepareBlocks()
       if ((ls.payloadBytesLeft < 0)) {
         // this is a new HB frame
 
+	if ((cfgTriggerRate != 0.0) && (offset !=0)) {
+          // single HB frame in trigger mode
+	  break;
+	}
+
         unsigned int nextBc = nowBc + bcStep;
         unsigned int nextOrbit = nowOrbit;
         if (nextBc >= LHCBunches) {
@@ -250,6 +268,9 @@ Thread::CallbackResult ReadoutEquipmentCruEmulator::prepareBlocks()
       rdh->feeId = cfgFeeId;
       rdh->linkId = linkId;
       rdh->offsetNextPacket = cruBlockSize;
+      rdh->stopBit = 0;
+      rdh->packetCounter = ls.packetCounter;
+      ls.packetCounter++;
 
       rdh->pagesCounter = ls.HBpagecount;
       if (ls.payloadBytesLeft > 0) {
@@ -290,6 +311,7 @@ Thread::CallbackResult ReadoutEquipmentCruEmulator::prepareBlocks()
     readyBlocks->push(pendingBlocks[currentLink]);
     pendingBlocks[currentLink] = nullptr;
   }
+  nBlocksPerLink++;
   LHCorbit = nowOrbit;
   LHCbc = nowBc;
 
@@ -319,10 +341,13 @@ void ReadoutEquipmentCruEmulator::initCounters()
   LHCorbit = 0;
   LHCbc = 0;
 
+  nBlocksPerLink = 0;
+
   for (auto& ls : perLinkState) {
     ls.second.HBpagecount = 0;
     ls.second.isEmpty = 0;
     ls.second.payloadBytesLeft = -1;
+    ls.second.packetCounter = 0;
   }
 }
 

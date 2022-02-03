@@ -102,6 +102,7 @@ set configurationParametersDescriptor {
 | equipment-cruemulator-* | numberOfLinks | int | 1 | Number of GBT links simulated by equipment. | 
 | equipment-cruemulator-* | PayloadSize | int | 64k | Maximum payload size for each trigger. Actual size is randomized, and then split in a number of (cruBlockSize) packets. | 
 | equipment-cruemulator-* | systemId | int | 19 | System Id, used for System Id field in RDH. By default, using the TEST code. | 
+| equipment-cruemulator-* | triggerRate | double | 0 | If set, the HB frame rate is limited to given value in Hz (1 HBF per data page). |
 | equipment-dummy-* | eventMaxSize | bytes | 128k | Maximum size of randomly generated event. | 
 | equipment-dummy-* | eventMinSize | bytes | 128k | Minimum size of randomly generated event. | 
 | equipment-dummy-* | fillData | int | 0 | Pattern used to fill data page: (0) no pattern used, data page is left untouched, with whatever values were in memory (1) incremental byte pattern (2) incremental word pattern, with one random word out of 5. | 
