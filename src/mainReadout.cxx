@@ -212,7 +212,7 @@ void Readout::publishLogbookStats()
         logbookHandle->flpAdd(occRole, "localhost", occRunNumber);
 	testLogbook=0;
       }
-      logbookHandle->flpUpdateCounters(occRunNumber, occRole, (int64_t)gReadoutStats.counters.numberOfSubtimeframes, (int64_t)gReadoutStats.counters.bytesReadout, (int64_t)gReadoutStats.counters.bytesRecorded, (int64_t)gReadoutStats.counters.bytesFairMQ);
+      //logbookHandle->flpUpdateCounters(occRunNumber, occRole, (int64_t)gReadoutStats.counters.numberOfSubtimeframes, (int64_t)gReadoutStats.counters.bytesReadout, (int64_t)gReadoutStats.counters.bytesRecorded, (int64_t)gReadoutStats.counters.bytesFairMQ);
       isOk = true;
     } catch (const std::exception& ex) {
       theLog.log(LogErrorDevel_(3210), "Failed to update logbook: %s", ex.what());
