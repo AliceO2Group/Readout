@@ -403,3 +403,7 @@ This file describes the main feature changes for each readout.exe released versi
 - Updated configuration parameters:
   - equipment-cruemulator-*.triggerRate: when set, the equipment HBF rate is limited to given value (eg to emulate slow triggers).
 - Fixed verbosity for non-contiguous TF warnings.
+
+## v2.8.2 - 15/02/2022
+- Updated configuration paratmeters:
+  - equipment-*-rdhCheckFirstOrbit: when set to zero, readout does not check mismatch of first orbit received by equipments.
