@@ -208,11 +208,11 @@ void Readout::publishLogbookStats()
 	if (occRunNumber == 0) { occRunNumber = 999999999; }
         theLog.log(LogInfoDevel_(3210), "Logbook in test mode: create run number/flp %d / %s", (int)occRunNumber, occRole.c_str());
 	std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-        logbookHandle->runStart(occRunNumber, now, now, "readout", RunType::TECHNICAL, 0, 0, 0);
+        logbookHandle->runStart(occRunNumber, now, now, "readout", RunType::TECHNICAL, 0, 0, 0, false, false, false, "normal");
         logbookHandle->flpAdd(occRole, "localhost", occRunNumber);
 	testLogbook=0;
       }
-      //logbookHandle->flpUpdateCounters(occRunNumber, occRole, (int64_t)gReadoutStats.counters.numberOfSubtimeframes, (int64_t)gReadoutStats.counters.bytesReadout, (int64_t)gReadoutStats.counters.bytesRecorded, (int64_t)gReadoutStats.counters.bytesFairMQ);
+      logbookHandle->flpUpdateCounters(occRole, occRunNumber, (int64_t)gReadoutStats.counters.numberOfSubtimeframes, (int64_t)gReadoutStats.counters.bytesReadout, (int64_t)gReadoutStats.counters.bytesRecorded, (int64_t)gReadoutStats.counters.bytesFairMQ);
       isOk = true;
     } catch (const std::exception& ex) {
       theLog.log(LogErrorDevel_(3210), "Failed to update logbook: %s", ex.what());
