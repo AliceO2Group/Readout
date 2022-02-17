@@ -1382,7 +1382,7 @@ int main(int argc, char* argv[])
 
   // OCC control port. If set, use OCClib to handle Readout states.
   bool occMode = false;
-  if (getenv("OCC_CONTROL_PORT") != nullptr) {
+  if (getenv(OCC_CONTROL_PORT_ENV) != nullptr) {
     occMode = true;
   }
 
@@ -1394,7 +1394,7 @@ int main(int argc, char* argv[])
   }
 
   // set default role name
-  const char *role = getenv("OCC_ROLE");
+  const char *role = getenv(OCC_ROLE_ENV);
   if (role != nullptr) {
     occRole = role;
   } else {
