@@ -407,3 +407,7 @@ This file describes the main feature changes for each readout.exe released versi
 ## v2.8.2 - 15/02/2022
 - Updated configuration paratmeters:
   - equipment-*-rdhCheckFirstOrbit: when set to zero, readout does not check mismatch of first orbit received by equipments.
+
+## next version
+- Added bookeeping library test utility
+- Use ECS environment variables from occ include file.
