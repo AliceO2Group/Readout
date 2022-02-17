@@ -405,10 +405,12 @@ add_executable(
 )
 
 # a minimal test program to check Bookkeeping library
+if (BookkeepingApiCpp_FOUND)
 add_executable(
         o2-readout-test-lib-bookkeeping
 	${SOURCE_DIR}/testBookkeeping.cxx
 )
+endif()
 
 # disable some executables when corresponding dependencies not found
 if (NOT FairMQ_FOUND)
