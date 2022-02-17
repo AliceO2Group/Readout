@@ -404,6 +404,12 @@ add_executable(
         ${SOURCE_DIR}/testMonitor.cxx
 )
 
+# a minimal test program to check Bookkeeping library
+add_executable(
+        o2-readout-test-lib-bookkeeping
+	${SOURCE_DIR}/testBookkeeping.cxx
+)
+
 # disable some executables when corresponding dependencies not found
 if (NOT FairMQ_FOUND)
 	set_target_properties(o2-readout-test-fmq-tx o2-readout-test-fmq-rx o2-readout-test-fmq-perf-tx o2-readout-test-fmq-perf-rx  o2-readout-test-fmq-memory PROPERTIES EXCLUDE_FROM_ALL 1)
@@ -416,6 +422,9 @@ if (ReadoutCard_FOUND)
 endif()
 if (${ZMQ_FOUND})
   list (APPEND executables o2-readout-test-zmq-client o2-readout-test-zmq-server o2-readout-eventdump)
+endif()
+if (BookkeepingApiCpp_FOUND)
+  list (APPEND executables o2-readout-test-lib-bookkeeping)
 endif()
 foreach (exe ${executables})
 	target_include_directories(${exe} PRIVATE ${READOUT_INCLUDE_DIRS})
