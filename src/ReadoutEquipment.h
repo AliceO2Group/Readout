@@ -156,12 +156,16 @@ class ReadoutEquipment
   int cfgRdhUseFirstInPageEnabled = 0; // flag to enable reading of first RDH in page to populate readout headers
   int cfgRdhCheckFirstOrbit = 1;       // flag to enable RDH check of first orbit is the same in all equipments
   //int cfgRdhCheckPacketCounterContiguous = 1; // flag to enable checking if RDH packetCounter value contiguous (done link-by-link)
+  int cfgRdhCheckDetectorField = 0; // flag to enable checking for changes in detector field
   double cfgTfRateLimit = 0;           // TF rate limit, to throttle data readout
   int cfgDisableTimeframes = 0;        // When set, all TF features disabled
   RateRegulator TFregulator;           // clock counter for TF rate checks
   DataBlockContainerReference throttlePendingBlock; // in case TF rate limit was reached, a block may be set aside for later (when it belongs to next TF)
 
   bool isRdhEquipment = false; // to be set true for RDH equipments
+
+  bool isDefinedLastDetectorField = 0;
+  uint32_t lastDetectorField = 0; // keep track of RDH DetectorField to detect changes
 
   int processRdh(DataBlockContainerReference& nextBlock);
 

@@ -411,3 +411,7 @@ This file describes the main feature changes for each readout.exe released versi
 ## v2.8.3 - 23/02/2022
 - Added bookeeping library test utility
 - Use ECS environment variables from occ include file.
+
+## v2.8.4 - 02/03/2022
+- Updated configuration parameters:
+  - equipment-*-rdhCheckDetectorField: when set, changes in the RDH detector field are reported.
