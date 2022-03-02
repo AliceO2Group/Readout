@@ -86,6 +86,7 @@ class ReadoutStats
   void zmqCleanup();
   #endif
   uint64_t lastUpdate = (uint64_t)-1;
+  double lastPublishTimestamp = 0;
 };
 
 extern ReadoutStats gReadoutStats;

@@ -72,7 +72,7 @@ proc verticalize {n} {
 
 wm title . "Readout status"
 #wm geometry . 1920x1080+0+0
-wm geometry . 1920x330+0+0
+wm geometry . 1900x330-5+50
 
 if {0} {
   wm state . zoomed
@@ -104,8 +104,14 @@ set bgcolor_highlight "yellow"
 
 
 proc showDetails {f} {
+  global activeLock
+  set ll ""
+  if {$activeLock} {
+    set ll "(locked)"
+  }
+
   global description
-  set description "FLP $f"
+  set description "FLP $f $ll"
 #  .fMain.flp${f} configure -bg "red"
   drawFlp $f 1
 }
@@ -136,6 +142,7 @@ proc drawState {n} {
    global lastBytes
    global y0_bytes y1_bytes x_tscale
    global lastDraw
+   global font_flp
    
    set now [expr [clock milliseconds]/1000.0]
    set lastDraw($n) $now
@@ -150,12 +157,29 @@ proc drawState {n} {
    set x2 [expr $x1 + $cw]
 
    set i 0
-   foreach {ss c} {Undefined "#666666" Standby "#007700" Ready "#00bb00" Running "#00ff00" Error red} {
+   foreach {ss act c} {Undefined {} "#666666" Standby {"> conf"} "#007700" Ready {"> start" "> reset"} "#00bb00" Running {"> stop"} "#00ff00" Error {} red} {
+     set isMatch 0    
+     set cc "" 
      if {[string tolower $s]==[string tolower $ss]} {
+       set isMatch 1
+     } else {
+       if {[lsearch $act $s]>=0} {
+         set isMatch 1
+	 set cc ">"
+       }
+     }
+     if {$isMatch} {
        set y1 [expr $y0_states + $i * $rowh]
        set y2 [expr $y1 + $rowh]
       .fMain.can create rect $x1 $y0_states $x2 [expr $y0_states + 5 * $rowh] -fill "$color" -width 0  
       .fMain.can create rect $x1 $y1 $x2 $y2 -fill "$c" -width 0  
+      if {$cc != ""} {
+        set cl "orange"
+	#.fMain.can create line $x1 $y1 [expr ($x1 +$x2)/2] $y2 -fill "$cl"
+	#.fMain.can create line [expr ($x1 +$x2)/2] $y2 $x2 $y1 -fill "$cl"
+        .fMain.can create rect [expr $x1 + 2] [expr $y1 +2] [expr $x2 - 2]  [expr $y2 - 2] -fill "$cl" -width 0
+        #.fMain.can create text $x1 $y1 -text "$cc" -anchor nw -font font_flp -fill yellow
+      }
       break
      }
      incr i
@@ -285,7 +309,12 @@ if {1} {
   font create font_head -family verdana -size [expr $cw - 2] -weight bold
   font create font_rhead -family monospace -size -$rowh
 
+
+  set activeLock 0
   bind .fMain.can <Motion> {
+    if {$activeLock} {
+        return
+    }
     set ix [getIxFromX %x]
     if {$activeC!=$ix} {
       set previous $activeC
@@ -298,7 +327,21 @@ if {1} {
       }
     }
   }
+  bind .fMain.can <Button-1> {
+    if {$activeLock} {
+      set activeLock 0
+    } else {
+      set activeLock 1
+      if {$activeC!=-1} {
+        showDetails [lindex $nodes $activeC]
+      }
+    }
+    
+  }
   bind .fMain.can <Leave> {
+      if {$activeLock} {
+        return
+      }
       set previous $activeC
       set activeC -1
       if {$previous!=-1} {
@@ -352,12 +395,14 @@ if {1} {
 
 # parse output of readoutMonitor
 proc updateNode {metrics} {
-  foreach {t n s nstf bytesReadout bytesRecorded bytesFMQ pagesPendingFMQ nRFMQ avgtFMQ tfidFMQ} $metrics {
+  foreach {t nn s nstf bytesReadout bytesRecorded bytesFMQ pagesPendingFMQ nRFMQ avgtFMQ tfidFMQ} $metrics {
     global v_x v_ix
     global cw rowh y0_states
     global v_color bgcolor_highlight activeC
     global nodes
     global lastState lastTime lastBytes
+    
+    set n [lindex [split $nn "."] 0]
     
     if {[lsearch $nodes $n]<0} {
       continue
@@ -369,8 +414,15 @@ proc updateNode {metrics} {
     drawState $n
  
     if {$v_ix($n)==$activeC} {
-     global description
-     set description "FLP $n\nLast update: [clock format [expr int($t)]]\nState: $s\nbytesReadout = $bytesReadout"
+     global activeLock
+     if {$activeLock} {
+       set ll "(locked)"
+     } else {
+       set ll ""
+     }
+
+     global description     
+     set description "FLP $n $ll\nLast update: [clock format [expr int($t)]]\nState: $s\nbytesReadout = $bytesReadout"
     }
   }
 }
@@ -388,7 +440,7 @@ proc processInput {} {
   fileevent $server_fd readable processInput
 }
 
-set loghost flpdev1
+set loghost ""
 set logport 10001
 if {$loghost==""} {
   set server_fd stdin
@@ -413,7 +465,7 @@ proc periodicCleanup {} {
   global lastTime
   global nodes
 
-  set timeout 3
+  set timeout 5
   
   set now [expr [clock milliseconds]/1000.0]
   foreach n $nodes {

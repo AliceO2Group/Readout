@@ -137,9 +137,11 @@ ReadoutEquipment::ReadoutEquipment(ConfigFile& cfg, std::string cfgEntryPoint, b
   cfg.getOptionalValue<int>(cfgEntryPoint + ".rdhDumpWarningEnabled", cfgRdhDumpWarningEnabled);
   // configuration parameter: | equipment-* | rdhUseFirstInPageEnabled | int | 0 or 1 | If set, the first RDH in each data page is used to populate readout headers (e.g. linkId). Default is 1 for  equipments generating data with RDH, 0 otherwsise. |
   cfg.getOptionalValue<int>(cfgEntryPoint + ".rdhUseFirstInPageEnabled", cfgRdhUseFirstInPageEnabled);
-    // configuration parameter: | equipment-* | rdhCheckFirstOrbit | int | 1 | If set, it is checked that the first orbit of all equipments is the same. |
+  // configuration parameter: | equipment-* | rdhCheckFirstOrbit | int | 1 | If set, it is checked that the first orbit of all equipments is the same. |
   cfg.getOptionalValue<int>(cfgEntryPoint + ".rdhCheckFirstOrbit", cfgRdhCheckFirstOrbit);
-  theLog.log(LogInfoDevel_(3002), "RDH settings: rdhCheckEnabled=%d rdhDumpEnabled=%d rdhDumpErrorEnabled=%d rdhDumpWarningEnabled=%d rdhUseFirstInPageEnabled=%d", cfgRdhCheckEnabled, cfgRdhDumpEnabled, cfgRdhDumpErrorEnabled, cfgRdhDumpWarningEnabled, cfgRdhUseFirstInPageEnabled);
+  // configuration parameter: | equipment-* | rdhCheckDetectorField | int | 0 | If set, the detector field is checked and changes reported. |
+  cfg.getOptionalValue<int>(cfgEntryPoint + ".rdhCheckDetectorField", cfgRdhCheckDetectorField);  
+  theLog.log(LogInfoDevel_(3002), "RDH settings: rdhCheckEnabled=%d rdhDumpEnabled=%d rdhDumpErrorEnabled=%d rdhDumpWarningEnabled=%d rdhUseFirstInPageEnabled=%d rdhCheckFirstOrbit=%d rdhCheckDetectorField=%d", cfgRdhCheckEnabled, cfgRdhDumpEnabled, cfgRdhDumpErrorEnabled, cfgRdhDumpWarningEnabled, cfgRdhUseFirstInPageEnabled, cfgRdhCheckFirstOrbit, cfgRdhCheckDetectorField);
 
   if (!cfgDisableTimeframes) {
     // configuration parameter: | equipment-* | TFperiod | int | 128 | Duration of a timeframe, in number of LHC orbits. |
@@ -545,6 +547,8 @@ void ReadoutEquipment::initCounters()
     currentTimeframe = 1;
   }
 
+  isDefinedLastDetectorField = 0;
+  lastDetectorField = 0;
 };
 
 void ReadoutEquipment::finalCounters()
@@ -657,6 +661,17 @@ int ReadoutEquipment::processRdh(DataBlockContainerReference& block)
     if (tagDatablockFromRdh(h, blockHeader) == 0) {
       blockHeader.isRdhFormat = 1;
     }
+
+    // detect changes in detector bits field
+    if (cfgRdhCheckDetectorField) {
+      if (isDefinedLastDetectorField) {
+	if (h.getDetectorField() != lastDetectorField) {
+          theLog.log(LogInfoDevel_(3011), "Equipment %s: change in detector field detected: 0x%X -> 0x%X", name.c_str(), (int)lastDetectorField, (int)h.getDetectorField());
+	}
+      }
+      lastDetectorField = h.getDetectorField();
+      isDefinedLastDetectorField = 1;
+    }
   }
 
   // Dump RDH if configured to do so
@@ -738,6 +753,11 @@ int ReadoutEquipment::processRdh(DataBlockContainerReference& block)
 	}
       }
       
+      if ((isDefinedLastDetectorField)&&(pageOffset)) {
+      if (h.getDetectorField() != lastDetectorField) {
+        theLog.log(LogWarningDevel_(3011), "Equipment %s: change in detector field detected: 0x%X -> 0x%X", name.c_str(), (int)lastDetectorField, (int)h.getDetectorField());
+      }
+    }
       /*
       // check packetCounter is contiguous
       if (cfgRdhCheckPacketCounterContiguous) {
