@@ -1684,6 +1684,8 @@ int main(int argc, char* argv[])
     }
   }
 
+  gReadoutStats.counters.state = stringToUint64("> exit");
+  gReadoutStats.counters.notify++;
   theLog.log(LogInfoSupport_(3001), "Readout process exiting");
   return 0;
 }

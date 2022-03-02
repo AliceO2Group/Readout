@@ -182,7 +182,7 @@ int ReadoutStats::stopPublish() {
 void ReadoutStats::threadLoop() {
 
   // loop period in microseconds
-  unsigned int loopPeriod = (unsigned int) 200000;
+  unsigned int loopPeriod = (unsigned int) 100000;
   unsigned long long t0 = 0;
   unsigned int periodCount = 0;
   
@@ -207,12 +207,14 @@ void ReadoutStats::threadLoop() {
   
     // publish at specified interval
     periodCount++;
-    if (periodCount * loopPeriod / 1000000.0 >= publishInterval) {
+    if ( (periodCount * loopPeriod / 1000000.0) >= publishInterval) {
       publishNow();
       periodCount = 0;
     }
     
   }
+  // final publish on exit
+  publishNow();
 }
 
 void ReadoutStats::publishNow() {
@@ -224,9 +226,10 @@ void ReadoutStats::publishNow() {
     memcpy((void *)&snapshot, (void *)&gReadoutStats.counters, sizeof(snapshot));
     snapshot.timestamp = ((std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch())).count())/1000000.0;
     publishMutex.lock();
-    if (newUpdate != lastUpdate) {
+    if ((newUpdate != lastUpdate) || (snapshot.timestamp.load()-lastPublishTimestamp > publishInterval - 0.1)) {
       zmq_send(zmqHandle, &snapshot, sizeof(snapshot), ZMQ_DONTWAIT);
       lastUpdate = newUpdate;
+      lastPublishTimestamp = snapshot.timestamp;
     }   
     publishMutex.unlock();
   }
