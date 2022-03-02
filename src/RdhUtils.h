@@ -60,6 +60,7 @@ class RdhHandle
   inline uint32_t getTriggerType() { return (uint32_t)rdhPtr->triggerType; }
   inline uint16_t getCruId() { return (uint16_t)rdhPtr->cruId; }
   inline uint8_t getEndPointId() { return (uint8_t)rdhPtr->dpwId; }
+  inline uint32_t getDetectorField() { return (uint32_t)rdhPtr->detectorField; }
 
   uint64_t computeTimeframeId(const uint32_t firstTimeframeHbOrbitBegin, const uint32_t timeframePeriodOrbits) {
     tfId = 1 + (getHbOrbit() - firstTimeframeHbOrbitBegin) / timeframePeriodOrbits;
