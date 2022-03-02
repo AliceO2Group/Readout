@@ -8,10 +8,6 @@
 
 package require Tk
 
-set _flps {
-TST alio2-cr1-mvs 01 02 ""
-}
-
 set flps {
 CPV alio2-cr1-flp 162 162 ""
 EMC alio2-cr1-flp 146 147 ""
@@ -469,7 +465,7 @@ proc periodicCleanup {} {
   global lastTime
   global nodes
 
-  set timeout 300
+  set timeout 5
   
   set now [expr [clock milliseconds]/1000.0]
   foreach n $nodes {
