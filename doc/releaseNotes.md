@@ -415,3 +415,7 @@ This file describes the main feature changes for each readout.exe released versi
 ## v2.8.4 - 02/03/2022
 - Updated configuration parameters:
   - equipment-*-rdhCheckDetectorField: when set, changes in the RDH detector field are reported.
+
+## next version
+- readout-monitor: added built-in net dispatcher to broadcast readout statistics
+- readout-status: configure from readout-defaults file, auto-reconnect to readout-monitor.

@@ -14,6 +14,7 @@ The following executables, presented with the _nicknames_ used below, are part o
   - [_o2-readout-monitor_](#monitor) or _Monitor_: a runtime monitoring tool, to check the status of _Readout_.
   - [_o2-readout-rawreader_](#rawreader) or _RawReader_: a tool to check validity and inspect content of raw data files recorded by _Readout_.
   - [_o2-readout-receiver_](#receiver) or _Receiver_ : a process to receive data from _Readout_ by FMQ, e.g. for local communication tests when STFB is not available.
+  - [_o2-readout-status_] or _ReadoutStatus_: an interactive interface to displaying runtime statistics connected by _Monitor_.
 
 There are also some readout internal test components, not used in normal runtime conditions, for development and debugging purpose (_o2-readout-test-*_)
 The source code repository is [https://github.com/AliceO2Group/Readout].
@@ -122,6 +123,8 @@ The configuration source is provided as a startup argument (see 'Usage' below).
 
 Some of the configuration parameters may be overwritten at runtime by OCC, when readout is launched from AliECS. For example, the FairMQ parameters for the StfBuilder connection are set dynamically in the configure step. This is done for the consumer with matching `fmq-name=readout`.
 
+Some of the configuration parameters may be loaded on startup from `/etc/o2.d/readout-defaults`.
+
 
 #### File syntax
 
@@ -205,9 +208,16 @@ Readout logs are written to the InfoLogger system. When Readout (or other utilit
 
 Requires _Readout_ to have the Stats consumer configured to publish data by ZMQ.
 It displays statistics on various internal readout counters and buffers status.
+Unless specified from the command line, parameters are loaded from readout defaults file.
 
 ```
 o2-readout-monitor
+```
+
+When stats are broadcasted (c.f.  readout-monitor.broadcastPort/broadcastHost parameters), they can also be displayed by interactive front-end for P2:
+
+```
+o2-readout-status
 ```
 
 

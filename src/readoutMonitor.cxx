@@ -136,6 +136,7 @@ int main(int argc, const char** argv)
   cfg.getOptionalValue<int>(cfgEntryPoint + ".outputFormat", cfgRawBytes);  
  
    // configuration parameter: | readout-monitor | broadcastPort | int | 0 | when set, the process will create a listening TCP port and broadcast statistics to connected clients. |
+   // configuration parameter: | readout-monitor | broadcastHost | string | | used by readout-status to connect to readout-monitor broadcast channel. |
   int cfgBroadcastPort = 0;
   cfg.getOptionalValue<int>(cfgEntryPoint + ".broadcastPort", cfgBroadcastPort);
   std::unique_ptr<SocketRx> broadcastSocket;

@@ -490,3 +490,9 @@ install(
 	DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
 	RENAME o2-readout-config-editor
 )
+
+install(
+	PROGRAMS src/readoutStatus.tcl
+	DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
+	RENAME o2-readout-status
+)
