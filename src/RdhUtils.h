@@ -67,6 +67,9 @@ class RdhHandle
     return tfId;
   }
 
+  // returns an hexadecimal string from RDH, in 32-bit words
+  std::string toHexaString();
+
  private:
   o2::Header::RAWDataHeader* rdhPtr; // pointer to RDH in memory
   uint64_t tfId = 0; // computed timeframeId
