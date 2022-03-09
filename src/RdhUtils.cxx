@@ -171,3 +171,13 @@ int RdhBlockHandle::printSummary()
   return 0;
 }
 
+
+std::string RdhHandle::toHexaString() {
+  std::string s;
+      for (unsigned int i = 0; i < sizeof(o2::Header::RAWDataHeader) / sizeof(int32_t); i++) {
+        char v[10];
+	snprintf(v, sizeof(v), "%08X ", (int)(((uint32_t*)rdhPtr)[i]));
+	s += v;
+      }
+  return s;
+}

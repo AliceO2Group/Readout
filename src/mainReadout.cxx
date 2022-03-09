@@ -61,6 +61,7 @@
 #include "ReadoutUtils.h"
 #include "ReadoutVersion.h"
 #include "TtyChecker.h"
+#include "ReadoutConst.h"
 
 #ifdef WITH_NUMA
 #include <numa.h>
@@ -240,7 +241,6 @@ int Readout::init(int argc, char* argv[])
 
   // load configuration defaults
   ConfigFile cfgDefaults;
-  const std::string cfgDefaultsPath = "file:/etc/o2.d/readout-defaults.cfg"; // path to default configuration file
   const std::string cfgDefaultsEntryPoint = "readout"; // entry point for default configuration variables (e.g. section named [readout])
   std::string cfgStatsPublishAddress; // address where to publish readout stats, eg "tcp://127.0.0.1:6008"
   double cfgStatsPublishInterval = 5.0; // interval for readout stats publish, in seconds

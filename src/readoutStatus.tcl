@@ -6,6 +6,44 @@
 # [readout-monitor]
 # outputFormat=1
 
+set configFile "/etc/o2.d/readout-defaults.cfg"
+set configSection "readout-monitor"
+
+# defaults
+set cfgValue_broadcastPort ""
+set cfgValue_broadcastHost ""
+
+if {[llength $argv] >=2} {
+  set configFile [lindex $argv 0]
+  set configSection [lindex $argv 1]
+}
+
+set configError 1
+if {[file exists $configFile]} {
+  package require inifile
+  set iFile [::ini::open $configFile]
+  foreach s [::ini::sections ${iFile}] {
+    if {$s == $configSection} {
+      foreach {k v} [::ini::get ${iFile} $s] {
+	# discard comments
+	if {[string range [string trim $k] 0 0]!="#"} {
+	  set "cfgValue_${k}" $v
+	}
+	set configError 0
+      }    
+      break
+    }
+  }
+
+  ::ini::close $iFile
+}
+
+if {$configError} {
+  puts "Error reading $configFile : $configSection"
+  return -1
+}
+
+
 package require Tk
 
 set flps {
@@ -432,7 +470,21 @@ proc updateNode {metrics} {
 proc processInput {} {
   global server_fd
   while {1} {
+    if {[eof $server_fd]} {
+      puts "Connection closed"
+      close $server_fd
+      set server_fd -1
+      global cfgValue_broadcastPort server_reconnect_timeout
+      if {$cfgValue_broadcastPort=="stdin"} {
+        exit
+      } else {
+        after $server_reconnect_timeout {server_connect}
+        return
+      }
+    }
+
     if {[gets $server_fd msg]==-1} {break}
+    puts "Msg: $msg"
     set lm [split $msg "\t"]
     if {[llength $lm]!=11} {break}
     updateNode $lm
@@ -440,24 +492,41 @@ proc processInput {} {
   fileevent $server_fd readable processInput
 }
 
-set loghost ""
-set logport 10001
-if {$loghost==""} {
-  set server_fd stdin
-} else {
-  if {[catch {set server_fd [socket $loghost $logport]} err]} {
-    puts "Failed to connect ${loghost}:${logport}: $err"
-    return -1
+set server_fd -1
+set reconnect 0
+set server_reconnect_timeout 5000
+proc server_connect {} {
+  global reconnect server_fd
+  if {$server_fd>=0} {
+    return
+  }
+  global cfgValue_broadcastHost cfgValue_broadcastPort server_reconnect_timeout
+  if {($cfgValue_broadcastHost=="")||($cfgValue_broadcastPort=="stdin")} {
+    set cfgValue_broadcastHost ""
+    set cfgValue_broadcastPort "stdin"
+    set server_fd stdin
+    puts "Reading data from stdin"
   } else {
-    puts "Connected to ${loghost}:${logport}"
+    if {[catch {set server_fd [socket $cfgValue_broadcastHost $cfgValue_broadcastPort]} err]} {
+      if {!$reconnect} {
+        set reconnect 1
+	puts "Failed to connect ${cfgValue_broadcastHost}:${cfgValue_broadcastPort}: $err"
+      }
+      after $server_reconnect_timeout {server_connect}
+    } else {
+      puts "Connected to ${cfgValue_broadcastHost}:${cfgValue_broadcastPort}"
+      set reconnect 0
+    }
+  }
+  if {$server_fd != -1} {
+    # setup stdin for input
+    fconfigure $server_fd -blocking false   
+    fconfigure $server_fd -buffersize 1000000
+    fileevent $server_fd readable processInput
   }
 }
 
-# setup stdin for input
-fconfigure $server_fd -blocking false   
-fconfigure $server_fd -buffersize 1000000
-fileevent $server_fd readable processInput
-
+server_connect
 
 # set nodes without fresh data to undefined state 
 proc periodicCleanup {} {

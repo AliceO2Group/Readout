@@ -9,5 +9,8 @@
 // granted to it by virtue of its status as an Intergovernmental Organization
 // or submit itself to any jurisdiction.
 
-#define READOUT_VERSION "2.8.5"
+// This file defines general constants used by readout
 
+#pragma once
+
+const std::string cfgDefaultsPath = "file:/etc/o2.d/readout-defaults.cfg"; // path to default configuration file

@@ -9,5 +9,27 @@
 // granted to it by virtue of its status as an Intergovernmental Organization
 // or submit itself to any jurisdiction.
 
-#define READOUT_VERSION "2.8.5"
+// Program reading on stdin and dispatching copy of input to all connected clients
 
+#include "SocketRx.h"
+#include <stdio.h>
+
+int main() {
+  try {
+    SocketRx s("testDispatch", 10001);
+
+    while (1) {
+      char buf[1024];
+      fgets(buf, sizeof(buf), stdin);
+      if (feof(stdin)) {
+	break;
+      }
+      s.broadcast(buf);
+    }
+  }
+  catch(...) {
+    return -1;
+  }
+  
+  return 0;
+}

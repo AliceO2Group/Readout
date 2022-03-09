@@ -129,7 +129,7 @@ ReadoutEquipment::ReadoutEquipment(ConfigFile& cfg, std::string cfgEntryPoint, b
   // RDH-related extra configuration parameters
   // configuration parameter: | equipment-* | rdhCheckEnabled | int | 0 | If set, data pages are parsed and RDH headers checked. Errors are reported in logs. |
   cfg.getOptionalValue<int>(cfgEntryPoint + ".rdhCheckEnabled", cfgRdhCheckEnabled);
-  // configuration parameter: | equipment-* | rdhDumpEnabled | int | 0 | If set, data pages are parsed and RDH headers summary printed. Setting a negative number will print only the first N RDH.|
+  // configuration parameter: | equipment-* | rdhDumpEnabled | int | 0 | If set, data pages are parsed and RDH headers summary printed on console. Setting a negative number will print only the first N pages.|
   cfg.getOptionalValue<int>(cfgEntryPoint + ".rdhDumpEnabled", cfgRdhDumpEnabled);
   // configuration parameter: | equipment-* | rdhDumpErrorEnabled | int | 1 | If set, a log message is printed for each RDH header error found.|
   cfg.getOptionalValue<int>(cfgEntryPoint + ".rdhDumpErrorEnabled", cfgRdhDumpErrorEnabled);
@@ -137,6 +137,8 @@ ReadoutEquipment::ReadoutEquipment(ConfigFile& cfg, std::string cfgEntryPoint, b
   cfg.getOptionalValue<int>(cfgEntryPoint + ".rdhDumpWarningEnabled", cfgRdhDumpWarningEnabled);
   // configuration parameter: | equipment-* | rdhUseFirstInPageEnabled | int | 0 or 1 | If set, the first RDH in each data page is used to populate readout headers (e.g. linkId). Default is 1 for  equipments generating data with RDH, 0 otherwsise. |
   cfg.getOptionalValue<int>(cfgEntryPoint + ".rdhUseFirstInPageEnabled", cfgRdhUseFirstInPageEnabled);
+  // configuration parameter: | equipment-* | rdhDumpFirstInPageEnabled | int | 0 | If set, the first RDH in each data page is logged. Setting a negative number will printit only for the first N pages. |
+  cfg.getOptionalValue<int>(cfgEntryPoint + ".rdhDumpFirstInPageEnabled", cfgRdhDumpFirstInPageEnabled);
   // configuration parameter: | equipment-* | rdhCheckFirstOrbit | int | 1 | If set, it is checked that the first orbit of all equipments is the same. |
   cfg.getOptionalValue<int>(cfgEntryPoint + ".rdhCheckFirstOrbit", cfgRdhCheckFirstOrbit);
   // configuration parameter: | equipment-* | rdhCheckDetectorField | int | 0 | If set, the detector field is checked and changes reported. |
@@ -572,7 +574,7 @@ uint64_t ReadoutEquipment::getTimeframeFromOrbit(uint32_t hbOrbit)
       isOk = false;
     }
     gReadoutStats.mutex.unlock();
-    theLog.log(LogInfoDevel_(3003), "Equipment %s : first HB orbit = %X", name.c_str(), (unsigned int)firstTimeframeHbOrbitBegin);
+    theLog.log(LogInfoDevel_(3011), "Equipment %s : first HB orbit = %X", name.c_str(), (unsigned int)firstTimeframeHbOrbitBegin);
     if (!isOk) {
       if (cfgRdhCheckFirstOrbit) {
         theLog.log(LogErrorDevel_(3241), "Equipment %s : first HB orbit is different from other equipments", name.c_str());
@@ -660,6 +662,17 @@ int ReadoutEquipment::processRdh(DataBlockContainerReference& block)
     RdhHandle h(blockData);
     if (tagDatablockFromRdh(h, blockHeader) == 0) {
       blockHeader.isRdhFormat = 1;
+    }
+
+    if (cfgRdhDumpFirstInPageEnabled) {
+      theLog.log(LogInfoDevel_(3011),"Equipment %s: first RDH in page %lu",
+        name.c_str(), (unsigned long) currentBlockId + 1);
+      theLog.log(LogInfoDevel_(3011),"  Orbit 0x%08X BC 0x%08X Type 0x%08X" ,
+	h.getTriggerOrbit(), h.getTriggerBC(), h.getTriggerType());
+      theLog.log(LogInfoDevel_(3011),"  ROC %d.%d Link %d System %d FEE 0x%04X DetField 0x%08X",
+	h.getCruId(), h.getEndPointId(), h.getLinkId(), h.getSystemId(), h.getFeeId(), h.getDetectorField());
+      theLog.log(LogInfoDevel_(3011),"  RDH: %s", h.toHexaString().c_str());
+      cfgRdhDumpFirstInPageEnabled++;
     }
 
     // detect changes in detector bits field

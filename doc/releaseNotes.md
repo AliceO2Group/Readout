@@ -405,7 +405,7 @@ This file describes the main feature changes for each readout.exe released versi
 - Fixed verbosity for non-contiguous TF warnings.
 
 ## v2.8.2 - 15/02/2022
-- Updated configuration paratmeters:
+- Updated configuration parameters:
   - equipment-*-rdhCheckFirstOrbit: when set to zero, readout does not check mismatch of first orbit received by equipments.
 
 ## v2.8.3 - 23/02/2022
@@ -415,3 +415,9 @@ This file describes the main feature changes for each readout.exe released versi
 ## v2.8.4 - 02/03/2022
 - Updated configuration parameters:
   - equipment-*-rdhCheckDetectorField: when set, changes in the RDH detector field are reported.
+
+## v2.8.5 - 09/03/2022
+- readout-monitor: added built-in net dispatcher to broadcast readout statistics
+- readout-status: configure from readout-defaults file, auto-reconnect to readout-monitor.
+- Updated configuration parameters:
+  - added equipment-*.rdhDumpFirstInPageEnabled: when set to -1, will print the first RDH of the first page (trigger info, etc).

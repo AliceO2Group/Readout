@@ -29,6 +29,7 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 # ensure hard warning checks
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror -Wall -Wextra -Wno-deprecated-declarations")
 # -Wno-unused-variable -Wno-unused-parameter -Wno-unused-private-field
+# -g -O0
 
 # by default, build optimized release code
 if(NOT CMAKE_BUILD_TYPE)
@@ -391,6 +392,7 @@ add_executable(
 add_executable(
 	o2-readout-monitor
         ${SOURCE_DIR}/readoutMonitor.cxx
+	${SOURCE_DIR}/SocketRx.cxx
 	$<$<BOOL:${ZMQ_FOUND}>:${SOURCE_DIR}/ZmqClient.cxx>
 )
 target_include_directories(o2-readout-monitor PRIVATE ${READOUT_INCLUDE_DIRS})
@@ -411,6 +413,14 @@ add_executable(
 	${SOURCE_DIR}/testBookkeeping.cxx
 )
 endif()
+
+# a test program to dispatch to connected clients copy of input stream
+add_executable(
+	o2-readout-test-net-dispatch
+        ${SOURCE_DIR}/testNetDispatch.cxx
+	${SOURCE_DIR}/SocketRx.cxx
+)
+target_link_libraries(o2-readout-test-net-dispatch PRIVATE AliceO2::InfoLogger AliceO2::Common)
 
 # disable some executables when corresponding dependencies not found
 if (NOT FairMQ_FOUND)
@@ -480,4 +490,10 @@ install(
 	PROGRAMS src/readoutConfigEditor.tcl
 	DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
 	RENAME o2-readout-config-editor
+)
+
+install(
+	PROGRAMS src/readoutStatus.tcl
+	DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
+	RENAME o2-readout-status
 )

@@ -15,10 +15,13 @@
 #include <signal.h>
 #include <zmq.h>
 #include "ReadoutStats.h"
+#include "SocketRx.h"
 
 // logs in console mode
 #include "TtyChecker.h"
 TtyChecker theTtyChecker;
+
+#include "ReadoutConst.h"
 
 // definition of a global for logging
 using namespace AliceO2::InfoLogger;
@@ -105,19 +108,17 @@ int main(int argc, const char** argv)
 {
 
   ConfigFile cfg;
-  const char* cfgFileURI = "";
-  std::string cfgEntryPoint = "";
-  if (argc < 3) {
-    printf("Please provide path to configuration file and entry point (section name)\n");
-    return -1;
+  std::string cfgFileURI = cfgDefaultsPath;
+  std::string cfgEntryPoint = "readout-monitor";
+  if (argc >= 3) {
+    cfgFileURI = argv[1];
+    cfgEntryPoint = argv[2];
   }
-  cfgFileURI = argv[1];
-  cfgEntryPoint = argv[2];
 
   theLog.setContext(InfoLoggerContext({ { InfoLoggerContext::FieldName::Facility, (std::string) "readout/monitor" } }));
 
   // load configuration file
-  theLog.log(LogInfoDevel_(3002), "Reading configuration from %s", cfgFileURI);
+  theLog.log(LogInfoDevel_(3002), "Reading configuration from %s : %s", cfgFileURI.c_str(), cfgEntryPoint.c_str());
   try {
     cfg.load(cfgFileURI);
   } catch (std::string err) {
@@ -133,6 +134,16 @@ int main(int argc, const char** argv)
   // configuration parameter: | readout-monitor | outputFormat | int | 0 | 0: default, human readable. 1: raw bytes. |
   int cfgRawBytes = 0;
   cfg.getOptionalValue<int>(cfgEntryPoint + ".outputFormat", cfgRawBytes);  
+ 
+   // configuration parameter: | readout-monitor | broadcastPort | int | 0 | when set, the process will create a listening TCP port and broadcast statistics to connected clients. |
+   // configuration parameter: | readout-monitor | broadcastHost | string | | used by readout-status to connect to readout-monitor broadcast channel. |
+  int cfgBroadcastPort = 0;
+  cfg.getOptionalValue<int>(cfgEntryPoint + ".broadcastPort", cfgBroadcastPort);
+  std::unique_ptr<SocketRx> broadcastSocket;
+  if (cfgBroadcastPort>0) {
+    broadcastSocket = std::make_unique<SocketRx>("readoutMonitor", cfgBroadcastPort, &theLog);
+  }
+
   
   // maximum size of incoming ZMQ messages
   const int cfgMaxMsgSize = sizeof(ReadoutStatsCounters);
@@ -206,7 +217,7 @@ int main(int argc, const char** argv)
   double previousSampleTime = 0;
 
   // header
-  if (!cfgRawBytes) {
+  if ((!cfgRawBytes)&&(broadcastSocket == nullptr)) {
     printf("               Time    State         nStf   Readout  Recorder      STFB      STFB        STFB      STFB      STFB\n");
     printf("                                              total     total     total    memory      memory    memory       tf \n");
     printf("                                                                           locked     release   release       id \n");
@@ -239,8 +250,9 @@ int main(int argc, const char** argv)
       if (nRfmq) {
 	avgTfmq = (counters->pagesPendingFairMQtime.load() / nRfmq) / (deltaT * 1000000.0);
       }
+      char buf[1024];
       if (cfgRawBytes) {
-        printf("%f\t%s\t%s\t%llu\t%llu\t%llu\t%llu\t%llu\t%.2lf\t%.6lf\t%d\n",
+        snprintf(buf, sizeof(buf), "%f\t%s\t%s\t%llu\t%llu\t%llu\t%llu\t%llu\t%.2lf\t%.6lf\t%d\n",
            (double)t,
 	   counters->source,
            (char*)&state,
@@ -254,7 +266,7 @@ int main(int argc, const char** argv)
            (int)counters->timeframeIdFairMQ.load());
 	   fflush(stdout);
       } else {
-        printf("%s  %s %s     %8llu     %s   %s   %s   %6llu    %7.2lf    %6.4lf %8d\n",
+        snprintf(buf, sizeof(buf), "%s  %s %s     %8llu     %s   %s   %s   %6llu    %7.2lf    %6.4lf %8d\n",
            t ? getStringTime(t).c_str() : "-",
 	   counters->source,
            (char*)&state,
@@ -266,6 +278,12 @@ int main(int argc, const char** argv)
            nRfmq,
            avgTfmq,
 	   (int)counters->timeframeIdFairMQ.load());
+      }
+      
+      if (broadcastSocket != nullptr) {
+        broadcastSocket->broadcast(buf);
+      } else {
+        printf(buf);
       }
     }
     previousSampleTime = t;

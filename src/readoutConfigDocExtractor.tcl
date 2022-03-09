@@ -80,5 +80,5 @@ foreach f $lf {
 
 set doc [lsort -dictionary $doc]
 foreach p $doc {
-  puts $p
+  puts [string trim $p]
 }
