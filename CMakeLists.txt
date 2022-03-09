@@ -29,6 +29,7 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 # ensure hard warning checks
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror -Wall -Wextra -Wno-deprecated-declarations")
 # -Wno-unused-variable -Wno-unused-parameter -Wno-unused-private-field
+# -g -O0
 
 # by default, build optimized release code
 if(NOT CMAKE_BUILD_TYPE)
