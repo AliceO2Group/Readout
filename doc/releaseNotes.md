@@ -421,3 +421,6 @@ This file describes the main feature changes for each readout.exe released versi
 - readout-status: configure from readout-defaults file, auto-reconnect to readout-monitor.
 - Updated configuration parameters:
   - added equipment-*.rdhDumpFirstInPageEnabled: when set to -1, will print the first RDH of the first page (trigger info, etc).
+
+## v2.8.6 - 10/03/2022
+- Minor fix

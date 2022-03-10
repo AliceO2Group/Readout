@@ -283,7 +283,7 @@ int main(int argc, const char** argv)
       if (broadcastSocket != nullptr) {
         broadcastSocket->broadcast(buf);
       } else {
-        printf(buf);
+        printf("%s",buf);
       }
     }
     previousSampleTime = t;
