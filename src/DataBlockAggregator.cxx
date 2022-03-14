@@ -23,6 +23,7 @@ DataBlockAggregator::DataBlockAggregator(AliceO2::Common::Fifo<DataSetReference>
 DataBlockAggregator::~DataBlockAggregator()
 {
   // todo: flush out FIFOs ?
+  aggregateThread->join();
 }
 
 int DataBlockAggregator::addInput(std::shared_ptr<AliceO2::Common::Fifo<DataBlockContainerReference>> input)

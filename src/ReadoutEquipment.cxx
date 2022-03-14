@@ -284,6 +284,8 @@ void ReadoutEquipment::stop()
 
 ReadoutEquipment::~ReadoutEquipment()
 {
+  readoutThread = nullptr;
+
   if (mp != nullptr) {
     theLog.log(LogInfoDevel_(3003), "Equipment %s - memory pool statistics ... %s", name.c_str(), mp->getStats().c_str());
   }
