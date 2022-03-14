@@ -41,6 +41,7 @@ class ReadoutEquipmentPlayer : public ReadoutEquipment
 
   size_t bytesPerPage = 0;      // number of bytes per data page
   FILE* fp = nullptr;           // file handle
+  std::mutex fpLock;
   bool fpOk = false;            // flag to say if fp can be used
   unsigned long fileOffset = 0; // current file offset
   uint64_t loopCount = 0;       // number of file reading loops so far
@@ -82,6 +83,7 @@ ReadoutEquipmentPlayer::ReadoutEquipmentPlayer(ConfigFile& cfg, std::string cfgE
   auto errorHandler = [&](const std::string& err) {
     if (fp != nullptr) {
       fclose(fp);
+      fp = nullptr;
     }
     throw err;
   };
@@ -179,9 +181,12 @@ ReadoutEquipmentPlayer::ReadoutEquipmentPlayer(ConfigFile& cfg, std::string cfgE
 
 ReadoutEquipmentPlayer::~ReadoutEquipmentPlayer()
 {
+  fpLock.lock();
   if (fp != nullptr) {
     fclose(fp);
+    fp = nullptr;
   }
+  fpLock.unlock();
 }
 
 DataBlockContainerReference ReadoutEquipmentPlayer::getNextBlock()
@@ -204,6 +209,7 @@ DataBlockContainerReference ReadoutEquipmentPlayer::getNextBlock()
     if (autoChunk) {
       bool isOk = 1;
       // read from file
+      fpLock.lock();
       if ((fp != nullptr) && (fpOk)) {
         size_t nBytes = fread(b->data, 1, bytesPerPage, fp);
         if (nBytes == 0) {
@@ -310,6 +316,7 @@ DataBlockContainerReference ReadoutEquipmentPlayer::getNextBlock()
       } else {
         isOk = 0;
       }
+      fpLock.unlock();
       if (!isOk) {
         fpOk = false;
         return nullptr;
@@ -345,9 +352,11 @@ void ReadoutEquipmentPlayer::initCounters()
     }
   }
   fileOffset = 0;
+  loopCount = 0;
   lastPacketHeader.timeframeId = undefinedTimeframeId;
   lastPacketHeader.linkId = undefinedLinkId;
   lastPacketHeader.equipmentId = undefinedEquipmentId;
+  orbitOffset = 0;
 }
 
 std::unique_ptr<ReadoutEquipment> getReadoutEquipmentPlayer(ConfigFile& cfg, std::string cfgEntryPoint) { return std::make_unique<ReadoutEquipmentPlayer>(cfg, cfgEntryPoint); }
