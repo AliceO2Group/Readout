@@ -425,6 +425,6 @@ This file describes the main feature changes for each readout.exe released versi
 ## v2.8.6 - 10/03/2022
 - Minor fix
 
-## next version
+## v2.8.7 - 16/03/2022
 - Explicit order for resources cleanup on unexpected state machine exit.
 - Reset TFid on file replay start/stop loop.
