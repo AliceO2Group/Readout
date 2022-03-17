@@ -1257,6 +1257,16 @@ int Readout::reset()
 }
 
 Readout::~Readout() {
+  // in case some components still active, cleanup in order
+  if (runningThread != nullptr) {
+    stopTimer.reset(0);
+    isRunning=0;
+    runningThread->join();
+  }
+  dataConsumers.clear();
+  agg = nullptr;
+  agg_output = nullptr;
+  readoutDevices.clear();
 }
 
 #ifdef WITH_OCC
@@ -1686,6 +1696,9 @@ int main(int argc, char* argv[])
 
   gReadoutStats.counters.state = stringToUint64("> exit");
   gReadoutStats.counters.notify++;
+
+  theReadout = nullptr;
+
   theLog.log(LogInfoSupport_(3001), "Readout process exiting");
   return 0;
 }
