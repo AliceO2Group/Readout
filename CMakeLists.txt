@@ -70,6 +70,7 @@ find_package(RDMA)
 find_package(Occ)
 find_package(BookkeepingApiCpp)
 find_package(ZMQ)
+find_package(MySQL)
 
 # extract include directories from targets
 get_target_property(InfoLogger_INCLUDE_DIRS AliceO2::InfoLogger INTERFACE_INCLUDE_DIRECTORIES)
@@ -128,8 +129,17 @@ else ()
   message(STATUS "ZMQ not found, corresponding features will be disabled.")
 endif()
 
+# check MySQL
+if(${MYSQL_FOUND})
+    message(
+    STATUS
+    "MySQL found: ${MYSQL_INCLUDE_DIRS} ${MYSQL_LIBRARIES}")
+else ()
+  message(STATUS "MySQL not found, corresponding features will be disabled.")
+endif()
+
 # add flags to enable optional features in Readout, based on available dependencies
-add_compile_definitions($<$<BOOL:${Numa_FOUND}>:WITH_NUMA> $<$<BOOL:${RDMA_FOUND}>:WITH_RDMA> $<$<BOOL:${Configuration_FOUND}>:WITH_CONFIG> $<$<BOOL:${FairMQ_FOUND}>:WITH_FAIRMQ> $<$<BOOL:${Occ_FOUND}>:WITH_OCC> $<$<BOOL:${BookkeepingApiCpp_FOUND}>:WITH_LOGBOOK> $<$<BOOL:${ZMQ_FOUND}>:WITH_ZMQ> $<$<BOOL:${ReadoutCard_FOUND}>:WITH_READOUTCARD> )
+add_compile_definitions($<$<BOOL:${Numa_FOUND}>:WITH_NUMA> $<$<BOOL:${RDMA_FOUND}>:WITH_RDMA> $<$<BOOL:${Configuration_FOUND}>:WITH_CONFIG> $<$<BOOL:${FairMQ_FOUND}>:WITH_FAIRMQ> $<$<BOOL:${Occ_FOUND}>:WITH_OCC> $<$<BOOL:${BookkeepingApiCpp_FOUND}>:WITH_LOGBOOK> $<$<BOOL:${ZMQ_FOUND}>:WITH_ZMQ> $<$<BOOL:${MYSQL_FOUND}>:WITH_DB> $<$<BOOL:${ReadoutCard_FOUND}>:WITH_READOUTCARD> )
 
 # define include directories
 set(READOUT_INCLUDE_DIRS
@@ -164,6 +174,10 @@ endif()
 if(ZMQ_FOUND)
   list(APPEND READOUT_INCLUDE_DIRS ${ZMQ_INCLUDE_DIRS}) 
   list(APPEND READOUT_LINK_LIBRARIES ${ZMQ_LIBRARIES})
+endif()
+if(MYSQL_FOUND)
+  list(APPEND READOUT_INCLUDE_DIRS ${MYSQL_INCLUDE_DIRS}) 
+  list(APPEND READOUT_LINK_LIBRARIES ${MYSQL_LIBRARIES})
 endif()
 
 # some systems don't need an explicit library to have dlopen()
@@ -224,6 +238,15 @@ add_library(
 	$<$<BOOL:${ZMQ_FOUND}>:${SOURCE_DIR}/ZmqClient.cxx>
 )
 target_include_directories(objReadoutUtils PRIVATE ${READOUT_INCLUDE_DIRS})
+
+# internal readout database
+if (MYSQL_FOUND)
+  add_library(
+          objReadoutDatabase OBJECT
+	  ${SOURCE_DIR}/ReadoutDatabase.cxx
+  )
+  target_include_directories(objReadoutDatabase PRIVATE ${READOUT_INCLUDE_DIRS} ${MYSQL_INCLUDE_DIRS})
+endif()
 
 # consumers
 add_library(
@@ -304,6 +327,7 @@ add_executable(
 	$<TARGET_OBJECTS:objReadoutAggregator>
 	$<TARGET_OBJECTS:objReadoutConsumers>
 	$<TARGET_OBJECTS:objReadoutUtils>
+	$<$<BOOL:${MYSQL_FOUND}>:$<TARGET_OBJECTS:objReadoutDatabase>>
 )
 
 # a test FMQ device receiver
@@ -398,6 +422,16 @@ add_executable(
 target_include_directories(o2-readout-monitor PRIVATE ${READOUT_INCLUDE_DIRS})
 target_link_libraries(o2-readout-monitor PRIVATE AliceO2::InfoLogger AliceO2::Common ${ZMQ_LIBRARIES})
 
+# a process to admin readout database
+if (MYSQL_FOUND)
+add_executable(
+	o2-readout-admin-db
+        ${SOURCE_DIR}/readoutAdminDB.cxx
+	$<TARGET_OBJECTS:objReadoutDatabase>
+)
+target_include_directories(o2-readout-admin-db PRIVATE ${READOUT_INCLUDE_DIRS})
+endif()
+
 endif()
 
 # a minimal test program to check Monitoring library
@@ -437,6 +471,9 @@ if (${ZMQ_FOUND})
 endif()
 if (BookkeepingApiCpp_FOUND)
   list (APPEND executables o2-readout-test-lib-bookkeeping)
+endif()
+if (MYSQL_FOUND)
+  list (APPEND executables o2-readout-admin-db)
 endif()
 foreach (exe ${executables})
 	target_include_directories(${exe} PRIVATE ${READOUT_INCLUDE_DIRS})

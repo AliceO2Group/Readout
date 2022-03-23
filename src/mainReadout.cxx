@@ -43,6 +43,10 @@
 #include <BookkeepingApiCpp/BookkeepingFactory.h>
 #endif
 
+#ifdef WITH_DB
+#include "ReadoutDatabase.h"
+#endif
+
 #include <atomic>
 #include <chrono>
 #include <fcntl.h>
@@ -156,6 +160,7 @@ class Readout
   std::string cfgLogbookUrl;
   std::string cfgLogbookApiToken;
   int cfgLogbookUpdateInterval;
+  std::string cfgDatabaseCxParams;
   std::string cfgTimeframeServerUrl;
   int cfgVerbose = 0;
   int cfgMaxMsgError; // maximum number of error messages before stopping run
@@ -184,6 +189,10 @@ class Readout
 #ifdef WITH_LOGBOOK
   std::unique_ptr<bookkeeping::BookkeepingInterface> logbookHandle; // handle to logbook
 #endif
+#ifdef WITH_DB
+  std::unique_ptr<ReadoutDatabase> dbHandle; // handle to readout database
+#endif
+
   void publishLogbookStats();          // publish current readout counters to logbook
   AliceO2::Common::Timer logbookTimer; // timer to handle readout logbook publish interval
 
@@ -228,6 +237,17 @@ void Readout::publishLogbookStats()
   }
 //  gReadoutStats.print();
 #endif
+
+#ifdef WITH_DB
+  if (dbHandle != nullptr) {
+    dbHandle->updateRunCounters(
+      (int64_t)gReadoutStats.counters.numberOfSubtimeframes,
+      (int64_t)gReadoutStats.counters.bytesReadout,
+      (int64_t)gReadoutStats.counters.bytesRecorded,
+      (int64_t)gReadoutStats.counters.bytesFairMQ
+    );
+  }
+#endif
 }
 
 int Readout::init(int argc, char* argv[])
@@ -253,6 +273,7 @@ int Readout::init(int argc, char* argv[])
     cfgDefaults.getOptionalValue<int>(cfgDefaultsEntryPoint + ".verbose", cfgVerbose, cfgVerbose);
     cfgDefaults.getOptionalValue<std::string>(cfgDefaultsEntryPoint + ".statsPublishAddress", cfgStatsPublishAddress, cfgStatsPublishAddress);
     cfgDefaults.getOptionalValue<double>(cfgDefaultsEntryPoint + ".statsPublishInterval", cfgStatsPublishInterval, cfgStatsPublishInterval);
+    cfgDefaults.getOptionalValue<std::string>(cfgDefaultsEntryPoint + ".db", cfgDatabaseCxParams);
   }
   catch(...) {
     //initLogs.push_back({LogWarningSupport_(3100), std::string("Error loading defaults")});
@@ -308,6 +329,21 @@ int Readout::init(int argc, char* argv[])
     initLogs.push_back({LogWarningSupport_(3236), "Failed to start Stats publish"});
   } //otherwise: disabled
   
+  // init database
+  if (cfgDatabaseCxParams != "") {
+    #ifdef WITH_DB
+      try {
+        dbHandle=std::make_unique<ReadoutDatabase>(cfgDatabaseCxParams.c_str());
+	if (dbHandle == nullptr) { throw __LINE__; }
+	//dbHandle->verbose = 1;
+	initLogs.push_back({LogInfoSupport, "Database connected "});
+      }
+      catch(...) {
+        initLogs.push_back({LogWarningSupport_(3242), "Failed to connect database"});
+      }
+    #endif
+  }
+
 
   // configure signal handlers for clean exit
   struct sigaction signalSettings;
@@ -357,6 +393,11 @@ int Readout::init(int argc, char* argv[])
       theLog.log(LogInfoDevel, "LOGBOOK : yes");
     #else
       theLog.log(LogInfoDevel, "LOGBOOK : no");
+    #endif
+    #ifdef WITH_DB
+      theLog.log(LogInfoDevel, "DB : yes");
+    #else
+      theLog.log(LogInfoDevel, "DB : no");
     #endif
     #ifdef WITH_ZMQ
       theLog.log(LogInfoDevel, "ZMQ : yes");
@@ -579,6 +620,11 @@ int Readout::configure(const boost::property_tree::ptree& properties)
   // configuration parameter: | readout | logbookEnabled | int | 0 | When set, the logbook is enabled and populated with readout stats at runtime. |
   cfgLogbookEnabled = 0;
   cfg.getOptionalValue<int>("readout.logbookEnabled", cfgLogbookEnabled);
+
+  // configuration parameter: | readout | logbookUpdateInterval | int | 30 | Amount of time (in seconds) between logbook publish updates. |
+  cfgLogbookUpdateInterval = 30;
+  cfg.getOptionalValue<int>("readout.logbookUpdateInterval", cfgLogbookUpdateInterval);
+
   if (cfgLogbookEnabled) {
 #ifndef WITH_LOGBOOK
     theLog.log(LogErrorDevel_(3210), "Logbook enabled in configuration, but feature not available in this build");
@@ -587,9 +633,6 @@ int Readout::configure(const boost::property_tree::ptree& properties)
     cfg.getOptionalValue<std::string>("readout.logbookUrl", cfgLogbookUrl);
     // configuration parameter: | readout | logbookApiToken | string | | The token to be used for the logbook API. |
     cfg.getOptionalValue<std::string>("readout.logbookApiToken", cfgLogbookApiToken);
-    // configuration parameter: | readout | logbookUpdateInterval | int | 30 | Amount of time (in seconds) between logbook publish updates. |
-    cfgLogbookUpdateInterval = 30;
-    cfg.getOptionalValue<int>("readout.logbookUpdateInterval", cfgLogbookUpdateInterval);
 
     theLog.log(LogInfoDevel, "Logbook enabled, %ds update interval, using URL = %s", cfgLogbookUpdateInterval, cfgLogbookUrl.c_str());
     logbookHandle = bookkeeping::getApiInstance(cfgLogbookUrl, cfgLogbookApiToken);
@@ -928,6 +971,11 @@ int Readout::start()
   gReadoutStats.publishNow();
 
   // publish initial logbook statistics
+  #ifdef WITH_DB
+  if (dbHandle != nullptr) {
+    dbHandle->initRunCounters(occRole.c_str(), occRunNumber);
+  }
+  #endif
   publishLogbookStats();
   logbookTimer.reset(cfgLogbookUpdateInterval * 1000000);
   maxTimeframeId = 0;
@@ -1547,6 +1595,8 @@ int main(int argc, char* argv[])
         }
       } else if (theState == States::Configured) {
         if (theCommand == Commands::Start) {
+          occRunNumber++;
+          printf("run number = %d\n", occRunNumber);
           err = theReadout->start();
           if (err) {
             newState = States::Error;
