@@ -42,7 +42,6 @@ int main()
   timerStats.reset(1000000.0 * statInterval);
 
   size_t msgCount = 0;
-  size_t msgCountPart = 0;
   size_t msgNew = 0;
   size_t msgNewPart = 0;
   //double tNew = 0.0;
@@ -92,7 +91,6 @@ int main()
         msgCount++;
         msgNew++;
         int nPart = msgParts.Size();
-        msgCountPart += nPart;
         msgNewPart += nPart;
         for (auto const& mm : msgParts) {
           // bad trick: TX CPU used (in previous second) encoded in message size
