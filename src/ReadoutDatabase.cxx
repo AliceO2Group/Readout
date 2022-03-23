@@ -9,6 +9,10 @@
 #include <string>
 #include <map>
 
+#if LIBMYSQL_VERSION_ID >= 80000
+typedef bool my_bool;
+#endif
+
 ReadoutDatabase::ReadoutDatabase(const char* cx) {
 
   char *db_db=nullptr, *db_user=nullptr, *db_pwd=nullptr, *db_host=nullptr;
