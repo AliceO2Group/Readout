@@ -46,5 +46,6 @@
   { 3239, "TCP/IP problem", nullptr},
   { 3240, "Readout card problem", nullptr},
   { 3241, "Inconsistent data", nullptr},
+  { 3242, "Database error", nullptr},
 */
 
