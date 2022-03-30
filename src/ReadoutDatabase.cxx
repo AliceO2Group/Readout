@@ -13,7 +13,9 @@
 typedef bool my_bool;
 #endif
 
-ReadoutDatabase::ReadoutDatabase(const char* cx) {
+ReadoutDatabase::ReadoutDatabase(const char* cx, int v, const LogCallback& cb) {
+  verbose = v;
+  theLogCallback = cb;
 
   char *db_db=nullptr, *db_user=nullptr, *db_pwd=nullptr, *db_host=nullptr;
   char *p=nullptr,*ptr,*lptr;
@@ -77,9 +79,7 @@ ReadoutDatabase::ReadoutDatabase(const char* cx) {
     goto open_failed;
   }
 
-  if (verbose) {
-    printf("Using DB %s @ %s\n", db_db, db_host);
-  }
+  log("Using database " + std::string(db_db) + "@" + std::string(db_host));
 
   // try to connect
   if (mysql_real_connect(db,db_host,db_user,db_pwd,db_db,0,nullptr,0)==nullptr) {
@@ -158,9 +158,7 @@ int ReadoutDatabase::query(int maxRetry, const char *inQuery,...) {
     return -1;
   }
   
-  if (verbose) {
-    printf("Executing query: %s\n", query);
-  }
+  log("Executing query: "  + std::string(query));
   
   if (maxRetry <= 0) {
     maxRetry = 1;
@@ -297,4 +295,14 @@ const char* ReadoutDatabase::getError() {
 
 const char* ReadoutDatabase::getQuery() {
   return lastQuery.c_str();
+}
+
+void ReadoutDatabase::log(const std::string &msg) {
+  if (verbose) {
+    if (theLogCallback!=nullptr) {
+      theLogCallback(msg);
+    } else {
+      printf("%s\n", msg.c_str());
+    }
+  }
 }

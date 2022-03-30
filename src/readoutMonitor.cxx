@@ -12,6 +12,7 @@
 #include <Common/Configuration.h>
 #include <InfoLogger/InfoLogger.hxx>
 #include <InfoLogger/InfoLoggerMacros.hxx>
+#include <map>
 #include <signal.h>
 #include <zmq.h>
 #include "ReadoutStats.h"
@@ -214,7 +215,9 @@ int main(int argc, const char** argv)
   sigaction(SIGINT, &signalSettings, NULL);
 
   theLog.log(LogInfoDevel_(3006), "Entering monitoring loop");
-  double previousSampleTime = 0;
+
+  typedef std::map<std::string, double> MapCountersBySource;
+  MapCountersBySource latestUpdate; // keep copy of latest counter for each source
 
   // header
   if ((!cfgRawBytes)&&(broadcastSocket == nullptr)) {
@@ -244,6 +247,20 @@ int main(int argc, const char** argv)
     double t = counters->timestamp.load();
     double nRfmq = counters->pagesPendingFairMQreleased.load();
     double avgTfmq = 0.0;
+
+    std::string k = counters->source;
+    MapCountersBySource::iterator lb = latestUpdate.lower_bound(k);
+    double previousSampleTime = 0;
+
+    if(lb != latestUpdate.end() && !(latestUpdate.key_comp()(k, lb->first))) {
+      // source was already sampled
+      previousSampleTime = lb->second;
+      lb->second = t;
+    } else {
+      // this is first sample for this source
+      latestUpdate.insert(lb, MapCountersBySource::value_type(k, t));
+    }
+
     if (previousSampleTime > 0) {
       double deltaT = t - previousSampleTime;
       nRfmq = nRfmq / deltaT;

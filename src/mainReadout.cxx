@@ -26,6 +26,7 @@
 #include <time.h>
 #include <string.h>
 #include <sys/mman.h>
+#include <inttypes.h>
 
 #include "DataBlock.h"
 #include "DataBlockContainer.h"
@@ -123,6 +124,11 @@ static void signalHandler(int signalId)
 // some globals needed in other components
 std::string occRole;     // OCC role name
 tRunNumber occRunNumber = 0; // OCC run number
+
+// a general purpose log function for DB
+void dbLog(const std::string &msg) {
+  theLog.log(LogInfoDevel_(3012), "%s", msg.c_str());
+}
 
 class Readout
 {
@@ -329,22 +335,6 @@ int Readout::init(int argc, char* argv[])
     initLogs.push_back({LogWarningSupport_(3236), "Failed to start Stats publish"});
   } //otherwise: disabled
   
-  // init database
-  if (cfgDatabaseCxParams != "") {
-    #ifdef WITH_DB
-      try {
-        dbHandle=std::make_unique<ReadoutDatabase>(cfgDatabaseCxParams.c_str());
-	if (dbHandle == nullptr) { throw __LINE__; }
-	//dbHandle->verbose = 1;
-	initLogs.push_back({LogInfoSupport, "Database connected "});
-      }
-      catch(...) {
-        initLogs.push_back({LogWarningSupport_(3242), "Failed to connect database"});
-      }
-    #endif
-  }
-
-
   // configure signal handlers for clean exit
   struct sigaction signalSettings;
   bzero(&signalSettings, sizeof(signalSettings));
@@ -354,8 +344,9 @@ int Readout::init(int argc, char* argv[])
   sigaction(SIGINT, &signalSettings, NULL);
 
   // log startup and options
-  theLog.log(LogInfoSupport_(3001), "Readout " READOUT_VERSION " - process starting, pid %d", getpid());
+  theLog.log(LogInfoSupport_(3001), "Readout " READOUT_VERSION " - process starting, pid %d for role %s", getpid(), occRole.c_str());
   if (cfgVerbose) {
+    theLog.log(LogInfoDevel, "Build time: %s %s", __DATE__, __TIME__);
     theLog.log(LogInfoDevel, "Optional built features enabled:");
     #ifdef WITH_READOUTCARD
       theLog.log(LogInfoDevel, "READOUTCARD : yes");
@@ -405,10 +396,24 @@ int Readout::init(int argc, char* argv[])
       theLog.log(LogInfoDevel, "ZMQ : no");
     #endif
   }
-  
+
   // report cached logs
   for(auto const &l : initLogs) {
     theLog.log(l.first, "%s", l.second.c_str());
+  }
+
+  // init database
+  if (cfgDatabaseCxParams != "") {
+    #ifdef WITH_DB
+      try {
+        dbHandle=std::make_unique<ReadoutDatabase>(cfgDatabaseCxParams.c_str(), cfgVerbose, dbLog);
+	if (dbHandle == nullptr) { throw __LINE__; }
+	theLog.log(LogInfoDevel_(3012), "Database connected ");
+      }
+      catch(...) {
+        theLog.log(LogWarningDevel_(3242), "Failed to connect database");
+      }
+    #endif
   }
 
   return 0;
@@ -1220,6 +1225,13 @@ int Readout::stop()
   // publish final logbook statistics
   publishLogbookStats();
 
+  // publish some final counters
+  theLog.log(LogInfoDevel_(3003), "Final counters: timeframes = %" PRIu64 " readout = %s recorded = %s",
+    gReadoutStats.counters.numberOfSubtimeframes.load(),
+    NumberOfBytesToString(gReadoutStats.counters.bytesReadout.load(), "bytes").c_str(),
+    NumberOfBytesToString(gReadoutStats.counters.bytesRecorded.load(),"bytes").c_str()
+  );
+
   theLog.log(LogInfoSupport_(3005), "Readout completed STOP");
   gReadoutStats.counters.state = stringToUint64("ready");
   gReadoutStats.counters.notify++;
@@ -1324,7 +1336,8 @@ class ReadoutOCCStateMachine : public RuntimeControlledObject
   ReadoutOCCStateMachine(std::unique_ptr<Readout> r) : RuntimeControlledObject("Readout Process")
   {
     theReadout = std::move(r);
-    occRole = this->getRole();
+    // the following does not work: getRole() is empty at this stage - BUG. O2_ROLE is defined.
+    // occRole = this->getRole();
   }
 
   int executeConfigure(const boost::property_tree::ptree& properties)
@@ -1332,6 +1345,11 @@ class ReadoutOCCStateMachine : public RuntimeControlledObject
     if (theReadout == nullptr) {
       return -1;
     }
+
+    if (this->getRole() != occRole) {
+      theLog.log(LogWarningDevel_(3243), "OCC role mismatch: getRole()=%s %s=%s occRole=%s", this->getRole().c_str(), OCC_ROLE_ENV, getenv(OCC_ROLE_ENV), occRole.c_str());
+    }
+
     return theReadout->configure(properties);
   }
 

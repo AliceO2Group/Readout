@@ -12,6 +12,7 @@ set configSection "readout-monitor"
 # defaults
 set cfgValue_broadcastPort ""
 set cfgValue_broadcastHost ""
+set cfgValue_verbose 0
 
 if {[llength $argv] >=2} {
   set configFile [lindex $argv 0]
@@ -484,7 +485,10 @@ proc processInput {} {
     }
 
     if {[gets $server_fd msg]==-1} {break}
-    puts "Msg: $msg"
+    global cfgValue_verbose
+    if {$cfgValue_verbose} {
+      puts "Msg: $msg"
+    }
     set lm [split $msg "\t"]
     if {[llength $lm]!=11} {break}
     updateNode $lm

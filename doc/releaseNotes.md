@@ -431,3 +431,8 @@ This file describes the main feature changes for each readout.exe released versi
 
 ## v2.9.0 - 23/03/2022
 - Added optional database connection to store runtime statistics.
+
+## v2.9.1 - 30/03/2022
+- DB improvements: occ.getRole() workaround for source id, logging.
+- Added logging of some EOR stats (TF number, etc) as for bookkeeping.
+- o2-readout-monitor: indexing by source for correct rates computation.
