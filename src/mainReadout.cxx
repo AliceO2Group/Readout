@@ -167,7 +167,6 @@ class Readout
   std::string cfgLogbookApiToken;
   int cfgLogbookUpdateInterval;
   std::string cfgDatabaseCxParams;
-  int cfgDatabaseVerbose;
   std::string cfgTimeframeServerUrl;
   int cfgVerbose = 0;
   int cfgMaxMsgError; // maximum number of error messages before stopping run
