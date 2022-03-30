@@ -26,7 +26,7 @@ using namespace AliceO2::InfoLogger;
 void printUsage()
 {
   printf("Usage: readoutAdminDB ...\n");
-  printf("  -c command : action to execute. One of create (create tables), clear (delete tables content), destroy (destroy all tables), fetch (retrieve content), test (insert some dummy data)\n");  
+  printf("  -c command : action to execute. One of create (create tables), clear (delete tables content), destroy (destroy all tables), fetch (retrieve content), test (insert some dummy data)\n");
   printf("  [-z pathToConfigurationFile] : sets which configuration to use. By default %s\n", cfgDefaultsPath.c_str());
   printf("  [-v] : sets verbose mode\n");
   printf("  [-h] : print this help\n");
