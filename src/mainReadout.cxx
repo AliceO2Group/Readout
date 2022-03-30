@@ -26,6 +26,7 @@
 #include <time.h>
 #include <string.h>
 #include <sys/mman.h>
+#include <inttypes.h>
 
 #include "DataBlock.h"
 #include "DataBlockContainer.h"
@@ -161,6 +162,7 @@ class Readout
   std::string cfgLogbookApiToken;
   int cfgLogbookUpdateInterval;
   std::string cfgDatabaseCxParams;
+  int cfgDatabaseVerbose;
   std::string cfgTimeframeServerUrl;
   int cfgVerbose = 0;
   int cfgMaxMsgError; // maximum number of error messages before stopping run
@@ -274,6 +276,7 @@ int Readout::init(int argc, char* argv[])
     cfgDefaults.getOptionalValue<std::string>(cfgDefaultsEntryPoint + ".statsPublishAddress", cfgStatsPublishAddress, cfgStatsPublishAddress);
     cfgDefaults.getOptionalValue<double>(cfgDefaultsEntryPoint + ".statsPublishInterval", cfgStatsPublishInterval, cfgStatsPublishInterval);
     cfgDefaults.getOptionalValue<std::string>(cfgDefaultsEntryPoint + ".db", cfgDatabaseCxParams);
+    cfgDefaults.getOptionalValue<int>(cfgDefaultsEntryPoint + ".dbVerbose", cfgDatabaseVerbose);
   }
   catch(...) {
     //initLogs.push_back({LogWarningSupport_(3100), std::string("Error loading defaults")});
@@ -335,7 +338,7 @@ int Readout::init(int argc, char* argv[])
       try {
         dbHandle=std::make_unique<ReadoutDatabase>(cfgDatabaseCxParams.c_str());
 	if (dbHandle == nullptr) { throw __LINE__; }
-	//dbHandle->verbose = 1;
+	dbHandle->verbose = cfgDatabaseVerbose;
 	initLogs.push_back({LogInfoSupport, "Database connected "});
       }
       catch(...) {
@@ -1219,6 +1222,13 @@ int Readout::stop()
 
   // publish final logbook statistics
   publishLogbookStats();
+
+  // publish some final counters
+  theLog.log(LogInfoDevel_(3003), "Final counters: timeframes = %" PRIu64 " readout = %s recorded = %s",
+    gReadoutStats.counters.numberOfSubtimeframes.load(),
+    NumberOfBytesToString(gReadoutStats.counters.bytesReadout.load(), "bytes").c_str(),
+    NumberOfBytesToString(gReadoutStats.counters.bytesRecorded.load(),"bytes").c_str()
+  );
 
   theLog.log(LogInfoSupport_(3005), "Readout completed STOP");
   gReadoutStats.counters.state = stringToUint64("ready");
