@@ -3,10 +3,14 @@
 #include <stdint.h>
 #include <vector>
 #include <string>
+#include <functional>
 
 class ReadoutDatabase {
 public:
-  ReadoutDatabase(const char* cx); // create a handle to DB. Connection string in the form user:pwd@host/dbname
+  // an optional user-provided logging function for all DB-related ops
+  typedef std::function<void(const std::string &)> LogCallback;
+
+  ReadoutDatabase(const char* cx, int verbose = 0, const LogCallback& cb = nullptr); // create a handle to DB. Connection string in the form user:pwd@host/dbname
   ~ReadoutDatabase();
 
   // admin database structure
@@ -41,6 +45,9 @@ private:
   
   int maxRetry = 20; // number of query retries
   int retryTimeout = 50; // retry interval (milliseconds)
+
+  LogCallback theLogCallback;
+  void log(const std::string &log);
 
   std::string lastError = ""; // error string of last query, if any
   std::string lastQuery = ""; // last query executed  
