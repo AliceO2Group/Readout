@@ -26,6 +26,7 @@
   { 3009, "Trace for readout data dump", nullptr},
   { 3010, "Trace for readout hardware operations and status", nullptr},
   { 3011, "Trace for readout data stream content", nullptr},
+  { 3012, "Trace for readout database operations", nullptr},
 
   { 3100, "Configuration problem", nullptr},
   { 3101, "A feature is configured but not supported by this readout build.", nullptr},
@@ -47,5 +48,6 @@
   { 3240, "Readout card problem", nullptr},
   { 3241, "Inconsistent data", nullptr},
   { 3242, "Database error", nullptr},
+  { 3243, "Control problem", nullptr},
 */
 
