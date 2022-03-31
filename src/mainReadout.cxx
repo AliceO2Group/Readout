@@ -1326,7 +1326,11 @@ Readout::~Readout() {
   dataConsumers.clear();
   agg = nullptr;
   agg_output = nullptr;
-  readoutDevices.clear();
+  // ensure readout equipment threads stopped before releasing resources
+  for (const auto &d : readoutDevices) {
+    d->abortThread();
+  }
+  readoutDevices.clear(); // after aggregator, because they own the data blocks
 }
 
 #ifdef WITH_OCC

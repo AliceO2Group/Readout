@@ -826,3 +826,7 @@ int ReadoutEquipment::processRdh(DataBlockContainerReference& block)
   return 0;
 }
 
+void ReadoutEquipment::abortThread() {
+  // ensure thread is stopped
+  readoutThread = nullptr;
+}
