@@ -436,3 +436,6 @@ This file describes the main feature changes for each readout.exe released versi
 - DB improvements: occ.getRole() workaround for source id, logging.
 - Added logging of some EOR stats (TF number, etc) as for bookkeeping.
 - o2-readout-monitor: indexing by source for correct rates computation.
+
+## v2.9.2 - 31/03/2022
+- Cosmetics improvements related to threads cleanup order on exit.

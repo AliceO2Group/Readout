@@ -58,6 +58,10 @@ class ReadoutEquipment
   // get current memory pool usage (available and total)
   int getMemoryUsage(size_t& numberOfPagesAvailable, size_t& numberOfPagesInPool);
 
+  // this should be called first in derived classes destructor
+  // to ensure the associated thread is stopped before releasing resources
+  void abortThread();
+
  private:
   std::unique_ptr<Thread> readoutThread;
   static Thread::CallbackResult threadCallback(void* arg);
