@@ -38,13 +38,12 @@ ReadoutStats::ReadoutStats() {
 }
 
 ReadoutStats::~ReadoutStats() {
-  stopPublish();
-
   if (publishThread != nullptr) {
     shutdownThread = 1;
     publishThread->join();
     publishThread = nullptr;
   }
+  zmqCleanup();
 }
 
 void ReadoutStats::reset()
@@ -220,17 +219,18 @@ void ReadoutStats::threadLoop() {
 void ReadoutStats::publishNow() {
   #ifdef WITH_ZMQ
   if (zmqEnabled) {
-    fflush(stdout);
     uint64_t newUpdate = counters.notify.load();
     ReadoutStatsCounters snapshot;
     memcpy((void *)&snapshot, (void *)&gReadoutStats.counters, sizeof(snapshot));
     snapshot.timestamp = ((std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch())).count())/1000000.0;
     publishMutex.lock();
-    if ((newUpdate != lastUpdate) || (snapshot.timestamp.load()-lastPublishTimestamp > publishInterval - 0.1)) {
-      zmq_send(zmqHandle, &snapshot, sizeof(snapshot), ZMQ_DONTWAIT);
-      lastUpdate = newUpdate;
-      lastPublishTimestamp = snapshot.timestamp;
-    }   
+    if (zmqHandle != nullptr) {
+      if ((newUpdate != lastUpdate) || (snapshot.timestamp.load()-lastPublishTimestamp > publishInterval - 0.1)) {
+	zmq_send(zmqHandle, &snapshot, sizeof(snapshot), ZMQ_DONTWAIT);
+	lastUpdate = newUpdate;
+	lastPublishTimestamp = snapshot.timestamp;
+      }
+    }
     publishMutex.unlock();
   }
  #endif

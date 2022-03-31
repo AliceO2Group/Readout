@@ -1768,6 +1768,7 @@ int main(int argc, char* argv[])
 
   gReadoutStats.counters.state = stringToUint64("> exit");
   gReadoutStats.counters.notify++;
+  gReadoutStats.stopPublish();
 
   theReadout = nullptr;
 
