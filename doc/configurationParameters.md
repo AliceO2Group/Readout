@@ -166,6 +166,9 @@ The parameters related to 3rd-party libraries are described here for convenience
 | readout | timeStop | string | | In standalone mode, time at which to execute stop. If not set, on int/term/quit signal. |
 | readout-monitor | broadcastHost | string | | used by readout-status to connect to readout-monitor broadcast channel. |
 | readout-monitor | broadcastPort | int | 0 | when set, the process will create a listening TCP port and broadcast statistics to connected clients. |
+| readout-monitor | logFile | string | | when set, the process will log received metrics to a file. |
+| readout-monitor | logFileHistory | int | 1 | defines the maximum number of previous log files to keep, when a maximum size is set. |
+| readout-monitor | logFileMaxSize | int | 128 | defines the maximum size of log file (in MB). When reaching this threshold, the log file is rotated. |
 | readout-monitor | monitorAddress | string | tcp://127.0.0.1:6008 | Address of the receiving ZeroMQ channel to receive readout statistics. |
 | readout-monitor | outputFormat | int | 0 | 0: default, human readable. 1: raw bytes. |
 | receiverFMQ | channelAddress | string | ipc:///tmp/pipe-readout | c.f. parameter with same name in consumer-FairMQchannel-* |

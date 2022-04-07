@@ -439,3 +439,6 @@ This file describes the main feature changes for each readout.exe released versi
 
 ## v2.9.2 - 31/03/2022
 - Cosmetics improvements related to threads cleanup order on exit.
+
+## next version
+- readout-monitor: added log file for received measurements.
