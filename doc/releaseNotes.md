@@ -442,3 +442,4 @@ This file describes the main feature changes for each readout.exe released versi
 
 ## next version
 - readout-monitor: added log file for received measurements.
+- added support for custom commands to be executed on states transitions.
