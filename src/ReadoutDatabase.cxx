@@ -106,9 +106,10 @@ open_failed:
 }
 
 ReadoutDatabase::~ReadoutDatabase() {
-  if (db!=nullptr) {
+  if (db != nullptr) {
     mysql_close(db);
     db=nullptr;
+    log("DB closed");
   }
 }
 
