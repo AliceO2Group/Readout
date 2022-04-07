@@ -48,7 +48,7 @@ ReadoutEquipment::ReadoutEquipment(ConfigFile& cfg, std::string cfgEntryPoint, b
   cfg.getOptionalValue<double>("readout.rate", readoutRate, -1.0);
 
   // configuration parameter: | equipment-* | idleSleepTime | int | 200 | Thread idle sleep time, in microseconds. |
-  int cfgIdleSleepTime = 200;
+  cfgIdleSleepTime = 200;
   cfg.getOptionalValue<int>(cfgEntryPoint + ".idleSleepTime", cfgIdleSleepTime);
 
   // size of equipment output FIFO

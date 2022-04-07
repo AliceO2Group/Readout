@@ -218,9 +218,7 @@ Thread::CallbackResult ReadoutEquipmentRORC::prepareBlocks()
 
   // keep track of situations where the queue is completely empty
   // this means we have not filled it fast enough (except in first loop, where it's normal it is empty)
-  if (isWaitingFirstLoop) {
-    isWaitingFirstLoop = false;
-  } else {
+  if (!isWaitingFirstLoop) {
     int nFreeSlots = channel->getTransferQueueAvailable();
     if (nFreeSlots == RocFifoSize) {
       equipmentStats[EquipmentStatsIndexes::nFifoUpEmpty].increment();
@@ -282,6 +280,11 @@ Thread::CallbackResult ReadoutEquipmentRORC::prepareBlocks()
 
   // from time to time, we may monitor temperature
   // virtual boost::optional<float> getTemperature() = 0;
+
+  // first loop now completed
+  if (isWaitingFirstLoop) {
+    isWaitingFirstLoop = false;
+  }
 
   if (!isActive) {
     return Thread::CallbackResult::Idle;
@@ -360,6 +363,7 @@ void ReadoutEquipmentRORC::setDataOn()
     channel->startDma();
 
     // get FIFO depth (it should be fully empty when starting)
+    // can not be done before startDma() - would return 0
     RocFifoSize = channel->getTransferQueueAvailable();
     theLog.log(LogInfoDevel_(3010), "ROC input queue size = %d pages", RocFifoSize);
     if (RocFifoSize == 0) {
@@ -372,6 +376,22 @@ void ReadoutEquipmentRORC::setDataOn()
     }
   }
   ReadoutEquipment::setDataOn();
+
+  // wait confirmation that 1st loop executed before returning
+  // this ensures ROC buffer populated before declaring "running"
+  AliceO2::Common::Timer firstLoopTimeout;
+  firstLoopTimeout.reset(cfgIdleSleepTime * 100);
+  for (;;) {
+    if (!isWaitingFirstLoop) {
+      theLog.log(LogInfoDevel_(3010), "Buffers ready for ROC %s", getName().c_str());
+      break;
+    }
+    if (firstLoopTimeout.isTimeout()) {
+      theLog.log(LogInfoDevel_(3010), "Buffers not yet ready for ROC %s", getName().c_str());
+      break;
+    }
+    usleep(cfgIdleSleepTime / 4);
+  }
 }
 
 void ReadoutEquipmentRORC::setDataOff()

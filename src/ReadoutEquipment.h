@@ -135,6 +135,8 @@ class ReadoutEquipment
 
   int debugFirstPages = 0; // print debug info on first number of pages read
 
+  int cfgIdleSleepTime; // the idle sleep time for the equipment thread
+
  private:
   int tagDatablockFromRdh(RdhHandle& RDH, DataBlockHeader& h);
   unsigned long long statsNumberOfTimeframes = 0; // number of timeframes read out
