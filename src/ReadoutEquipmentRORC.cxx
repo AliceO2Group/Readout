@@ -201,7 +201,8 @@ Thread::CallbackResult ReadoutEquipmentRORC::prepareBlocks()
     if ((currentPacketDropped != lastPacketDropped) && (!isWaitingFirstLoop)) {
       int32_t newPacketDropped = (currentPacketDropped - lastPacketDropped);
       if (newPacketDropped > 0) {
-        theLog.log(LogWarningSupport_(3235), "Equipment %s: CRU has dropped packets (new=%d total=%d)", name.c_str(), newPacketDropped, currentPacketDropped);
+        static InfoLogger::AutoMuteToken logToken(LogWarningSupport_(3235), 10, 60);
+        theLog.log(logToken, "Equipment %s: CRU has dropped packets (new=%d total=%d)", name.c_str(), newPacketDropped, currentPacketDropped);
         if (stopOnError) {
           theLog.log(LogErrorSupport_(3235), "Equipment %s: some data has been lost)", name.c_str());
         }
