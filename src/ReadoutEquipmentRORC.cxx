@@ -220,7 +220,7 @@ Thread::CallbackResult ReadoutEquipmentRORC::prepareBlocks()
   // this means we have not filled it fast enough (except in first loop, where it's normal it is empty)
   if (!isWaitingFirstLoop) {
     int nFreeSlots = channel->getTransferQueueAvailable();
-    if (nFreeSlots == RocFifoSize) {
+    if (nFreeSlots >= RocFifoSize -1 ) {
       equipmentStats[EquipmentStatsIndexes::nFifoUpEmpty].increment();
     }
     equipmentStats[EquipmentStatsIndexes::fifoOccupancyFreeBlocks].set(nFreeSlots);
@@ -261,7 +261,7 @@ Thread::CallbackResult ReadoutEquipmentRORC::prepareBlocks()
 
   // check fifo occupancy ready queue size for stats
   equipmentStats[EquipmentStatsIndexes::fifoOccupancyReadyBlocks].set(channel->getReadyQueueSize());
-  if (channel->getReadyQueueSize() == RocFifoSize) {
+  if (channel->getReadyQueueSize() >= RocFifoSize - 1) {
     equipmentStats[EquipmentStatsIndexes::nFifoReadyFull].increment();
   }
 
