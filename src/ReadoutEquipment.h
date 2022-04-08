@@ -128,6 +128,7 @@ class ReadoutEquipment
   int memoryPoolPageSize = 0;          // size if each page in pool
   int memoryPoolNumberOfPages = 0;     // number of pages in pool
   std::string memoryBankName = "";     // memory bank to be used. by default, this uses the first memory bank available
+  void mplog(const std::string &);     // custom log function for memory pool
 
   int disableOutput = 0; // when set true, data are dropped before pushing to output queue
 

@@ -201,6 +201,8 @@ ReadoutEquipment::ReadoutEquipment(ConfigFile& cfg, std::string cfgEntryPoint, b
   if (mp == nullptr) {
     theLog.log(LogErrorSupport_(3230), "Failed to create pool of memory pages");
     throw __LINE__;
+  } else {
+    mp -> setWarningCallback(std::bind(&ReadoutEquipment::mplog, this, std::placeholders::_1));
   }
   // todo: move page align to MemoryPool class
   assert(pageSpaceReserved == mp->getPageSize() - mp->getDataBlockMaxSize());
@@ -829,4 +831,9 @@ int ReadoutEquipment::processRdh(DataBlockContainerReference& block)
 void ReadoutEquipment::abortThread() {
   // ensure thread is stopped
   readoutThread = nullptr;
+}
+
+void ReadoutEquipment::mplog(const std::string &msg) {
+  static InfoLogger::AutoMuteToken logMPToken(LogWarningSupport_(3230), 10, 60);
+  theLog.log(logMPToken, "Equipment %s : %s", name.c_str(), msg.c_str());
 }

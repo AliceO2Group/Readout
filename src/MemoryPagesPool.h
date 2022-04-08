@@ -73,7 +73,21 @@ class MemoryPagesPool
 
   std::string getStats(); // return a string summarizing memory pool usage statistics
 
+  // an optional user-provided logging function for all memory pool related ops (including warnings on low)
+  typedef std::function<void(const std::string &)> LogCallback;
+
+  void setWarningCallback(const LogCallback& cb, double thHigh = 0.9, double thOk = 0.8);
+
  private:
+
+  LogCallback theLogCallback;
+  void log(const std::string &log);
+  double thHigh;
+  double thOk;
+  enum BufferState {empty, high, full};
+  BufferState state = BufferState::empty;
+  void updateBufferState();
+
   std::unique_ptr<AliceO2::Common::Fifo<void*>> pagesAvailable; // a buffer to keep track of individual pages
 
   size_t numberOfPages;                           // number of pages

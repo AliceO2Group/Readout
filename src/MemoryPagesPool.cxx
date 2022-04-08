@@ -24,6 +24,7 @@ MemoryPagesPool::MemoryPagesPool(size_t vPageSize, size_t vNumberOfPages, void* 
   baseBlockAddress = vBaseAddress;
   baseBlockSize = vBaseSize;
   releaseBaseBlockCallback = vCallback;
+  state = BufferState::empty;
 
   // check page / header sizes
   assert(headerReservedSpace >= sizeof(DataBlock));
@@ -164,6 +165,9 @@ void* MemoryPagesPool::getPage()
     }
   }
 
+  // udpate buffer state
+  updateBufferState();
+
   return ptr;
 }
 
@@ -190,6 +194,9 @@ void MemoryPagesPool::releasePage(void* address)
 
   // put back page in list of available pages
   pagesAvailable->push(address);
+
+  // udpate buffer state
+  updateBufferState();
 }
 
 size_t MemoryPagesPool::getPageSize() { return pageSize; }
@@ -269,3 +276,30 @@ std::string MemoryPagesPool::getStats() {
   return "number of pages used: " + std::to_string(poolStats.getTotal()) + " average free pages: " + std::to_string((uint64_t)poolStats.getAverage()) + " minimum free pages: " + std::to_string(poolStats.getMinimum());
 }
 
+
+void MemoryPagesPool::setWarningCallback(const LogCallback& cb, double vthHigh, double vthOk) {
+  thHigh = vthHigh;
+  thOk = vthOk;
+  theLogCallback = cb;
+}
+
+void MemoryPagesPool::log(const std::string &msg) {
+  if (theLogCallback!=nullptr) {
+    // the log callback will format it with appropriate text headers (eg who owns the pool)
+    theLogCallback(msg);
+  }
+}
+
+void MemoryPagesPool::updateBufferState() {
+  double r = 1.0 - (getNumberOfPagesAvailable() * 1.0 / getTotalNumberOfPages());
+  if ((r == 1.0) && (state != BufferState::full)) {
+    state = BufferState::full;
+    log("buffer full");
+  } else if ((r > thHigh) && (state == BufferState::empty)) {
+    state = BufferState::high;
+    log("buffer usage is high");
+  } else if ((r < thOk) && ((state == BufferState::full) || (state == BufferState::high))) {
+    state = BufferState::empty;
+    log("buffer usage back to reasonable level");
+  }
+}
