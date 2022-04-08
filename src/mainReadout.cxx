@@ -1392,20 +1392,25 @@ int Readout::reset()
 }
 
 Readout::~Readout() {
+  if (cfgVerbose) {
+    theLog.log(LogInfoDevel, "Releasing resources");
+  }
+
   // in case some components still active, cleanup in order
   if (runningThread != nullptr) {
     stopTimer.reset(0);
     isRunning=0;
     runningThread->join();
   }
-  dataConsumers.clear();
   agg = nullptr;
   agg_output = nullptr;
   // ensure readout equipment threads stopped before releasing resources
   for (const auto &d : readoutDevices) {
     d->abortThread();
   }
-  readoutDevices.clear(); // after aggregator, because they own the data blocks
+  // after aggregator, because they own the data blocks
+  dataConsumers.clear();
+  readoutDevices.clear();
 
   if (customCommandsShellPid) {
     if (cfgVerbose) {
