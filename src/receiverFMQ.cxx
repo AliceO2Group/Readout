@@ -504,7 +504,7 @@ int main(int argc, const char** argv)
     // print regularly the current throughput
     if (runningTime.isTimeout()) {
       double t = runningTime.getTime();
-      theLog.log(LogInfoDevel_(3003), "%.3lf msg/s %.3lf parts/s %.3lfMB/s %.3lfTF/s", nMsg / t, nMsgParts / t, nBytes / (1024.0 * 1024.0 * t), nTF / t);
+      theLog.log(LogInfoDevel_(3003), "%.3lf msg/s %.3lf parts/s %.3lfMB/s %.3lfTF/s %d msgs in buffer", nMsg / t, nMsgParts / t, nBytes / (1024.0 * 1024.0 * t), nTF / t, (int)delayedMsgBuffer.size());
       if (copyRatioCount) {
         theLog.log(LogInfoDevel_(3003), "HBF copy ratio = %.3lf %%", copyRatio * 100 / copyRatioCount);
       }
