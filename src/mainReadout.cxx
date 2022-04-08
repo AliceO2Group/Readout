@@ -161,6 +161,7 @@ class Readout
   // configuration parameters
   double cfgExitTimeout;
   double cfgFlushEquipmentTimeout;
+  double cfgFlushConsumerTimeout;
   int cfgDisableTimeframes;
   int cfgDisableAggregatorSlicing;
   double cfgAggregatorSliceTimeout;
@@ -652,6 +653,9 @@ int Readout::configure(const boost::property_tree::ptree& properties)
   // configuration parameter: | readout | flushEquipmentTimeout | double | 1 | Time in seconds to wait for data once the equipments are stopped. 0 means stop immediately. |
   cfgFlushEquipmentTimeout = 1;
   cfg.getOptionalValue<double>("readout.flushEquipmentTimeout", cfgFlushEquipmentTimeout);
+  // configuration parameter: | readout | flushConsumerTimeout | double | 1 | Time in seconds to wait before stopping the consumers (ie wait allocated pages released). 0 means stop immediately. |
+  cfgFlushConsumerTimeout = 1;
+  cfg.getOptionalValue<double>("readout.flushConsumerTimeout", cfgFlushConsumerTimeout);
   // configuration parameter: | readout | memoryPoolStatsEnabled | int | 0 | Global debugging flag to enable statistics on memory pool usage (printed to stdout when pool released). |
   int cfgMemoryPoolStatsEnabled = 0;
   cfg.getOptionalValue<int>("readout.memoryPoolStatsEnabled", cfgMemoryPoolStatsEnabled);
@@ -1274,6 +1278,25 @@ int Readout::stop()
   theLog.log(LogInfoDevel, "Stopping aggregator");
   agg->stop();
 
+  // wait a bit if some pending data pages still in use
+  if (cfgFlushConsumerTimeout > 0) {
+    theLog.log(LogInfoDevel, "Waiting max %fs for data pages in use",cfgFlushConsumerTimeout);
+    stopTimer.reset(cfgFlushConsumerTimeout * 1000000);
+    for(;;) {
+      int totalPagesPending = 0;
+      for (auto&& readoutDevice : readoutDevices) {
+        size_t nPagesTotal = 0, nPagesFree = 0;
+        if (readoutDevice->getMemoryUsage(nPagesFree, nPagesTotal) == 0) {
+          totalPagesPending += nPagesTotal - nPagesFree;
+        }
+      }
+      if (stopTimer.isTimeout() || (totalPagesPending == 0)) {
+	break;
+      }
+      usleep(100000);
+    }
+  }
+
   theLog.log(LogInfoDevel, "Stopping consumers");
   // notify consumers of imminent data flow stop
   for (auto& c : dataConsumers) {
@@ -1438,7 +1461,7 @@ void Readout::executeCustomCommand(const char *stateChange) {
       std::string cmd = it->second + "\n";
       write(customCommandsShellFdIn, cmd.c_str(), cmd.length());
       LineBuffer b;
-      const int cmdTimeout = 5000; // 5s timeout
+      const int cmdTimeout = 10000; // 10s timeout
       b.appendFromFileDescriptor(customCommandsShellFdOut, cmdTimeout);
       std::string result;
       if (b.getNextLine(result) == 0) {
