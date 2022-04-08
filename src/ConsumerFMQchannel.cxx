@@ -71,7 +71,7 @@ void incDataBlockStats(DataBlock* b)
     s->t0 = timeNowMicrosec();
     gReadoutStats.counters.pagesPendingFairMQ++;
     gReadoutStats.counters.notify++;
-    // printf("init %p\n",b);
+    // printf("init %p -> pages locked = %lu\n",b,(unsigned long)gReadoutStats.counters.pagesPendingFairMQ);
   }
 }
 
