@@ -28,6 +28,8 @@
 #include <string.h>
 #include <sys/mman.h>
 #include <inttypes.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 #include "DataBlock.h"
 #include "DataBlockContainer.h"
@@ -177,6 +179,7 @@ class Readout
   int cfgMaxMsgError; // maximum number of error messages before stopping run
   int cfgMaxMsgWarning; // maximum number of warning messages before stopping run
   int cfgCustomCommandsEnabled = 0; // when set, a sub-process bash is launched to execute custom commands
+  std::string cfgCustomCommandsShell = "o2-readout-command-launcher"; // or leave empty for raw bash commands
   std::map<std::string,std::string> customCommands; // map of state / command pairs to be executed
   pid_t customCommandsShellPid = 0; // pid of shell for custom commands
   int customCommandsShellFdIn = -1; // input to shell
@@ -446,7 +449,7 @@ int Readout::init(int argc, char* argv[])
 	close(p_stdin[1]);
 	close(p_stdout[0]);
 	close(p_stdout[1]);
-        execl("/bin/bash", "bash", NULL);
+        execl("/bin/sh","sh", cfgCustomCommandsShell.c_str(), NULL);
         exit(1);
       }
       close(p_stdin[0]);
@@ -1445,7 +1448,19 @@ Readout::~Readout() {
     if (customCommandsShellFdOut >= 0) {
       close(customCommandsShellFdOut);
     }
-    kill(customCommandsShellPid, SIGKILL);
+    pid_t pidDone = 0;
+    int pidStatus;
+    for (int i=0; i<100; i++) {
+      pidDone = waitpid(customCommandsShellPid, &pidStatus, WNOHANG);
+      if (pidDone) {
+        break;
+      }
+      usleep(10000);
+    }
+    if (pidDone != customCommandsShellPid) {
+      theLog.log(LogInfoDevel_(3013), "Killing %d", (int)customCommandsShellPid);
+      kill(customCommandsShellPid, SIGKILL);
+    }
   }
 
   #ifdef WITH_DB
