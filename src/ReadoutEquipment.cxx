@@ -229,6 +229,7 @@ void ReadoutEquipment::start()
     equipmentStats[i].reset();
     equipmentStatsLast[i] = 0;
   }
+  equipmentLinksUsed.reset();
   isError = 0;
   currentBlockId = 0;
   isDataOn = false;
@@ -282,6 +283,7 @@ void ReadoutEquipment::stop()
   theLog.log(LogInfoDevel_(3003), "Average pages pushed per iteration: %.1f", equipmentStats[EquipmentStatsIndexes::nBlocksOut].get() * 1.0 / (equipmentStats[EquipmentStatsIndexes::nLoop].get() - equipmentStats[EquipmentStatsIndexes::nIdle].get()));
   theLog.log(LogInfoDevel_(3003), "Average fifoready occupancy: %.1f", equipmentStats[EquipmentStatsIndexes::fifoOccupancyFreeBlocks].get() * 1.0 / (equipmentStats[EquipmentStatsIndexes::nLoop].get() - equipmentStats[EquipmentStatsIndexes::nIdle].get()));
   theLog.log(LogInfoDevel_(3003), "Average data throughput: %s", ReadoutUtils::NumberOfBytesToString(equipmentStats[EquipmentStatsIndexes::nBytesOut].get() / runningTime, "B/s").c_str());
+  theLog.log(LogInfoDevel_(3003), "Links used: %s", equipmentLinksUsed.to_string().c_str());
 }
 
 ReadoutEquipment::~ReadoutEquipment()
@@ -649,6 +651,9 @@ int ReadoutEquipment::tagDatablockFromRdh(RdhHandle& h, DataBlockHeader& bh)
   bh.equipmentId = equipmentId;
   bh.linkId = linkId;
   getTimeframeOrbitRange(tfId, bh.timeframeOrbitFirst, bh.timeframeOrbitLast);
+  if (linkId <= RdhMaxLinkId) {
+    equipmentLinksUsed[linkId] = 1;
+  }
   return isError;
 }
 

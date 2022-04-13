@@ -14,6 +14,7 @@
 #include <Common/Thread.h>
 #include <Common/Timer.h>
 #include <memory>
+#include <bitset>
 
 #include "CounterStats.h"
 #include "DataBlock.h"
@@ -112,6 +113,7 @@ class ReadoutEquipment
   // Counter values, updated at runtime
   std::vector<CounterStats> equipmentStats;
   std::vector<CounterValue> equipmentStatsLast;
+  std::bitset<RdhMaxLinkId + 1> equipmentLinksUsed;
 
   double cfgConsoleStatsUpdateTime = 0;     // number of seconds between regular printing of statistics on console (if zero, only on stop)
   AliceO2::Common::Timer consoleStatsTimer; // timer to keep track of elapsed time between console statistics updates
