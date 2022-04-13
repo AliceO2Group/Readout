@@ -20,7 +20,8 @@ int main() {
 
     while (1) {
       char buf[1024];
-      fgets(buf, sizeof(buf), stdin);
+      char* r = fgets(buf, sizeof(buf), stdin);
+      (void)r; // Suppress compiler warning
       if (feof(stdin)) {
 	break;
       }
