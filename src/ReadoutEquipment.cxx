@@ -230,6 +230,8 @@ void ReadoutEquipment::start()
     equipmentStatsLast[i] = 0;
   }
   equipmentLinksUsed.reset();
+  equipmentLinksData.resize(RdhMaxLinkId + 1);
+  equipmentLinksData.clear();
   isError = 0;
   currentBlockId = 0;
   isDataOn = false;
@@ -284,6 +286,14 @@ void ReadoutEquipment::stop()
   theLog.log(LogInfoDevel_(3003), "Average fifoready occupancy: %.1f", equipmentStats[EquipmentStatsIndexes::fifoOccupancyFreeBlocks].get() * 1.0 / (equipmentStats[EquipmentStatsIndexes::nLoop].get() - equipmentStats[EquipmentStatsIndexes::nIdle].get()));
   theLog.log(LogInfoDevel_(3003), "Average data throughput: %s", ReadoutUtils::NumberOfBytesToString(equipmentStats[EquipmentStatsIndexes::nBytesOut].get() / runningTime, "B/s").c_str());
   theLog.log(LogInfoDevel_(3003), "Links used: %s", equipmentLinksUsed.to_string().c_str());
+
+  std::string perLinkStats;
+  for (unsigned int i = 0; i<= RdhMaxLinkId; i++) {
+    if (equipmentLinksUsed[i]) {
+      perLinkStats += "[" + std::to_string(i) + "]=" + NumberOfBytesToString(equipmentLinksData[i], "B", 1024) + " ";
+    }
+  }
+  theLog.log(LogInfoDevel_(3003), "Links data received: %s", perLinkStats.c_str());
 }
 
 ReadoutEquipment::~ReadoutEquipment()
@@ -651,9 +661,6 @@ int ReadoutEquipment::tagDatablockFromRdh(RdhHandle& h, DataBlockHeader& bh)
   bh.equipmentId = equipmentId;
   bh.linkId = linkId;
   getTimeframeOrbitRange(tfId, bh.timeframeOrbitFirst, bh.timeframeOrbitLast);
-  if (linkId <= RdhMaxLinkId) {
-    equipmentLinksUsed[linkId] = 1;
-  }
   return isError;
 }
 
@@ -684,6 +691,13 @@ int ReadoutEquipment::processRdh(DataBlockContainerReference& block)
       theLog.log(LogInfoDevel_(3011),"  RDH: %s", h.toHexaString().c_str());
       cfgRdhDumpFirstInPageEnabled++;
     }
+
+    // update links statistics
+    if (h.getLinkId() <= RdhMaxLinkId) {
+      equipmentLinksUsed[h.getLinkId()] = 1;
+      equipmentLinksData[h.getLinkId()] += blockHeader.dataSize;
+    }
+
 
     // detect changes in detector bits field
     if (cfgRdhCheckDetectorField) {

@@ -446,3 +446,4 @@ This file describes the main feature changes for each readout.exe released versi
 - Updated configuration parameters:
   - readout.flushConsumerTimeout: when set, readout waits up to this amount of time that all data pages locked by consumers are released before stopping.
 - Added warning message on buffers low.
+- Added message at end of run showing the links which have provided data for each equipment and how much per link.
