@@ -16,6 +16,7 @@
 
 #include <Common/Configuration.h>
 #include <Common/Fifo.h>
+#include <Common/LineBuffer.h>
 #include <Common/MemPool.h>
 #include <Common/Thread.h>
 #include <Common/Timer.h>
@@ -27,6 +28,8 @@
 #include <string.h>
 #include <sys/mman.h>
 #include <inttypes.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 #include "DataBlock.h"
 #include "DataBlockContainer.h"
@@ -92,6 +95,9 @@
 #ifdef WITH_OCC
 #include <OccInstance.h>
 #include <RuntimeControlledObject.h>
+#else
+#define OCC_CONTROL_PORT_ENV ""
+#define OCC_ROLE_ENV ""
 #endif
 
 // namespace used
@@ -157,6 +163,7 @@ class Readout
   // configuration parameters
   double cfgExitTimeout;
   double cfgFlushEquipmentTimeout;
+  double cfgFlushConsumerTimeout;
   int cfgDisableTimeframes;
   int cfgDisableAggregatorSlicing;
   double cfgAggregatorSliceTimeout;
@@ -171,6 +178,13 @@ class Readout
   int cfgVerbose = 0;
   int cfgMaxMsgError; // maximum number of error messages before stopping run
   int cfgMaxMsgWarning; // maximum number of warning messages before stopping run
+  int cfgCustomCommandsEnabled = 0; // when set, a sub-process bash is launched to execute custom commands
+  std::string cfgCustomCommandsShell = "o2-readout-command-launcher"; // or leave empty for raw bash commands
+  std::map<std::string,std::string> customCommands; // map of state / command pairs to be executed
+  pid_t customCommandsShellPid = 0; // pid of shell for custom commands
+  int customCommandsShellFdIn = -1; // input to shell
+  int customCommandsShellFdOut = -1; // output from shell
+  void executeCustomCommand(const char *stateChange); // execute a custom command for given state transition, if any
 
   // runtime entities
   std::vector<std::unique_ptr<Consumer>> dataConsumers;
@@ -280,6 +294,7 @@ int Readout::init(int argc, char* argv[])
     cfgDefaults.getOptionalValue<std::string>(cfgDefaultsEntryPoint + ".statsPublishAddress", cfgStatsPublishAddress, cfgStatsPublishAddress);
     cfgDefaults.getOptionalValue<double>(cfgDefaultsEntryPoint + ".statsPublishInterval", cfgStatsPublishInterval, cfgStatsPublishInterval);
     cfgDefaults.getOptionalValue<std::string>(cfgDefaultsEntryPoint + ".db", cfgDatabaseCxParams);
+    cfgDefaults.getOptionalValue<int>(cfgDefaultsEntryPoint + ".customCommandsEnabled", cfgCustomCommandsEnabled);
   }
   catch(...) {
     //initLogs.push_back({LogWarningSupport_(3100), std::string("Error loading defaults")});
@@ -408,12 +423,47 @@ int Readout::init(int argc, char* argv[])
       try {
         dbHandle=std::make_unique<ReadoutDatabase>(cfgDatabaseCxParams.c_str(), cfgVerbose, dbLog);
 	if (dbHandle == nullptr) { throw __LINE__; }
-	theLog.log(LogInfoDevel_(3012), "Database connected ");
+	theLog.log(LogInfoDevel_(3012), "Database connected");
       }
       catch(...) {
         theLog.log(LogWarningDevel_(3242), "Failed to connect database");
       }
     #endif
+  }
+
+  // init shell for custom commands
+  if (cfgCustomCommandsEnabled) {
+    for (;;) {
+      int p_stdin[2], p_stdout[2];
+      pid_t pid;
+
+      if (pipe(p_stdin) != 0 || pipe(p_stdout) != 0) break;
+      pid = fork();
+
+      if (pid < 0) {
+        break;
+      } else if (pid == 0) {
+        dup2(p_stdin[0], STDIN_FILENO);
+        dup2(p_stdout[1], STDOUT_FILENO);
+	close(p_stdin[0]);
+	close(p_stdin[1]);
+	close(p_stdout[0]);
+	close(p_stdout[1]);
+        execl("/bin/sh","sh", cfgCustomCommandsShell.c_str(), NULL);
+        exit(1);
+      }
+      close(p_stdin[0]);
+      close(p_stdout[1]);
+      customCommandsShellFdIn = p_stdin[1];
+      customCommandsShellFdOut = p_stdout[0];
+      customCommandsShellPid = pid;
+      break;
+    }
+    if (customCommandsShellPid) {
+      theLog.log(LogInfoDevel_(3013), "Shell started for custom commands - pid %d", (int)customCommandsShellPid);
+    } else {
+      cfgCustomCommandsEnabled = 0;
+    }
   }
 
   return 0;
@@ -535,6 +585,22 @@ int Readout::configure(const boost::property_tree::ptree& properties)
   }
 
   // extract optional configuration parameters
+  // configuration parameter: | readout | customCommands | string | | List of key=value pairs defining some custom shell commands to be executed at before/after state change commands. |
+  if (customCommandsShellPid) {
+    std::string cfgCustomCommandsList;
+    customCommands.clear();
+    cfg.getOptionalValue<std::string>("readout.customCommands", cfgCustomCommandsList);
+    if (getKeyValuePairsFromString(cfgCustomCommandsList, customCommands)) {
+      theLog.log(LogWarningDevel_(3102), "Failed to parse custom commands");
+      customCommands.clear();
+    } else {
+      theLog.log(LogInfoDevel_(3013), "Registered custom commands:");
+      for (const auto &kv : customCommands) {
+	theLog.log(LogInfoDevel_(3013), "%s : %s", kv.first.c_str(), kv.second.c_str());
+      }
+    }
+  }
+
   // configuration parameter: | readout | exitTimeout | double | -1 | Time in seconds after which the program exits automatically. -1 for unlimited. |
   cfgExitTimeout = -1;
   cfg.getOptionalValue<double>("readout.exitTimeout", cfgExitTimeout);
@@ -590,6 +656,9 @@ int Readout::configure(const boost::property_tree::ptree& properties)
   // configuration parameter: | readout | flushEquipmentTimeout | double | 1 | Time in seconds to wait for data once the equipments are stopped. 0 means stop immediately. |
   cfgFlushEquipmentTimeout = 1;
   cfg.getOptionalValue<double>("readout.flushEquipmentTimeout", cfgFlushEquipmentTimeout);
+  // configuration parameter: | readout | flushConsumerTimeout | double | 1 | Time in seconds to wait before stopping the consumers (ie wait allocated pages released). 0 means stop immediately. |
+  cfgFlushConsumerTimeout = 1;
+  cfg.getOptionalValue<double>("readout.flushConsumerTimeout", cfgFlushConsumerTimeout);
   // configuration parameter: | readout | memoryPoolStatsEnabled | int | 0 | Global debugging flag to enable statistics on memory pool usage (printed to stdout when pool released). |
   int cfgMemoryPoolStatsEnabled = 0;
   cfg.getOptionalValue<int>("readout.memoryPoolStatsEnabled", cfgMemoryPoolStatsEnabled);
@@ -985,6 +1054,9 @@ int Readout::start()
   logbookTimer.reset(cfgLogbookUpdateInterval * 1000000);
   maxTimeframeId = 0;
 
+  // execute custom command
+  executeCustomCommand("preSTART");
+
   // cleanup exit conditions
   ShutdownRequest = 0;
 
@@ -1035,10 +1107,14 @@ int Readout::start()
   std::function<void(void)> l = std::bind(&Readout::loopRunning, this);
   runningThread = std::make_unique<std::thread>(l);
 
+  // execute custom command
+  executeCustomCommand("postSTART");
+
   theLog.log(LogInfoSupport_(3005), "Readout completed START");
   gReadoutStats.counters.state = stringToUint64("running");
   gReadoutStats.counters.notify++;
   gReadoutStats.publishNow();
+
   return 0;
 }
 
@@ -1172,6 +1248,9 @@ int Readout::stop()
   gReadoutStats.counters.notify++;
   gReadoutStats.publishNow();
 
+  // execute custom command
+  executeCustomCommand("preSTOP");
+
   // raise flag
   stopTimer.reset(cfgFlushEquipmentTimeout * 1000000); // add a delay before stopping aggregator - continune to empty FIFOs
   isRunning = 0;
@@ -1202,6 +1281,25 @@ int Readout::stop()
   theLog.log(LogInfoDevel, "Stopping aggregator");
   agg->stop();
 
+  // wait a bit if some pending data pages still in use
+  if (cfgFlushConsumerTimeout > 0) {
+    theLog.log(LogInfoDevel, "Waiting max %fs for data pages in use",cfgFlushConsumerTimeout);
+    stopTimer.reset(cfgFlushConsumerTimeout * 1000000);
+    for(;;) {
+      int totalPagesPending = 0;
+      for (auto&& readoutDevice : readoutDevices) {
+        size_t nPagesTotal = 0, nPagesFree = 0;
+        if (readoutDevice->getMemoryUsage(nPagesFree, nPagesTotal) == 0) {
+          totalPagesPending += nPagesTotal - nPagesFree;
+        }
+      }
+      if (stopTimer.isTimeout() || (totalPagesPending == 0)) {
+	break;
+      }
+      usleep(100000);
+    }
+  }
+
   theLog.log(LogInfoDevel, "Stopping consumers");
   // notify consumers of imminent data flow stop
   for (auto& c : dataConsumers) {
@@ -1231,6 +1329,9 @@ int Readout::stop()
     NumberOfBytesToString(gReadoutStats.counters.bytesReadout.load(), "bytes").c_str(),
     NumberOfBytesToString(gReadoutStats.counters.bytesRecorded.load(),"bytes").c_str()
   );
+
+  // execute custom command
+  executeCustomCommand("postSTOP");
 
   theLog.log(LogInfoSupport_(3005), "Readout completed STOP");
   gReadoutStats.counters.state = stringToUint64("ready");
@@ -1317,20 +1418,74 @@ int Readout::reset()
 }
 
 Readout::~Readout() {
+  if (cfgVerbose) {
+    theLog.log(LogInfoDevel, "Releasing resources");
+  }
+
   // in case some components still active, cleanup in order
   if (runningThread != nullptr) {
     stopTimer.reset(0);
     isRunning=0;
     runningThread->join();
   }
-  dataConsumers.clear();
   agg = nullptr;
   agg_output = nullptr;
   // ensure readout equipment threads stopped before releasing resources
   for (const auto &d : readoutDevices) {
     d->abortThread();
   }
-  readoutDevices.clear(); // after aggregator, because they own the data blocks
+  // after aggregator, because they own the data blocks
+  dataConsumers.clear();
+  readoutDevices.clear();
+
+  if (customCommandsShellPid) {
+    if (cfgVerbose) {
+      theLog.log(LogInfoDevel_(3013), "Closing custom command shell");
+    }
+    if (customCommandsShellFdIn >= 0) {
+      close(customCommandsShellFdIn);
+    }
+    if (customCommandsShellFdOut >= 0) {
+      close(customCommandsShellFdOut);
+    }
+    pid_t pidDone = 0;
+    int pidStatus;
+    for (int i=0; i<100; i++) {
+      pidDone = waitpid(customCommandsShellPid, &pidStatus, WNOHANG);
+      if (pidDone) {
+        break;
+      }
+      usleep(10000);
+    }
+    if (pidDone != customCommandsShellPid) {
+      theLog.log(LogInfoDevel_(3013), "Killing %d", (int)customCommandsShellPid);
+      kill(customCommandsShellPid, SIGKILL);
+    }
+  }
+
+  #ifdef WITH_DB
+  dbHandle = nullptr;
+  #endif
+}
+
+void Readout::executeCustomCommand(const char *stateChange) {
+  if (customCommandsShellPid) {
+    auto it = customCommands.find(stateChange);
+    if (it != customCommands.end()) {
+      theLog.log(LogInfoDevel_(3013), "Executing custom command for %s : %s", it->first.c_str(), it->second.c_str());
+      std::string cmd = it->second + "\n";
+      write(customCommandsShellFdIn, cmd.c_str(), cmd.length());
+      LineBuffer b;
+      const int cmdTimeout = 10000; // 10s timeout
+      b.appendFromFileDescriptor(customCommandsShellFdOut, cmdTimeout);
+      std::string result;
+      if (b.getNextLine(result) == 0) {
+        theLog.log(LogInfoDevel_(3013), "Command executed: %s", result.c_str());
+      } else {
+        theLog.log(LogInfoDevel_(3013), "Unknown command result");
+      }
+    }
+  }
 }
 
 #ifdef WITH_OCC
@@ -1771,6 +1926,10 @@ int main(int argc, char* argv[])
   gReadoutStats.stopPublish();
 
   theReadout = nullptr;
+
+  #ifdef WITH_DB
+  mysql_library_end();
+  #endif
 
   theLog.log(LogInfoSupport_(3001), "Readout process exiting");
   return 0;

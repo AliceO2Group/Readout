@@ -16,3 +16,22 @@ bytesMax=1G
 filesMax=0
 fileName=/tmp/data_%f.raw
 ```
+
+
+## How to launch custom commands on start/stop
+
+First, custom command shells must be enabled in the default readout settings `/etc/o2.d/readout-defaults.cfg`:
+```
+[readout]
+...
+customCommandsEnabled=1
+```
+This launches a sub-process shell on readout startup to execute commands later.
+
+Second, custom commands should be defined in the readout configuration file for associated state transitions: pre|post + START|STOP.
+For example, to start/stop internal ROC CTP emulator automatically with readout:
+```
+[readout]
+...
+customCommands=postSTART=roc-ctp-emulator --id=#1 --trigger-mode periodic --trigger-freq 40000 --hbmax 255 --bcmax 3563,preSTOP=o2-roc-ctp-emulator --id=#1 --eox
+```

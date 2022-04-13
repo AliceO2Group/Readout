@@ -439,3 +439,11 @@ This file describes the main feature changes for each readout.exe released versi
 
 ## v2.9.2 - 31/03/2022
 - Cosmetics improvements related to threads cleanup order on exit.
+
+## v2.10.0 - 13/04/2022
+- readout-monitor: added log file for received measurements.
+- added support for custom commands to be executed on states transitions.
+- Updated configuration parameters:
+  - readout.flushConsumerTimeout: when set, readout waits up to this amount of time that all data pages locked by consumers are released before stopping.
+- Added warning message on buffers low.
+- Added message at end of run showing the links which have provided data for each equipment and how much per link.

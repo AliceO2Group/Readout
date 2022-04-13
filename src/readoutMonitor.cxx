@@ -10,6 +10,7 @@
 // or submit itself to any jurisdiction.
 
 #include <Common/Configuration.h>
+#include <Common/SimpleLog.h>
 #include <InfoLogger/InfoLogger.hxx>
 #include <InfoLogger/InfoLoggerMacros.hxx>
 #include <map>
@@ -136,8 +137,8 @@ int main(int argc, const char** argv)
   int cfgRawBytes = 0;
   cfg.getOptionalValue<int>(cfgEntryPoint + ".outputFormat", cfgRawBytes);  
  
-   // configuration parameter: | readout-monitor | broadcastPort | int | 0 | when set, the process will create a listening TCP port and broadcast statistics to connected clients. |
-   // configuration parameter: | readout-monitor | broadcastHost | string | | used by readout-status to connect to readout-monitor broadcast channel. |
+  // configuration parameter: | readout-monitor | broadcastPort | int | 0 | when set, the process will create a listening TCP port and broadcast statistics to connected clients. |
+  // configuration parameter: | readout-monitor | broadcastHost | string | | used by readout-status to connect to readout-monitor broadcast channel. |
   int cfgBroadcastPort = 0;
   cfg.getOptionalValue<int>(cfgEntryPoint + ".broadcastPort", cfgBroadcastPort);
   std::unique_ptr<SocketRx> broadcastSocket;
@@ -145,6 +146,26 @@ int main(int argc, const char** argv)
     broadcastSocket = std::make_unique<SocketRx>("readoutMonitor", cfgBroadcastPort, &theLog);
   }
 
+  // configuration parameter: | readout-monitor | logFile | string | | when set, the process will log received metrics to a file. |
+  // configuration parameter: | readout-monitor | logFileMaxSize | int | 128 | defines the maximum size of log file (in MB). When reaching this threshold, the log file is rotated. |
+  // configuration parameter: | readout-monitor | logFileHistory | int | 1 | defines the maximum number of previous log files to keep, when a maximum size is set. |
+  bool metricsLogEnabled = 0;
+  std::string cfgLogFile = "";
+  int cfgLogFileMaxSize = 128;
+  int cfgLogFileHistory = 1;
+  cfg.getOptionalValue<std::string>(cfgEntryPoint + ".logFile", cfgLogFile);
+  cfg.getOptionalValue<int>(cfgEntryPoint + ".logFileMaxSize", cfgLogFileMaxSize);
+  cfg.getOptionalValue<int>(cfgEntryPoint + ".logFileHistory", cfgLogFileHistory);
+  SimpleLog metricsLog;
+  if (cfgLogFile != "") {
+    if (metricsLog.setLogFile(cfgLogFile.c_str(), cfgLogFileMaxSize * 1024L * 1024L, cfgLogFileHistory, 0) == 0) {
+      metricsLogEnabled = 1;
+      metricsLog.setOutputFormat(SimpleLog::FormatOption::ShowMessage);
+      theLog.log(LogInfoDevel_(3007), "Logging metrics to file %s", cfgLogFile.c_str());
+    } else {
+      theLog.log(LogWarningDevel_(3232), "Could not create metrics log file %s", cfgLogFile.c_str());
+    }
+  }
   
   // maximum size of incoming ZMQ messages
   const int cfgMaxMsgSize = sizeof(ReadoutStatsCounters);
@@ -301,6 +322,15 @@ int main(int argc, const char** argv)
         broadcastSocket->broadcast(buf);
       } else {
         printf("%s",buf);
+      }
+
+      if (metricsLogEnabled) {
+        // remove trailing EOL
+	int l = strlen(buf);
+	if (l) {
+	  buf[strlen(buf)-1] = 0;
+	}
+        metricsLog.info("%s", buf);
       }
     }
     previousSampleTime = t;

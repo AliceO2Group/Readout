@@ -534,3 +534,9 @@ install(
 	DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
 	RENAME o2-readout-status
 )
+
+install(
+	PROGRAMS src/readoutCommandLauncher.sh
+	DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
+	RENAME o2-readout-command-launcher
+)

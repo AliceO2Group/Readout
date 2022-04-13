@@ -48,7 +48,7 @@ ReadoutEquipment::ReadoutEquipment(ConfigFile& cfg, std::string cfgEntryPoint, b
   cfg.getOptionalValue<double>("readout.rate", readoutRate, -1.0);
 
   // configuration parameter: | equipment-* | idleSleepTime | int | 200 | Thread idle sleep time, in microseconds. |
-  int cfgIdleSleepTime = 200;
+  cfgIdleSleepTime = 200;
   cfg.getOptionalValue<int>(cfgEntryPoint + ".idleSleepTime", cfgIdleSleepTime);
 
   // size of equipment output FIFO
@@ -201,6 +201,8 @@ ReadoutEquipment::ReadoutEquipment(ConfigFile& cfg, std::string cfgEntryPoint, b
   if (mp == nullptr) {
     theLog.log(LogErrorSupport_(3230), "Failed to create pool of memory pages");
     throw __LINE__;
+  } else {
+    mp -> setWarningCallback(std::bind(&ReadoutEquipment::mplog, this, std::placeholders::_1));
   }
   // todo: move page align to MemoryPool class
   assert(pageSpaceReserved == mp->getPageSize() - mp->getDataBlockMaxSize());
@@ -227,6 +229,9 @@ void ReadoutEquipment::start()
     equipmentStats[i].reset();
     equipmentStatsLast[i] = 0;
   }
+  equipmentLinksUsed.reset();
+  equipmentLinksData.resize(RdhMaxLinkId + 1);
+  equipmentLinksData.clear();
   isError = 0;
   currentBlockId = 0;
   isDataOn = false;
@@ -280,6 +285,15 @@ void ReadoutEquipment::stop()
   theLog.log(LogInfoDevel_(3003), "Average pages pushed per iteration: %.1f", equipmentStats[EquipmentStatsIndexes::nBlocksOut].get() * 1.0 / (equipmentStats[EquipmentStatsIndexes::nLoop].get() - equipmentStats[EquipmentStatsIndexes::nIdle].get()));
   theLog.log(LogInfoDevel_(3003), "Average fifoready occupancy: %.1f", equipmentStats[EquipmentStatsIndexes::fifoOccupancyFreeBlocks].get() * 1.0 / (equipmentStats[EquipmentStatsIndexes::nLoop].get() - equipmentStats[EquipmentStatsIndexes::nIdle].get()));
   theLog.log(LogInfoDevel_(3003), "Average data throughput: %s", ReadoutUtils::NumberOfBytesToString(equipmentStats[EquipmentStatsIndexes::nBytesOut].get() / runningTime, "B/s").c_str());
+  theLog.log(LogInfoDevel_(3003), "Links used: %s", equipmentLinksUsed.to_string().c_str());
+
+  std::string perLinkStats;
+  for (unsigned int i = 0; i<= RdhMaxLinkId; i++) {
+    if (equipmentLinksUsed[i]) {
+      perLinkStats += "[" + std::to_string(i) + "]=" + NumberOfBytesToString(equipmentLinksData[i], "B", 1024) + " ";
+    }
+  }
+  theLog.log(LogInfoDevel_(3003), "Links data received: %s", perLinkStats.c_str());
 }
 
 ReadoutEquipment::~ReadoutEquipment()
@@ -678,6 +692,13 @@ int ReadoutEquipment::processRdh(DataBlockContainerReference& block)
       cfgRdhDumpFirstInPageEnabled++;
     }
 
+    // update links statistics
+    if (h.getLinkId() <= RdhMaxLinkId) {
+      equipmentLinksUsed[h.getLinkId()] = 1;
+      equipmentLinksData[h.getLinkId()] += blockHeader.dataSize;
+    }
+
+
     // detect changes in detector bits field
     if (cfgRdhCheckDetectorField) {
       if (isDefinedLastDetectorField) {
@@ -829,4 +850,9 @@ int ReadoutEquipment::processRdh(DataBlockContainerReference& block)
 void ReadoutEquipment::abortThread() {
   // ensure thread is stopped
   readoutThread = nullptr;
+}
+
+void ReadoutEquipment::mplog(const std::string &msg) {
+  static InfoLogger::AutoMuteToken logMPToken(LogWarningSupport_(3230), 10, 60);
+  theLog.log(logMPToken, "Equipment %s : %s", name.c_str(), msg.c_str());
 }

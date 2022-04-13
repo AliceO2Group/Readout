@@ -27,6 +27,7 @@
   { 3010, "Trace for readout hardware operations and status", nullptr},
   { 3011, "Trace for readout data stream content", nullptr},
   { 3012, "Trace for readout database operations", nullptr},
+  { 3013, "Trace for readout shell commands", nullptr},
 
   { 3100, "Configuration problem", nullptr},
   { 3101, "A feature is configured but not supported by this readout build.", nullptr},

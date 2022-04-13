@@ -71,7 +71,7 @@ void incDataBlockStats(DataBlock* b)
     s->t0 = timeNowMicrosec();
     gReadoutStats.counters.pagesPendingFairMQ++;
     gReadoutStats.counters.notify++;
-    // printf("init %p\n",b);
+    // printf("init %p -> pages locked = %lu\n",b,(unsigned long)gReadoutStats.counters.pagesPendingFairMQ);
   }
 }
 
@@ -111,6 +111,12 @@ class ConsumerFMQchannel : public Consumer
   int memoryPoolNumberOfPages;
 
   CounterStats repackSizeStats; // keep track of page size used when repacking
+
+  // custom log function for memory pool
+  void mplog(const std::string &msg) {
+    static InfoLogger::AutoMuteToken logMPToken(LogWarningSupport_(3230), 10, 60);
+    theLog.log(logMPToken, "Consumer %s : %s", name.c_str(), msg.c_str());
+  }
 
  public:
   std::vector<FairMQMessagePtr> messagesToSend; // collect HBF messages of each update
@@ -278,6 +284,8 @@ class ConsumerFMQchannel : public Consumer
     mp = theMemoryBankManager.getPagedPool(memoryPoolPageSize, memoryPoolNumberOfPages, memoryBankName);
     if (mp == nullptr) {
       throw "ConsumerFMQ: failed to get memory pool from " + memoryBankName + " for " + std::to_string(memoryPoolNumberOfPages) + " pages x " + std::to_string(memoryPoolPageSize) + " bytes";
+    } else {
+      mp -> setWarningCallback(std::bind(&ConsumerFMQchannel::mplog, this, std::placeholders::_1));
     }
     theLog.log(LogInfoDevel_(3008), "Using memory pool %d pages x %d bytes", memoryPoolNumberOfPages, memoryPoolPageSize);
   }

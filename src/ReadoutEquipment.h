@@ -14,6 +14,7 @@
 #include <Common/Thread.h>
 #include <Common/Timer.h>
 #include <memory>
+#include <bitset>
 
 #include "CounterStats.h"
 #include "DataBlock.h"
@@ -112,6 +113,8 @@ class ReadoutEquipment
   // Counter values, updated at runtime
   std::vector<CounterStats> equipmentStats;
   std::vector<CounterValue> equipmentStatsLast;
+  std::bitset<RdhMaxLinkId + 1> equipmentLinksUsed;
+  std::vector<uint64_t> equipmentLinksData;
 
   double cfgConsoleStatsUpdateTime = 0;     // number of seconds between regular printing of statistics on console (if zero, only on stop)
   AliceO2::Common::Timer consoleStatsTimer; // timer to keep track of elapsed time between console statistics updates
@@ -128,12 +131,15 @@ class ReadoutEquipment
   int memoryPoolPageSize = 0;          // size if each page in pool
   int memoryPoolNumberOfPages = 0;     // number of pages in pool
   std::string memoryBankName = "";     // memory bank to be used. by default, this uses the first memory bank available
+  void mplog(const std::string &);     // custom log function for memory pool
 
   int disableOutput = 0; // when set true, data are dropped before pushing to output queue
 
   size_t pageSpaceReserved = 0; // amount of space reserved (in bytes) at beginning of each data page, possibly to store header
 
   int debugFirstPages = 0; // print debug info on first number of pages read
+
+  int cfgIdleSleepTime; // the idle sleep time for the equipment thread
 
  private:
   int tagDatablockFromRdh(RdhHandle& RDH, DataBlockHeader& h);

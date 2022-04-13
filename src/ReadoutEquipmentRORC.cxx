@@ -201,7 +201,8 @@ Thread::CallbackResult ReadoutEquipmentRORC::prepareBlocks()
     if ((currentPacketDropped != lastPacketDropped) && (!isWaitingFirstLoop)) {
       int32_t newPacketDropped = (currentPacketDropped - lastPacketDropped);
       if (newPacketDropped > 0) {
-        theLog.log(LogWarningSupport_(3235), "Equipment %s: CRU has dropped packets (new=%d total=%d)", name.c_str(), newPacketDropped, currentPacketDropped);
+        static InfoLogger::AutoMuteToken logToken(LogWarningSupport_(3235), 10, 60);
+        theLog.log(logToken, "Equipment %s: CRU has dropped packets (new=%d total=%d)", name.c_str(), newPacketDropped, currentPacketDropped);
         if (stopOnError) {
           theLog.log(LogErrorSupport_(3235), "Equipment %s: some data has been lost)", name.c_str());
         }
@@ -218,11 +219,9 @@ Thread::CallbackResult ReadoutEquipmentRORC::prepareBlocks()
 
   // keep track of situations where the queue is completely empty
   // this means we have not filled it fast enough (except in first loop, where it's normal it is empty)
-  if (isWaitingFirstLoop) {
-    isWaitingFirstLoop = false;
-  } else {
+  if (!isWaitingFirstLoop) {
     int nFreeSlots = channel->getTransferQueueAvailable();
-    if (nFreeSlots == RocFifoSize) {
+    if (nFreeSlots >= RocFifoSize -1 ) {
       equipmentStats[EquipmentStatsIndexes::nFifoUpEmpty].increment();
     }
     equipmentStats[EquipmentStatsIndexes::fifoOccupancyFreeBlocks].set(nFreeSlots);
@@ -263,7 +262,7 @@ Thread::CallbackResult ReadoutEquipmentRORC::prepareBlocks()
 
   // check fifo occupancy ready queue size for stats
   equipmentStats[EquipmentStatsIndexes::fifoOccupancyReadyBlocks].set(channel->getReadyQueueSize());
-  if (channel->getReadyQueueSize() == RocFifoSize) {
+  if (channel->getReadyQueueSize() >= RocFifoSize - 1) {
     equipmentStats[EquipmentStatsIndexes::nFifoReadyFull].increment();
   }
 
@@ -282,6 +281,11 @@ Thread::CallbackResult ReadoutEquipmentRORC::prepareBlocks()
 
   // from time to time, we may monitor temperature
   // virtual boost::optional<float> getTemperature() = 0;
+
+  // first loop now completed
+  if (isWaitingFirstLoop) {
+    isWaitingFirstLoop = false;
+  }
 
   if (!isActive) {
     return Thread::CallbackResult::Idle;
@@ -360,6 +364,7 @@ void ReadoutEquipmentRORC::setDataOn()
     channel->startDma();
 
     // get FIFO depth (it should be fully empty when starting)
+    // can not be done before startDma() - would return 0
     RocFifoSize = channel->getTransferQueueAvailable();
     theLog.log(LogInfoDevel_(3010), "ROC input queue size = %d pages", RocFifoSize);
     if (RocFifoSize == 0) {
@@ -372,6 +377,22 @@ void ReadoutEquipmentRORC::setDataOn()
     }
   }
   ReadoutEquipment::setDataOn();
+
+  // wait confirmation that 1st loop executed before returning
+  // this ensures ROC buffer populated before declaring "running"
+  AliceO2::Common::Timer firstLoopTimeout;
+  firstLoopTimeout.reset(cfgIdleSleepTime * 100);
+  for (;;) {
+    if (!isWaitingFirstLoop) {
+      theLog.log(LogInfoDevel_(3010), "Buffers ready for ROC %s", getName().c_str());
+      break;
+    }
+    if (firstLoopTimeout.isTimeout()) {
+      theLog.log(LogInfoDevel_(3010), "Buffers not yet ready for ROC %s", getName().c_str());
+      break;
+    }
+    usleep(cfgIdleSleepTime / 4);
+  }
 }
 
 void ReadoutEquipmentRORC::setDataOff()
