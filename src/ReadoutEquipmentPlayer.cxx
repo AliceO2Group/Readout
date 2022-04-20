@@ -54,6 +54,7 @@ class ReadoutEquipmentPlayer : public ReadoutEquipment
   PacketHeader lastPacketHeader; // keep track of last packet header
 
   uint32_t orbitOffset = 0; // to be applied to orbit after 1st loop
+  int cfgUpdateOrbits = 1; // when set, all RDHs are modified to update orbit, according to orbitOffset
 
   void copyFileDataToPage(void* page); // fill given page with file data according to current settings
 };
@@ -97,11 +98,16 @@ ReadoutEquipmentPlayer::ReadoutEquipmentPlayer(ConfigFile& cfg, std::string cfgE
   cfg.getOptionalValue<int>(cfgEntryPoint + ".fillPage", fillPage, 1);
   // configuration parameter: | equipment-player-* | autoChunk | int | 0 | When set, the file is replayed once, and cut automatically in data pages compatible with memory bank settings and RDH information. In this mode the preLoad and fillPage options have no effect. |
   cfg.getOptionalValue<int>(cfgEntryPoint + ".autoChunk", autoChunk, 0);
-  // configuration parameter: | equipment-player-* | autoChunkLoop | int | 0 | When set, the file is replayed in loops. Trigger orbit counter in RDH are modified for iterations after the first one, so that they keep increasing. If value is negative, only that number of loop is executed (-5 -> 5x replay). |
+  // configuration parameter: | equipment-player-* | autoChunkLoop | int | 0 | When set, the file is replayed in loops. If value is negative, only that number of loop is executed (-5 -> 5x replay). |
   cfg.getOptionalValue<int>(cfgEntryPoint + ".autoChunkLoop", autoChunkLoop, 0);
+  // configuration parameter: | equipment-player-* | updateOrbits | int | 1 | When set, trigger orbit counters in all RDH are modified for iterations after the first one (in file loop replay mode), so that they keep increasing. |
+  cfg.getOptionalValue<int>(cfgEntryPoint + ".updateOrbits", cfgUpdateOrbits, 1);
 
   // log config summary
-  theLog.log(LogInfoDevel_(3002), "Equipment %s: using data source file=%s preLoad=%d fillPage=%d autoChunk=%d autoChunkLoop=%d", name.c_str(), filePath.c_str(), preLoad, fillPage, autoChunk, autoChunkLoop);
+  theLog.log(LogInfoDevel_(3002), "Equipment %s: using data source file=%s preLoad=%d fillPage=%d autoChunk=%d autoChunkLoop=%d updateOrbits=%d", name.c_str(), filePath.c_str(), preLoad, fillPage, autoChunk, autoChunkLoop, cfgUpdateOrbits);
+  if ((!cfgUpdateOrbits)&&(autoChunkLoop)) {
+    theLog.log(LogWarningDevel_(3104), "Equipment %s: RDH orbits auto-update is disabled, generated data will be inconsistent (TFid and orbit counters mismatch)", name.c_str());
+  }
 
   // open data file
   fp = fopen(filePath.c_str(), "rb");
@@ -205,6 +211,10 @@ DataBlockContainerReference ReadoutEquipmentPlayer::getNextBlock()
     // no need to fill header defaults, this is done by getNewDataBlockContainer()
     // only adjust payload size
     b->header.dataSize = 0;
+    // and possibly set orbit offset
+    if (!cfgUpdateOrbits) {
+      b->header.orbitOffset = orbitOffset;
+    }
 
     if (autoChunk) {
       bool isOk = 1;
@@ -231,6 +241,7 @@ DataBlockContainerReference ReadoutEquipmentPlayer::getNextBlock()
                 loopCount++;
                 fileOffset = 0;
                 orbitOffset = lastPacketHeader.timeframeId * getTimeframePeriodOrbits();
+		// printf("loop %d: offset = %X\n",(int)loopCount, (int)orbitOffset);
                 isOk = 1;
               }
             }
@@ -251,7 +262,7 @@ DataBlockContainerReference ReadoutEquipmentPlayer::getNextBlock()
               isOk = 0;
               break;
             }
-            if (orbitOffset) {
+            if (cfgUpdateOrbits) {
               // update RDH orbit when applicable
               h.incrementHbOrbit(orbitOffset);
             }
@@ -261,7 +272,7 @@ DataBlockContainerReference ReadoutEquipmentPlayer::getNextBlock()
             currentPacketHeader.linkId = (int)h.getLinkId();
             currentPacketHeader.equipmentId = (int)(h.getCruId() * 10 + h.getEndPointId());
 
-            int hbOrbit = h.getHbOrbit();
+            int hbOrbit = h.getHbOrbit() + b->header.orbitOffset;
             currentPacketHeader.timeframeId = getTimeframeFromOrbit(hbOrbit);
 
             // fill page metadata

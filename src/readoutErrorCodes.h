@@ -33,6 +33,7 @@
   { 3101, "A feature is configured but not supported by this readout build.", nullptr},
   { 3102, "Syntax error in configuration.", nullptr},
   { 3103, "Inconsistent parameters in configuration.", nullptr},
+  { 3104, "Some valid but unsafe configuration parameters are used.", nullptr},
 
   { 3210, "Logbook problem", nullptr},
   { 3220, "Timeframe server problem", nullptr},

@@ -634,8 +634,9 @@ int ReadoutEquipment::tagDatablockFromRdh(RdhHandle& h, DataBlockHeader& bh)
     isError = 1;
   } else {
     // timeframe ID
-    hbOrbit = h.getHbOrbit();
+    hbOrbit = h.getHbOrbit() + bh.orbitOffset;
     tfId = getTimeframeFromOrbit(hbOrbit);
+    // printf("orbit %X + offset %X = %X -> TFid %d\n",(int)h.getHbOrbit(), (int)bh.orbitOffset, (int)hbOrbit, (int)tfId);
 
     // system ID
     systemId = h.getSystemId();
@@ -661,6 +662,9 @@ int ReadoutEquipment::tagDatablockFromRdh(RdhHandle& h, DataBlockHeader& bh)
   bh.equipmentId = equipmentId;
   bh.linkId = linkId;
   getTimeframeOrbitRange(tfId, bh.timeframeOrbitFirst, bh.timeframeOrbitLast);
+  bh.timeframeOrbitFirst -= bh.orbitOffset;
+  bh.timeframeOrbitLast -= bh.orbitOffset;
+  // printf("TF %d eq %d link %d : orbits %X - %X\n", (int)bh.timeframeId, (int)bh.equipmentId, (int)bh.linkId, (int)bh.timeframeOrbitFirst, (int)bh.timeframeOrbitLast);
   return isError;
 }
 
