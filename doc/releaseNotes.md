@@ -447,3 +447,7 @@ This file describes the main feature changes for each readout.exe released versi
   - readout.flushConsumerTimeout: when set, readout waits up to this amount of time that all data pages locked by consumers are released before stopping.
 - Added warning message on buffers low.
 - Added message at end of run showing the links which have provided data for each equipment and how much per link.
+
+## v2.10.1 - 20/04/2022
+- Updated configuration parameters:
+  - equipment-file-*.updateOrbits: when set to zero, RDH orbits are not updated in file loop replay. This is needed for some reconstruction tests. This however creates a stream of data with inconsistent orbit ids and mismatching timeframe information.

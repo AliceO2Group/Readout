@@ -132,10 +132,11 @@ The parameters related to 3rd-party libraries are described here for convenience
 | equipment-dummy-* | eventMinSize | bytes | 128k | Minimum size of randomly generated event. |
 | equipment-dummy-* | fillData | int | 0 | Pattern used to fill data page: (0) no pattern used, data page is left untouched, with whatever values were in memory (1) incremental byte pattern (2) incremental word pattern, with one random word out of 5. |
 | equipment-player-* | autoChunk | int | 0 | When set, the file is replayed once, and cut automatically in data pages compatible with memory bank settings and RDH information. In this mode the preLoad and fillPage options have no effect. |
-| equipment-player-* | autoChunkLoop | int | 0 | When set, the file is replayed in loops. Trigger orbit counter in RDH are modified for iterations after the first one, so that they keep increasing. If value is negative, only that number of loop is executed (-5 -> 5x replay). |
+| equipment-player-* | autoChunkLoop | int | 0 | When set, the file is replayed in loops. If value is negative, only that number of loop is executed (-5 -> 5x replay). |
 | equipment-player-* | filePath | string | | Path of file containing data to be injected in readout. |
 | equipment-player-* | fillPage | int | 1 | If 1, content of data file is copied multiple time in each data page until page is full (or almost full: on the last iteration, there is no partial copy if remaining space is smaller than full file size). If 0, data file is copied exactly once in each data page. |
 | equipment-player-* | preLoad | int | 1 | If 1, data pages preloaded with file content on startup. If 0, data is copied at runtime. |
+| equipment-player-* | updateOrbits | int | 1 | When set, trigger orbit counters in all RDH are modified for iterations after the first one (in file loop replay mode), so that they keep increasing. |
 | equipment-rorc-* | cardId | string | | ID of the board to be used. Typically, a PCI bus device id. c.f. AliceO2::roc::Parameters. |
 | equipment-rorc-* | channelNumber | int | 0 | Channel number of the board to be used. Typically 0 for CRU, or 0-5 for CRORC. c.f. AliceO2::roc::Parameters. |
 | equipment-rorc-* | cleanPageBeforeUse | int | 0 | If set, data pages are filled with zero before being given for writing by device. Slow, but usefull to readout incomplete pages (driver currently does not return correctly number of bytes written in page. |
@@ -148,9 +149,11 @@ The parameters related to 3rd-party libraries are described here for convenience
 | equipment-zmq-* | type | string | SUB | Type of ZMQ socket to use to get data (PULL, SUB). |
 | readout | aggregatorSliceTimeout | double | 0 | When set, slices (groups) of pages are flushed if not updated after given timeout (otherwise closed only on beginning of next TF, or on stop). |
 | readout | aggregatorStfTimeout | double | 0 | When set, subtimeframes are buffered until timeout (otherwise, sent immediately and independently for each data source). |
+| readout | customCommands | string | | List of key=value pairs defining some custom shell commands to be executed at before/after state change commands. |
 | readout | disableAggregatorSlicing | int | 0 | When set, the aggregator slicing is disabled, data pages are passed through without grouping/slicing. |
 | readout | disableTimeframes | int | 0 | When set, all timeframe related features are disabled (this may supersede other config parameters). |
 | readout | exitTimeout | double | -1 | Time in seconds after which the program exits automatically. -1 for unlimited. |
+| readout | flushConsumerTimeout | double | 1 | Time in seconds to wait before stopping the consumers (ie wait allocated pages released). 0 means stop immediately. |
 | readout | flushEquipmentTimeout | double | 1 | Time in seconds to wait for data once the equipments are stopped. 0 means stop immediately. |
 | readout | logbookApiToken | string | | The token to be used for the logbook API. |
 | readout | logbookEnabled | int | 0 | When set, the logbook is enabled and populated with readout stats at runtime. |
