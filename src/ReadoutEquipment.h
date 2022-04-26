@@ -175,8 +175,8 @@ class ReadoutEquipment
 
   bool isRdhEquipment = false; // to be set true for RDH equipments
 
-  bool isDefinedLastDetectorField = 0;
-  uint32_t lastDetectorField = 0; // keep track of RDH DetectorField to detect changes
+  bool isDefinedLastDetectorField[RdhMaxLinkId+1] = {0};
+  uint32_t lastDetectorField[RdhMaxLinkId+1] = {0}; // keep track of RDH DetectorField per link to detect changes
 
   int processRdh(DataBlockContainerReference& nextBlock);
 
