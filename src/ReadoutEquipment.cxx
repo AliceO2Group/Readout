@@ -566,8 +566,10 @@ void ReadoutEquipment::initCounters()
     currentTimeframe = 1;
   }
 
-  isDefinedLastDetectorField = 0;
-  lastDetectorField = 0;
+  for (uint8_t i = 0; i <= RdhMaxLinkId; i++) {
+    isDefinedLastDetectorField[i] = 0;
+    lastDetectorField[i] = 0;
+  }
 };
 
 void ReadoutEquipment::finalCounters()
@@ -678,6 +680,26 @@ int ReadoutEquipment::processRdh(DataBlockContainerReference& block)
     return -1;
   }
 
+  // function to detect changes in detector bits field
+  auto checkChangesInDetectorField = [&] (RdhHandle &h, int pageOffset) {
+    int hasChanged = 0;
+    uint8_t lid = h.getLinkId();
+    if (lid>RdhMaxLinkId) {return -1;}
+    if (cfgRdhCheckDetectorField) {
+      if (isDefinedLastDetectorField[lid]) {
+	if (h.getDetectorField() != lastDetectorField[lid]) {
+          theLog.log(LogInfoDevel_(3011), "Equipment %s Link %d: change in detector field detected: 0x%X -> 0x%X (orbit 0x%X page offset 0x%X)", name.c_str(), (int)lid, (int)lastDetectorField[lid], (int)h.getDetectorField(), (int)h.getHbOrbit(), (int)pageOffset);
+	  hasChanged = 1;
+	}
+      } else {
+        theLog.log(LogInfoDevel_(3011), "Equipment %s link %d: first detector field : 0x%X", name.c_str(), (int)lid, (int)h.getDetectorField());
+      }
+      lastDetectorField[lid] = h.getDetectorField();
+      isDefinedLastDetectorField[lid] = 1;
+    }
+    return hasChanged;
+  };
+
   // retrieve metadata from RDH, if configured to do so
   if ((cfgRdhUseFirstInPageEnabled) || (cfgRdhCheckEnabled)) {
     RdhHandle h(blockData);
@@ -702,17 +724,8 @@ int ReadoutEquipment::processRdh(DataBlockContainerReference& block)
       equipmentLinksData[h.getLinkId()] += blockHeader.dataSize;
     }
 
-
-    // detect changes in detector bits field
-    if (cfgRdhCheckDetectorField) {
-      if (isDefinedLastDetectorField) {
-	if (h.getDetectorField() != lastDetectorField) {
-          theLog.log(LogInfoDevel_(3011), "Equipment %s: change in detector field detected: 0x%X -> 0x%X", name.c_str(), (int)lastDetectorField, (int)h.getDetectorField());
-	}
-      }
-      lastDetectorField = h.getDetectorField();
-      isDefinedLastDetectorField = 1;
-    }
+    // check detector field
+    checkChangesInDetectorField(h,0);
   }
 
   // Dump RDH if configured to do so
@@ -795,10 +808,15 @@ int ReadoutEquipment::processRdh(DataBlockContainerReference& block)
       }
       
       if ((isDefinedLastDetectorField)&&(pageOffset)) {
-      if (h.getDetectorField() != lastDetectorField) {
-        theLog.log(LogWarningDevel_(3011), "Equipment %s: change in detector field detected: 0x%X -> 0x%X", name.c_str(), (int)lastDetectorField, (int)h.getDetectorField());
+        if (checkChangesInDetectorField(h, pageOffset)) {
+	   if (cfgRdhDumpWarningEnabled) {
+             theLog.log(logRdhErrorsToken, "Equipment %d Link %d RDH #%d @ 0x%X : detector field changed not at page beginning", id, (int)blockHeader.linkId, rdhIndexInPage, (unsigned int)pageOffset);
+            isPageError = 1;
+          }
+          statsRdhCheckStreamErr++;
+          break; // stop checking this page
+	}
       }
-    }
       /*
       // check packetCounter is contiguous
       if (cfgRdhCheckPacketCounterContiguous) {
