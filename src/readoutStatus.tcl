@@ -131,7 +131,7 @@ pack .fDetail -side bottom -fill x
 font create font_flp -family monospace -size [expr -int($szx / $nix)]
 font create font_det -family verdana -size [expr -int($szx / $nix)] -weight bold
 
-label .fDetail.descr -textvariable description -height 10
+label .fDetail.descr -textvariable description -height 10 -justify left
 # -bg "#BBBBBB"
 pack .fDetail.descr -fill both
 
@@ -431,10 +431,31 @@ if {1} {
 }
 
 
+proc NumberOfBytesToString {value suffix} {
+  set prefixes { " " "k" "M" "G" "T" "P" }
+  set maxPrefixIndex [llength $prefixes]
+  set prefixIndex [expr int(floor(log($value) / log(1024)))]
+  if {$prefixIndex > $maxPrefixIndex} {
+    set prefixIndex $maxPrefixIndex
+  }
+  if {$prefixIndex < 0} {
+    set prefixIndex 0
+  }
+  set scaledValue [expr $value / pow(1024, $prefixIndex)]
+  set l [expr int(floor(log10(abs($scaledValue))))]
+  if {$l < 0} {
+    set l 3
+  } elseif {$l <= 3} {
+    set l [expr 3 - $l]
+  } else {
+    set l 0
+  }
+  return [format "%.*f %s%s" $l $scaledValue [lindex $prefixes $prefixIndex] $suffix];
+}
 
 # parse output of readoutMonitor
 proc updateNode {metrics} {
-  foreach {t nn s nstf bytesReadout bytesRecorded bytesFMQ pagesPendingFMQ nRFMQ avgtFMQ tfidFMQ} $metrics {
+  foreach {t nn s nstf bytesReadout bytesRecorded bytesFMQ pagesPendingFMQ nRFMQ avgtFMQ tfidFMQ bufferUsage} $metrics {
     global v_x v_ix
     global cw rowh y0_states
     global v_color bgcolor_highlight activeC
@@ -460,8 +481,18 @@ proc updateNode {metrics} {
        set ll ""
      }
 
-     global description     
-     set description "FLP $n $ll\nLast update: [clock format [expr int($t)]]\nState: $s\nbytesReadout = $bytesReadout"
+     global description
+     set st [clock format [expr int($t)] -format "%d-%m-%Y %H:%M:%S"]
+     set sb [NumberOfBytesToString $bytesReadout "bytes"]
+     set sbuf {}
+     set i 0
+     foreach v [split $bufferUsage ","] {
+       if {$v!=""} {lappend sbuf "\[$i\]:$v%"}
+       incr i
+     }
+     set sbuf [join $sbuf " "]
+     set savgtFMQ [format "%.2f" $avgtFMQ]
+     set description "FLP $n $ll\nLast update: ${st}\nState: $s\nbytesReadout = $sb\nFMQ stats:\t pending=$pagesPendingFMQ\t release rate=${nRFMQ} Hz\t latency=:${savgtFMQ}s\nBuffer stats: $sbuf"
     }
   }
 }
@@ -490,7 +521,10 @@ proc processInput {} {
       puts "Msg: $msg"
     }
     set lm [split $msg "\t"]
-    if {[llength $lm]!=11} {break}
+    if {[llength $lm]!=12} {
+      puts "Warning: input data has wrong number of columns"
+      break
+    }
     updateNode $lm
   }
   fileevent $server_fd readable processInput
