@@ -18,6 +18,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <mutex>
 
 #include "CounterStats.h"
 #include "DataBlockContainer.h"
@@ -43,7 +44,8 @@ class MemoryPagesPool
   // - size of memory block in bytes (if zero, assuming it is big enough for page number * page size - not taking into account firstPageOffset is set)
   // - a release callback to be called at destruction time
   // - firstPageOffset is the offset of first page from base address. This is to control alignment. All pages are created contiguous from this point. If non-zero, this may reduce number of pages created compared to request (as to fit in base size)
-  MemoryPagesPool(size_t pageSize, size_t numberOfPages, void* baseAddress, size_t baseSize = 0, ReleaseCallback callback = nullptr, size_t firstPageOffset = 0);
+  // - id: an optional identifier
+  MemoryPagesPool(size_t pageSize, size_t numberOfPages, void* baseAddress, size_t baseSize = 0, ReleaseCallback callback = nullptr, size_t firstPageOffset = 0, int id = -1);
 
   // destructor
   ~MemoryPagesPool();
@@ -59,6 +61,7 @@ class MemoryPagesPool
   size_t getNumberOfPagesAvailable(); // get number of pages currently available
   void* getBaseBlockAddress();        // get the base address of memory pool block
   size_t getBaseBlockSize();          // get the  size of memory pool block. All pages guaranteed to be within &baseBlockAddress[0] and &baseBlockAddress[baseBlockSize]
+  int getId();                        // get pool identifier, as set on creation
 
   // get an empty data block container from the pool
   // parameters:
@@ -77,6 +80,7 @@ class MemoryPagesPool
   typedef std::function<void(const std::string &)> LogCallback;
 
   void setWarningCallback(const LogCallback& cb, double thHigh = 0.9, double thOk = 0.8);
+  void setBufferStateVariable(std::atomic<double> *bufferStateVar); // the provided variable is updated continuously with the buffer usage ratio (0.0 empty -> 1.0 full)
 
  private:
 
@@ -87,8 +91,10 @@ class MemoryPagesPool
   enum BufferState {empty, high, full};
   BufferState state = BufferState::empty;
   void updateBufferState();
+  std::atomic<double> *pBufferState = nullptr; // when set, the pointed variable is updated everytime updateBufferState() is called
 
   std::unique_ptr<AliceO2::Common::Fifo<void*>> pagesAvailable; // a buffer to keep track of individual pages
+  std::mutex pagesAvailableMutexPush; // a lock to avoid concurrent push-back of free pages to fifo
 
   size_t numberOfPages;                           // number of pages
   size_t pageSize;                                // size of each page, in bytes
@@ -124,6 +130,7 @@ class MemoryPagesPool
   CounterStats t1, t2, t3, t4;
   
   CounterStats poolStats; // keep track of number of free pages in the pool 
+  int id = -1; // unique identifier for this pool
 };
 
 #endif // #ifndef _MEMORYPAGESPOOL_H

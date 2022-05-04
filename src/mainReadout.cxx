@@ -1039,7 +1039,7 @@ int Readout::start()
 {
   theLog.resetMessageCount();
   theLog.log(LogInfoSupport_(3005), "Readout executing START");
-  gReadoutStats.reset();
+  gReadoutStats.reset(1);
   gReadoutStats.counters.state = stringToUint64("> start");
   gReadoutStats.counters.notify++;
   gReadoutStats.publishNow();

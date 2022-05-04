@@ -46,7 +46,7 @@ ReadoutStats::~ReadoutStats() {
   zmqCleanup();
 }
 
-void ReadoutStats::reset()
+void ReadoutStats::reset(bool lightReset)
 {
   counters.notify = 0;
   
@@ -65,6 +65,12 @@ void ReadoutStats::reset()
   counters.timeframeIdFairMQ = 0;
 
   counters.firstOrbit = undefinedOrbit;
+
+  if (!lightReset) {
+    for (unsigned int i = 0; i < ReadoutStatsMaxItems; i++) {
+      counters.bufferUsage[i] = -1.0;
+    }
+  }
 }
 
 void ReadoutStats::print()

@@ -41,6 +41,7 @@ std::shared_ptr<MemoryPagesPool> MemoryBankManager::getPagedPool(size_t pageSize
   void* baseAddress = nullptr; // base address of bank from which the block is taken
   size_t offset = 0;           // offset of new block (relative to baseAddress)
   size_t blockSize = 0;        // size of new block (in bytes)
+  int newId = 0;
 
   // disable concurrent execution of this block
   // automatic release of lock when going out of scope
@@ -109,11 +110,12 @@ std::shared_ptr<MemoryPagesPool> MemoryBankManager::getPagedPool(size_t pageSize
 
     // keep track of this new block
     banks[ix].rangesInUse.push_back({ offset, blockSize });
+    newId = ++poolIndex;
   }
   // end of locked block
 
   // create pool of pages from new block
-  return std::make_shared<MemoryPagesPool>(pageSize, pageNumber, &(((char*)baseAddress)[offset]), blockSize, nullptr, firstPageOffset);
+  return std::make_shared<MemoryPagesPool>(pageSize, pageNumber, &(((char*)baseAddress)[offset]), blockSize, nullptr, firstPageOffset, newId);
 }
 
 // a global MemoryBankManager instance
@@ -140,5 +142,6 @@ void MemoryBankManager::reset()
     theLog.log(LogInfoDevel_(3008), "Releasing bank %s%s", it.name.c_str(), (useCount == 1) ? "" : "warning - still in use elsewhere !");
   }
   banks.clear();
+  poolIndex = -1;
 }
 

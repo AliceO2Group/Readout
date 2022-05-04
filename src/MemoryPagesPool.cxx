@@ -16,7 +16,7 @@
 
 int MemoryPagesPoolStatsEnabled = 0; // flag to control memory stats
 
-MemoryPagesPool::MemoryPagesPool(size_t vPageSize, size_t vNumberOfPages, void* vBaseAddress, size_t vBaseSize, ReleaseCallback vCallback, size_t firstPageOffset)
+MemoryPagesPool::MemoryPagesPool(size_t vPageSize, size_t vNumberOfPages, void* vBaseAddress, size_t vBaseSize, ReleaseCallback vCallback, size_t firstPageOffset, int vId)
 {
   // initialize members from parameters
   pageSize = vPageSize;
@@ -25,6 +25,7 @@ MemoryPagesPool::MemoryPagesPool(size_t vPageSize, size_t vNumberOfPages, void* 
   baseBlockSize = vBaseSize;
   releaseBaseBlockCallback = vCallback;
   state = BufferState::empty;
+  id = vId;
 
   // check page / header sizes
   assert(headerReservedSpace >= sizeof(DataBlock));
@@ -77,6 +78,9 @@ MemoryPagesPool::MemoryPagesPool(size_t vPageSize, size_t vNumberOfPages, void* 
     t3.enableHistogram(64, 1, 100000000);
     t4.enableHistogram(64, 1, 100000000);
   }
+
+  // udpate buffer state
+  updateBufferState();
 }
 
 MemoryPagesPool::~MemoryPagesPool()
@@ -192,6 +196,9 @@ void MemoryPagesPool::releasePage(void* address)
     }
   }
 
+  // disable concurrent execution of this function
+  std::unique_lock<std::mutex> lock(pagesAvailableMutexPush);
+
   // put back page in list of available pages
   pagesAvailable->push(address);
 
@@ -302,4 +309,17 @@ void MemoryPagesPool::updateBufferState() {
     state = BufferState::empty;
     log("buffer usage back to reasonable level");
   }
+  if (pBufferState != nullptr) {
+    pBufferState->store(r);
+  }
+}
+
+int MemoryPagesPool::getId() {
+  return id;
+}
+
+void MemoryPagesPool::setBufferStateVariable(std::atomic<double> *bufferStateVar) {
+  pBufferState=bufferStateVar;
+  updateBufferState();
+  printf("buffer usage = %lf @ 0x%p\n", pBufferState->load(),pBufferState);
 }

@@ -156,6 +156,14 @@ class ConsumerStats : public Consumer
       sendMetricNoException({ rRfmq, "readout.stfbMemoryPagesReleaseRate"});
       sendMetricNoException({ avgTfmq, "readout.stfbMemoryPagesReleaseLatency"});
       sendMetricNoException({ tfidfmq, "readout.stfbTimeframeId"});
+
+      // buffer stats
+      for (int i = 0; i < ReadoutStatsMaxItems; i++) {
+	double r = snapshot.bufferUsage[i].load();
+	if (r >= 0) {
+	  sendMetricNoException(Metric{(int)(r*100), "readout.bufferUsage"}.addTag(tags::Key::ID, i));
+	}
+      }
     }
 
 #ifdef WITH_ZMQ
@@ -170,6 +178,16 @@ class ConsumerStats : public Consumer
         theLog.log(LogInfoOps_(3003), "Last interval (%.2fs): blocksRx=%llu, block rate=%.2lf, bytesRx=%llu, rate=%s", deltaT, (unsigned long long)counterBlocksDiff, counterBlocksDiff / deltaT, (unsigned long long)counterBytesDiff, NumberOfBytesToString(counterBytesDiff * 8 / deltaT, "b/s", 1000).c_str());
 	if (gReadoutStats.isFairMQ) {
           theLog.log(LogInfoOps_(3003), "STFB locked pages: current=%llu, released = %llu, release rate=%.2lf Hz, latency=%.3lf s, current TF = %d", (unsigned long long) snapshot.pagesPendingFairMQ.load(), nRfmq, rRfmq, avgTfmq, tfidfmq );
+	}
+	std::string bufferReport;
+	for (int i = 0; i < ReadoutStatsMaxItems; i++) {
+	  double r = snapshot.bufferUsage[i].load();
+	  if (r >= 0) {
+	    bufferReport += "["+ std::to_string(i) + "]=" + std::to_string((int)(r*100)) + "% ";
+	  }
+	}
+	if (bufferReport.length()) {
+	  theLog.log(LogInfoOps_(3003), "Memory buffers usage: %s", bufferReport.c_str());
 	}
       }
     }
