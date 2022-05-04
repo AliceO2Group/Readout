@@ -24,7 +24,7 @@
 #include <zmq.h>
 #endif
 
-const int ReadoutStatsMaxItems = 32;
+const int ReadoutStatsMaxItems = 25;
 
 struct ReadoutStatsCounters {
   uint32_t version; // version number of this header
@@ -63,7 +63,7 @@ class ReadoutStats
  public:
   ReadoutStats();
   ~ReadoutStats();
-  void reset();
+  void reset(bool lightReset=0); // light reset: to preserve the buffer counters
   void print();
 
   ReadoutStatsCounters counters;

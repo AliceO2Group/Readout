@@ -288,9 +288,14 @@ int main(int argc, const char** argv)
       if (nRfmq) {
 	avgTfmq = (counters->pagesPendingFairMQtime.load() / nRfmq) / (deltaT * 1000000.0);
       }
+      std::string vBufferUsage;
+      for (int i = 0; i < ReadoutStatsMaxItems; i++) {
+	double r = counters->bufferUsage[i].load();
+	vBufferUsage += ( (i==0) ? "" : ",") + ( (r<0) ? "" : std::to_string((int)(r*100)) );
+      }
       char buf[1024];
       if (cfgRawBytes) {
-        snprintf(buf, sizeof(buf), "%f\t%s\t%s\t%llu\t%llu\t%llu\t%llu\t%llu\t%.2lf\t%.6lf\t%d\n",
+        snprintf(buf, sizeof(buf), "%f\t%s\t%s\t%llu\t%llu\t%llu\t%llu\t%llu\t%.2lf\t%.6lf\t%d\t%s\n",
            (double)t,
 	   counters->source,
            (char*)&state,
@@ -301,8 +306,9 @@ int main(int argc, const char** argv)
            (unsigned long long)counters->pagesPendingFairMQ.load(),
            nRfmq,
            avgTfmq,
-           (int)counters->timeframeIdFairMQ.load());
-	   fflush(stdout);
+           (int)counters->timeframeIdFairMQ.load(),
+	   vBufferUsage.c_str()
+	 );
       } else {
         snprintf(buf, sizeof(buf), "%s  %s %s     %8llu     %s   %s   %s   %6llu    %7.2lf    %6.4lf %8d\n",
            t ? getStringTime(t).c_str() : "-",
@@ -322,6 +328,7 @@ int main(int argc, const char** argv)
         broadcastSocket->broadcast(buf);
       } else {
         printf("%s",buf);
+	fflush(stdout);
       }
 
       if (metricsLogEnabled) {

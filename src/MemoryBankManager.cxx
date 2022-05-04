@@ -142,5 +142,6 @@ void MemoryBankManager::reset()
     theLog.log(LogInfoDevel_(3008), "Releasing bank %s%s", it.name.c_str(), (useCount == 1) ? "" : "warning - still in use elsewhere !");
   }
   banks.clear();
+  poolIndex = -1;
 }
 

@@ -451,3 +451,6 @@ This file describes the main feature changes for each readout.exe released versi
 ## v2.10.1 - 20/04/2022
 - Updated configuration parameters:
   - equipment-file-*.updateOrbits: when set to zero, RDH orbits are not updated in file loop replay. This is needed for some reconstruction tests. This however creates a stream of data with inconsistent orbit ids and mismatching timeframe information.
+
+## v2.10.2 - 04/05/2022
+- Added some buffer monitoring counters. They are logged in console stats and in monitoring (readout.bufferUsage, one per buffer, from 0% to 100%).
