@@ -203,6 +203,10 @@ ReadoutEquipment::ReadoutEquipment(ConfigFile& cfg, std::string cfgEntryPoint, b
     throw __LINE__;
   } else {
     mp -> setWarningCallback(std::bind(&ReadoutEquipment::mplog, this, std::placeholders::_1));
+    if ((mp->getId() >= 0) && (mp->getId() < ReadoutStatsMaxItems)) {
+      mp -> setBufferStateVariable(&gReadoutStats.counters.bufferUsage[mp->getId()]);
+    }
+    theLog.log(LogInfoDevel_(3008), "Using memory pool [%d]: %d pages x %d bytes", mp->getId(), memoryPoolNumberOfPages, memoryPoolPageSize);
   }
   // todo: move page align to MemoryPool class
   assert(pageSpaceReserved == mp->getPageSize() - mp->getDataBlockMaxSize());

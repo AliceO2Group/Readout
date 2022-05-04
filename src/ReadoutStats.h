@@ -24,6 +24,8 @@
 #include <zmq.h>
 #endif
 
+const int ReadoutStatsMaxItems = 32;
+
 struct ReadoutStatsCounters {
   uint32_t version; // version number of this header
   char source[32]; // name of the source providing these counters
@@ -44,10 +46,11 @@ struct ReadoutStatsCounters {
   std::atomic<uint32_t> logMessages;                // number of log messages (severity: any)
   std::atomic<uint32_t> logMessagesWarning;         // number of log messages (severity: warning)
   std::atomic<uint32_t> logMessagesError;           // number of log messages (severity: error)
+  std::atomic<double> bufferUsage[ReadoutStatsMaxItems]; // buffer usage. -1 means not used.
 };
 
 // version number of this struct
-const uint32_t ReadoutStatsCountersVersion = 0xA0000001;
+const uint32_t ReadoutStatsCountersVersion = 0xA0000002;
 
 // need to be able to easily transmit this struct as a whole
 static_assert(std::is_pod<ReadoutStatsCounters>::value);

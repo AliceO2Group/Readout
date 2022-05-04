@@ -210,6 +210,10 @@ Thread::CallbackResult ReadoutEquipmentRORC::prepareBlocks()
       }
     }
     lastPacketDropped = currentPacketDropped;
+    if (!channel->areSuperpageFifosHealthy()) {
+      static InfoLogger::AutoMuteToken logToken(LogWarningSupport_(3235), 5, 60);
+      theLog.log(logToken, "Equipment %s: CRU memory fifo not healthy", name.c_str());
+    }
     if (isWaitingFirstLoop) {
       packetDroppedTimer.reset(1000000); // 1 sec interval
     } else {

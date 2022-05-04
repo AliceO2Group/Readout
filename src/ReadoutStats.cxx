@@ -65,6 +65,10 @@ void ReadoutStats::reset()
   counters.timeframeIdFairMQ = 0;
 
   counters.firstOrbit = undefinedOrbit;
+
+  for (unsigned int i = 0; i < ReadoutStatsMaxItems; i++) {
+    counters.bufferUsage[i] = -1.0;
+  }
 }
 
 void ReadoutStats::print()

@@ -286,8 +286,11 @@ class ConsumerFMQchannel : public Consumer
       throw "ConsumerFMQ: failed to get memory pool from " + memoryBankName + " for " + std::to_string(memoryPoolNumberOfPages) + " pages x " + std::to_string(memoryPoolPageSize) + " bytes";
     } else {
       mp -> setWarningCallback(std::bind(&ConsumerFMQchannel::mplog, this, std::placeholders::_1));
+      if ((mp->getId() >= 0) && (mp->getId() < ReadoutStatsMaxItems)) {
+	mp -> setBufferStateVariable(&gReadoutStats.counters.bufferUsage[mp->getId()]);
+      }
     }
-    theLog.log(LogInfoDevel_(3008), "Using memory pool %d pages x %d bytes", memoryPoolNumberOfPages, memoryPoolPageSize);
+    theLog.log(LogInfoDevel_(3008), "Using memory pool [%d]: %d pages x %d bytes", mp->getId(), memoryPoolNumberOfPages, memoryPoolPageSize);
   }
 
   ~ConsumerFMQchannel()

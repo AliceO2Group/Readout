@@ -68,6 +68,7 @@ class MemoryBankManager
  private:
   std::vector<bankDescriptor> banks; // list of registered memory banks
   std::mutex bankMutex;              // instance mutex to handle concurrent access to public methods
+  int poolIndex = -1;                // an increasing index used to assign a unique id to memory pools
 };
 
 // a global MemoryBankManager instance
