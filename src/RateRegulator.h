@@ -76,7 +76,7 @@ public:
   void updateTimeNext() {
     if (tnextCount >= tnextFullRefreshInterval) {
       // full update, calculated from t0
-      tnext = t0 + std::chrono::microseconds((int)(nItemsAccepted * period));
+      tnext = t0 + std::chrono::microseconds((unsigned long long)(nItemsAccepted * period));
       tnextCount = 1;
     } else {
       // quick update, by incrementing period
