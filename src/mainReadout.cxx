@@ -1475,6 +1475,7 @@ void Readout::executeCustomCommand(const char *stateChange) {
       theLog.log(LogInfoDevel_(3013), "Executing custom command for %s : %s", it->first.c_str(), it->second.c_str());
       std::string cmd = it->second + "\n";
       write(customCommandsShellFdIn, cmd.c_str(), cmd.length());
+      fsync(customCommandsShellFdIn);
       LineBuffer b;
       const int cmdTimeout = 10000; // 10s timeout
       b.appendFromFileDescriptor(customCommandsShellFdOut, cmdTimeout);
