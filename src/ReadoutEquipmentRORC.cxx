@@ -102,7 +102,7 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile& cfg, std::string name) : 
     // configuration parameter: | equipment-rorc-* | firmwareCheckEnabled | int | 1 | If set, RORC driver checks compatibility with detected firmware. Use 0 to bypass this check (eg new fw version not yet recognized by ReadoutCard version). |
     cfg.getOptionalValue<int>(name + ".firmwareCheckEnabled", cfgFirmwareCheckEnabled);
     if (!cfgFirmwareCheckEnabled) {
-      theLog.log(LogWarningSupport_(3002), "Bypassing RORC firmware compatibility check");
+      theLog.log(LogInfoDevel_(3002), "Bypassing RORC firmware compatibility check");
     }
 
     // configuration parameter: | equipment-rorc-* | debugStatsEnabled | int | 0 | If set, enable extra statistics about internal buffers status. (printed to stdout when stopping) |
