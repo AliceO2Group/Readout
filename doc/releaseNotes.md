@@ -457,3 +457,6 @@ This file describes the main feature changes for each readout.exe released versi
 
 ## v2.10.3 - 05/05/2022
 - Bug fixed in the readout TF rate regulator (was ineffective after 35 minutes = 2^31 microseconds - wrong variable width in a conversion).
+
+## v2.10.4 - 18/05/2022
+- Changed level of "Bypassing RORC firmware compatibility check", retrograded from support warning to developper info.

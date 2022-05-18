@@ -321,5 +321,5 @@ int MemoryPagesPool::getId() {
 void MemoryPagesPool::setBufferStateVariable(std::atomic<double> *bufferStateVar) {
   pBufferState=bufferStateVar;
   updateBufferState();
-  printf("buffer usage = %lf @ 0x%p\n", pBufferState->load(),pBufferState);
+  //printf("buffer usage = %lf @ 0x%p\n", pBufferState->load(),pBufferState);
 }

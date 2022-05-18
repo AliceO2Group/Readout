@@ -434,21 +434,28 @@ if {1} {
 proc NumberOfBytesToString {value suffix} {
   set prefixes { " " "k" "M" "G" "T" "P" }
   set maxPrefixIndex [llength $prefixes]
-  set prefixIndex [expr int(floor(log($value) / log(1024)))]
-  if {$prefixIndex > $maxPrefixIndex} {
-    set prefixIndex $maxPrefixIndex
-  }
-  if {$prefixIndex < 0} {
-    set prefixIndex 0
-  }
-  set scaledValue [expr $value / pow(1024, $prefixIndex)]
-  set l [expr int(floor(log10(abs($scaledValue))))]
-  if {$l < 0} {
-    set l 3
-  } elseif {$l <= 3} {
-    set l [expr 3 - $l]
-  } else {
-    set l 0
+  set prefixIndex 0
+  set l 0
+  set scaledValue $value
+  catch {
+    if {$value > 0} {
+      set prefixIndex [expr int(floor(log($value) / log(1024)))]
+      if {$prefixIndex > $maxPrefixIndex} {
+	set prefixIndex $maxPrefixIndex
+      }
+      if {$prefixIndex < 0} {
+	set prefixIndex 0
+      }
+      set scaledValue [expr $value / pow(1024, $prefixIndex)]
+      set l [expr int(floor(log10(abs($scaledValue))))]
+      if {$l < 0} {
+	set l 3
+      } elseif {$l <= 3} {
+	set l [expr 3 - $l]
+      } else {
+	set l 0
+      }
+    }
   }
   return [format "%.*f %s%s" $l $scaledValue [lindex $prefixes $prefixIndex] $suffix];
 }

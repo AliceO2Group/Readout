@@ -44,3 +44,20 @@ Considerations to make good use of the FLP memory and tune the corresponding Rea
 	* the good way to evaluate this parameter is too look at readout logs and see what is the maximum actual size used for this buffer after some reference runs, and add some 50% margin. The current parameters have been set based on initial detector tests, and can be reevaluated any time with the same method.
 
 The readout memory parameters are not critical in most conditions. Tuning them may help to handle high peak loads (e.g. in case of bursts in rates) or handle startup setup time for the processing system to reach a stable state. It will however not solve issues where the output system can not cope with the input rate or when it degrades over time, it will just delay the appearance of the symptoms.
+
+
+## How much memory is needed by Readout ?
+
+The following is the minimum amount of buffer needed to run Readout, in number of pages: `128 * (number of enabled links) + readout.aggregatorStfTimeout * (page rate)`
+
+* Each end-point needs at least 128 pages per enabled link. This is the size of the FIFO providing empty data pages to ROC device, and it should be filled to guarantee uninterrupted DMA. Readout logs can be checked for runtime statistics about the effective page rate observed (see 'blockRate' metric).
+* The readout.aggregatorStfTimeout configuration parameter defines the amount of time the ready pages are waiting in the readout aggregator before the corresponding TF to be processed. This allows some delay to receive data from all the different equipments / links (the links contributing to a TF are not known, so readout must wait before assuming all data are there). A corresponding amount of buffer must be reserved, according to the superpage rate observed at runtime.
+* 20% extra is needed for the 'overlapping HBF data' copy.
+* DD can buffer up to 32GB before stfSender goes to "discard mode" and release memory, when data input exceeds FLP output.
+* Additionnal processing pipelines in the FMQ chain must be accounted for: up to 10GB can be pending in DPL before reaching stfSender, and are not counted in the DD 32GB.
+
+The grand-total for the shared memory block is therefore typically: `((128 * (number of enabled links) * pageSize + readout.aggregatorStfTimeout * throughput) * 1.2 + 42 GB)`
+
+Which makes, for a FLP with 3 CRUs, 12 links per end-point, 5GB/s data throughput, 0.5s aggregator STF timeout, .25M page size and 30% safety margin: 
+( (128 * 3 * 2 * 12 * 0.25 + 0.5 * 5000 ) * 1.2 + 42000 ) * 1.3 = 62 GB
+
