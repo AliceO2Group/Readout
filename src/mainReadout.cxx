@@ -1474,7 +1474,8 @@ void Readout::executeCustomCommand(const char *stateChange) {
     if (it != customCommands.end()) {
       theLog.log(LogInfoDevel_(3013), "Executing custom command for %s : %s", it->first.c_str(), it->second.c_str());
       std::string cmd = it->second + "\n";
-      write(customCommandsShellFdIn, cmd.c_str(), cmd.length());
+      auto retval = write(customCommandsShellFdIn, cmd.c_str(), cmd.length());
+      (void)retval;
       fsync(customCommandsShellFdIn);
       LineBuffer b;
       const int cmdTimeout = 10000; // 10s timeout
