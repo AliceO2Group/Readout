@@ -1156,6 +1156,7 @@ void Readout::loopRunning()
               }
 #endif
               gReadoutStats.counters.numberOfSubtimeframes++;
+	      gReadoutStats.counters.currentOrbit =  bc->at(0)->getData()->header.timeframeOrbitFirst;
 	      gReadoutStats.counters.notify++;
             }
           }
