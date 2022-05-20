@@ -145,6 +145,17 @@ ReadoutEquipment::ReadoutEquipment(ConfigFile& cfg, std::string cfgEntryPoint, b
   cfg.getOptionalValue<int>(cfgEntryPoint + ".rdhCheckDetectorField", cfgRdhCheckDetectorField);  
   theLog.log(LogInfoDevel_(3002), "RDH settings: rdhCheckEnabled=%d rdhDumpEnabled=%d rdhDumpErrorEnabled=%d rdhDumpWarningEnabled=%d rdhUseFirstInPageEnabled=%d rdhCheckFirstOrbit=%d rdhCheckDetectorField=%d", cfgRdhCheckEnabled, cfgRdhDumpEnabled, cfgRdhDumpErrorEnabled, cfgRdhDumpWarningEnabled, cfgRdhUseFirstInPageEnabled, cfgRdhCheckFirstOrbit, cfgRdhCheckDetectorField);
 
+  // configuration parameter: | equipment-* | ctpMode | int | 0 | If set, the detector field (CTP run mask) is checked. Incoming data is discarded until a new bit is set, and discarded again after this bit is unset. Automatically implies rdhCheckDetectorField=1 and rdhCheckDetectorField=1. |
+  cfg.getOptionalValue<int>(cfgEntryPoint + ".ctpMode", cfgCtpMode);
+  if (cfgCtpMode) {
+    theLog.log(LogInfoDevel_(3002), "CTP mode enabled, data will be discarded until CTP run mask changes");
+    cfgRdhUseFirstInPageEnabled = 1;
+    cfgRdhCheckDetectorField = 1;
+  }
+
+  // configuration parameter: | equipment-* | verbose | int | 0 | If set, extra debug messages may be logged. |
+  cfg.getOptionalValue<int>(cfgEntryPoint + ".verbose", cfgVerbose);
+
   if (!cfgDisableTimeframes) {
     // configuration parameter: | equipment-* | TFperiod | int | 128 | Duration of a timeframe, in number of LHC orbits. |
     int cfgTFperiod = 128;
@@ -403,6 +414,12 @@ Thread::CallbackResult ReadoutEquipment::threadCallback(void* arg)
 	if (ptr->cfgRdhUseFirstInPageEnabled) {
           ptr->processRdh(nextBlock);
 	}
+
+        // discard data immediately if configured to do so
+	if (ptr->discardData) {
+	  nextBlock = nullptr;
+	  continue;
+	}
 	
 	// tag data with equipment Id, if set (will overwrite field if was already set by equipment)
 	if (ptr->id != undefinedEquipmentId) {
@@ -574,6 +591,12 @@ void ReadoutEquipment::initCounters()
     isDefinedLastDetectorField[i] = 0;
     lastDetectorField[i] = 0;
   }
+
+  ctpRunBit = -1;
+  discardData = 0;
+  if (cfgCtpMode) {
+    discardData = 1;
+  }
 };
 
 void ReadoutEquipment::finalCounters()
@@ -692,11 +715,44 @@ int ReadoutEquipment::processRdh(DataBlockContainerReference& block)
     if (cfgRdhCheckDetectorField) {
       if (isDefinedLastDetectorField[lid]) {
 	if (h.getDetectorField() != lastDetectorField[lid]) {
-          theLog.log(LogInfoDevel_(3011), "Equipment %s Link %d: change in detector field detected: 0x%X -> 0x%X (orbit 0x%X page offset 0x%X)", name.c_str(), (int)lid, (int)lastDetectorField[lid], (int)h.getDetectorField(), (int)h.getHbOrbit(), (int)pageOffset);
+          if (cfgVerbose) {
+	    theLog.log(LogInfoDevel_(3011), "Equipment %s Link %d: change in detector field detected: 0x%X -> 0x%X (orbit 0x%X page offset 0x%X)",
+	      name.c_str(), (int)lid, (int)lastDetectorField[lid], (int)h.getDetectorField(), (int)h.getHbOrbit(), (int)pageOffset);
+	  }
 	  hasChanged = 1;
+
+	  if (cfgCtpMode) {
+	    // check how many bits have changed
+	    try {
+	      auto bitsChanged = std::bitset<sizeof(uint32_t)>(h.getDetectorField() ^ lastDetectorField[lid]);
+	      uint32_t nChanged = bitsChanged.count();
+	      if (nChanged == 1) {
+	        int bitChanged = bitsChanged._Find_first();
+		bool isSet = std::bitset<sizeof(uint32_t)>(h.getDetectorField()).test(bitChanged);
+
+		//theLog.log(LogInfoDevel_(3011), "bitChanged=%d isSet=%d ctpRunBit=%d discardData=%d", (int)bitChanged, (int)isSet, (int)ctpRunBit, (int)discardData);
+
+		if ((ctpRunBit == -1) && (isSet) && (discardData == 1)) {
+		  // start of run detected
+		  ctpRunBit = bitChanged;
+		  discardData = 0;
+		  theLog.log(LogInfoDevel_(3011), "Start of run detected (pattern 0x%X bit %d), enabling data", (int)h.getDetectorField(), (int)bitChanged);
+		} else if ((ctpRunBit != -1) && (!isSet) && (ctpRunBit == bitChanged)) {
+                  // end of run detected
+                  ctpRunBit = -1;
+		  discardData = 2; // no data on next other run
+                  theLog.log(LogInfoDevel_(3011), "End of run detected (pattern 0x%X bit %d), disabling data", (int)h.getDetectorField(), (int)bitChanged);
+		}
+	      }
+	    }
+	    catch(...) {
+	    }
+	  }
 	}
       } else {
-        theLog.log(LogInfoDevel_(3011), "Equipment %s link %d: first detector field : 0x%X", name.c_str(), (int)lid, (int)h.getDetectorField());
+        if (cfgVerbose) {
+	  theLog.log(LogInfoDevel_(3011), "Equipment %s link %d: first detector field : 0x%X", name.c_str(), (int)lid, (int)h.getDetectorField());
+	}
       }
       lastDetectorField[lid] = h.getDetectorField();
       isDefinedLastDetectorField[lid] = 1;
@@ -707,6 +763,13 @@ int ReadoutEquipment::processRdh(DataBlockContainerReference& block)
   // retrieve metadata from RDH, if configured to do so
   if ((cfgRdhUseFirstInPageEnabled) || (cfgRdhCheckEnabled)) {
     RdhHandle h(blockData);
+
+    // check detector field first (might enable/disable data discard)
+    checkChangesInDetectorField(h,0);
+    if (discardData) {
+      return 0;
+    }
+
     if (tagDatablockFromRdh(h, blockHeader) == 0) {
       blockHeader.isRdhFormat = 1;
     }
@@ -728,8 +791,6 @@ int ReadoutEquipment::processRdh(DataBlockContainerReference& block)
       equipmentLinksData[h.getLinkId()] += blockHeader.dataSize;
     }
 
-    // check detector field
-    checkChangesInDetectorField(h,0);
   }
 
   // Dump RDH if configured to do so

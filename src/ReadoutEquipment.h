@@ -178,6 +178,12 @@ class ReadoutEquipment
   bool isDefinedLastDetectorField[RdhMaxLinkId+1] = {0};
   uint32_t lastDetectorField[RdhMaxLinkId+1] = {0}; // keep track of RDH DetectorField per link to detect changes
 
+  int cfgCtpMode = 0; // if set, data discarded based on changes in detector field = ctp run mask
+  int ctpRunBit = -1; // the bit corresponding to current run in detectorField, as detected on first change in this field
+  int discardData = 0; // when set, all data are discarded
+
+  int cfgVerbose = 0; // extra debug info printed
+
   int processRdh(DataBlockContainerReference& nextBlock);
 
   // data debugging to disk
