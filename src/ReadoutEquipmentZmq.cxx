@@ -28,6 +28,8 @@ class ReadoutEquipmentZmq : public ReadoutEquipment
   ReadoutEquipmentZmq(ConfigFile& cfg, std::string name = "zmq");
   ~ReadoutEquipmentZmq();
   DataBlockContainerReference getNextBlock();
+  void setDataOn();
+  void setDataOff();
 
  private:
   Thread::CallbackResult populateFifoOut(); // iterative callback
@@ -135,7 +137,7 @@ ReadoutEquipmentZmq::ReadoutEquipmentZmq(ConfigFile& cfg, std::string cfgEntryPo
       break;
     }
 
-    if (cfgType == "SUB") {
+/*    if (cfgType == "SUB") {
       // subscribe to all published messages
       zmqerr = zmq_setsockopt(zh, ZMQ_SUBSCRIBE, "", 0);
       if (zmqerr) {
@@ -143,6 +145,7 @@ ReadoutEquipmentZmq::ReadoutEquipmentZmq(ConfigFile& cfg, std::string cfgEntryPo
 	break;
       }
     }
+*/
 
     break;
   }
@@ -365,6 +368,16 @@ int ReadoutEquipmentZmq::tfClientCallback(void* msg, int msgSize)
     return 0;
   }
   return -1;
+}
+
+void ReadoutEquipmentZmq::setDataOn() {
+  ReadoutEquipment::setDataOn();
+  zmq_setsockopt(zh, ZMQ_SUBSCRIBE, "", 0);
+}
+
+void ReadoutEquipmentZmq::setDataOff() {
+  zmq_setsockopt(zh, ZMQ_UNSUBSCRIBE, "", 0);
+  ReadoutEquipment::setDataOff();
 }
 
 std::unique_ptr<ReadoutEquipment> getReadoutEquipmentZmq(ConfigFile& cfg, std::string cfgEntryPoint) { return std::make_unique<ReadoutEquipmentZmq>(cfg, cfgEntryPoint); }
