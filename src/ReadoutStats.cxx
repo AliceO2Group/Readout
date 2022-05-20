@@ -65,6 +65,7 @@ void ReadoutStats::reset(bool lightReset)
   counters.timeframeIdFairMQ = 0;
 
   counters.firstOrbit = undefinedOrbit;
+  counters.currentOrbit = undefinedOrbit;
 
   if (!lightReset) {
     for (unsigned int i = 0; i < ReadoutStatsMaxItems; i++) {

@@ -189,6 +189,7 @@ class ConsumerStats : public Consumer
 	if (bufferReport.length()) {
 	  theLog.log(LogInfoOps_(3003), "Memory buffers usage: %s", bufferReport.c_str());
 	}
+	//theLog.log(LogInfoOps_(3003), "orbit=0x%X", (unsigned int) gReadoutStats.counters.currentOrbit.load());
       }
     }
 

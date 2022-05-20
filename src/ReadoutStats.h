@@ -46,6 +46,7 @@ struct ReadoutStatsCounters {
   std::atomic<uint32_t> logMessages;                // number of log messages (severity: any)
   std::atomic<uint32_t> logMessagesWarning;         // number of log messages (severity: warning)
   std::atomic<uint32_t> logMessagesError;           // number of log messages (severity: error)
+  std::atomic<uint32_t> currentOrbit;               // 1st orbit of current timeframe (last out of aggregator)
   std::atomic<double> bufferUsage[ReadoutStatsMaxItems]; // buffer usage. -1 means not used.
 };
 
