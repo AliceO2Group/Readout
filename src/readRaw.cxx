@@ -44,6 +44,7 @@ int main(int argc, const char* argv[])
   uint32_t timeframePeriodOrbits = 0;
   uint32_t firstTimeframeHbOrbitBegin = 0;
   bool isDefinedFirstTimeframeHbOrbitBegin = 0;
+  uint32_t maxOrbit = 0;
 
   // parse input arguments
   // format is a list of key=value pairs
@@ -399,6 +400,10 @@ int main(int argc, const char* argv[])
           // printf("%08X : %03X\n", h.getTriggerOrbit(), h.getTriggerBC());
         }
 
+	if (h.getTriggerOrbit() > maxOrbit) {
+	  maxOrbit = h.getTriggerOrbit();
+	}
+
         if (dumpDataInline) {
           long nBytes = h.getOffsetNextPacket();
           for (long ix = 0; ix < nBytes; ix++) {
@@ -452,6 +457,9 @@ int main(int argc, const char* argv[])
     ERRLOG("%lu RDH blocks\n", RDHBlockCount);
   }
   ERRLOG("%lu bytes\n", fileOffset);
+  if (checkContinuousTriggerOrder) {
+    ERRLOG("max orbit 0x%X\n", maxOrbit);
+  }
 
   // check file status
   if (feof(fp)) {
