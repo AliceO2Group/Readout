@@ -466,3 +466,4 @@ This file describes the main feature changes for each readout.exe released versi
 - Updated configuration parameters:
   - equipment-*.verbose: adds some extra verbosity.
   - equipment-*.ctpMode: enables CTP mode, data is discarded until start of run detected in RDH detector field pattern, and after corresponding end of run is detected.
+  - consumer-fileRecorder-*.tfMax: when set, recording will stop after reaching given number of timeframes.
