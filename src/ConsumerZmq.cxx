@@ -105,7 +105,6 @@ class ConsumerZMQ : public Consumer
       }
       zh = zmq_socket(context, ZMQ_PUB);
       if (zh==nullptr) { linerr=__LINE__; zmqerr=zmq_errno(); break; }
-      zmqerr = zmq_bind(zh, cfgAddress.c_str());
       if (zmqerr) { linerr=__LINE__; break; }
       zmqerr = zmq_setsockopt(zh, ZMQ_CONFLATE, &cfg_ZMQ_CONFLATE, sizeof(cfg_ZMQ_CONFLATE));
       if (zmqerr) { linerr=__LINE__; break; }
@@ -117,6 +116,8 @@ class ConsumerZMQ : public Consumer
       if (zmqerr) { linerr=__LINE__; break; }
       zmqerr = zmq_setsockopt(zh, ZMQ_SNDTIMEO, (void*)&cfg_ZMQ_SNDTIMEO, sizeof(cfg_ZMQ_SNDTIMEO));
       if (zmqerr) { linerr=__LINE__; break; }
+      // options (eg CONFLATE) should be set before binding server
+      zmqerr = zmq_bind(zh, cfgAddress.c_str());
       break;
     }
 

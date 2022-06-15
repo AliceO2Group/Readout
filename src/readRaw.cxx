@@ -12,11 +12,13 @@
 #include <lz4.h>
 #include <stdio.h>
 #include <string>
+#include <inttypes.h>
 
 #include "DataBlock.h"
 #include "DataBlockContainer.h"
 #include "DataSet.h"
 #include "RdhUtils.h"
+#include "CounterStats.h"
 
 //#define ERRLOG(args...) fprintf(stderr,args)
 #define ERRLOG(args...) fprintf(stdout, args)
@@ -40,10 +42,16 @@ int main(int argc, const char* argv[])
   bool dataBlockHeaderEnabled = false;
   bool checkContinuousTriggerOrder = false;
   bool isAutoPageSize = false; // flag set when no known page size in file
+  bool dumpStats = false; // if set, statistics on HBF/TF size are reported at the end.
+  CounterStats statsHBFsize;
+  CounterStats statsTFsize;
+  uint32_t linkLastOrbit[RdhMaxLinkId + 1] = {undefinedOrbit};
+  uint32_t linkCurrentHBFSize[RdhMaxLinkId + 1] = {0};
 
   uint32_t timeframePeriodOrbits = 0;
   uint32_t firstTimeframeHbOrbitBegin = 0;
   bool isDefinedFirstTimeframeHbOrbitBegin = 0;
+  uint32_t maxOrbit = 0;
 
   // parse input arguments
   // format is a list of key=value pairs
@@ -61,6 +69,7 @@ int main(int argc, const char* argv[])
       "    dumpDataBlockHeader=0|1 : dump the data block headers (internal readout headers).\n"
       "    dumpData=(int) : dump the data pages. If -1, all bytes. Otherwise, the first bytes only, as specified.\n"
       "    dumpDataInline=(int) : if set, each packet raw content is printed (hex dump style).\n"
+      "    dumpStats=(int) : if set, some statistics are printed on HBF/TF size.\n"
       "    fileReadVerbose=(int) : if set, more information is printed when reading/decoding file.\n"
       "    timeframePeriodOrbits=(int) : if set, TF id computed (and printed, when dump enabled) for each RDH. Typically, 128 or 256.\n"
       "    \n",
@@ -113,6 +122,8 @@ int main(int argc, const char* argv[])
       checkContinuousTriggerOrder = std::stoi(value);
     } else if (key == "timeframePeriodOrbits") {
       timeframePeriodOrbits = (uint32_t) std::stoi(value);
+    } else if (key == "dumpStats") {
+      dumpStats = std::stoi(value);
     } else {
       ERRLOG("unknown option %s\n", key.c_str());
     }
@@ -121,6 +132,11 @@ int main(int argc, const char* argv[])
   if (filePath == "") {
     ERRLOG("Please provide a file name\n");
     return -1;
+  }
+
+  if (dumpStats) {
+    // need RDH to get HBF size
+    validateRDH = 1;
   }
 
   ERRLOG("Using data file %s\n", filePath.c_str());
@@ -167,6 +183,11 @@ int main(int argc, const char* argv[])
 
   const int maxBlockSize = 128 * 1024L * 1024L; // maximum memory allocated for page reading (or decompressing)
   bool checkOrbitContiguous = true;             // if set, verify that they are no holes in orbit number
+
+  statsHBFsize.enableHistogram(131072,1,100000000,1); // good precision histogram 100k points to cover up to 100MB HBF size
+  auto registerHBF = [&] (uint32_t size) {
+    statsHBFsize.set(size);
+  };
 
   for (fileOffset = 0; fileOffset < (unsigned long)fileSize;) {
 
@@ -399,6 +420,25 @@ int main(int argc, const char* argv[])
           // printf("%08X : %03X\n", h.getTriggerOrbit(), h.getTriggerBC());
         }
 
+	if (h.getTriggerOrbit() > maxOrbit) {
+	  maxOrbit = h.getTriggerOrbit();
+	}
+
+	unsigned int linkId = h.getLinkId();
+	if (linkId <= RdhMaxLinkId) {
+	  uint32_t prevOrbit = linkLastOrbit[linkId];
+	  if (prevOrbit != h.getTriggerOrbit()) {
+	    if (prevOrbit != undefinedOrbit) {
+	      // previous HBF completed, register it
+	      registerHBF(linkCurrentHBFSize[linkId]);
+	    }
+	    // this is a new HBF
+	    linkCurrentHBFSize[linkId] = 0;
+	    linkLastOrbit[linkId] = h.getTriggerOrbit();
+	  }
+	  linkCurrentHBFSize[linkId] += h.getMemorySize();
+	}
+
         if (dumpDataInline) {
           long nBytes = h.getOffsetNextPacket();
           for (long ix = 0; ix < nBytes; ix++) {
@@ -452,6 +492,39 @@ int main(int argc, const char* argv[])
     ERRLOG("%lu RDH blocks\n", RDHBlockCount);
   }
   ERRLOG("%lu bytes\n", fileOffset);
+  if (checkContinuousTriggerOrder) {
+    ERRLOG("max orbit 0x%X\n", maxOrbit);
+  }
+
+  if (dumpStats) {
+    // register final HBF size
+    int nLinksActive = 0;
+    for (unsigned int i = 0; i< RdhMaxLinkId; i++) {
+      if (linkLastOrbit[i] != undefinedOrbit) {
+	// final HBF now completed, register it
+	registerHBF(linkCurrentHBFSize[i]);
+	nLinksActive++;
+      }
+    }
+
+    printf("HBF size (bytes): min=%" PRIu64 " max=%" PRIu64 " avg=%.0f stdev=%0.f links=%d nsamples=%d\n", statsHBFsize.getMinimum(), statsHBFsize.getMaximum(), statsHBFsize.getAverage(), statsHBFsize.getStdDev(), nLinksActive, (int)statsHBFsize.getCount());
+
+    printf("Distribution:\n");
+    std::vector<double> x;
+    std::vector<CounterValue> c;
+    statsHBFsize.getHisto(x,c);
+    for(unsigned int i=0;i<c.size();i++) {
+      if (c[i]) {
+        if (i==0) {
+	  printf("< %d\t%d\n",(int)x[i],(int)c[i]);
+	} else if (i+1>=c.size()) {
+	  printf("> %d\t%d\n",(int)x[i],(int)c[i]);
+	} else {
+	  printf("%d - %d\t%d\n",(int)x[i],(int)x[i+1],(int)c[i]);
+	}
+      }
+    }
+  }
 
   // check file status
   if (feof(fp)) {

@@ -153,3 +153,35 @@ void CounterStats::getHisto(std::vector<double>& x, std::vector<CounterValue>& c
   }
 }
 
+double CounterStats::getStdDev()
+{
+  double sum = 0;
+  CounterValue count = 0;
+  double avg = getAverage();
+  if (histoNbin) {
+    for (unsigned int i = 0; i < histoNbin; i++) {
+      double x;
+      if (histoLogScale) {
+        x = histoVmax * pow(histoStep, histoNbin - 1 - i);
+      } else {
+        if (i == 0) {
+          x = histoVmin;
+        } else if (i == histoNbin - 1) {
+          x = histoVmax;
+        } else {
+          x = histoVmin + (i - 1) * histoStep;
+        }
+      }
+      CounterValue c = histoCounts[i];
+      if (c) {
+        double d = (x-avg);
+        sum += c * d * d;
+        count += c;
+      }
+    }
+  }
+  if (count) {
+    return sqrt(sum/(count-1));
+  }
+  return 0;
+}

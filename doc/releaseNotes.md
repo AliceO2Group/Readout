@@ -460,3 +460,11 @@ This file describes the main feature changes for each readout.exe released versi
 
 ## v2.10.4 - 18/05/2022
 - Changed level of "Bypassing RORC firmware compatibility check", retrograded from support warning to developper info.
+
+## v2.11 - 15/06/2022
+- Added orbit counter to stats.
+- Updated configuration parameters:
+  - equipment-*.verbose: adds some extra verbosity.
+  - equipment-*.ctpMode: enables CTP mode, data is discarded until start of run detected in RDH detector field pattern, and after corresponding end of run is detected.
+  - consumer-fileRecorder-*.tfMax: when set, recording will stop after reaching given number of timeframes.
+- o2-readout-rawreader: added option to dump stats on HBF size.

@@ -21,13 +21,15 @@
 class FileHandle
 {
  public:
-  FileHandle(std::string& _path, InfoLogger* _theLog = nullptr, unsigned long long _maxFileSize = 0, int _maxPages = 0)
+  FileHandle(std::string& _path, InfoLogger* _theLog = nullptr, unsigned long long _maxFileSize = 0, int _maxPages = 0, int _maxTF = 0)
   {
     theLog = _theLog;
     path = _path;
     counterBytesTotal = 0;
     maxFileSize = _maxFileSize;
     maxPages = _maxPages;
+    maxTF = _maxTF;
+
     if (theLog != nullptr) {
       theLog->log(LogInfoDevel_(3007), "Opening file for writing: %s", path.c_str());
     }
@@ -62,7 +64,7 @@ class FileHandle
   enum Status { Success = 0,
                 Error = -1,
                 FileLimitsReached = 1 };
-  FileHandle::Status write(void* ptr, size_t size, bool isPage = false, size_t remainingBlockSize = 0)
+  FileHandle::Status write(void* ptr, size_t size, uint64_t TFid, bool isPage = false, size_t remainingBlockSize = 0)
   {
     lastWriteBytes = 0; // reset last bytes written
     if (isFull) {
@@ -83,6 +85,20 @@ class FileHandle
     if ((maxPages) && (counterPages >= maxPages)) {
       if (theLog != nullptr) {
         theLog->log(LogInfoDevel_(3007), "Maximum number of pages in file reached");
+      }
+      isFull = true;
+      close();
+      return Status::FileLimitsReached;
+    }
+    if (TFid != undefinedTimeframeId) {
+      if (TFid != lastTFid) {
+        lastTFid = TFid;
+        counterTF++;
+      }
+    }
+    if ((maxTF) && (counterTF > maxTF)) {
+      if (theLog != nullptr) {
+        theLog->log(LogInfoDevel_(3007), "Maximum number of TF in file reached");
       }
       isFull = true;
       close();
@@ -113,6 +129,10 @@ class FileHandle
   unsigned long long maxFileSize = 0;       // max number of bytes to write to file (0=no limit)
   int counterPages = 0;                     // number of pages received so far
   int maxPages = 0;                         // max number of pages accepted by recorder (0=no limit)
+  uint64_t lastTFid = undefinedTimeframeId;      // id of last TF written
+  int counterTF = 0;                        // number of TF received so far
+  int maxTF = 0;                            // max number of timeframes accepted by recorder (0=no limit)
+
   FILE* fp = NULL;                          // handle to file for I/O
   InfoLogger* theLog = nullptr;             // handle to infoLogger for messages
   bool isFull = false;                      // flag set when maximum file size reached
@@ -162,6 +182,14 @@ class ConsumerFileRecorder : public Consumer
     if (cfg.getOptionalValue<int>(cfgEntryPoint + ".pagesMax", maxFilePages) == 0) {
       if (maxFilePages) {
         theLog.log(LogInfoDevel_(3002), "Maximum recording size: %d pages", maxFilePages);
+      }
+    }
+
+    // configuration parameter: | consumer-fileRecorder-* | tfMax | int | 0 | Maximum number of timeframes accepted by recorder. If zero (default), no maximum set.|
+    maxFileTF = 0;
+    if (cfg.getOptionalValue<int>(cfgEntryPoint + ".tfMax", maxFileTF) == 0) {
+      if (maxFileTF) {
+        theLog.log(LogInfoDevel_(3002), "Maximum recording size: %d timeframes", maxFileTF);
       }
     }
 
@@ -366,7 +394,7 @@ class ConsumerFileRecorder : public Consumer
     }
 
     // create file handle
-    std::shared_ptr<FileHandle> newHandle = std::make_shared<FileHandle>(newFileName, &theLog, maxFileSize, maxFilePages);
+    std::shared_ptr<FileHandle> newHandle = std::make_shared<FileHandle>(newFileName, &theLog, maxFileSize, maxFilePages, maxFileTF);
     if (newHandle == nullptr) {
       return -1;
     }
@@ -429,7 +457,7 @@ class ConsumerFileRecorder : public Consumer
 
     bool countPage = true; // the first write will increment the page counter for this file
 
-    auto writeToFile = [&](void* ptr, size_t size, size_t remainingBlockSize) {
+    auto writeToFile = [&](void* ptr, size_t size, uint64_t TFid, size_t remainingBlockSize) {
       // two attempts, in case file needs to be incremented
       for (int i = 0; i < 2; i++) {
 
@@ -440,7 +468,7 @@ class ConsumerFileRecorder : public Consumer
         }
 
         // try to write
-        FileHandle::Status status = fpUsed->write(ptr, size, countPage, remainingBlockSize);
+        FileHandle::Status status = fpUsed->write(ptr, size, TFid, countPage, remainingBlockSize);
 
         // check if need to move to next file
         if (status == FileHandle::Status::FileLimitsReached) {
@@ -504,14 +532,14 @@ class ConsumerFileRecorder : public Consumer
         // as-is, some fields like data pointer will not be meaningful in file unless corrected.
         // todo: correct them, e.g. replace data pointer by file offset.
         // In particular, incompatible with dropEmptyHBFrames as size changes.
-        writeToFile(&b->getData()->header, (size_t)b->getData()->header.headerSize, (size_t)b->getData()->header.dataSize);
+        writeToFile(&b->getData()->header, (size_t)b->getData()->header.headerSize, b->getData()->header.timeframeId, (size_t)b->getData()->header.dataSize);
         // datablock header does not count as a page, but we account for the payload size for the next write (possibly one full page)
       }
 
       // write payload data
       if (!dropEmptyHBFrames) {
         // by default, we write the full payload data
-        writeToFile(b->getData()->data, (size_t)b->getData()->header.dataSize, 0);
+        writeToFile(b->getData()->data, (size_t)b->getData()->header.dataSize, b->getData()->header.timeframeId, 0);
       } else {
         // we have to check packet by packet and discard empty HBstart/HBstop pairs
         size_t blockSize = b->getData()->header.dataSize;
@@ -545,7 +573,7 @@ class ConsumerFileRecorder : public Consumer
 
           // write previous packet
           if (previousPacket.address != nullptr) {
-            writeToFile(previousPacket.address, previousPacket.size, 0);
+            writeToFile(previousPacket.address, previousPacket.size, previousPacket.timeframeId, 0);
             packetsRecorded++;
             previousPacket.clear();
           }
@@ -568,11 +596,12 @@ class ConsumerFileRecorder : public Consumer
               previousPacket.isCopy = true;
             }
             previousPacket.isEmptyHBStart = true;
+            previousPacket.timeframeId = b->getData()->header.timeframeId;
           } else {
 
             // write packet
             // use offsetNextPacket instead of memorySize for file to be consistent
-            writeToFile(baseAddress + pageOffset, (size_t)h.getOffsetNextPacket(), 0);
+            writeToFile(baseAddress + pageOffset, (size_t)h.getOffsetNextPacket(), b->getData()->header.timeframeId, 0);
             packetsRecorded++;
           }
 
@@ -610,6 +639,7 @@ class ConsumerFileRecorder : public Consumer
   int recordWithDataBlockHeader = 0;  // if set, internal readout headers are included in file
   unsigned long long maxFileSize = 0; // maximum number of bytes to write (in each file)
   int maxFilePages = 0;               // maximum number of pages to write (in each file)
+  int maxFileTF = 0;                  // maximum number of TF to write (in each file)
   int filesMax = 0;                   // maximum number of files to write (for each stream)
   int dropEmptyHBFrames = 0;          // if set, some empty packets are discarded (see logic in code)
 
@@ -620,6 +650,7 @@ class ConsumerFileRecorder : public Consumer
     void* address = nullptr;
     size_t size = 0;
     bool isCopy = false;
+    uint64_t timeframeId = undefinedTimeframeId;
     void clear()
     {
       isEmptyHBStart = false;
@@ -629,6 +660,7 @@ class ConsumerFileRecorder : public Consumer
       address = nullptr;
       size = 0;
       isCopy = false;
+      timeframeId = undefinedTimeframeId;
     }
     Packet() {}
     ~Packet() { clear(); }
