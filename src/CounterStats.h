@@ -32,6 +32,7 @@ class CounterStats
   CounterValue get();      // get latest value
   CounterValue getTotal(); // get total of previous values set
   double getAverage();
+  double getStdDev();      // get standard deviation (when histogram enabled)
   CounterValue getMinimum();
   CounterValue getMaximum();
   CounterValue getCount();
