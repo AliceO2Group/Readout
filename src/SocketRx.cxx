@@ -195,6 +195,10 @@ void SocketRx::run() {
   */
 }
 
+#ifndef MSG_NOSIGNAL
+#define MSG_NOSIGNAL 0
+#endif
+
 void SocketRx::broadcast(const char *message) {
   if (message==nullptr) return;
   ssize_t l = strlen(message);
