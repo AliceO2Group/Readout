@@ -727,7 +727,17 @@ int ReadoutEquipment::processRdh(DataBlockContainerReference& block)
 	      auto bitsChanged = std::bitset<sizeof(uint32_t)>(h.getDetectorField() ^ lastDetectorField[lid]);
 	      uint32_t nChanged = bitsChanged.count();
 	      if (nChanged == 1) {
-	        int bitChanged = bitsChanged._Find_first();
+	        int bitChanged = bitsChanged.size();
+		#ifdef __linux__
+	          bitChanged = bitsChanged._Find_first();
+		#else
+		  for(int bitix = 0; bitix < (int)bitsChanged.size(); bitix++) {
+                    if (bitsChanged[bitix]) {
+                      bitChanged = bitix;
+		      break;
+		    }
+                  }
+		#endif
 		bool isSet = std::bitset<sizeof(uint32_t)>(h.getDetectorField()).test(bitChanged);
 
 		//theLog.log(LogInfoDevel_(3011), "bitChanged=%d isSet=%d ctpRunBit=%d discardData=%d", (int)bitChanged, (int)isSet, (int)ctpRunBit, (int)discardData);
@@ -872,7 +882,7 @@ int ReadoutEquipment::processRdh(DataBlockContainerReference& block)
 	}
       }
       
-      if ((isDefinedLastDetectorField)&&(pageOffset)) {
+      if ((isDefinedLastDetectorField[linkId])&&(pageOffset)) {
         if (checkChangesInDetectorField(h, pageOffset)) {
 	   if (cfgRdhDumpWarningEnabled) {
              theLog.log(logRdhErrorsToken, "Equipment %d Link %d RDH #%d @ 0x%X : detector field changed not at page beginning", id, (int)blockHeader.linkId, rdhIndexInPage, (unsigned int)pageOffset);

@@ -468,3 +468,6 @@ This file describes the main feature changes for each readout.exe released versi
   - equipment-*.ctpMode: enables CTP mode, data is discarded until start of run detected in RDH detector field pattern, and after corresponding end of run is detected.
   - consumer-fileRecorder-*.tfMax: when set, recording will stop after reaching given number of timeframes.
 - o2-readout-rawreader: added option to dump stats on HBF size.
+
+## v2.11.1 - 16/06/2022
+- Minor release for osx compatibility.
