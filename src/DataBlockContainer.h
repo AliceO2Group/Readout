@@ -23,6 +23,9 @@
 // A container class for data blocks.
 // In particular, allows to take care of the block release after use.
 
+class DataBlockContainer;
+using DataBlockContainerReference = std::shared_ptr<DataBlockContainer>;
+
 class DataBlockContainer
 {
 
