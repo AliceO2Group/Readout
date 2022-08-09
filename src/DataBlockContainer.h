@@ -17,7 +17,11 @@
 #include <memory>
 #include <stdint.h>
 #include <stdlib.h>
-// #include <stdio.h>
+
+//#define DATABLOCKCONTAINER_DEBUG
+#ifdef DATABLOCKCONTAINER_DEBUG
+#include <stdio.h>
+#endif
 
 #include "DataBlock.h"
 
@@ -46,7 +50,9 @@ class DataBlockContainer
     if (releaseCallback != nullptr) {
       releaseCallback();
     }
-    // printf("Releasing DataBlockContainer @ %p\n", data);
+    #ifdef DATABLOCKCONTAINER_DEBUG
+      printf("Releasing DataBlockContainer @ %p\n", data);
+    #endif
   };
 
   DataBlock* getData()
@@ -76,7 +82,9 @@ class DataBlockContainer
     b->header.dataSize = v_dataBufferSizeNeeded;
     b->data = &(((char*)b)[sizeof(DataBlock)]);
 
-    // printf("Block %p - creating child @ %p - payload size %d\n", parentBlock->getData(), b, (int)v_dataBufferSizeNeeded);
+    #ifdef DATABLOCKCONTAINER_DEBUG
+    printf("Block %p - creating child @ %p - payload size %d\n", parentBlock->getData(), b, (int)v_dataBufferSizeNeeded);
+    #endif
 
     DataBlockContainerReference childBlock = std::make_shared<DataBlockContainer>(b, bufferSize);
     if (childBlock == nullptr) {
