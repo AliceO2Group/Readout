@@ -103,6 +103,7 @@ class ConsumerFMQchannel : public Consumer
   bool enableRawFormat = false;
   bool enableStfSuperpage = false; // optimized stf transport: minimize STF packets
   bool enableRawFormatDatablock = false;
+  int enablePackedCopy = 0; // default mode for repacking of page overlapping HBF. 0 = one page per copy, 1 = change page on TF only
 
   std::shared_ptr<MemoryBank> memBank; // a dedicated memory bank allocated by FMQ mechanism
   std::shared_ptr<MemoryPagesPool> mp; // a memory pool from which to allocate data pages
@@ -111,6 +112,11 @@ class ConsumerFMQchannel : public Consumer
   int memoryPoolNumberOfPages;
 
   CounterStats repackSizeStats; // keep track of page size used when repacking
+  uint64_t nPagesUsedForRepack = 0; // count pages used for repack
+  uint64_t nPagesUsedInput = 0; // count pages received
+
+  DataBlockContainerReference copyBlockBuffer = nullptr; // current buffer used for packed copy
+  uint64_t lastTimeframeId = undefinedTimeframeId; // keep track of latest TF id received
 
   // custom log function for memory pool
   void mplog(const std::string &msg) {
@@ -245,6 +251,7 @@ class ConsumerFMQchannel : public Consumer
         if (hint != nullptr) {
           DataBlockContainerReference* blockRef = (DataBlockContainerReference*)hint;
           //printf("ack hint=%p page %p\n",hint,(*blockRef)->getData());
+	  //printf("ptr %p: use_count=%d\n",blockRef, (int)blockRef->use_count());
           decDataBlockStats((*blockRef)->getData());
           delete blockRef;
         }
@@ -291,6 +298,10 @@ class ConsumerFMQchannel : public Consumer
       }
     }
     theLog.log(LogInfoDevel_(3008), "Using memory pool [%d]: %d pages x %d bytes", mp->getId(), memoryPoolNumberOfPages, memoryPoolPageSize);
+
+    // configuration parameter: | consumer-FairMQChannel-* | enablePackedCopy | int | 0 | If set, the same superpage may be reused (space allowing) for the copy of multiple HBF (instead of a separate one for each copy). This allows a reduced memoryPoolNumberOfPages. |
+    cfg.getOptionalValue<int>(cfgEntryPoint + ".enablePackedCopy", enablePackedCopy);
+    theLog.log(LogInfoDevel_(3008), "Packed copy enabled = %d", enablePackedCopy);
   }
 
   ~ConsumerFMQchannel()
@@ -298,10 +309,11 @@ class ConsumerFMQchannel : public Consumer
     // log memory pool statistics
     if (mp!=nullptr) {
       theLog.log(LogInfoDevel_(3003), "Consumer %s - memory pool statistics ... %s", name.c_str(), mp->getStats().c_str());
-      theLog.log(LogInfoDevel_(3003), "Consumer %s - STFB repacking statistics ... number: %" PRIu64 " average page size: %" PRIu64 " max page size: %" PRIu64, name.c_str(), repackSizeStats.getCount(), (uint64_t)repackSizeStats.getAverage(), repackSizeStats.getMaximum());
+      theLog.log(LogInfoDevel_(3003), "Consumer %s - STFB repacking statistics ... number: %" PRIu64 " average page size: %" PRIu64 " max page size: %" PRIu64 " repacked/received = %" PRIu64 "/%" PRIu64 " = %.1f%%", name.c_str(), repackSizeStats.getCount(), (uint64_t)repackSizeStats.getAverage(), repackSizeStats.getMaximum(), nPagesUsedForRepack, nPagesUsedInput, nPagesUsedForRepack * 100.0 / nPagesUsedInput);
     }
     
     // release in reverse order
+    copyBlockBuffer = nullptr;
     mp = nullptr;
     memoryBuffer = nullptr; // warning: data range may still be referenced in memory bank manager
     sendingChannel = nullptr;
@@ -316,6 +328,8 @@ class ConsumerFMQchannel : public Consumer
 
   int pushData(DataSetReference& bc)
   {
+
+    nPagesUsedInput += bc->size();
 
     if (disableSending) {
       totalPushSuccess++;
@@ -498,6 +512,15 @@ class ConsumerFMQchannel : public Consumer
       // set flag when this is last STF in timeframe
       if (b->header.flagEndOfTimeframe) {
         stfHeader->lastTFMessage = 1;
+	//printf("end of TF %d eq %d link %d\n ", (int) b->header.timeframeId, (int) b->header.equipmentId, (int)b->header.linkId);
+	copyBlockBuffer = nullptr;
+      }
+
+      // detect changes of TF id
+      if (b->header.timeframeId != lastTimeframeId) {
+        lastTimeframeId = b->header.timeframeId;
+	copyBlockBuffer = nullptr;
+        //printf("TF %d start\n", (int) lastTimeframeId);
       }
 
       if (isFirst) {
@@ -635,7 +658,26 @@ class ConsumerFMQchannel : public Consumer
         }
         DataBlockContainerReference copyBlock = nullptr;
         try {
-          copyBlock = mp->getNewDataBlockContainer();
+	  if (enablePackedCopy) {
+	    for (int i = 0; i<=2; i++) {
+              // allocate new buffer for copies if needed
+	      if (copyBlockBuffer == nullptr) {
+	        copyBlockBuffer = mp->getNewDataBlockContainer();
+		nPagesUsedForRepack++;
+		continue;
+	      }
+	      // try to allocate sub-block
+	      copyBlock = DataBlockContainer::getChildBlock(copyBlockBuffer, totalSize);
+	      if (copyBlock == nullptr) {
+	        copyBlockBuffer = nullptr;
+		continue;
+	      }
+	      break;
+	    }
+	  } else {
+            copyBlock = mp->getNewDataBlockContainer();
+	    nPagesUsedForRepack++;
+	  }
         } catch (...) {
         }
         if (copyBlock == nullptr) {

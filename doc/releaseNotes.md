@@ -471,3 +471,9 @@ This file describes the main feature changes for each readout.exe released versi
 
 ## v2.11.1 - 16/06/2022
 - Minor release for osx compatibility.
+
+## v2.12.0 - 09/08/2022
+- Updated configuration parameters:
+  - added consumer-FairMQChannel-*.enablePackedCopy. If set, the same superpage may be reused (space allowing) for the copy of multiple HBF (instead of a separate one for each copy). This allows a reduced memoryPoolNumberOfPages.
+- ROC fifo health check enabled, a warning message is logged when in/out ROC FIFOs are empty/full.
+

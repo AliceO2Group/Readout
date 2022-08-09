@@ -18,10 +18,18 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+//#define DATABLOCKCONTAINER_DEBUG
+#ifdef DATABLOCKCONTAINER_DEBUG
+#include <stdio.h>
+#endif
+
 #include "DataBlock.h"
 
 // A container class for data blocks.
 // In particular, allows to take care of the block release after use.
+
+class DataBlockContainer;
+using DataBlockContainerReference = std::shared_ptr<DataBlockContainer>;
 
 class DataBlockContainer
 {
@@ -42,6 +50,9 @@ class DataBlockContainer
     if (releaseCallback != nullptr) {
       releaseCallback();
     }
+    #ifdef DATABLOCKCONTAINER_DEBUG
+      printf("Releasing DataBlockContainer @ %p\n", data);
+    #endif
   };
 
   DataBlock* getData()
@@ -54,10 +65,44 @@ class DataBlockContainer
     return dataBufferSize;
   };
 
+
+  static DataBlockContainerReference getChildBlock(DataBlockContainerReference parentBlock, uint64_t v_dataBufferSizeNeeded, uint64_t roundUp = 0) {
+    uint64_t bufferSize = v_dataBufferSizeNeeded + sizeof(DataBlock);
+    if (roundUp) {
+      uint64_t r = bufferSize % roundUp;
+      if (r) {
+        bufferSize += roundUp - r;
+      }
+    }
+    if (bufferSize > parentBlock->getData()->header.dataSize - parentBlock->dataBufferUsed) {
+      return nullptr;
+    }
+    DataBlock *b = (DataBlock *)&((char *)parentBlock->getData()->data)[parentBlock->dataBufferUsed];
+    b->header = defaultDataBlockHeader;
+    b->header.dataSize = v_dataBufferSizeNeeded;
+    b->data = &(((char*)b)[sizeof(DataBlock)]);
+
+    #ifdef DATABLOCKCONTAINER_DEBUG
+    printf("Block %p - creating child @ %p - payload size %d\n", parentBlock->getData(), b, (int)v_dataBufferSizeNeeded);
+    #endif
+
+    DataBlockContainerReference childBlock = std::make_shared<DataBlockContainer>(b, bufferSize);
+    if (childBlock == nullptr) {
+      return nullptr;
+    }
+    parentBlock->dataBufferUsed += bufferSize;
+    childBlock->parentBlock = parentBlock;
+    return childBlock;
+  };
+
+
  protected:
   DataBlock* data;                 // The DataBlock in use
   uint64_t dataBufferSize = 0;     // Usable memory size pointed by data. Unspecified if zero.
   ReleaseCallback releaseCallback; // Function called on object destroy, to release dataBlock.
+
+  DataBlockContainerReference parentBlock = nullptr; // reference to parent block used, if any
+  uint64_t dataBufferUsed = 0; // size of buffer used for child blocks.
 };
 
 #endif

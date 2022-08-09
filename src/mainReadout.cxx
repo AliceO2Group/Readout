@@ -565,6 +565,26 @@ int Readout::configure(const boost::property_tree::ptree& properties)
   };
   mergeConfig(cfg.get(), properties);
 
+  // extract optional configuration parameters
+  // configuration parameter: | readout | customCommands | string | | List of key=value pairs defining some custom shell commands to be executed at before/after state change commands. |
+  if (customCommandsShellPid) {
+    std::string cfgCustomCommandsList;
+    customCommands.clear();
+    cfg.getOptionalValue<std::string>("readout.customCommands", cfgCustomCommandsList);
+    if (getKeyValuePairsFromString(cfgCustomCommandsList, customCommands)) {
+      theLog.log(LogWarningDevel_(3102), "Failed to parse custom commands");
+      customCommands.clear();
+    } else {
+      theLog.log(LogInfoDevel_(3013), "Registered custom commands:");
+      for (const auto &kv : customCommands) {
+	theLog.log(LogInfoDevel_(3013), "%s : %s", kv.first.c_str(), kv.second.c_str());
+      }
+    }
+  }
+
+  // execute custom command
+  executeCustomCommand("preCONFIGURE");
+
   // try to prevent deep sleeps
   bool deepsleepDisabled = false;
   int maxLatency = 2;
@@ -582,23 +602,6 @@ int Readout::configure(const boost::property_tree::ptree& properties)
     theLog.log(LogInfoDevel, "CPU deep sleep disabled for process");
   } else {
     theLog.log(LogInfoDevel, "CPU deep sleep not disabled for process");
-  }
-
-  // extract optional configuration parameters
-  // configuration parameter: | readout | customCommands | string | | List of key=value pairs defining some custom shell commands to be executed at before/after state change commands. |
-  if (customCommandsShellPid) {
-    std::string cfgCustomCommandsList;
-    customCommands.clear();
-    cfg.getOptionalValue<std::string>("readout.customCommands", cfgCustomCommandsList);
-    if (getKeyValuePairsFromString(cfgCustomCommandsList, customCommands)) {
-      theLog.log(LogWarningDevel_(3102), "Failed to parse custom commands");
-      customCommands.clear();
-    } else {
-      theLog.log(LogInfoDevel_(3013), "Registered custom commands:");
-      for (const auto &kv : customCommands) {
-	theLog.log(LogInfoDevel_(3013), "%s : %s", kv.first.c_str(), kv.second.c_str());
-      }
-    }
   }
 
   // configuration parameter: | readout | exitTimeout | double | -1 | Time in seconds after which the program exits automatically. -1 for unlimited. |
@@ -1026,6 +1029,9 @@ int Readout::configure(const boost::property_tree::ptree& properties)
     nEquipmentsAggregated++;
   }
   theLog.log(LogInfoDevel, "Aggregator: %d equipments", nEquipmentsAggregated);
+
+  // execute custom command
+  executeCustomCommand("postCONFIGURE");
 
   theLog.log(LogInfoSupport_(3005), "Readout completed CONFIGURE");
   gReadoutStats.counters.state = stringToUint64("ready");

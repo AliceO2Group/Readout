@@ -298,6 +298,9 @@ void MemoryPagesPool::log(const std::string &msg) {
 }
 
 void MemoryPagesPool::updateBufferState() {
+  if (theLogCallback == nullptr) {
+    return;
+  }
   double r = 1.0 - (getNumberOfPagesAvailable() * 1.0 / getTotalNumberOfPages());
   if ((r == 1.0) && (state != BufferState::full)) {
     state = BufferState::full;

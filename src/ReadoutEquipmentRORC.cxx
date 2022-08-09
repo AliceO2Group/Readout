@@ -15,6 +15,7 @@
 #include <ReadoutCard/Exception.h>
 #include <ReadoutCard/MemoryMappedFile.h>
 #include <ReadoutCard/Parameters.h>
+#include <Common/SimpleLog.h>
 #include <cstring>
 #include <mutex>
 #include <string>
@@ -64,6 +65,11 @@ class ReadoutEquipmentRORC : public ReadoutEquipment
 
   int32_t lastPacketDropped = 0;             // latest value of CRU packet dropped counter
   AliceO2::Common::Timer packetDroppedTimer; // a timer to set period of packet dropped checks
+
+  SimpleLog logRocCalls; // ROC debug log file, for ROC library traces
+  bool logRocCallsEnable = false; // flag to enable ROC debug log file
+  std::string logRocCallsPath = "/tmp/roclog.txt"; // path to ROC debug log file
+  unsigned long logRocCallsMaxFileSize = 10000000; // max size (bytes) of ROC debug log file
 };
 
 // std::mutex readoutEquipmentRORCLock;
@@ -174,6 +180,11 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile& cfg, std::string name) : 
 
     // todo: log parameters ?
 
+    if (logRocCallsEnable) {
+      logRocCalls.setLogFile(logRocCallsPath.c_str(), logRocCallsMaxFileSize);
+      logRocCalls.info("Logs of ROC library calls by readout process");
+    }
+
   } catch (const std::exception& e) {
     theLog.log(LogErrorSupport_(3240), "Exception : %s", e.what());
     theLog.log(LogErrorSupport_(3240), "%s", boost::diagnostic_information(e).c_str());
@@ -216,11 +227,9 @@ Thread::CallbackResult ReadoutEquipmentRORC::prepareBlocks()
     } else {
       packetDroppedTimer.increment();
       // check CRU FIFO status - but only after first loop, otherwise would be empty yet
-      if (0) { // feature disabled for the time being, spurious warnings on startup
       if (!channel->areSuperpageFifosHealthy()) {
 	static InfoLogger::AutoMuteToken logToken(LogWarningSupport_(3235), 5, 60);
 	theLog.log(logToken, "Equipment %s: ROC memory fifo not healthy", name.c_str());
-      }
       }
     }
   }
@@ -267,6 +276,9 @@ Thread::CallbackResult ReadoutEquipmentRORC::prepareBlocks()
     }
   }
   equipmentStats[EquipmentStatsIndexes::nPushedUp].increment(nPushed);
+  if (logRocCallsEnable) {
+    logRocCalls.info("pushed %d",nPushed);
+  }
 
   // check fifo occupancy ready queue size for stats
   equipmentStats[EquipmentStatsIndexes::fifoOccupancyReadyBlocks].set(channel->getReadyQueueSize());
@@ -284,6 +296,10 @@ Thread::CallbackResult ReadoutEquipmentRORC::prepareBlocks()
 
   // this is to be called periodically for driver internal business
   channel->fillSuperpages();
+  if (logRocCallsEnable) {
+    logRocCalls.info("fillSuperpage()");
+  }
+
 
   // readoutEquipmentRORCLock.unlock();
 
@@ -317,6 +333,9 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock()
   for(int loop = 0; loop < maxLoop; loop++) {
     bool doLoop = 0;
     if ((channel->getReadyQueueSize() > 0)) {
+      if (logRocCallsEnable) {
+        logRocCalls.info("pop (%d available)", channel->getReadyQueueSize());
+      }
       // get next page from FIFO
       auto superpage = channel->popSuperpage();
       void* mpPageAddress = (void*)(superpage.getUserData());
@@ -370,6 +389,9 @@ void ReadoutEquipmentRORC::setDataOn()
     // start DMA
     theLog.log(LogInfoDevel_(3010), "Starting DMA for ROC %s", getName().c_str());
     channel->startDma();
+    if (logRocCallsEnable) {
+      logRocCalls.info("startdma()");
+    }
 
     // get FIFO depth (it should be fully empty when starting)
     // can not be done before startDma() - would return 0
@@ -415,6 +437,9 @@ void ReadoutEquipmentRORC::setDataOff()
     theLog.log(LogInfoDevel_(3010), "Stopping DMA for ROC %s", getName().c_str());
     try {
       channel->stopDma();
+      if (logRocCallsEnable) {
+        logRocCalls.info("stopdma()");
+      }
     } catch (const std::exception& e) {
       theLog.log(LogErrorSupport_(3240), "Exception : %s", e.what());
       theLog.log(LogErrorSupport_(3240), "%s", boost::diagnostic_information(e).c_str());
