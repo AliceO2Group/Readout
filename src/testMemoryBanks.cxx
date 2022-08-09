@@ -89,6 +89,30 @@ int main()
     thePool->releasePage(p);
     printf("Pool: %d/%d available\n", (int)thePool->getNumberOfPagesAvailable(), (int)thePool->getTotalNumberOfPages());
   }
+
+  printf("\nTesting sub-page\n");
+  DataBlockContainerReference nextBlock = nullptr;
+  nextBlock = thePool->getNewDataBlockContainer();
+  DataBlock* b = nextBlock->getData();
+  printf("block = %p data = %p (size %d)\n", b, b->data, (int)b->header.dataSize);
+  std::vector<DataBlockContainerReference> subpages;
+  for (int i=0; i<6; i++) {
+    int sz = 256000;
+    if (i==5) {
+      sz = 70000;
+    }
+    auto sp = DataBlockContainer::getChildBlock(nextBlock, sz, 8192);
+    if (sp!=nullptr) {
+      printf("subblock %d = %p data = %p (size %d)\n", i, sp->getData(), sp->getData()->data, (int)sp->getData()->header.dataSize);
+    } else {
+      printf("subblock %d failed\n",i);
+    }
+    subpages.push_back(sp);
+  }
+  nextBlock = nullptr;
+  subpages.clear();
+
+  printf("\nTesting empty pool\n");
   for (int i = 0; i <= nTestPages; i++) {
     void* newPage = thePool->getPage();
     if (newPage != nullptr) {
