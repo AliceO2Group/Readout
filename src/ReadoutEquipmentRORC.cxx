@@ -10,6 +10,7 @@
 // or submit itself to any jurisdiction.
 
 #include <Common/Timer.h>
+#include <ReadoutCard/CardFinder.h>
 #include <ReadoutCard/ChannelFactory.h>
 #include <ReadoutCard/DmaChannelInterface.h>
 #include <ReadoutCard/Exception.h>
@@ -515,3 +516,12 @@ void ReadoutEquipmentRORC::finalCounters()
   }
 }
 
+int getPreferredROCNumaNode(ConfigFile& cfg, std::string name) {
+  try {
+    std::string cardId = cfg.getValue<std::string>(name + ".cardId");
+    return AliceO2::roc::findCard(cardId).numaNode;
+  }
+  catch (...) {
+  }
+  return -1;
+}
