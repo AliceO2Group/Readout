@@ -14,10 +14,7 @@
 #include <functional>
 #include <zmq.h>
 
-#include <InfoLogger/InfoLogger.hxx>
-#include <InfoLogger/InfoLoggerMacros.hxx>
-using namespace AliceO2::InfoLogger;
-extern InfoLogger theLog;
+#include "readoutInfoLogger.h"
 
 ZmqClient::ZmqClient(const std::string& url, int maxMsgSize, int zmqMaxQueue)
 {
