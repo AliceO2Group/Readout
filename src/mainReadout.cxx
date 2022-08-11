@@ -30,6 +30,8 @@
 #include <inttypes.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <string>
+#include <charconv>
 
 #include "DataBlock.h"
 #include "DataBlockContainer.h"
@@ -969,6 +971,33 @@ int Readout::configure(const boost::property_tree::ptree& properties)
     cfgEquipmentType = cfg.getValue<std::string>(kName + ".equipmentType");
     theLog.log(LogInfoDevel, "Configuring equipment %s: %s", kName.c_str(), cfgEquipmentType.c_str());
 
+    #ifdef WITH_NUMA
+      // configuration parameter: | equipment-* | numaNode | string | auto | If set, memory / thread will try to use given NUMA node. If "auto", will try to guess it for given equipment (eg ROC). |
+      std::string cfgNumaNode = "auto";
+      cfg.getOptionalValue<std::string>(kName + ".numaNode", cfgNumaNode);
+      int numaNode = -1;
+      if (cfgNumaNode == "auto") {
+	// equipment-specific method to get preferred NUMA node can not be implemented in a derived class method
+	// because we need info here in the equipment base class before allocating the memory
+	// call corresponding external function
+	extern int getPreferredROCNumaNode(ConfigFile&, std::string);
+	if (!cfgEquipmentType.compare("rorc")) {
+	  numaNode = getPreferredROCNumaNode(cfg, kName);
+	}
+      } else {
+	// try to convert value to int
+	int n;
+	auto [ptr, ec] = std::from_chars(cfgNumaNode.data(), cfgNumaNode.data() + cfgNumaNode.size(), n);
+	if (ec == std::errc{}) {
+	  numaNode = n;
+	}
+      }
+      if (numaNode >= 0) {
+	theLog.log(LogInfoDevel_(3008), "Preferred NUMA node = %d", numaNode);
+	numaBind(numaNode);
+      }
+    #endif
+
     std::unique_ptr<ReadoutEquipment> newDevice = nullptr;
     try {
       if (!cfgEquipmentType.compare("dummy")) {
@@ -1005,6 +1034,13 @@ int Readout::configure(const boost::property_tree::ptree& properties)
       nEquipmentFailures++;
       continue;
     }
+
+    #ifdef WITH_NUMA
+      // reset settings after instanciating equipment
+      if (numaNode >= 0) {
+	numaBind(-1);
+      }
+    #endif
 
     // add to list of equipments
     if (newDevice != nullptr) {

@@ -477,3 +477,6 @@ This file describes the main feature changes for each readout.exe released versi
   - added consumer-FairMQChannel-*.enablePackedCopy. If set, the same superpage may be reused (space allowing) for the copy of multiple HBF (instead of a separate one for each copy). This allows a reduced memoryPoolNumberOfPages.
 - ROC fifo health check enabled, a warning message is logged when in/out ROC FIFOs are empty/full.
 
+## v2.13.0 - 11/08/2022
+- Updated configuration parameters:
+  - added equipment-*.numaNode. If set, memory / thread will try to use given NUMA node. If "auto", will try to guess it for given equipment (eg ROC). "auto" is default.

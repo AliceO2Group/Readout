@@ -10,6 +10,9 @@
 // or submit itself to any jurisdiction.
 
 #include "MemoryBankManager.h"
+#include "ReadoutUtils.h"
+#include <unistd.h>
+#include <sys/mman.h>
 
 #include "readoutInfoLogger.h"
 
@@ -35,7 +38,7 @@ int MemoryBankManager::addBank(std::shared_ptr<MemoryBank> bankPtr, std::string 
   return 0;
 }
 
-std::shared_ptr<MemoryPagesPool> MemoryBankManager::getPagedPool(size_t pageSize, size_t pageNumber, std::string bankName, size_t firstPageOffset, size_t blockAlign)
+std::shared_ptr<MemoryPagesPool> MemoryBankManager::getPagedPool(size_t pageSize, size_t pageNumber, std::string bankName, size_t firstPageOffset, size_t blockAlign, int numaNode)
 {
 
   void* baseAddress = nullptr; // base address of bank from which the block is taken
@@ -92,6 +95,13 @@ std::shared_ptr<MemoryPagesPool> MemoryBankManager::getPagedPool(size_t pageSize
       }
     }
 
+    // align at least to memory page
+    int systemPageSize = getpagesize();
+    if ((int)blockAlign < systemPageSize) {
+      blockAlign = systemPageSize;
+      theLog.log(LogInfoDevel,"Aligning memory block by default on system page size = %d bytes", systemPageSize);
+    }
+
     // align beginning of block as specified
     if (blockAlign > 0) {
       size_t bytesExcess = (((size_t)baseAddress) + offset) % blockAlign;
@@ -113,6 +123,36 @@ std::shared_ptr<MemoryPagesPool> MemoryBankManager::getPagedPool(size_t pageSize
     newId = ++poolIndex;
   }
   // end of locked block
+
+  if (numaNode >= 0) {
+      // actual memory assignment is done on first write, in particular for FMQ
+      // so set NUMA node and zero the memory to lock it
+      // or try to move the block ?
+      numaBind(numaNode);
+  }
+
+  theLog.log(LogInfoDevel, "Zero memory");
+  void *blockAddress = &(((char*)baseAddress)[offset]);
+  // ensure pages stay in RAM
+  // no need to lock them now, we write the full range on next line. keep them locked then. this is faster.
+  mlock2(blockAddress, blockSize, MLOCK_ONFAULT);
+  bzero(blockAddress, blockSize);
+  theLog.log(LogInfoDevel, "Zero memory done");
+
+  if (numaNode >= 0) {
+    numaBind(-1);
+  }
+
+  int ptrNumaNode = -1;
+  if (numaGetNodeFromAddress(blockAddress, ptrNumaNode) == 0) {
+    theLog.log(LogInfoDevel, "Memory at %p is at node %d", blockAddress, ptrNumaNode);
+    if (numaNode >= 0) {
+      if (ptrNumaNode != numaNode) {
+        theLog.log(LogWarningDevel, "Warning, could not allocate memory pool on requested NUMA node");
+        // todo: try to move ?
+      }
+    }
+  }
 
   // create pool of pages from new block
   return std::make_shared<MemoryPagesPool>(pageSize, pageNumber, &(((char*)baseAddress)[offset]), blockSize, nullptr, firstPageOffset, newId);
