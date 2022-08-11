@@ -255,7 +255,7 @@ class ConsumerFMQchannel : public Consumer
           decDataBlockStats((*blockRef)->getData());
           delete blockRef;
         }
-      },"",0,fair::mq::RegionConfig{true, true});  // lock / zero
+      },fair::mq::RegionConfig{false,false});  // lock / zero - done later
 
       theLog.log(LogInfoDevel_(3008), "Got FMQ unmanaged memory buffer size %lu @ %p", memoryBuffer->GetSize(), memoryBuffer->GetData());
     }
