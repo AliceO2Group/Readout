@@ -18,6 +18,12 @@
 #include <filesystem>
 
 #include "RAWDataHeader.h"
+#include "readoutInfoLogger.h"
+
+#ifdef WITH_NUMA
+#include <numa.h>
+#include <numaif.h>
+#endif
 
 // function to convert a string to a 64-bit integer value
 // allowing usual "base units" in suffix (k,M,G,T)
@@ -256,3 +262,39 @@ int getStatsFilesystem(unsigned long long &freeBytes, const std::string &path) {
   return 0; 
 }
 
+int numaBind(int numaNode) {
+  #ifdef WITH_NUMA
+    struct bitmask* nodemask = nullptr;
+    if (numaNode>=0) {
+      nodemask = numa_allocate_nodemask();
+      if (nodemask != nullptr) {
+        theLog.log(LogInfoDevel, "Enforcing memory allocated on NUMA node %d", numaNode);
+        numa_bitmask_clearall(nodemask);
+        numa_bitmask_setbit(nodemask, numaNode);
+        numa_bind(nodemask);
+        numa_free_nodemask(nodemask);
+	return 0;
+      }
+    } else {
+      nodemask = numa_get_mems_allowed();
+      numa_bind(nodemask);
+      theLog.log(LogInfoDevel, "Releasing memory NUMA node enforcement");
+      return 0;
+    }
+    //numa_set_membind(nodemask);
+  #endif
+  return -1;
+}
+
+int numaGetNodeFromAddress(void *ptr, int &node) {
+  #ifdef WITH_NUMA
+    int err;
+    node = -1;
+    err = move_pages(0, 1, &ptr, NULL, &node, 0);
+    if (!err) {
+      return 0;
+    }
+    // EFAULT -> memory not mapped yet
+  #endif
+  return -1;
+}

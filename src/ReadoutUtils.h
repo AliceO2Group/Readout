@@ -71,6 +71,15 @@ int getStatsMemory(unsigned long long &freeBytes, const std::string& keyword);
 // returns 0 on success, -1 on error
 int getStatsFilesystem(unsigned long long &freeBytes, const std::string& path);
 
+// function to bind CPU / MEM to specific numa node
+// Use numaNode = -1 to bind to any / unbind.
+// returns 0 on success, or an error code.
+int numaBind(int numaNode);
+
+// function to get NUMA node of where given pointer is allocated
+// returns 0 on success, or an error code
+int numaGetNodeFromAddress(void *ptr, int &node);
+
 // end of _READOUTUTILS_H
 #endif
 
