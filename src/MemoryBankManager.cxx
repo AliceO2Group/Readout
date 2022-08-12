@@ -134,8 +134,13 @@ std::shared_ptr<MemoryPagesPool> MemoryBankManager::getPagedPool(size_t pageSize
   theLog.log(LogInfoDevel, "Zero memory");
   void *blockAddress = &(((char*)baseAddress)[offset]);
   // ensure pages stay in RAM
-  // no need to lock them now, we write the full range on next line. keep them locked then. this is faster.
-  mlock2(blockAddress, blockSize, MLOCK_ONFAULT);
+  #ifdef MLOCK_ONFAULT
+    // only on Linux
+    // no need to lock them now, we write the full range on next line. keep them locked then. this is faster.
+    mlock2(blockAddress, blockSize, MLOCK_ONFAULT);
+  #else
+    mlock(blockAddress, blockSize);
+  #endif
   bzero(blockAddress, blockSize);
   theLog.log(LogInfoDevel, "Zero memory done");
 
