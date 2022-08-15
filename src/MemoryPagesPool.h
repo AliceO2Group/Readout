@@ -82,6 +82,8 @@ class MemoryPagesPool
   void setWarningCallback(const LogCallback& cb, double thHigh = 0.9, double thOk = 0.8);
   void setBufferStateVariable(std::atomic<double> *bufferStateVar); // the provided variable is updated continuously with the buffer usage ratio (0.0 empty -> 1.0 full)
 
+  int getNumaStats(std::map<int,int> &pagesCountPerNumaNode);
+
  private:
 
   LogCallback theLogCallback;

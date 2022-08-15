@@ -14,6 +14,9 @@
 #include <cassert>
 #include <cstdio>
 
+#include "ReadoutUtils.h"
+
+
 int MemoryPagesPoolStatsEnabled = 0; // flag to control memory stats
 
 MemoryPagesPool::MemoryPagesPool(size_t vPageSize, size_t vNumberOfPages, void* vBaseAddress, size_t vBaseSize, ReleaseCallback vCallback, size_t firstPageOffset, int vId)
@@ -325,4 +328,37 @@ void MemoryPagesPool::setBufferStateVariable(std::atomic<double> *bufferStateVar
   pBufferState=bufferStateVar;
   updateBufferState();
   //printf("buffer usage = %lf @ 0x%p\n", pBufferState->load(),pBufferState);
+}
+
+int MemoryPagesPool::getNumaStats(std::map<int,int> &pagesCountPerNumaNode) {
+  int err=0;
+  pagesCountPerNumaNode.clear();
+  uint64_t np = 0;
+  for(char *ptr = (char *)baseBlockAddress; ptr < &((char*)baseBlockAddress)[baseBlockSize]; ptr += 4096) {
+    int numaNode = -1;
+    if (numaGetNodeFromAddress(ptr, numaNode) == 0) {
+      if (numaNode>=0) {
+        np++;
+	pagesCountPerNumaNode[numaNode]++;
+      }
+    }
+  }
+  for (auto &c : pagesCountPerNumaNode) {
+    c.second = c.second / 250; // report in MB
+  }
+
+/*  for (auto& p : pagesMap) {
+    int numaNode = -1;
+    if (numaGetNodeFromAddress(p.second.ptr, numaNode) == 0) {
+      if (numaNode>=0) {
+        pagesCountPerNumaNode[numaNode]++;
+      } else {
+        err++;
+      }
+    } else {
+      err++;
+    }
+  }
+*/
+  return err;
 }
