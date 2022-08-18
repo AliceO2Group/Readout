@@ -246,6 +246,7 @@ std::shared_ptr<DataBlockContainer> MemoryPagesPool::getNewDataBlockContainer(vo
   DataBlock* b = (DataBlock*)newPage;
   b->header = defaultDataBlockHeader;
   b->header.dataSize = getDataBlockMaxSize();
+  b->header.memorySize = getDataBlockMaxSize();
   b->data = &(((char*)b)[headerReservedSpace]);
 
   // define a function to put it back in pool after use

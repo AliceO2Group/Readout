@@ -41,7 +41,7 @@ const uint16_t undefinedEquipmentId = 0xFFFF; ///< default value, when equipment
 const uint8_t undefinedLinkId = 0xFF;         ///< default value, when linkId undefined
 const uint32_t undefinedOrbit = 0;            ///< default value, when orbit undefined
 
-const uint32_t DataBlockHeaderUserSpace = 128; ///< size of spare area for user data
+const uint32_t DataBlockHeaderUserSpace = 124; ///< size of spare area for user data
 
 // Header
 struct DataBlockHeader {
@@ -63,16 +63,17 @@ struct DataBlockHeader {
   uint8_t flagEndOfTimeframe;   ///< flag to signal this is the last TF block
   uint8_t isRdhFormat;          ///< flag set when payload is RDH-formatted
   uint32_t orbitOffset;         ///< set when RDH orbits should be added given offset to match TFid
+  uint32_t memorySize;          ///< size in memory of current block
 
   uint8_t userSpace[DataBlockHeaderUserSpace]; ///< spare area for user data
 };
 
 // Version of this header
 // with DB marker for DataBlock start, 1st byte in header little-endian
-const uint32_t DataBlockVersion = 0x0003DBDB;
+const uint32_t DataBlockVersion = 0x0004DBDB;
 
 // DataBlockHeader instance with all default fields
-const DataBlockHeader defaultDataBlockHeader = { .headerVersion = DataBlockVersion, .headerSize = sizeof(DataBlockHeader), .dataSize = 0, .blockId = undefinedBlockId, .pipelineId = undefinedBlockId, .timeframeId = undefinedTimeframeId, .runNumber = undefinedRunNumber, .systemId = undefinedSystemId, .feeId = undefinedFeeId, .equipmentId = undefinedEquipmentId, .linkId = undefinedLinkId, .timeframeOrbitFirst = undefinedOrbit, .timeframeOrbitLast = undefinedOrbit, .flagEndOfTimeframe = 0, .isRdhFormat = 1, .orbitOffset = undefinedOrbit, .userSpace = { 0 } };
+const DataBlockHeader defaultDataBlockHeader = { .headerVersion = DataBlockVersion, .headerSize = sizeof(DataBlockHeader), .dataSize = 0, .blockId = undefinedBlockId, .pipelineId = undefinedBlockId, .timeframeId = undefinedTimeframeId, .runNumber = undefinedRunNumber, .systemId = undefinedSystemId, .feeId = undefinedFeeId, .equipmentId = undefinedEquipmentId, .linkId = undefinedLinkId, .timeframeOrbitFirst = undefinedOrbit, .timeframeOrbitLast = undefinedOrbit, .flagEndOfTimeframe = 0, .isRdhFormat = 1, .orbitOffset = undefinedOrbit, .memorySize = 0, .userSpace = { 0 } };
 
 // DataBlock
 // Pair of header + payload data
