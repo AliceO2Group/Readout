@@ -351,6 +351,9 @@ Thread::CallbackResult ReadoutEquipment::threadCallback(void* arg)
 {
   ReadoutEquipment* ptr = static_cast<ReadoutEquipment*>(arg);
 
+  // set thread name
+  setThreadName(ptr->getName().c_str());
+
   // flag to identify if something was done in this iteration
   bool isActive = false;
 
