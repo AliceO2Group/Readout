@@ -74,6 +74,7 @@ find_package(Occ)
 find_package(BookkeepingApiCpp)
 find_package(ZMQ)
 find_package(MySQL)
+#find_package(gperftools)
 
 # extract include directories from targets
 get_target_property(InfoLogger_INCLUDE_DIRS AliceO2::InfoLogger INTERFACE_INCLUDE_DIRECTORIES)
@@ -141,8 +142,14 @@ else ()
   message(STATUS "MySQL not found, corresponding features will be disabled.")
 endif()
 
+# check Gperftools
+if(${gperftools_FOUND})
+  message(STATUS "gperftools enabled")
+endif()
+
+
 # add flags to enable optional features in Readout, based on available dependencies
-add_compile_definitions($<$<BOOL:${Numa_FOUND}>:WITH_NUMA> $<$<BOOL:${RDMA_FOUND}>:WITH_RDMA> $<$<BOOL:${Configuration_FOUND}>:WITH_CONFIG> $<$<BOOL:${FairMQ_FOUND}>:WITH_FAIRMQ> $<$<BOOL:${Occ_FOUND}>:WITH_OCC> $<$<BOOL:${BookkeepingApiCpp_FOUND}>:WITH_LOGBOOK> $<$<BOOL:${ZMQ_FOUND}>:WITH_ZMQ> $<$<BOOL:${MYSQL_FOUND}>:WITH_DB> $<$<BOOL:${ReadoutCard_FOUND}>:WITH_READOUTCARD> )
+add_compile_definitions($<$<BOOL:${Numa_FOUND}>:WITH_NUMA> $<$<BOOL:${RDMA_FOUND}>:WITH_RDMA> $<$<BOOL:${Configuration_FOUND}>:WITH_CONFIG> $<$<BOOL:${FairMQ_FOUND}>:WITH_FAIRMQ> $<$<BOOL:${Occ_FOUND}>:WITH_OCC> $<$<BOOL:${BookkeepingApiCpp_FOUND}>:WITH_LOGBOOK> $<$<BOOL:${ZMQ_FOUND}>:WITH_ZMQ> $<$<BOOL:${MYSQL_FOUND}>:WITH_DB> $<$<BOOL:${ReadoutCard_FOUND}>:WITH_READOUTCARD> $<$<BOOL:${gperftools_FOUND}>:WITH_GPERFTOOLS>)
 
 # define include directories
 set(READOUT_INCLUDE_DIRS
@@ -181,6 +188,9 @@ endif()
 if(MYSQL_FOUND)
   list(APPEND READOUT_INCLUDE_DIRS ${MYSQL_INCLUDE_DIRS}) 
   list(APPEND READOUT_LINK_LIBRARIES ${MYSQL_LIBRARIES})
+endif()
+if(gperftools_FOUND)
+  list(APPEND READOUT_LINK_LIBRARIES ${gperftools_LIBRARIES})
 endif()
 
 # some systems don't need an explicit library to have dlopen()
