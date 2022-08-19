@@ -48,10 +48,14 @@ struct ReadoutStatsCounters {
   std::atomic<uint32_t> logMessagesError;           // number of log messages (severity: error)
   std::atomic<uint32_t> currentOrbit;               // 1st orbit of current timeframe (last out of aggregator)
   std::atomic<double> bufferUsage[ReadoutStatsMaxItems]; // buffer usage. -1 means not used.
+  std::atomic<uint64_t> ddHBFRepacked;              // Data Distribution: number of HBF re-packed (HBF overlapping superpages)
+  std::atomic<uint64_t> ddBytesCopied;              // Data Distribution: number of bytes copied (HBF overlapping superpages)
+  std::atomic<uint64_t> ddMemoryPendingBytes;       // Data Distribution: number of bytes pending release in ConsumerFMQ (real memory)
+  std::atomic<uint64_t> ddPayloadPendingBytes;      // Data Distribution: number of bytes pending release in ConsumerFMQ (payload only, not accounting for memory fragmentation overhead)
 };
 
 // version number of this struct
-const uint32_t ReadoutStatsCountersVersion = 0xA0000002;
+const uint32_t ReadoutStatsCountersVersion = 0xA0000003;
 
 // need to be able to easily transmit this struct as a whole
 static_assert(std::is_pod<ReadoutStatsCounters>::value);
