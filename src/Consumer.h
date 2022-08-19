@@ -42,7 +42,8 @@ class Consumer
   // Function called just after stopping data taking, after the last call to pushData(). Not called before input FIFO empty.
   virtual int stop()
   {
-    theLog.log(LogInfoDevel_(3003), "Push statistics for %s: %llu err / %llu total (DataSets), %llu/%llu filtered (DataBlocks)", this->name.c_str(), totalPushError, totalPushError + totalPushSuccess, totalBlocksFiltered, totalBlocksUnfiltered + totalBlocksFiltered);
+    theLog.log(LogInfoDevel_(3003), "Push statistics for %s: %llu err / %llu total (DataSets), %llu/%llu filtered (DataBlocks)",
+      this->name.c_str(), totalPushError.load(), totalPushError.load() + totalPushSuccess.load(), totalBlocksFiltered.load(), totalBlocksUnfiltered.load() + totalBlocksFiltered.load());
     return 0;
   };
 
@@ -53,10 +54,10 @@ class Consumer
   bool stopOnError = false;            // if set, readout will stop when this consumer reports an error (isError flag or pushData() failing)
   int isError = 0;                     // flag which might be used to count number of errors occuring in the consumer
   bool isErrorReported = false;        // flag to keep track of error reports for this consumer
-  unsigned long long totalPushSuccess = 0;
-  unsigned long long totalPushError = 0;
-  unsigned long long totalBlocksFiltered = 0;
-  unsigned long long totalBlocksUnfiltered = 0;
+  std::atomic<unsigned long long> totalPushSuccess = 0;
+  std::atomic<unsigned long long> totalPushError = 0;
+  std::atomic<unsigned long long> totalBlocksFiltered = 0;
+  std::atomic<unsigned long long> totalBlocksUnfiltered = 0;
 
  protected:
   // check if a DataBlock passes defined filters. Return 1 if ok, zero if not.
