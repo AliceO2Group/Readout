@@ -97,6 +97,7 @@ class MemoryPagesPool
 
   std::unique_ptr<AliceO2::Common::Fifo<void*>> pagesAvailable; // a buffer to keep track of individual pages
   std::mutex pagesAvailableMutexPush; // a lock to avoid concurrent push-back of free pages to fifo
+  std::mutex pagesAvailableMutexPop; // a lock to avoid concurrent get free pages from fifo
 
   size_t numberOfPages;                           // number of pages
   size_t pageSize;                                // size of each page, in bytes

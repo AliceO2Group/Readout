@@ -149,6 +149,9 @@ MemoryPagesPool::~MemoryPagesPool()
 
 void* MemoryPagesPool::getPage()
 {
+  // disable concurrent execution of this function
+  std::unique_lock<std::mutex> lock(pagesAvailableMutexPop);
+
   // update statistics
   poolStats.set((CounterValue)getNumberOfPagesAvailable());
 
@@ -156,6 +159,12 @@ void* MemoryPagesPool::getPage()
   void* ptr = nullptr;
   pagesAvailable->pop(ptr);
 
+  // udpate buffer state
+  updateBufferState();
+
+  // the following does not need exclusive access, release lock
+  lock.unlock();
+  
   // stats
   if (MemoryPagesPoolStatsEnabled) {
     if (ptr != nullptr) {
@@ -171,9 +180,6 @@ void* MemoryPagesPool::getPage()
       }
     }
   }
-
-  // udpate buffer state
-  updateBufferState();
 
   return ptr;
 }
