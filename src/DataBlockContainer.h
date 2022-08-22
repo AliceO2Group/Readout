@@ -39,7 +39,11 @@ class DataBlockContainer
   // NB: may use std::bind to add extra arguments
 
   // default constructor
-  DataBlockContainer(DataBlock* v_data = nullptr, uint64_t v_dataBufferSize = 0) : data(v_data), dataBufferSize(v_dataBufferSize), releaseCallback(nullptr){};
+  DataBlockContainer(DataBlock* v_data = nullptr, uint64_t v_dataBufferSize = 0) : data(v_data), dataBufferSize(v_dataBufferSize), releaseCallback(nullptr){
+    #ifdef DATABLOCKCONTAINER_DEBUG
+    printf("Creating DataBlockContainer @ %p size %d\n", data, (int)v_dataBufferSize);
+    #endif
+  };
 
   // this constructor allows to specify a callback which is invoked when container is destroyed
   DataBlockContainer(ReleaseCallback v_callback = nullptr, DataBlock* v_data = nullptr, uint64_t v_dataBufferSize = 0) : data(v_data), dataBufferSize(v_dataBufferSize), releaseCallback(v_callback){};
@@ -80,6 +84,7 @@ class DataBlockContainer
     DataBlock *b = (DataBlock *)&((char *)parentBlock->getData()->data)[parentBlock->dataBufferUsed];
     b->header = defaultDataBlockHeader;
     b->header.dataSize = v_dataBufferSizeNeeded;
+    b->header.memorySize = 0; // if this is a child block, it virtually takes no memory. The memory is owned by the parent block.
     b->data = &(((char*)b)[sizeof(DataBlock)]);
 
     #ifdef DATABLOCKCONTAINER_DEBUG

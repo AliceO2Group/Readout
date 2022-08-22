@@ -382,6 +382,9 @@ int main(int argc, const char** argv)
                 }
               }
 	      if (stf->timeframeId != lastTFid) {
+	        if ((lastTFid) && (stf->timeframeId != lastTFid + 1)) {
+		  theLog.log(LogWarningSupport_(3237), "Non-continuous TF id ordering: was %d now %d", (int)lastTFid, (int)stf->timeframeId );
+		}
 	        lastTFid = stf->timeframeId;
 	        nTF++;
 	      }

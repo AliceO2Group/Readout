@@ -480,3 +480,7 @@ This file describes the main feature changes for each readout.exe released versi
 ## v2.13.0 - 11/08/2022
 - Updated configuration parameters:
   - added equipment-*.numaNode. If set, memory / thread will try to use given NUMA node. If "auto", will try to guess it for given equipment (eg ROC). "auto" is default.
+
+## v2.14.1 - 22/08/2022
+- Updated configuration parameters:
+  - added consumer-FairMQChannel-*.threads. If set, a pool of threads is used for FMQ message formatting. Needed at high rates when a single CPU core is not enough to prepare data for DataDistribution (including overlapping HBF copy).

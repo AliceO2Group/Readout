@@ -298,3 +298,20 @@ int numaGetNodeFromAddress(void *ptr, int &node) {
   #endif
   return -1;
 }
+
+// function to set a name for current thread
+void setThreadName(const char* name) {
+  #ifdef _GNU_SOURCE
+    char buf[16] = "readout";
+    if (name != nullptr) {
+      strncpy(buf, name, sizeof(buf)-1);
+      buf[sizeof(buf)-1] = 0;
+    }
+    pthread_setname_np(pthread_self(), buf);
+    // ortherwise
+    // prctl(PR_SET_NAME, ...)
+  #else
+    // prevent warning for unused parameter
+    (void)name;
+  #endif
+}

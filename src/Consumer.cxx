@@ -14,6 +14,10 @@
 
 Consumer::Consumer(ConfigFile& cfg, std::string cfgEntryPoint)
 {
+  // by default, name the equipment as the config node entry point
+  // configuration parameter: | consumer-* | name | string| | Name used to identify this consumer (in logs). By default, it takes the name of the configuration section, consumer-xxx |
+  cfg.getOptionalValue<std::string>(cfgEntryPoint + ".name", name, cfgEntryPoint);
+
   // configuration parameter: | consumer-* | filterLinksInclude | string |  | Defines a filter based on link ids. Only data belonging to the links in this list (coma separated values) are accepted. If empty, all link ids are fine. |
   std::string cfgFilterLinksInclude;
   cfg.getOptionalValue<std::string>(cfgEntryPoint + ".filterLinksInclude", cfgFilterLinksInclude);

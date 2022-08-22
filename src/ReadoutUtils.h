@@ -80,6 +80,9 @@ int numaBind(int numaNode);
 // returns 0 on success, or an error code
 int numaGetNodeFromAddress(void *ptr, int &node);
 
+// function to set a name for current thread
+void setThreadName(const char*name);
+
 // end of _READOUTUTILS_H
 #endif
 

@@ -82,6 +82,8 @@ class MemoryPagesPool
   void setWarningCallback(const LogCallback& cb, double thHigh = 0.9, double thOk = 0.8);
   void setBufferStateVariable(std::atomic<double> *bufferStateVar); // the provided variable is updated continuously with the buffer usage ratio (0.0 empty -> 1.0 full)
 
+  int getNumaStats(std::map<int,int> &pagesCountPerNumaNode);
+
  private:
 
   LogCallback theLogCallback;
@@ -95,6 +97,7 @@ class MemoryPagesPool
 
   std::unique_ptr<AliceO2::Common::Fifo<void*>> pagesAvailable; // a buffer to keep track of individual pages
   std::mutex pagesAvailableMutexPush; // a lock to avoid concurrent push-back of free pages to fifo
+  std::mutex pagesAvailableMutexPop; // a lock to avoid concurrent get free pages from fifo
 
   size_t numberOfPages;                           // number of pages
   size_t pageSize;                                // size of each page, in bytes

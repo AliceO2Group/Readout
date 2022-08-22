@@ -85,6 +85,10 @@
 #include <valgrind/callgrind.h>
 #endif
 
+#ifdef WITH_GPERFTOOLS
+#include <gperftools/profiler.h>
+#endif
+
 // option to enable compilation with FairMQ support
 #ifdef WITH_FAIRMQ
 #include <InfoLogger/InfoLoggerFMQ.hxx>
@@ -108,6 +112,7 @@ using namespace AliceO2::Common;
 
 // some constants
 const char* envRunNumber = "O2_RUN"; // env var name for run number store
+const char* gperfOutputFile = "/tmp/readout.gperf"; // path to output file when gperf profiling enabled
 
 // set log environment before theLog is initialized
 TtyChecker theTtyChecker;
@@ -412,6 +417,11 @@ int Readout::init(int argc, char* argv[])
     #else
       theLog.log(LogInfoDevel, "ZMQ : no");
     #endif
+    #ifdef WITH_GPERFTOOLS
+      theLog.log(LogInfoDevel, "GPERFTOOLS : yes");
+    #else
+      theLog.log(LogInfoDevel, "GPERFTOOLS : no");
+    #endif
   }
 
   // report cached logs
@@ -466,6 +476,11 @@ int Readout::init(int argc, char* argv[])
     } else {
       cfgCustomCommandsEnabled = 0;
     }
+  }
+
+  // print some built-in constants
+  if (cfgVerbose) {
+    // theLog.log(LogInfoDevel, "DataBlockHeader size = %d", (int)sizeof(DataBlockHeader));
   }
 
   return 0;
@@ -847,11 +862,21 @@ int Readout::configure(const boost::property_tree::ptree& properties)
 
     // instanciate consumer of appropriate type
     std::unique_ptr<Consumer> newConsumer = nullptr;
+    int cfgNumaNode = -1;
     try {
       // configuration parameter: | consumer-* | consumerType | string |  | The type of consumer to be instanciated. One of:stats, FairMQDevice, DataSampling, FairMQChannel, fileRecorder, checker, processor, tcp. |
       std::string cfgType = "";
       cfgType = cfg.getValue<std::string>(kName + ".consumerType");
       theLog.log(LogInfoDevel, "Configuring consumer %s: %s", kName.c_str(), cfgType.c_str());
+
+      #ifdef WITH_NUMA
+	// configuration parameter: | consumer-* | numaNode | int | -1 | If set (>=0), memory / thread will try to use given NUMA node. |
+	cfg.getOptionalValue<int>(kName + ".numaNode", cfgNumaNode);
+	if (cfgNumaNode >= 0) {
+	  theLog.log(LogInfoDevel_(3008), "Preferred NUMA node = %d", cfgNumaNode);
+	  numaBind(cfgNumaNode);
+	}
+      #endif
 
       if (!cfgType.compare("stats")) {
         newConsumer = getUniqueConsumerStats(cfg, kName);
@@ -906,11 +931,17 @@ int Readout::configure(const boost::property_tree::ptree& properties)
       theLog.log(LogErrorSupport_(3100), "Failed to configure consumer %s", kName.c_str());
     }
 
+    #ifdef WITH_NUMA
+      // reset settings after instanciating consumer
+      if (cfgNumaNode >= 0) {
+	numaBind(-1);
+      }
+    #endif
+
     if (newConsumer != nullptr) {
       if (cfgOutput.length() > 0) {
         consumersOutput.insert(std::pair<Consumer*, std::string>(newConsumer.get(), cfgOutput));
       }
-      newConsumer->name = kName;
       if (cfgStopOnError) {
         newConsumer->stopOnError = 1;
       }
@@ -1160,13 +1191,31 @@ int Readout::start()
   return 0;
 }
 
+std::thread::id mainThreadId;
+int isMainThread(void *) {
+  if (std::this_thread::get_id() == mainThreadId) {
+    return 1;
+  }
+  return 0;
+}
+
 void Readout::loopRunning()
 {
+  setThreadName("loopRunning");
 
   theLog.log(LogInfoDevel, "Entering main loop");
 #ifdef CALLGRIND
   theLog.log(LogInfoDevel, "Starting callgrind instrumentation");
   CALLGRIND_START_INSTRUMENTATION;
+#endif
+
+#ifdef WITH_GPERFTOOLS
+  theLog.log(LogInfoDevel, "Starting gperftools instrumentation");
+
+  mainThreadId = std::this_thread::get_id();
+  struct ProfilerOptions gperfopt = { &isMainThread, 0 };
+  ProfilerStartWithOptions(gperfOutputFile.c_str(), &gperfopt);
+  //ProfilerStart(gperfOutputFile.c_str());
 #endif
 
   for (;;) {
@@ -1236,6 +1285,11 @@ void Readout::loopRunning()
   CALLGRIND_DUMP_STATS;
   theLog.log(LogInfoDevel, "Stopping callgrind instrumentation");
 #endif
+#ifdef WITH_GPERFTOOLS
+  theLog.log(LogInfoDevel, "Stopping gperftools instrumentation");
+  ProfilerStop();
+#endif
+
   theLog.log(LogInfoDevel, "Exiting main loop");
 }
 

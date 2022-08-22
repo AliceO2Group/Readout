@@ -218,6 +218,15 @@ ReadoutEquipment::ReadoutEquipment(ConfigFile& cfg, std::string cfgEntryPoint, b
       mp -> setBufferStateVariable(&gReadoutStats.counters.bufferUsage[mp->getId()]);
     }
     theLog.log(LogInfoDevel_(3008), "Using memory pool [%d]: %d pages x %d bytes", mp->getId(), memoryPoolNumberOfPages, memoryPoolPageSize);
+
+    std::map<int, int> numaStats;
+    if (mp->getNumaStats(numaStats)==0) {
+      std::string numaStatsStr;
+      for (auto &s : numaStats) {
+        numaStatsStr += "[" + std::to_string(s.first) + "] = " + std::to_string(s.second) + " MB  ";
+      }
+      theLog.log(LogInfoDevel_(3008), "Memory pool pages NUMA distribution : %s", numaStatsStr.c_str());
+    }
   }
   // todo: move page align to MemoryPool class
   assert(pageSpaceReserved == mp->getPageSize() - mp->getDataBlockMaxSize());
@@ -341,6 +350,9 @@ DataBlockContainerReference ReadoutEquipment::getBlock()
 Thread::CallbackResult ReadoutEquipment::threadCallback(void* arg)
 {
   ReadoutEquipment* ptr = static_cast<ReadoutEquipment*>(arg);
+
+  // set thread name
+  setThreadName(ptr->getName().c_str());
 
   // flag to identify if something was done in this iteration
   bool isActive = false;
