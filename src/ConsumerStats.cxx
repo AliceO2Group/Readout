@@ -124,16 +124,27 @@ class ConsumerStats : public Consumer
     snapshot.timestamp = time(NULL);
     gReadoutStats.counters.pagesPendingFairMQtime = 0;
     gReadoutStats.counters.pagesPendingFairMQreleased = 0;
+    gReadoutStats.counters.ddBytesCopied = 0;
+    gReadoutStats.counters.ddHBFRepacked = 0;
     gReadoutStats.counters.notify++;
     unsigned long long nRfmq = snapshot.pagesPendingFairMQreleased.load();
     int tfidfmq = (int)snapshot.timeframeIdFairMQ.load();
     double avgTfmq = 0.0;
     double rRfmq = 0.0;
+    double ddBytesCopiedRate = 0; // copy rate in MB/s
+    double ddHBFRepackedRate = 0; // repack rate in Hz
+    double ddMemoryEfficiency = 0; // memory efficiency in %
+
     if (nRfmq) {
       avgTfmq = (snapshot.pagesPendingFairMQtime.load() / nRfmq) / (1000000.0);
     }
     if (deltaT > 0) {
       rRfmq = nRfmq / deltaT;
+      ddBytesCopiedRate = snapshot.ddBytesCopied / (1024*1024*deltaT);
+      ddHBFRepackedRate = snapshot.ddHBFRepacked / deltaT;
+    }
+    if ((snapshot.ddPayloadPendingBytes > 0) && (snapshot.ddMemoryPendingBytes > 0)) {
+      ddMemoryEfficiency = snapshot.ddPayloadPendingBytes * 100.0 / snapshot.ddMemoryPendingBytes;
     }
     
     if (monitoringEnabled) {
@@ -156,6 +167,11 @@ class ConsumerStats : public Consumer
       sendMetricNoException({ rRfmq, "readout.stfbMemoryPagesReleaseRate"});
       sendMetricNoException({ avgTfmq, "readout.stfbMemoryPagesReleaseLatency"});
       sendMetricNoException({ tfidfmq, "readout.stfbTimeframeId"});
+      sendMetricNoException({ ddBytesCopiedRate, "readout.stfbHBFCopyRate"});
+      sendMetricNoException({ ddHBFRepackedRate, "readout.stfbHBFRepackedRate"});
+      sendMetricNoException({ ddMemoryEfficiency, "readout.stfbMemoryEfficiency"});
+      sendMetricNoException({ snapshot.ddPayloadPendingBytes, "readout.stfbDataBytesLocked"});
+      sendMetricNoException({ snapshot.ddMemoryPendingBytes, "readout.stfbMemoryBytesLocked"});
 
       // buffer stats
       for (int i = 0; i < ReadoutStatsMaxItems; i++) {
@@ -175,9 +191,12 @@ class ConsumerStats : public Consumer
 
     if (consoleUpdate) {
       if (deltaT > 0) {
-        theLog.log(LogInfoOps_(3003), "Last interval (%.2fs): blocksRx=%llu, block rate=%.2lf, bytesRx=%llu, rate=%s", deltaT, (unsigned long long)counterBlocksDiff, counterBlocksDiff / deltaT, (unsigned long long)counterBytesDiff, NumberOfBytesToString(counterBytesDiff * 8 / deltaT, "b/s", 1000).c_str());
+        theLog.log(LogInfoOps_(3003), "Last interval (%.2fs): blocksRx=%llu, block rate=%.2lf, block size = %.1lfkB, bytesRx=%llu, rate=%s", deltaT, (unsigned long long)counterBlocksDiff, counterBlocksDiff / deltaT, counterBytesDiff / (1024.0*counterBlocksDiff), (unsigned long long)counterBytesDiff, NumberOfBytesToString(counterBytesDiff * 8 / deltaT, "b/s", 1000).c_str());
 	if (gReadoutStats.isFairMQ) {
           theLog.log(LogInfoOps_(3003), "STFB locked pages: current=%llu, released = %llu, release rate=%.2lf Hz, latency=%.3lf s, current TF = %d", (unsigned long long) snapshot.pagesPendingFairMQ.load(), nRfmq, rRfmq, avgTfmq, tfidfmq );
+	  theLog.log(LogInfoOps_(3003), "STFB HBF repacking = %.1lf Hz, copy overhead = %.1lf MB/s", ddHBFRepackedRate, ddBytesCopiedRate);
+	  theLog.log(LogInfoOps_(3003), "STFB memory efficiency = %.1lf %%, data buffered = %.1lf MB, real memory used %.1lf MB",
+	    ddMemoryEfficiency, snapshot.ddPayloadPendingBytes / (1024.0*1024.0), snapshot.ddMemoryPendingBytes / (1024.0*1024.0) );
 	}
 	std::string bufferReport;
 	for (int i = 0; i < ReadoutStatsMaxItems; i++) {
