@@ -279,6 +279,8 @@ void Readout::publishLogbookStats()
 
 int Readout::init(int argc, char* argv[])
 {
+  setThreadName(nullptr);
+    
   int doMemLock = 0; // when set, ensure all allocated memory is locked in ram
   std::string readoutExe = ""; // when set, use specified executable
   std::string readoutConfig = ""; // when set, use specified executable
@@ -1201,7 +1203,7 @@ int isMainThread(void *) {
 
 void Readout::loopRunning()
 {
-  setThreadName("loopRunning");
+  setThreadName("readout-loop");
 
   theLog.log(LogInfoDevel, "Entering main loop");
 #ifdef CALLGRIND

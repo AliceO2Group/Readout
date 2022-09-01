@@ -56,6 +56,9 @@ SocketTx::~SocketTx()
 
 void SocketTx::run()
 {
+  #ifdef _GNU_SOURCE
+    pthread_setname_np(pthread_self(), "socket-tx");
+  #endif
 
   // connect remote server
 

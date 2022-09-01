@@ -15,6 +15,9 @@
 #include <thread>
 
 #include "Consumer.h"
+#include "ReadoutUtils.h"
+
+#define CONSUMER_THREAD_NAME "processor"
 
 const bool debug = false;
 
@@ -78,6 +81,7 @@ class processThread
   // the loop which runs in a separate thread and calls fProcess() for each block in input fifo, until stop() is called
   void loop()
   {
+    setThreadName(CONSUMER_THREAD_NAME "-loop");
     // printf("starting thread %d input=%p
     // output=%p\n",threadId,inputFifo.get(),outputFifo.get());
     // printf("processing thread %d starting\n",threadId);
@@ -305,7 +309,7 @@ class ConsumerDataProcessor : public Consumer
   // collector thread loop: handle the output of processing threads
   void loopOutput(void)
   {
-
+    setThreadName(CONSUMER_THREAD_NAME "-out");
     bool isActive = 0;
 
     // lambda function that pushes forward next available bage

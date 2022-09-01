@@ -85,6 +85,9 @@ int ZmqServer::publish(void* msgBody, int msgSize)
 
 void ZmqServer::run()
 {
+  #ifdef _GNU_SOURCE
+    pthread_setname_np(pthread_self(), "zmq-server");
+  #endif
   return;
   uint64_t i = 0;
   for (; !shutdownRequest;) {

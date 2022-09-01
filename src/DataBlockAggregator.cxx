@@ -41,6 +41,13 @@ Thread::CallbackResult DataBlockAggregator::threadCallback(void* arg)
     return Thread::CallbackResult::Error;
   }
 
+  if (!dPtr->isThreadNamed) {
+    #ifdef _GNU_SOURCE
+      pthread_setname_np(pthread_self(), "aggregator");
+    #endif
+    dPtr->isThreadNamed = 1;
+  }
+
   if (dPtr->output->isFull()) {
     return Thread::CallbackResult::Idle;
   }

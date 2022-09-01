@@ -18,6 +18,7 @@
 #include <fairmq/FairMQParts.h>
 #include <fairmq/FairMQTransportFactory.h>
 #include <thread>
+#include "ReadoutUtils.h"
 
 class ConsumerDataSampling : public Consumer
 {
@@ -143,7 +144,10 @@ class ConsumerDataSampling : public Consumer
   }
 
  private:
-  void runDevice() { sender.RunStateMachine(); }
+  void runDevice() {
+    setThreadName("fmq-run-ds");
+    sender.RunStateMachine();
+  }
 };
 
 std::unique_ptr<Consumer> getUniqueConsumerDataSampling(ConfigFile& cfg, std::string cfgEntryPoint) { return std::make_unique<ConsumerDataSampling>(cfg, cfgEntryPoint); }
