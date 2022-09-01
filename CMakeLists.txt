@@ -404,6 +404,11 @@ add_executable(
         ${SOURCE_DIR}/testROC.cxx
 	$<TARGET_OBJECTS:objReadoutUtils>
 )
+add_executable(
+	o2-readout-test-roc-find
+        ${SOURCE_DIR}/testROCfind.cxx
+	$<TARGET_OBJECTS:objReadoutUtils>
+)
 endif()
 
 # a test program to test ZMQ client
@@ -477,7 +482,7 @@ endif ()
 # set include and libraries for all
 set(executables o2-readout-exe o2-readout-receiver o2-readout-test-fmq-tx o2-readout-test-fmq-rx o2-readout-test-fmq-perf-tx o2-readout-test-fmq-perf-rx o2-readout-test-memorybanks o2-readout-rawreader o2-readout-test-lib-monitoring)
 if (ReadoutCard_FOUND)
-  list (APPEND executables o2-readout-test-roc)
+  list (APPEND executables o2-readout-test-roc o2-readout-test-roc-find)
 endif()
 if (${ZMQ_FOUND})
   list (APPEND executables o2-readout-test-zmq-client o2-readout-test-zmq-server o2-readout-eventdump)
