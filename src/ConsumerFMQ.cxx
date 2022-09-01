@@ -17,6 +17,7 @@
 #include <fairmq/FairMQMessage.h>
 #include <fairmq/FairMQTransportFactory.h>
 #include <thread>
+#include "ReadoutUtils.h"
 
 class FMQSender : public FairMQDevice
 {
@@ -142,7 +143,10 @@ class ConsumerFMQ : public Consumer
   }
 
  private:
-  void runDevice() { sender.RunStateMachine(); }
+  void runDevice() {
+      setThreadName("fmq-run-ds");
+      sender.RunStateMachine();
+  }
 };
 
 std::unique_ptr<Consumer> getUniqueConsumerFMQ(ConfigFile& cfg, std::string cfgEntryPoint) { return std::make_unique<ConsumerFMQ>(cfg, cfgEntryPoint); }

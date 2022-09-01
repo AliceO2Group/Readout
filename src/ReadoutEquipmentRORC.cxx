@@ -519,6 +519,26 @@ void ReadoutEquipmentRORC::finalCounters()
 int getPreferredROCNumaNode(ConfigFile& cfg, std::string name) {
   try {
     std::string cardId = cfg.getValue<std::string>(name + ".cardId");
+
+    // try to get numa node directly (bug in ROC function to retrieve it)
+    int numaNode = -1;
+    std::string numapath = "/sys/bus/pci/devices/0000:"+ AliceO2::roc::findCard(cardId).pciAddress.toString() + "/numa_node";
+    FILE *fp = fopen(numapath.c_str(), "r");
+    if (fp!=nullptr) {
+      char buffer[16] = "";
+      if (fgets(buffer, sizeof(buffer), fp) != nullptr) {
+        if (sscanf(buffer, "%d", &numaNode) != 1) {
+	  numaNode = -1;
+	} else {
+	  //printf("*** Card %s : %s = %d\n", name.c_str(), numapath.c_str(), numaNode);
+	}
+      }
+      fclose(fp);
+    }
+    if (numaNode>=0) {
+      return numaNode;
+    }
+
     return AliceO2::roc::findCard(cardId).numaNode;
   }
   catch (...) {

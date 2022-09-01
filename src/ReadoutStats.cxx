@@ -20,6 +20,7 @@
 #include "ReadoutStats.h"
 
 #include "readoutInfoLogger.h"
+#include "ReadoutUtils.h"
 #include "DataBlock.h"
 #include <string.h>
 #include <Common/Timer.h>
@@ -186,6 +187,8 @@ int ReadoutStats::stopPublish() {
 }
 
 void ReadoutStats::threadLoop() {
+
+  setThreadName("readout-stats");
 
   // loop period in microseconds
   unsigned int loopPeriod = (unsigned int) 100000;

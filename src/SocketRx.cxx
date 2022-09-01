@@ -88,6 +88,10 @@ SocketRx::~SocketRx(){
 }
 
 void SocketRx::run() {
+  #ifdef _GNU_SOURCE
+    pthread_setname_np(pthread_self(), "socket-rx");
+  #endif
+
   int sockfd=-1;
   const char *sType="";
   

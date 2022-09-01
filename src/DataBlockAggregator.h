@@ -115,6 +115,7 @@ class DataBlockAggregator
   void reset(); // reset all internal buffers, counters and states
 
  private:
+  bool isThreadNamed = 0; // flag to set once thread name
   std::vector<std::shared_ptr<AliceO2::Common::Fifo<DataBlockContainerReference>>> inputs;
   AliceO2::Common::Fifo<DataSetReference>* output; // todo: unique_ptr
 

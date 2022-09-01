@@ -221,6 +221,7 @@ class ConsumerStats : public Consumer
   bool periodicUpdateThreadShutdown;                 // flag to stop periodicUpdateThread
   void periodicUpdate()
   {
+    setThreadName("consumer-stats");
     periodicUpdateThreadShutdown = 0;
 
     // periodic update

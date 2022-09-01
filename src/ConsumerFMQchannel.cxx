@@ -123,7 +123,7 @@ class ConsumerFMQchannel : public Consumer
   bool enableRawFormat = false;
   bool enableStfSuperpage = false; // optimized stf transport: minimize STF packets
   bool enableRawFormatDatablock = false;
-  int enablePackedCopy = 0; // default mode for repacking of page overlapping HBF. 0 = one page per copy, 1 = change page on TF only
+  int enablePackedCopy = 1; // default mode for repacking of page overlapping HBF. 0 = one page per copy, 1 = change page on TF only
 
   std::shared_ptr<MemoryBank> memBank; // a dedicated memory bank allocated by FMQ mechanism
   std::shared_ptr<MemoryPagesPool> mp; // a memory pool from which to allocate data pages
@@ -364,7 +364,7 @@ class ConsumerFMQchannel : public Consumer
     }
     theLog.log(LogInfoDevel_(3008), "Using memory pool [%d]: %d pages x %d bytes", mp->getId(), memoryPoolNumberOfPages, memoryPoolPageSize);
 
-    // configuration parameter: | consumer-FairMQChannel-* | enablePackedCopy | int | 0 | If set, the same superpage may be reused (space allowing) for the copy of multiple HBF (instead of a separate one for each copy). This allows a reduced memoryPoolNumberOfPages. |
+    // configuration parameter: | consumer-FairMQChannel-* | enablePackedCopy | int | 1 | If set, the same superpage may be reused (space allowing) for the copy of multiple HBF (instead of a separate one for each copy). This allows a reduced memoryPoolNumberOfPages. |
     cfg.getOptionalValue<int>(cfgEntryPoint + ".enablePackedCopy", enablePackedCopy);
     theLog.log(LogInfoDevel_(3008), "Packed copy enabled = %d", enablePackedCopy);
 
@@ -885,6 +885,7 @@ int ConsumerFMQchannel::DDformatMessage(DataSetReference &bc, DDMessage &ddm) {
       }
       DataBlockContainerReference copyBlock = nullptr;
       int isNewBlock = 0;
+      int copyBlockMemSize = 0;
       try {
 	if (enablePackedCopy) {
 	  for (int i = 0; i<=2; i++) {
@@ -892,6 +893,9 @@ int ConsumerFMQchannel::DDformatMessage(DataSetReference &bc, DDMessage &ddm) {
 	    if (copyBlockBuffer == nullptr) {
 	      copyBlockBuffer = mp->getNewDataBlockContainer();
 	      isNewBlock = 1;
+              if (copyBlockBuffer != nullptr) {
+	        copyBlockMemSize = copyBlockBuffer->getDataBufferSize();
+	      }
 	      nPagesUsedForRepack++;
 	      continue;
 	    }
@@ -906,6 +910,9 @@ int ConsumerFMQchannel::DDformatMessage(DataSetReference &bc, DDMessage &ddm) {
 	} else {
           copyBlock = mp->getNewDataBlockContainer();
 	  isNewBlock = 1;
+	  if (copyBlock != nullptr) {
+	    copyBlockMemSize = copyBlock->getDataBufferSize();
+	  }
 	  nPagesUsedForRepack++;
 	}
       } catch (...) {
@@ -916,10 +923,8 @@ int ConsumerFMQchannel::DDformatMessage(DataSetReference &bc, DDMessage &ddm) {
         theLog.log(token, "no page left");
         throw __LINE__;
       }
-      int copyBlockMemSize = 0;
       if (isNewBlock) {
-        ddm.subTimeframeMemorySize += copyBlockBuffer->getDataBufferSize();
-	copyBlockMemSize = copyBlockBuffer->getDataBufferSize();
+        ddm.subTimeframeMemorySize += copyBlockMemSize;
 	//printf("%d size 1 TF %d block %p mem size %d %d\n", __LINE__, (int)copyBlock->getData()->header.timeframeId, copyBlock->getData(), (int)copyBlockBuffer->getDataBufferSize(), copyBlock->getData()->header.memorySize);
       }
       auto blockRef = new DataBlockContainerReference(copyBlock);

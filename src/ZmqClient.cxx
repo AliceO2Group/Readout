@@ -115,6 +115,9 @@ void ZmqClient::setPause(int pause)
 
 void ZmqClient::run()
 {
+  #ifdef _GNU_SOURCE
+    pthread_setname_np(pthread_self(), "zmq-client");
+  #endif
   for (; !shutdownRequest;) {
     int linerr = 0, zmqerr = 0;
     for (;;) {
