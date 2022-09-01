@@ -885,6 +885,7 @@ int ConsumerFMQchannel::DDformatMessage(DataSetReference &bc, DDMessage &ddm) {
       }
       DataBlockContainerReference copyBlock = nullptr;
       int isNewBlock = 0;
+      int copyBlockMemSize = 0;
       try {
 	if (enablePackedCopy) {
 	  for (int i = 0; i<=2; i++) {
@@ -892,6 +893,9 @@ int ConsumerFMQchannel::DDformatMessage(DataSetReference &bc, DDMessage &ddm) {
 	    if (copyBlockBuffer == nullptr) {
 	      copyBlockBuffer = mp->getNewDataBlockContainer();
 	      isNewBlock = 1;
+              if (copyBlockBuffer != nullptr) {
+	        copyBlockMemSize = copyBlockBuffer->getDataBufferSize();
+	      }
 	      nPagesUsedForRepack++;
 	      continue;
 	    }
@@ -906,6 +910,9 @@ int ConsumerFMQchannel::DDformatMessage(DataSetReference &bc, DDMessage &ddm) {
 	} else {
           copyBlock = mp->getNewDataBlockContainer();
 	  isNewBlock = 1;
+	  if (copyBlock != nullptr) {
+	    copyBlockMemSize = copyBlock->getDataBufferSize();
+	  }
 	  nPagesUsedForRepack++;
 	}
       } catch (...) {
@@ -916,10 +923,8 @@ int ConsumerFMQchannel::DDformatMessage(DataSetReference &bc, DDMessage &ddm) {
         theLog.log(token, "no page left");
         throw __LINE__;
       }
-      int copyBlockMemSize = 0;
       if (isNewBlock) {
-        ddm.subTimeframeMemorySize += copyBlockBuffer->getDataBufferSize();
-	copyBlockMemSize = copyBlockBuffer->getDataBufferSize();
+        ddm.subTimeframeMemorySize += copyBlockMemSize;
 	//printf("%d size 1 TF %d block %p mem size %d %d\n", __LINE__, (int)copyBlock->getData()->header.timeframeId, copyBlock->getData(), (int)copyBlockBuffer->getDataBufferSize(), copyBlock->getData()->header.memorySize);
       }
       auto blockRef = new DataBlockContainerReference(copyBlock);
