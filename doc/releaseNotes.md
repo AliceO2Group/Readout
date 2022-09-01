@@ -484,3 +484,9 @@ This file describes the main feature changes for each readout.exe released versi
 ## v2.14.1 - 22/08/2022
 - Updated configuration parameters:
   - added consumer-FairMQChannel-*.threads. If set, a pool of threads is used for FMQ message formatting. Needed at high rates when a single CPU core is not enough to prepare data for DataDistribution (including overlapping HBF copy).
+
+## v2.14.2 - 01/09/2022
+- Updated configuration parameters:
+  - consumer-FairMQChannel-*.enablePackedCopy default changed to 1.
+- Fix for running without packed copy (was crashing).
+- In auto mode, get ROC numa node from /sys/bus/pci/devices because ROC library reports wrong value.
