@@ -266,7 +266,7 @@ class ConsumerStats : public Consumer
       int processMonitoringInterval = 0;
       cfg.getOptionalValue(cfgEntryPoint + ".processMonitoringInterval", processMonitoringInterval, 0);
       if (processMonitoringInterval > 0) {
-        monitoringCollector->enableProcessMonitoring(processMonitoringInterval);
+        monitoringCollector->enableProcessMonitoring(processMonitoringInterval, {PmMeasurement::Cpu, PmMeasurement::Mem});
       }
     }
 
