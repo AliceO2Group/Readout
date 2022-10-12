@@ -491,5 +491,5 @@ This file describes the main feature changes for each readout.exe released versi
 - Fix for running without packed copy (was crashing).
 - In auto mode, get ROC numa node from /sys/bus/pci/devices because ROC library reports wrong value.
 
-## next release
-- Fix for DD multithread message processing: TF ordering could get wrong out of the thread pool after having memory buffer empty.
+## v2.14.3 - 12/10/2022
+- Fix for DataDistribution multithreaded message formatting: TF ordering could get wrong out of the thread pool after having memory buffer empty.
