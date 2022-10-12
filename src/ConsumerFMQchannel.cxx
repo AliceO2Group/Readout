@@ -579,7 +579,13 @@ class ConsumerFMQchannel : public Consumer
    // arg thIx is the thread index  
    std::string thname = name + "-w-" + std::to_string(thIx);
    setThreadName(thname.c_str());
+   int pushCount = 0; // keep track of incoming FIFO items, and ensure same number pushed out (if necessary filling with empty items)
    for(;;) {
+     if (pushCount) {
+       wThreads[thIx].output->push(nullptr);
+       pushCount--; // one is out
+     }
+
      if (wThreadShutdown) {
        break;
      }
@@ -597,6 +603,7 @@ class ConsumerFMQchannel : public Consumer
        usleep(wThreadSleepTime);
        continue;
      }
+     pushCount++; // one is in
      
      if (tf == nullptr) {
        continue;
@@ -628,7 +635,9 @@ class ConsumerFMQchannel : public Consumer
        if (!isError) {
 	 if (wThreads[thIx].output->push(std::move(msglist))) {
            isError = 1;
-	 }
+	 } else {
+           pushCount--; // one is out
+         }
        }
      }
      if (isError) {
@@ -643,6 +652,7 @@ class ConsumerFMQchannel : public Consumer
    setThreadName(thname.c_str());
    
    int thIx = 0;  // index of next thread to read from
+   uint64_t lastTimeframeId = undefinedTimeframeId; // latest TF id received
    for(;;) {
      if (wThreadShutdown) {
        break;
@@ -660,11 +670,23 @@ class ConsumerFMQchannel : public Consumer
        thIx = 0;
      }
 
+     if (msglist == nullptr) {
+       // this can happen when an empty item is pushed (in case there was an error processing it)
+       // in order to keep all FIFOs in sync round robin
+       continue;
+     }
+     uint64_t nextTimeframeId = msglist->at(0).stfHeader->timeframeId;
+     if ((lastTimeframeId != undefinedTimeframeId) && (nextTimeframeId != lastTimeframeId + 1)) {
+       static InfoLogger::AutoMuteToken token(LogWarningSupport_(3004));
+       theLog.log(token, "%s - DD send - TF %d following TF %d: non-continuous ordering", name.c_str(), (int)nextTimeframeId, (int)lastTimeframeId);
+     }
+     lastTimeframeId = nextTimeframeId;
+
      //printf("sender: got TF\n");
 
      bool isError = 0;
      for (auto &msg: *msglist) {
-       //printf ("sending thread TF %d\n", (int) msg.stfHeader->timeframeId);
+       //printf ("sending thread TF %d (from fifo %d)\n", (int) msg.stfHeader->timeframeId, thIx);
        if (DDsendMessage(msg)) {
          // sending failed
 	 isError = 1;
@@ -1078,7 +1100,7 @@ int ConsumerFMQchannel::processForDataDistribution(DataSetReference& bc) {
     if (currentTimeframeBuffer == nullptr) {
       return 0;
     }
-    //printf( "push %d - %d datasets\n", (int)currentTimeframeId, (int) currentTimeframeBuffer->size());
+    //printf( "push %d @ %d - %d datasets\n", (int)currentTimeframeId, (int) wThreadIxWrite, (int) currentTimeframeBuffer->size());
     
     if (wThreads[wThreadIxWrite].input->push(currentTimeframeBuffer)) {
       static InfoLogger::AutoMuteToken token(LogWarningSupport_(3004));
