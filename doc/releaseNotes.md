@@ -490,3 +490,6 @@ This file describes the main feature changes for each readout.exe released versi
   - consumer-FairMQChannel-*.enablePackedCopy default changed to 1.
 - Fix for running without packed copy (was crashing).
 - In auto mode, get ROC numa node from /sys/bus/pci/devices because ROC library reports wrong value.
+
+## next release
+- Fix for DD multithread message processing: TF ordering could get wrong out of the thread pool after having memory buffer empty.
