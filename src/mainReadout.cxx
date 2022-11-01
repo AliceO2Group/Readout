@@ -1302,6 +1302,9 @@ int Readout::iterateCheck()
     if ((readoutDevice->isError) && (readoutDevice->stopOnError)) {
       isError = 1;
     }
+    if (readoutDevice->isFatalError) {
+      isError = 1;
+    }
   }
   if (isError) {
     return -1;
