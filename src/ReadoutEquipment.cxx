@@ -139,7 +139,7 @@ ReadoutEquipment::ReadoutEquipment(ConfigFile& cfg, std::string cfgEntryPoint, b
   cfg.getOptionalValue<int>(cfgEntryPoint + ".rdhUseFirstInPageEnabled", cfgRdhUseFirstInPageEnabled);
   // configuration parameter: | equipment-* | rdhDumpFirstInPageEnabled | int | 0 | If set, the first RDH in each data page is logged. Setting a negative number will printit only for the first N pages. |
   cfg.getOptionalValue<int>(cfgEntryPoint + ".rdhDumpFirstInPageEnabled", cfgRdhDumpFirstInPageEnabled);
-  // configuration parameter: | equipment-* | rdhCheckFirstOrbit | int | 1 | If set, it is checked that the first orbit of all equipments and links is the same. |
+  // configuration parameter: | equipment-* | rdhCheckFirstOrbit | int | 1 | If set, it is checked that the first orbit of all equipments and links is the same. If not, run is stopped. |
   cfg.getOptionalValue<int>(cfgEntryPoint + ".rdhCheckFirstOrbit", cfgRdhCheckFirstOrbit);
   // configuration parameter: | equipment-* | rdhCheckDetectorField | int | 0 | If set, the detector field is checked and changes reported. |
   cfg.getOptionalValue<int>(cfgEntryPoint + ".rdhCheckDetectorField", cfgRdhCheckDetectorField);  
