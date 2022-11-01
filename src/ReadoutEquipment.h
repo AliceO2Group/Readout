@@ -51,6 +51,7 @@ class ReadoutEquipment
 
   bool stopOnError = false; // if set, readout will stop when this equipment reports an error (isError flag)
   int isError = 0;          // flag which might be used to count number of errors occuring in the equipment
+  int isFatalError = 0;     // flag which might be used to count number of fatal errors occuring in the equipment
 
   // protected:
   // todo: give direct access to output FIFO?
@@ -114,7 +115,16 @@ class ReadoutEquipment
   std::vector<CounterStats> equipmentStats;
   std::vector<CounterValue> equipmentStatsLast;
   std::bitset<RdhMaxLinkId + 1> equipmentLinksUsed;
-  std::vector<uint64_t> equipmentLinksData;
+
+  struct equipmentLinksStats {
+    uint64_t bytesRx = 0; // number of bytes received
+    uint32_t firstOrbit = undefinedOrbit; // first orbit received from this link
+    bool firstOrbitIsDefined = 0; // when 0, no value has been set for first orbit yet. need this flag because undefinedOrbit=0.
+  };
+  uint8_t firstLinkId = undefinedLinkId; // id of first link which sent data
+  uint32_t firstLinkOrbit = undefinedOrbit; // 1st orbit received from this equipment
+
+  std::vector<equipmentLinksStats> equipmentLinksData;
 
   double cfgConsoleStatsUpdateTime = 0;     // number of seconds between regular printing of statistics on console (if zero, only on stop)
   AliceO2::Common::Timer consoleStatsTimer; // timer to keep track of elapsed time between console statistics updates

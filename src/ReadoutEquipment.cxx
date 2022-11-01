@@ -139,7 +139,7 @@ ReadoutEquipment::ReadoutEquipment(ConfigFile& cfg, std::string cfgEntryPoint, b
   cfg.getOptionalValue<int>(cfgEntryPoint + ".rdhUseFirstInPageEnabled", cfgRdhUseFirstInPageEnabled);
   // configuration parameter: | equipment-* | rdhDumpFirstInPageEnabled | int | 0 | If set, the first RDH in each data page is logged. Setting a negative number will printit only for the first N pages. |
   cfg.getOptionalValue<int>(cfgEntryPoint + ".rdhDumpFirstInPageEnabled", cfgRdhDumpFirstInPageEnabled);
-  // configuration parameter: | equipment-* | rdhCheckFirstOrbit | int | 1 | If set, it is checked that the first orbit of all equipments is the same. |
+  // configuration parameter: | equipment-* | rdhCheckFirstOrbit | int | 1 | If set, it is checked that the first orbit of all equipments and links is the same. |
   cfg.getOptionalValue<int>(cfgEntryPoint + ".rdhCheckFirstOrbit", cfgRdhCheckFirstOrbit);
   // configuration parameter: | equipment-* | rdhCheckDetectorField | int | 0 | If set, the detector field is checked and changes reported. |
   cfg.getOptionalValue<int>(cfgEntryPoint + ".rdhCheckDetectorField", cfgRdhCheckDetectorField);  
@@ -255,8 +255,11 @@ void ReadoutEquipment::start()
   }
   equipmentLinksUsed.reset();
   equipmentLinksData.resize(RdhMaxLinkId + 1);
-  equipmentLinksData.clear();
+  equipmentLinksStats statsInit;
+  std::fill(equipmentLinksData.begin(), equipmentLinksData.end(), statsInit);
+  firstLinkId = undefinedLinkId;
   isError = 0;
+  isFatalError = 0;
   currentBlockId = 0;
   isDataOn = false;
   saveErrorPagesCount = 0;
@@ -314,7 +317,7 @@ void ReadoutEquipment::stop()
   std::string perLinkStats;
   for (unsigned int i = 0; i<= RdhMaxLinkId; i++) {
     if (equipmentLinksUsed[i]) {
-      perLinkStats += "[" + std::to_string(i) + "]=" + NumberOfBytesToString(equipmentLinksData[i], "B", 1024) + " ";
+      perLinkStats += "[" + std::to_string(i) + "]=" + NumberOfBytesToString(equipmentLinksData[i].bytesRx, "B", 1024) + " ";
     }
   }
   theLog.log(LogInfoDevel_(3003), "Links data received: %s", perLinkStats.c_str());
@@ -635,7 +638,8 @@ uint64_t ReadoutEquipment::getTimeframeFromOrbit(uint32_t hbOrbit)
     theLog.log(LogInfoDevel_(3011), "Equipment %s : first HB orbit = %X", name.c_str(), (unsigned int)firstTimeframeHbOrbitBegin);
     if (!isOk) {
       if (cfgRdhCheckFirstOrbit) {
-        theLog.log(LogErrorDevel_(3241), "Equipment %s : first HB orbit is different from other equipments", name.c_str());
+        theLog.log(LogErrorSupport_(3241), "Equipment %s : first HB orbit is different from other equipments", name.c_str());
+        isFatalError++;
       }
     }
   }
@@ -810,9 +814,29 @@ int ReadoutEquipment::processRdh(DataBlockContainerReference& block)
     // update links statistics
     if (h.getLinkId() <= RdhMaxLinkId) {
       equipmentLinksUsed[h.getLinkId()] = 1;
-      equipmentLinksData[h.getLinkId()] += blockHeader.dataSize;
-    }
+      equipmentLinksData[h.getLinkId()].bytesRx += blockHeader.dataSize;
 
+      // check link first orbit
+      // at this stage gReadoutStats.counters.firstOrbit is defined (done in getTimeframeFromOrbit())
+      uint32_t orbitId = h.getHbOrbit();
+      uint8_t linkId = h.getLinkId();
+      if (firstLinkId == undefinedLinkId) {
+        firstLinkId = linkId;
+        firstLinkOrbit = orbitId;
+      }
+      if (!equipmentLinksData[linkId].firstOrbitIsDefined) {
+        if (orbitId != firstLinkOrbit) {
+          if (cfgRdhCheckFirstOrbit) {
+            theLog.log(LogErrorSupport_(3241), "Equipment %s : first HB orbit of link %d is different from first link(%d): 0x%X != 0x%X", name.c_str(), linkId, firstLinkId, orbitId, firstLinkOrbit);
+            isFatalError++;
+          }
+        } else {
+          //theLog.log(LogInfoDevel_(3241), "Equipment %s : first HB orbit of link %d is same as first link(%d): 0x%X = 0x%X", name.c_str(), linkId, firstLinkId, orbitId, firstLinkOrbit);
+        }
+        equipmentLinksData[linkId].firstOrbit = orbitId;
+        equipmentLinksData[linkId].firstOrbitIsDefined = 1;
+      }
+    }
   }
 
   // Dump RDH if configured to do so
