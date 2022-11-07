@@ -752,6 +752,17 @@ int Readout::configure(const boost::property_tree::ptree& properties)
 #endif
   }
 
+  #ifdef WITH_FAIRMQ
+  // configuration parameter: | readout | fairmqConsoleSeverity | int | -1 | Select amount of FMQ messages with fair::Logger::SetConsoleSeverity(). Value as defined in Severity enum defined from FairLogger/Logger.h. Use -1 to leave current setting. |
+  int cfgFairmqConsoleSeverity = -1;
+  cfg.getOptionalValue<int>("readout.fairmqConsoleSeverity", cfgFairmqConsoleSeverity);
+  if (cfgFairmqConsoleSeverity >= 0) {
+     unsetFMQLogsToInfoLogger(); // default redirection was set already on readout startup, so unset it first.
+     fair::Logger::SetConsoleSeverity((fair::Severity)cfgFairmqConsoleSeverity); // set console severity
+     setFMQLogsToInfoLogger(&theLog); // redirect
+   }
+  #endif
+
   // configuration of memory banks
   int numaNodeChanged = 0;
   for (auto kName : ConfigFileBrowser(&cfg, "bank-")) {
