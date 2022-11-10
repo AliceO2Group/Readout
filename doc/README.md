@@ -267,7 +267,7 @@ When enabled, Readout will copy the datapages to connected clients (copy overhea
 The interactive EventDump client can be started with parameter `port=...` (use the same as readout consumer address parameter) and `pageSize=...` (maximum super page size configured for readout equipments). Example launch command:
 
 ```
-  o2-readout-eventDump port=ipc:///tmp/o2-readout-out
+  o2-readout-eventdump port=ipc:///tmp/o2-readout-out
 ```
 
 Once running, the program accepts the following interactive keyboard commands:
