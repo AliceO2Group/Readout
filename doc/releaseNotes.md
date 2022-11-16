@@ -497,6 +497,7 @@ This file describes the main feature changes for each readout.exe released versi
 ## v2.15 - 03/11/2022
 - equipment-*.rdhCheckFirstOrbit: when set, readout also check consistency of orbits between all the links of an equipment. If not all links/equipments first orbit are the same, readout will interrupt the run.
 
-## next version
+## v2.15.1 - 16/11/2022
 - Updated configuration parameters:
   - added readout.fairmqConsoleSeverity, to set fair::Logger::SetConsoleSeverity
+- Explicit log message when reporting error state, in case not reported by state machine
