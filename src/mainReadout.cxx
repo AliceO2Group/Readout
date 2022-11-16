@@ -210,6 +210,7 @@ class Readout
   int latencyFd = -1; // file descriptor for the "deep sleep" disabled
 
   bool isError = 0;                   // flag set to 1 when error has been detected
+  bool logFirstError = 0;             // flag set to 1 after 1 error reported from iterateCheck/iterateRunning procedures
   std::vector<std::string> strErrors; // errors backlog
   std::mutex mutexErrors;             // mutex to guard access to error variables
 
@@ -1318,6 +1319,10 @@ int Readout::iterateCheck()
     }
   }
   if (isError) {
+    if (!logFirstError) {
+      theLog.log(LogErrorSupport_(3231), "Error reported to state machine");
+      logFirstError = 1;
+    }
     return -1;
   }
   if ((cfgMaxMsgError > 0) && (theLog.getMessageCount(InfoLogger::Severity::Error) >= (unsigned long) cfgMaxMsgError)) {
@@ -1343,6 +1348,10 @@ int Readout::iterateRunning()
     return 1;
   }
   if (isError) {
+    if (!logFirstError) {
+      theLog.log(LogErrorSupport_(3231), "Error reported to state machine");
+      logFirstError = 1;
+    }
     return -1;
   }
   // regular logbook stats update
@@ -1461,6 +1470,10 @@ int Readout::reset()
   gReadoutStats.counters.state = stringToUint64("> reset");
   gReadoutStats.counters.notify++;
   gReadoutStats.publishNow();
+
+  // reset error flags
+  isError = 0;
+  logFirstError = 0 ;
 
   // close consumers before closing readout equipments (owner of data blocks)
   theLog.log(LogInfoDevel, "Releasing primary consumers");
