@@ -210,6 +210,7 @@ class Readout
   int latencyFd = -1; // file descriptor for the "deep sleep" disabled
 
   bool isError = 0;                   // flag set to 1 when error has been detected
+  bool logFirstError = 0;             // flag set to 1 after 1 error reported from iterateCheck/iterateRunning procedures
   std::vector<std::string> strErrors; // errors backlog
   std::mutex mutexErrors;             // mutex to guard access to error variables
 
@@ -751,6 +752,17 @@ int Readout::configure(const boost::property_tree::ptree& properties)
     theLog.log(LogWarningSupport_(3101), "Skipping timeframeServer - not supported by this build");
 #endif
   }
+
+  #ifdef WITH_FAIRMQ
+  // configuration parameter: | readout | fairmqConsoleSeverity | int | -1 | Select amount of FMQ messages with fair::Logger::SetConsoleSeverity(). Value as defined in Severity enum defined from FairLogger/Logger.h. Use -1 to leave current setting. |
+  int cfgFairmqConsoleSeverity = -1;
+  cfg.getOptionalValue<int>("readout.fairmqConsoleSeverity", cfgFairmqConsoleSeverity);
+  if (cfgFairmqConsoleSeverity >= 0) {
+     unsetFMQLogsToInfoLogger(); // default redirection was set already on readout startup, so unset it first.
+     fair::Logger::SetConsoleSeverity((fair::Severity)cfgFairmqConsoleSeverity); // set console severity
+     setFMQLogsToInfoLogger(&theLog); // redirect
+   }
+  #endif
 
   // configuration of memory banks
   int numaNodeChanged = 0;
@@ -1307,6 +1319,10 @@ int Readout::iterateCheck()
     }
   }
   if (isError) {
+    if (!logFirstError) {
+      theLog.log(LogErrorSupport_(3231), "Error reported to state machine");
+      logFirstError = 1;
+    }
     return -1;
   }
   if ((cfgMaxMsgError > 0) && (theLog.getMessageCount(InfoLogger::Severity::Error) >= (unsigned long) cfgMaxMsgError)) {
@@ -1332,6 +1348,10 @@ int Readout::iterateRunning()
     return 1;
   }
   if (isError) {
+    if (!logFirstError) {
+      theLog.log(LogErrorSupport_(3231), "Error reported to state machine");
+      logFirstError = 1;
+    }
     return -1;
   }
   // regular logbook stats update
@@ -1450,6 +1470,10 @@ int Readout::reset()
   gReadoutStats.counters.state = stringToUint64("> reset");
   gReadoutStats.counters.notify++;
   gReadoutStats.publishNow();
+
+  // reset error flags
+  isError = 0;
+  logFirstError = 0 ;
 
   // close consumers before closing readout equipments (owner of data blocks)
   theLog.log(LogInfoDevel, "Releasing primary consumers");
