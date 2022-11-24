@@ -672,10 +672,12 @@ int ReadoutEquipment::tagDatablockFromRdh(RdhHandle& h, DataBlockHeader& bh)
   uint32_t hbOrbit = undefinedOrbit;
   bool isError = 0;
 
+  static InfoLogger::AutoMuteToken logRdhErrorsToken(LogWarningSupport_(3004), 30, 5);
+
   // check that it is a correct RDH
   std::string errorDescription;
   if (h.validateRdh(errorDescription) != 0) {
-    theLog.log(LogWarningSupport_(3004), "First RDH in page is wrong: %s", errorDescription.c_str());
+    theLog.log(logRdhErrorsToken, "First RDH in page is wrong (link %s): %s", (bh.linkId == undefinedLinkId) ? "undefined" : std::to_string((int)bh.linkId).c_str(), errorDescription.c_str());
     isError = 1;
   } else {
     // timeframe ID
@@ -705,7 +707,13 @@ int ReadoutEquipment::tagDatablockFromRdh(RdhHandle& h, DataBlockHeader& bh)
   bh.systemId = systemId;
   bh.feeId = feeId;
   bh.equipmentId = equipmentId;
-  bh.linkId = linkId;
+  if (bh.linkId == undefinedLinkId) {
+    bh.linkId = linkId;
+  } else {
+    if ((bh.linkId != linkId) && (linkId != undefinedLinkId)) {
+      theLog.log(logRdhErrorsToken, "linkId mismatch:  ROC reports %d !=  RDH reports %d", (int)bh.linkId, (int)linkId);
+    }
+  }
   getTimeframeOrbitRange(tfId, bh.timeframeOrbitFirst, bh.timeframeOrbitLast);
   bh.timeframeOrbitFirst -= bh.orbitOffset;
   bh.timeframeOrbitLast -= bh.orbitOffset;
@@ -872,7 +880,7 @@ int ReadoutEquipment::processRdh(DataBlockContainerReference& block)
             printf("%08X ", (int)(((uint32_t*)baseAddress)[i]));
           }
           printf("\n");
-          printf("Page 0x%p + %ld\n%s", (void*)baseAddress, pageOffset, errorDescription.c_str());
+          printf("Page 0x%p + %ld\n%s\n", (void*)baseAddress, pageOffset, errorDescription.c_str());
           h.dumpRdh(pageOffset, 1);
           errorDescription.clear();
         }
