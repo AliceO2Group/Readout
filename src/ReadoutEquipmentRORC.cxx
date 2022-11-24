@@ -357,6 +357,11 @@ DataBlockContainerReference ReadoutEquipmentRORC::getNextBlock()
           nextBlock = d;
           d->getData()->header.dataSize = superpage.getReceived();
 
+          // check if link ID set by ROC lib, and propagate it to header
+          int deviceLinkId = superpage.getLink();
+          if ((deviceLinkId >= 0) && (deviceLinkId <= (int)RdhMaxLinkId)) {
+            d->getData()->header.linkId = (uint8_t)(deviceLinkId);
+          }
           // printf("\nPage %llu\n",statsNumberOfPages);
 	} else {
           // there is a ready superpage, but we are not able to keep it
