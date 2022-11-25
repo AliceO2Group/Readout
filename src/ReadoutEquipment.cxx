@@ -959,6 +959,30 @@ int ReadoutEquipment::processRdh(DataBlockContainerReference& block)
 
       uint16_t offsetNextPacket = h.getOffsetNextPacket();
       if (offsetNextPacket == 0) {
+
+        // provision for further checks on superpage size
+        /*
+        theLog.log(logRdhErrorsToken, "Equipment %d RDH #%d @ 0x%X : offsetNextPacket is null", id, rdhIndexInPage, (unsigned int)pageOffset);
+        statsRdhCheckErr++;
+        isPageError = 1;
+        break;
+      }
+      if ((pageOffset + h.getMemorySize() == blockSize)&&(pageOffset + offsetNextPacket == blockSize)) {
+        // this is normal end of page: the last packet fills the end of the page
+        theLog.log(logRdhErrorsToken, "Equipment %d RDH #%d @ 0x%X : end packet size ok: offsetNextpacket = %d bytes, memorySize = %d bytes, page = %d bytes", id, rdhIndexInPage, (unsigned int)pageOffset, (int)offsetNextPacket, (int)h.getMemorySize(),  (int)blockSize);
+        break;
+      }
+      if ((pageOffset + offsetNextPacket == blockSize)||(pageOffset + h.getMemorySize() == blockSize)) {
+        theLog.log(logRdhErrorsToken, "Equipment %d RDH #%d @ 0x%X : end packet size mismatch: offsetNextpacket = %d bytes, memorySize = %d bytes, page = %d bytes", id, rdhIndexInPage, (unsigned int)pageOffset, (int)offsetNextPacket, (int)h.getMemorySize(),  (int)blockSize);
+        // this is normal end of page: the last packet fills the end of the page
+        break;
+      }
+      if (pageOffset + offsetNextPacket > blockSize) {
+        theLog.log(logRdhErrorsToken, "Equipment %d RDH #%d @ 0x%X : next packet (+ %d bytes) is outside of page (%d bytes)", id, rdhIndexInPage, (unsigned int)pageOffset, (int)offsetNextPacket, (int)blockSize);
+        statsRdhCheckErr++;
+        isPageError = 1;
+        */
+
         break;
       }
       pageOffset += offsetNextPacket;
