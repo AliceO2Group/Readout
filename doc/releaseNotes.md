@@ -501,3 +501,6 @@ This file describes the main feature changes for each readout.exe released versi
 - Updated configuration parameters:
   - added readout.fairmqConsoleSeverity, to set fair::Logger::SetConsoleSeverity
 - Explicit log message when reporting error state, in case not reported by state machine
+
+## v2.15.2 - 08/12/2022
+- Added ROC link Id for some log messages, as provided from new superpage metadata link field from ROC library.

@@ -70,23 +70,27 @@ int RdhHandle::validateRdh(std::string& err)
   int retCode = 0;
   // expecting RDH v5 or v6
   if ((getHeaderVersion() != 5) && (getHeaderVersion() != 6)) {
-    err += "Wrong header version\n";
+    if (err.length()) err += ", ";
+    err += "Wrong header version";
     retCode++;
   }
   // check header size
   if (getHeaderSize() != sizeof(o2::Header::RAWDataHeader)) {
-    err += "Wrong header size\n";
+    if (err.length()) err += ", ";
+    err += "Wrong header size";
     retCode++;
   }
   // expecting linkId 0-31
   if (getLinkId() > RdhMaxLinkId) {
-    err += "Wrong link ID\n";
+    if (err.length()) err += ", ";
+    err += "Wrong link ID";
     retCode++;
   }
 
   // expecting offset next packet at least the size of the header
   if ((getOffsetNextPacket() > 0) && (getOffsetNextPacket() < sizeof(o2::Header::RAWDataHeader))) {
-    err += "Wrong offsetNextPacket\n";
+    if (err.length()) err += ", ";
+    err += "Wrong offsetNextPacket";
     retCode++;
   }
 
