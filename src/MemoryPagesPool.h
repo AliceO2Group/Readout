@@ -23,6 +23,56 @@
 #include "CounterStats.h"
 #include "DataBlockContainer.h"
 
+// This class is used to store metadata associated to a data page
+class MemoryPage {
+
+  public:
+
+  MemoryPage();
+  ~MemoryPage();
+
+  void *getPagePtr() {return pagePtr;}
+  DataBlock *getDataBlockPtr() {return &dataBlock;}
+
+  enum PageState
+  {
+    Idle = 0, // waiting in pool
+    Allocated = 1, // allocated for readout equipment
+    InROC = 2, // page in the ROC buffer
+    InRDHcheck = 3, // page being processed
+    InEquipmentFifoOut = 4, // page in equipment output FIFO
+    InAggregator = 5, // page pending slicing/TF
+    InConsumer = 6, // page being processed for o
+    Undefined = 7, // page state not defined.  Can be used to get number of usable items in enum. All enum items should have values from zero to this.
+  };
+
+  void setPageState(PageState s);
+  void resetPageStates();
+  double getPageStateDuration(PageState s);
+
+  friend class MemoryPagesPool;
+
+  protected:
+  void *pagePtr; // pointer to data page (reference to somewhere in a big block, allocated externally)
+  unsigned int pageSize; // usable size of data page (ie valid addresses from pagePtr to pagePtr + dataSize - 1)
+
+  DataBlock dataBlock; // keep main data structure + header here to avoid using memory on top of main page
+
+  struct TimeCounter {
+    bool t0IsValid; // flag to mark valid/invalid t0
+    std::chrono::time_point<std::chrono::steady_clock> t0; // time of entering given state
+    double duration; // cumulated time in seconds in given state
+  };
+
+  TimeCounter pageStateTimes[(int)PageState::Undefined];
+  // CounterStats pageStateTimeStats[(int)PageState::Undefined];
+  PageState currentPageState;
+  unsigned long long nTimeUsed;
+
+  int pageId; // index of page in memory pool
+};
+
+
 // This class creates a pool of data pages from a memory block
 // Optimized for 1-1 consumers (1 thread to get the page, 1 thread to release them)
 // No check is done on validity of address of data pages pushed back in queue Base address should be kept while object is in use
@@ -84,6 +134,8 @@ class MemoryPagesPool
 
   int getNumaStats(std::map<int,int> &pagesCountPerNumaNode);
 
+  const static size_t headerReservedSpace = 0; // sizeof(DataBlock); // number of bytes reserved at top of each page for datablock header. Otherwise, stored separately.
+
  private:
 
   LogCallback theLogCallback;
@@ -101,7 +153,6 @@ class MemoryPagesPool
 
   size_t numberOfPages;                           // number of pages
   size_t pageSize;                                // size of each page, in bytes
-  size_t headerReservedSpace = sizeof(DataBlock); // number of bytes reserved at top of each page for header
 
   void* baseBlockAddress; // address of block containing all pages
   size_t baseBlockSize;   // size of block containing all pages
@@ -134,6 +185,12 @@ class MemoryPagesPool
   
   CounterStats poolStats; // keep track of number of free pages in the pool 
   int id = -1; // unique identifier for this pool
+
+  std::vector<MemoryPage> pages; // an array to store for each page defined in block some corresponding support metadata
+  int getPageIndexFromPagePtr(void *ptr, int checkValidity = 1); // returns index of page (in pages[]) at given address. -1 on error.
+
+  public:
+  int updatePageState(void *ptr, MemoryPage::PageState state);
 };
 
 #endif // #ifndef _MEMORYPAGESPOOL_H

@@ -31,8 +31,10 @@ MemoryPagesPool::MemoryPagesPool(size_t vPageSize, size_t vNumberOfPages, void* 
   id = vId;
 
   // check page / header sizes
-  assert(headerReservedSpace >= sizeof(DataBlock));
-  assert(headerReservedSpace <= pageSize);
+  if (headerReservedSpace) {
+    assert(headerReservedSpace >= sizeof(DataBlock));
+    assert(headerReservedSpace <= pageSize);
+  }
 
   // if not specified, assuming base block size big enough to fit number of pages * page size
   if (baseBlockSize == 0) {
@@ -50,16 +52,34 @@ MemoryPagesPool::MemoryPagesPool(size_t vPageSize, size_t vNumberOfPages, void* 
     numberOfPages = (baseBlockSize - firstPageOffset) / pageSize;
   }
 
+  // create metadata
+  pages.resize(numberOfPages);
+  for (auto &p : pages) {
+    p.resetPageStates();
+    p.setPageState(MemoryPage::PageState::Idle);
+  }
+
   // create a fifo and store list of pages available
   pagesAvailable = std::make_unique<AliceO2::Common::Fifo<void*>>(numberOfPages);
   void* ptr = nullptr;
   int id = 0;
   for (size_t i = 0; i < numberOfPages; i++) {
     ptr = &((char*)baseBlockAddress)[firstPageOffset + i * pageSize];
-    pagesAvailable->push(ptr);
     if (i == 0) {
       firstPageAddress = ptr;
     }
+    pages[i].pagePtr = ptr;
+    pages[i].pageSize = pageSize;
+    pages[i].pageId = id;
+    // check that indexing works as expected
+    // disable validity range check as first/last pages not defined yet.
+    if ( (int)i != id ) {
+      throw __LINE__;
+    }
+    if ( (int)i != getPageIndexFromPagePtr(ptr,0)) {
+      throw __LINE__;
+    }
+    pagesAvailable->push(ptr);
     if (MemoryPagesPoolStatsEnabled) {
       DataPageDescriptor d;
       d.id = id;
@@ -248,12 +268,30 @@ std::shared_ptr<DataBlockContainer> MemoryPagesPool::getNewDataBlockContainer(vo
     }
   }
 
+  int ix = getPageIndexFromPagePtr(newPage);
+  if (ix < 0) {
+    throw __LINE__;
+  }
+
   // fill header at beginning of page assuming payload is contiguous after header
-  DataBlock* b = (DataBlock*)newPage;
+  // or in a separate area, depending on space reserved at top of page
+  DataBlock* b = nullptr;
+
+  if (headerReservedSpace) {
+    // previous implementation: keep space at beginning of page for headers
+    b = (DataBlock*)newPage;
+    b->data = &(((char*)b)[headerReservedSpace]);
+  } else {
+    // metadata and payload are separated
+    b = pages[ix].getDataBlockPtr();
+    b->data = (char*)pages[ix].getPagePtr();
+  }
+
+  // printf("block = %p header = %p data =%p   reserved = %d offset: %d\n", b, &b->header, b->data, (int)headerReservedSpace, (int)(b->data - (char *)&b->header));
+
   b->header = defaultDataBlockHeader;
   b->header.dataSize = getDataBlockMaxSize();
   b->header.memorySize = getPageSize();
-  b->data = &(((char*)b)[headerReservedSpace]);
 
   // define a function to put it back in pool after use
   auto releaseCallback = [this, newPage](void) -> void {
@@ -262,7 +300,7 @@ std::shared_ptr<DataBlockContainer> MemoryPagesPool::getNewDataBlockContainer(vo
   };
 
   // create a container and associate data page and release callback
-  std::shared_ptr<DataBlockContainer> bc = std::make_shared<DataBlockContainer>(releaseCallback, (DataBlock*)newPage, pageSize);
+  std::shared_ptr<DataBlockContainer> bc = std::make_shared<DataBlockContainer>(releaseCallback, b, getPageSize());
   if (bc == nullptr) {
     releaseCallback();
     return nullptr;
@@ -368,4 +406,69 @@ int MemoryPagesPool::getNumaStats(std::map<int,int> &pagesCountPerNumaNode) {
   }
 */
   return err;
+}
+
+int MemoryPagesPool::getPageIndexFromPagePtr(void *ptr, int checkValidity) {
+  if (checkValidity) {
+    if (ptr<firstPageAddress) return -1;
+    if (ptr>(char *)lastPageAddress) return -1;
+  }
+  int ix = (int)(((char *)ptr - (char *)firstPageAddress) / pageSize);
+  if ((ix < 0) || (ix >= (int)pages.size())) return -1;
+  if (pages[ix].pagePtr != ptr) return -1;
+  return ix;
+}
+
+int MemoryPagesPool::updatePageState(void *ptr, MemoryPage::PageState state) {
+  int ix = getPageIndexFromPagePtr(ptr);
+  if (ix<0) return -1;
+  if (ix==0) {
+    printf("Page %d going from %d to %d\n", ix, (int)pages[ix].currentPageState, (int)state);
+  }
+  pages[ix].setPageState(state);
+  return 0;
+}
+
+MemoryPage::MemoryPage() {
+  resetPageStates();
+  pagePtr = nullptr;
+  pageSize = 0;
+  dataBlock.header = defaultDataBlockHeader;
+  dataBlock.data = nullptr;
+  pageId = -1;
+}
+
+MemoryPage::~MemoryPage() {
+}
+
+void MemoryPage::setPageState(PageState s) {
+  if (s != currentPageState) {
+    if (currentPageState != PageState::Undefined) {
+      if (pageStateTimes[(int)currentPageState].t0IsValid) {
+        pageStateTimes[(int)currentPageState].duration += (std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - pageStateTimes[(int)currentPageState].t0)).count();
+      }
+      pageStateTimes[(int)currentPageState].t0IsValid = 0;
+    }
+    if (s != PageState::Undefined) {
+      pageStateTimes[(int)s].t0 = std::chrono::steady_clock::now();
+      pageStateTimes[(int)s].t0IsValid = 1;
+    }
+    currentPageState = s;
+  }
+}
+
+void MemoryPage::resetPageStates() {
+  currentPageState = PageState::Undefined;
+  for (int i=0; i<(int)PageState::Undefined; i++) {
+    pageStateTimes[i].t0IsValid = 0;
+    pageStateTimes[i].duration = 0;
+  }
+  nTimeUsed = 0;
+}
+
+double MemoryPage::getPageStateDuration(PageState s) {
+  if (s != PageState::Undefined) {
+    return pageStateTimes[(int)s].duration;
+  }
+  return 0;
 }

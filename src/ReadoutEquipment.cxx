@@ -193,17 +193,17 @@ ReadoutEquipment::ReadoutEquipment(ConfigFile& cfg, std::string cfgEntryPoint, b
     theLog.log(LogErrorSupport_(3103), "Equipment %s: wrong memory pool settings", name.c_str());
     throw __LINE__;
   }
-  pageSpaceReserved = sizeof(DataBlock); // reserve some data at beginning of each page for header,
-                                         // keep beginning of payload aligned as requested in config
+  // MemoryPagesPool::headerReservedSpace possibly reserves some data at beginning of each page for header,
+  // keep beginning of payload aligned as requested in config
   size_t firstPageOffset = 0;            // alignment of 1st page of memory pool
-  if (pageSpaceReserved) {
+  if (MemoryPagesPool::headerReservedSpace) {
     // auto-align
-    firstPageOffset = memoryPoolPageSize - pageSpaceReserved;
+    firstPageOffset = memoryPoolPageSize - MemoryPagesPool::headerReservedSpace;
   }
   if (cfgFirstPageOffset) {
-    firstPageOffset = cfgFirstPageOffset - pageSpaceReserved;
+    firstPageOffset = cfgFirstPageOffset - MemoryPagesPool::headerReservedSpace;
   }
-  theLog.log(LogInfoDevel_(3008), "pageSpaceReserved = %d, aligning 1st page @ 0x%X", (int)pageSpaceReserved, (int)firstPageOffset);
+  theLog.log(LogInfoDevel_(3008), "MemoryPagesPool::headerReservedSpace = %d, aligning 1st page @ 0x%X", (int)MemoryPagesPool::headerReservedSpace, (int)firstPageOffset);
   mp = nullptr;
   try {
     mp = theMemoryBankManager.getPagedPool(memoryPoolPageSize, memoryPoolNumberOfPages, memoryBankName, firstPageOffset, cfgBlockAlign);
@@ -229,7 +229,7 @@ ReadoutEquipment::ReadoutEquipment(ConfigFile& cfg, std::string cfgEntryPoint, b
     }
   }
   // todo: move page align to MemoryPool class
-  assert(pageSpaceReserved == mp->getPageSize() - mp->getDataBlockMaxSize());
+  assert(MemoryPagesPool::headerReservedSpace == mp->getPageSize() - mp->getDataBlockMaxSize());
 
   // create output fifo
   dataOut = std::make_shared<AliceO2::Common::Fifo<DataBlockContainerReference>>(cfgOutputFifoSize);
