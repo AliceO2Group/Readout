@@ -507,3 +507,6 @@ This file describes the main feature changes for each readout.exe released versi
 
 ## next version
 - Superpage internal metadata not stored at beginning of page but separately in heap, by default. Behavior can be adjusted with MemoryPool::headerReservedSpace.
+- equipment-CruEmulator: set TF trigger type (bit 11) on new TF. Used for dropEmptyHBFramesTriggerMask tests.
+- Updated configuration parameters:
+  - added consumer-fileRecorder-*.dropEmptyHBFramesTriggerMask: when using dropEmptyHBFrames = 1, keep some empty HB frames with trigger type matching given (decimal) mask.
