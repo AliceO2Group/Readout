@@ -424,6 +424,7 @@ Thread::CallbackResult ReadoutEquipment::threadCallback(void* arg)
 	if (nextBlock == nullptr) {
           break;
 	}
+        updatePageStateFromDataBlockContainerReference(nextBlock, MemoryPage::PageState::InEquipment);
 
 	// handle RDH-formatted data
 	if (ptr->cfgRdhUseFirstInPageEnabled) {
@@ -514,6 +515,7 @@ Thread::CallbackResult ReadoutEquipment::threadCallback(void* arg)
 
       if (!ptr->disableOutput) {
         // push new page to output fifo
+        updatePageStateFromDataBlockContainerReference(nextBlock, MemoryPage::PageState::InEquipmentFifoOut);
         ptr->dataOut->push(nextBlock);
       }
     }

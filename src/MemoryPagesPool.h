@@ -39,16 +39,19 @@ class MemoryPage {
     Idle = 0, // waiting in pool
     Allocated = 1, // allocated for readout equipment
     InROC = 2, // page in the ROC buffer
-    InRDHcheck = 3, // page being processed
+    InEquipment = 3, // page being processed
     InEquipmentFifoOut = 4, // page in equipment output FIFO
     InAggregator = 5, // page pending slicing/TF
-    InConsumer = 6, // page being processed for o
-    Undefined = 7, // page state not defined.  Can be used to get number of usable items in enum. All enum items should have values from zero to this.
+    InAggregatorFifoOut = 6, // page pending slicing/TF
+    InConsumer = 7, // page being processed for output
+    InFMQ = 8, // page given to FMQ
+    Undefined = 9, // page state not defined.  Can be used to get number of usable items in enum. All enum items should have values from zero to this.
   };
 
   void setPageState(PageState s);
   void resetPageStates();
   double getPageStateDuration(PageState s);
+  static const char* getPageStateString(PageState s);
 
   friend class MemoryPagesPool;
 
@@ -192,6 +195,10 @@ class MemoryPagesPool
   public:
   int updatePageState(void *ptr, MemoryPage::PageState state);
 };
+
+
+// Perform MemoryPagesPool::updatePageState from a datablock ref, with some pointers checks.
+int updatePageStateFromDataBlockContainerReference(DataBlockContainerReference b, MemoryPage::PageState state);
 
 #endif // #ifndef _MEMORYPAGESPOOL_H
 

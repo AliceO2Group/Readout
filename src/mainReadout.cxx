@@ -1265,6 +1265,9 @@ void Readout::loopRunning()
 	      gReadoutStats.counters.notify++;
             }
           }
+          for(auto const& b : *bc) {
+            updatePageStateFromDataBlockContainerReference(b, MemoryPage::PageState::InConsumer);
+          }
         }
 
         for (auto& c : dataConsumers) {

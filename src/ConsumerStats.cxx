@@ -194,7 +194,7 @@ class ConsumerStats : public Consumer
         theLog.log(LogInfoOps_(3003), "Last interval (%.2fs): blocksRx=%llu, block rate=%.2lf, block size = %.1lfkB, bytesRx=%llu, rate=%s", deltaT, (unsigned long long)counterBlocksDiff, counterBlocksDiff / deltaT, counterBytesDiff / (1024.0*counterBlocksDiff), (unsigned long long)counterBytesDiff, NumberOfBytesToString(counterBytesDiff * 8 / deltaT, "b/s", 1000).c_str());
 	if (gReadoutStats.isFairMQ) {
           theLog.log(LogInfoOps_(3003), "STFB locked pages: current=%llu, released = %llu, release rate=%.2lf Hz, latency=%.3lf s, current TF = %d", (unsigned long long) snapshot.pagesPendingFairMQ.load(), nRfmq, rRfmq, avgTfmq, tfidfmq );
-	  theLog.log(LogInfoOps_(3003), "STFB HBF repacking = %.1lf Hz, copy overhead = %.1lf MB/s", ddHBFRepackedRate, ddBytesCopiedRate);
+	  theLog.log(LogInfoOps_(3003), "STFB HBF repacking = %.1lf Hz, copy overhead = %.1lf MB/s = %.2f%%", ddHBFRepackedRate, ddBytesCopiedRate, ddBytesCopiedRate * 1024.0 * 1024.0 * 100.0 * deltaT / counterBytesDiff);
 	  theLog.log(LogInfoOps_(3003), "STFB memory efficiency = %.1lf %%, data buffered = %.1lf MB, real memory used %.1lf MB",
 	    ddMemoryEfficiency, snapshot.ddPayloadPendingBytes / (1024.0*1024.0), snapshot.ddMemoryPendingBytes / (1024.0*1024.0) );
 	}

@@ -9,6 +9,9 @@
 // granted to it by virtue of its status as an Intergovernmental Organization
 // or submit itself to any jurisdiction.
 
+#define ENABLE_LOG_CODEWRONG
+#include "readoutInfoLogger.h"
+
 #include "Consumer.h"
 #include "MemoryBank.h"
 #include "MemoryBankManager.h"
@@ -62,8 +65,13 @@ static_assert(sizeof(DataBlockFMQStats) <= DataBlockHeaderUserSpace, "DataBlockF
 //uint64_t ddsizemem=0;
 
 
-void initDataBlockStats(DataBlock* b, uint64_t v_memorySizeAccounted = 0)
+void initDataBlockStats(DataBlockContainerReference* blockRef, uint64_t v_memorySizeAccounted = 0)
 {
+  if (blockRef == nullptr) {return;}
+  if (*blockRef == nullptr) {return;}
+  DataBlock* b = (*blockRef)->getData();
+  if (b == nullptr) {return;}
+  if ((*blockRef)->isChildBlock()) {LOG_CODEWRONG; return;}
   DataBlockFMQStats* s = (DataBlockFMQStats*)&(b->header.userSpace);
   s->magic = 0xAA;
   s->countRef = 0;
@@ -72,30 +80,55 @@ void initDataBlockStats(DataBlock* b, uint64_t v_memorySizeAccounted = 0)
   //printf ("TF %d adding mem sz %d\n", (int)b->header.timeframeId, (int) v_memorySizeAccounted);
 }
 
-void incDataBlockStats(DataBlock* b, uint64_t dataSizeAccounted = 0)
+void incDataBlockStats(DataBlockContainerReference* blockRef, uint64_t dataSizeAccounted = 0)
 {
-  //printf("inc %p\n",b);
+  if (blockRef == nullptr) {return;}
+  if (*blockRef == nullptr) {return;}
+  DataBlockContainerReference parentBlock = nullptr;
+  if ((*blockRef)->isChildBlock()) {
+    // for a child block, update stats of the parent block
+    parentBlock = (*blockRef)->getParent();
+    blockRef = &parentBlock;
+  }
+  DataBlock* b = (*blockRef)->getData();
+  if (b == nullptr) {return;}
+  //printf("inc %p\n",b->data);
   DataBlockFMQStats* s = (DataBlockFMQStats*)&(b->header.userSpace);
+
   if (s->magic != 0xAA)
     return;
   if ((s->countRef++) == 0) {
     s->t0 = timeNowMicrosec();
     gReadoutStats.counters.pagesPendingFairMQ++;
     gReadoutStats.counters.notify++;
-    // printf("init %p -> pages locked = %lu\n",b,(unsigned long)gReadoutStats.counters.pagesPendingFairMQ);
+    // printf("init %p -> pages locked = %lu\n",b->data,(unsigned long)gReadoutStats.counters.pagesPendingFairMQ);
     gReadoutStats.counters.ddMemoryPendingBytes += s->memorySizeAccounted;
     //printf("adding %d / %d\n", (int)dataSizeAccounted, (int)s->memorySizeAccounted);
     //ddsizemem+=s->memorySizeAccounted;
+    //printf("page %p pool %p\n",b->data,(*blockRef)->memoryPagesPoolPtr);
+    updatePageStateFromDataBlockContainerReference(*blockRef, MemoryPage::PageState::InFMQ);
   }
   s->dataSizeAccounted += dataSizeAccounted;
   gReadoutStats.counters.ddPayloadPendingBytes += dataSizeAccounted;
   //ddsizepayload += dataSizeAccounted;
 }
 
-void decDataBlockStats(DataBlock* b)
+void decDataBlockStats(DataBlockContainerReference* blockRef)
 {
+  if (blockRef == nullptr) {return;}
+  if (*blockRef == nullptr) {return;}
+  DataBlockContainerReference parentBlock = nullptr;
+  if ((*blockRef)->isChildBlock()) {
+    // for a child block, update stats of the parent block
+    parentBlock = (*blockRef)->getParent();
+    blockRef = &parentBlock;
+  }
+  DataBlock* b = (*blockRef)->getData();
+  if ((*blockRef)->isChildBlock()) {
+    b = (*blockRef)->getParent()->getData();
+  }
+  if (b == nullptr) {return;}
   DataBlockFMQStats* s = (DataBlockFMQStats*)&(b->header.userSpace);
-  //printf("dec %p\n",b);
   if (s->magic != 0xAA)
     return;
   if ((--s->countRef) == 0) {
@@ -317,7 +350,7 @@ class ConsumerFMQchannel : public Consumer
           DataBlockContainerReference* blockRef = (DataBlockContainerReference*)hint;
           //printf("ack hint=%p page %p\n",hint,(*blockRef)->getData());
 	  //printf("ptr %p: use_count=%d\n",blockRef, (int)blockRef->use_count());
-          decDataBlockStats((*blockRef)->getData());
+          decDataBlockStats(blockRef);
           delete blockRef;
         }
       },fair::mq::RegionConfig{false,false});  // lock / zero - done later
@@ -445,6 +478,7 @@ class ConsumerFMQchannel : public Consumer
           totalPushError++;
           return -1;
         }
+        (*blockRef)->memoryPagesPoolPtr = br->memoryPagesPoolPtr; // keep ref to memoryPagesPool for state updates
         void* hint = (void*)blockRef;
         void* blobPtr = b->data;
         size_t blobSize = (size_t)b->header.dataSize;
@@ -478,6 +512,7 @@ class ConsumerFMQchannel : public Consumer
           totalPushError++;
           return -1;
         }
+        (*ptr)->memoryPagesPoolPtr = br->memoryPagesPoolPtr; // keep ref to memoryPagesPool for state updates
         std::unique_ptr<FairMQMessage> msgHeader(transportFactory->CreateMessage((void*)&(br->getData()->header), (size_t)(br->getData()->header.headerSize), msgcleanupCallback, (void*)nullptr));
         std::unique_ptr<FairMQMessage> msgBody(transportFactory->CreateMessage((void*)(br->getData()->data), (size_t)(br->getData()->header.dataSize), msgcleanupCallback, (void*)(ptr)));
 
@@ -505,6 +540,7 @@ class ConsumerFMQchannel : public Consumer
         totalPushError++;
         return -1;
       }
+      (*blockRef)->memoryPagesPoolPtr = headerBlock->memoryPagesPoolPtr; // keep ref to memoryPagesPool for state updates
       SubTimeframe* stfHeader = (SubTimeframe*)headerBlock->getData()->data;
       if (stfHeader == nullptr) {
         totalPushError++;
@@ -550,6 +586,7 @@ class ConsumerFMQchannel : public Consumer
           totalPushError++;
           return -1;
         }
+        (*blockRef)->memoryPagesPoolPtr = br->memoryPagesPoolPtr; // keep ref to memoryPagesPool for state updates
         void* hint = (void*)blockRef;
         void* blobPtr = b->data;
         size_t blobSize = (size_t)b->header.dataSize;
@@ -728,6 +765,7 @@ int ConsumerFMQchannel::DDformatMessage(DataSetReference &bc, DDMessage &ddm) {
     totalPushError++;
     return -1;
   }
+  (*blockRef)->memoryPagesPoolPtr = headerBlock->memoryPagesPoolPtr; // keep ref to memoryPagesPool for state updates
   SubTimeframe* stfHeader = (SubTimeframe*)headerBlock->getData()->data;
   if (stfHeader == nullptr) {
     totalPushError++;
@@ -820,8 +858,8 @@ int ConsumerFMQchannel::DDformatMessage(DataSetReference &bc, DDMessage &ddm) {
   assert(ddm.messagesToSend.empty());
   if (memoryBuffer) {
     // printf("send H %p\n", blockRef);
-    initDataBlockStats((*blockRef)->getData(), headerBlock->getDataBufferSize());
-    incDataBlockStats((*blockRef)->getData(), sizeof(SubTimeframe));
+    initDataBlockStats(blockRef, headerBlock->getDataBufferSize());
+    incDataBlockStats(blockRef, sizeof(SubTimeframe));
     ddm.messagesToSend.emplace_back(sendingChannel->NewMessage(memoryBuffer, (void*)stfHeader, sizeof(SubTimeframe), (void*)(blockRef)));
   } else {
     ddm.messagesToSend.emplace_back(sendingChannel->NewMessage((void*)stfHeader, sizeof(SubTimeframe), msgcleanupCallback, (void*)(blockRef)));
@@ -849,6 +887,10 @@ int ConsumerFMQchannel::DDformatMessage(DataSetReference &bc, DDMessage &ddm) {
     pf.HBid = id;
     // create a copy of the reference, in a newly allocated object, so that reference is kept alive until this new object is destroyed in the cleanupCallback
     pf.blockRef = new DataBlockContainerReference(br);
+    if (pf.blockRef == nullptr) {
+      throw __LINE__;
+    }
+    (*pf.blockRef)->memoryPagesPoolPtr = br->memoryPagesPoolPtr; // keep ref to memoryPagesPool for state updates
     pendingFrames.push_back(pf);
   };
 
@@ -874,7 +916,7 @@ int ConsumerFMQchannel::DDformatMessage(DataSetReference &bc, DDMessage &ddm) {
       // create and queue a fmq message
       if (memoryBuffer) {
         // printf("send D %p\n", hint);
-        incDataBlockStats((*(pendingFrames[0].blockRef))->getData(), l);
+        incDataBlockStats(pendingFrames[0].blockRef, l);
 //        printf("mem1 sz = %d\n",(int)(*(pendingFrames[0].blockRef))->getData()->header.memorySize);
         ddm.messagesToSend.emplace_back(sendingChannel->NewMessage(memoryBuffer, (void*)(&(b->data[ix])), (size_t)(l), hint));
       } else {
@@ -917,6 +959,7 @@ int ConsumerFMQchannel::DDformatMessage(DataSetReference &bc, DDMessage &ddm) {
 	      isNewBlock = 1;
               if (copyBlockBuffer != nullptr) {
 	        copyBlockMemSize = copyBlockBuffer->getDataBufferSize();
+                initDataBlockStats(&copyBlockBuffer, copyBlockMemSize);
 	      }
 	      nPagesUsedForRepack++;
 	      continue;
@@ -934,6 +977,7 @@ int ConsumerFMQchannel::DDformatMessage(DataSetReference &bc, DDMessage &ddm) {
 	  isNewBlock = 1;
 	  if (copyBlock != nullptr) {
 	    copyBlockMemSize = copyBlock->getDataBufferSize();
+            initDataBlockStats(&copyBlock, copyBlockMemSize);
 	  }
 	  nPagesUsedForRepack++;
 	}
@@ -951,6 +995,10 @@ int ConsumerFMQchannel::DDformatMessage(DataSetReference &bc, DDMessage &ddm) {
       }
       auto blockRef = new DataBlockContainerReference(copyBlock);
       char* newBlock = (char*)copyBlock->getData()->data;
+      if (blockRef ==nullptr) {
+        throw __LINE__;
+      }
+      (*blockRef)->memoryPagesPoolPtr = copyBlock->memoryPagesPoolPtr; // keep ref to memoryPagesPool for state updates
 
       int newIx = 0;
       for (auto& f : pendingFrames) {
@@ -972,8 +1020,7 @@ int ConsumerFMQchannel::DDformatMessage(DataSetReference &bc, DDMessage &ddm) {
       // create and queue a fmq message
       if (memoryBuffer) {
         // printf("send D2 %p\n", blockRef);
-        initDataBlockStats((*blockRef)->getData(), copyBlockMemSize);
-        incDataBlockStats((*blockRef)->getData(), totalSize);
+        incDataBlockStats(blockRef, totalSize);
         ddm.messagesToSend.emplace_back(sendingChannel->NewMessage(memoryBuffer, (void*)newBlock, totalSize, (void*)(blockRef)));
       } else {
         ddm.messagesToSend.emplace_back(sendingChannel->NewMessage((void*)newBlock, totalSize, msgcleanupCallback, (void*)(blockRef)));
@@ -988,7 +1035,7 @@ int ConsumerFMQchannel::DDformatMessage(DataSetReference &bc, DDMessage &ddm) {
   try {
     for (auto& br : *bc) {
       DataBlock* b = br->getData();
-      initDataBlockStats(b, br->getDataBufferSize());
+      initDataBlockStats(&br, br->getDataBufferSize());
 
       unsigned int HBstart = 0;
       for (int offset = 0; offset + sizeof(o2::Header::RAWDataHeader) <= b->header.dataSize;) {

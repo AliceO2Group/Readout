@@ -15,6 +15,8 @@
 #include <cstdio>
 
 #include "ReadoutUtils.h"
+#define ENABLE_LOG_CODEWRONG
+#include "readoutInfoLogger.h"
 
 
 int MemoryPagesPoolStatsEnabled = 0; // flag to control memory stats
@@ -179,6 +181,8 @@ void* MemoryPagesPool::getPage()
   void* ptr = nullptr;
   pagesAvailable->pop(ptr);
 
+  updatePageState(ptr, MemoryPage::PageState::Allocated);
+
   // udpate buffer state
   updateBufferState();
 
@@ -224,6 +228,8 @@ void MemoryPagesPool::releasePage(void* address)
       }
     }
   }
+
+  updatePageState(address, MemoryPage::PageState::Idle);
 
   // disable concurrent execution of this function
   std::unique_lock<std::mutex> lock(pagesAvailableMutexPush);
@@ -304,6 +310,8 @@ std::shared_ptr<DataBlockContainer> MemoryPagesPool::getNewDataBlockContainer(vo
   if (bc == nullptr) {
     releaseCallback();
     return nullptr;
+  } else {
+    bc->memoryPagesPoolPtr = this;
   }
 
   // printf("create dbc %p with data=%p stored=%p\n",bc,newPage,bc->getData());
@@ -409,6 +417,7 @@ int MemoryPagesPool::getNumaStats(std::map<int,int> &pagesCountPerNumaNode) {
 }
 
 int MemoryPagesPool::getPageIndexFromPagePtr(void *ptr, int checkValidity) {
+  if (ptr == nullptr) return -1;
   if (checkValidity) {
     if (ptr<firstPageAddress) return -1;
     if (ptr>(char *)lastPageAddress) return -1;
@@ -422,8 +431,8 @@ int MemoryPagesPool::getPageIndexFromPagePtr(void *ptr, int checkValidity) {
 int MemoryPagesPool::updatePageState(void *ptr, MemoryPage::PageState state) {
   int ix = getPageIndexFromPagePtr(ptr);
   if (ix<0) return -1;
-  if (ix==0) {
-    printf("Page %d going from %d to %d\n", ix, (int)pages[ix].currentPageState, (int)state);
+  if (ix<0) {
+    theLog.log("Page %d.%d %p going from %d (%s) to %d (%s)", getId(), ix, ptr, (int)pages[ix].currentPageState,MemoryPage::getPageStateString(pages[ix].currentPageState),(int)state,MemoryPage::getPageStateString(state));
   }
   pages[ix].setPageState(state);
   return 0;
@@ -471,4 +480,49 @@ double MemoryPage::getPageStateDuration(PageState s) {
     return pageStateTimes[(int)s].duration;
   }
   return 0;
+}
+
+
+const char* MemoryPage::getPageStateString(PageState s) {
+  switch (s) {
+    case Idle: return "Idle";
+    case Allocated: return "Allocated";
+    case InROC: return "InROC";
+    case InEquipment: return "InEquipment";
+    case InEquipmentFifoOut: return "InEquipmentFifoOut";
+    case InAggregator: return "InAggregator";
+    case InAggregatorFifoOut: return "InAggregatorFifoOut";
+    case InConsumer: return "InConsumer";
+    case InFMQ: return "InFMQ";
+    case Undefined: return "Undefined";
+  }
+  return "Unknown";
+}
+
+int updatePageStateFromDataBlockContainerReference(DataBlockContainerReference b, MemoryPage::PageState state) {
+  int err = __LINE__;
+  MemoryPagesPool *mp = nullptr;
+  DataBlock *db = nullptr;
+  void *pagePtr = nullptr;
+  for (;;) {
+    if (b == nullptr) {
+      err = __LINE__;
+      break;
+    }
+    mp = ((MemoryPagesPool *)b->memoryPagesPoolPtr);
+    if (mp == nullptr) {
+      err = __LINE__;
+      break;
+    }
+    db = b->getData();
+    if (db == nullptr) {
+      err = __LINE__;
+      break;
+    }
+    pagePtr = db->data;
+    err = mp->updatePageState(pagePtr, state);
+    break;
+  }
+  if (err) {LOG_CODEWRONG;}
+  return err;
 }
