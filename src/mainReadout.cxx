@@ -53,6 +53,10 @@
 #include "ReadoutDatabase.h"
 #endif
 
+#ifdef WITH_READOUTCARD
+#include <ReadoutCard/Version.h>
+#endif
+
 #include <atomic>
 #include <chrono>
 #include <fcntl.h>
@@ -374,7 +378,7 @@ int Readout::init(int argc, char* argv[])
     theLog.log(LogInfoDevel, "Build time: %s %s", __DATE__, __TIME__);
     theLog.log(LogInfoDevel, "Optional built features enabled:");
     #ifdef WITH_READOUTCARD
-      theLog.log(LogInfoDevel, "READOUTCARD : yes");
+      theLog.log(LogInfoDevel, "READOUTCARD : yes (v%s)", o2::roc::getReadoutCardVersion());
     #else
       theLog.log(LogInfoDevel, "READOUTCARD : no");
     #endif
