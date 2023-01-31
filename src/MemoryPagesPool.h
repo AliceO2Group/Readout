@@ -52,6 +52,7 @@ class MemoryPage {
   void resetPageStates();
   double getPageStateDuration(PageState s);
   static const char* getPageStateString(PageState s);
+  void reportPageStates();
 
   friend class MemoryPagesPool;
 

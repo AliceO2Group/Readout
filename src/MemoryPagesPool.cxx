@@ -448,13 +448,15 @@ MemoryPage::MemoryPage() {
 }
 
 MemoryPage::~MemoryPage() {
+  //reportPageStates();
 }
 
 void MemoryPage::setPageState(PageState s) {
   if (s != currentPageState) {
     if (currentPageState != PageState::Undefined) {
       if (pageStateTimes[(int)currentPageState].t0IsValid) {
-        pageStateTimes[(int)currentPageState].duration += (std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - pageStateTimes[(int)currentPageState].t0)).count();
+        pageStateTimes[(int)currentPageState].duration +=
+          (std::chrono::duration<double>(std::chrono::steady_clock::now() - pageStateTimes[(int)currentPageState].t0)).count();
       }
       pageStateTimes[(int)currentPageState].t0IsValid = 0;
     }
@@ -525,4 +527,21 @@ int updatePageStateFromDataBlockContainerReference(DataBlockContainerReference b
   }
   if (err) {LOG_CODEWRONG;}
   return err;
+}
+
+void MemoryPage::reportPageStates() {
+  double t = 0;
+  for (int i=0; i<PageState::Undefined; i++) {
+    t += getPageStateDuration((PageState)i);
+  }
+
+  printf("Page %p : ", getPagePtr());
+  if (t != 0) {
+    printf ("%12.6fs\t",t);
+    for (int i=0; i<PageState::Undefined; i++) {
+      //printf("%s = %.2f%%   ", getPageStateString((PageState)i), getPageStateDuration((PageState)i) * 100 / t);
+      printf("%.2f%% \t", getPageStateDuration((PageState)i) * 100 / t);
+    }
+  }
+  printf("\n");
 }
