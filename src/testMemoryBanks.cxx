@@ -36,7 +36,11 @@ int main()
     std::shared_ptr<MemoryBank> b = nullptr;
     try {
       b = getMemoryBank(size, "malloc", "malloc:" + std::to_string(j));
-    } catch (...) {
+    }
+    catch (int err) {
+      printf("Error %d\n",err);
+    }
+    catch (...) {
     }
     if (b == nullptr) {
       printf("Failed to create bank[%d]\n", j);
@@ -71,6 +75,7 @@ int main()
   }
   if (thePool == nullptr) {
     printf("Failed to create test pool\n");
+    return -1;
   } else {
     printf("test pool %d pages available\n", (int)thePool->getNumberOfPagesAvailable());
   }

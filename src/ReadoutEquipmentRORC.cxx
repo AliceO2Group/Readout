@@ -263,6 +263,7 @@ Thread::CallbackResult ReadoutEquipmentRORC::prepareBlocks()
       if (channel->pushSuperpage(superpage)) {
         isActive = 1;
         nPushed++;
+        mp->updatePageState(newPage, MemoryPage::PageState::InROC);
       } else {
         // push failed (typically, stopDma() has been called in the mean time)
         // release allocated page to memory pool

@@ -160,7 +160,17 @@ std::shared_ptr<MemoryPagesPool> MemoryBankManager::getPagedPool(size_t pageSize
   }
 
   // create pool of pages from new block
-  return std::make_shared<MemoryPagesPool>(pageSize, pageNumber, &(((char*)baseAddress)[offset]), blockSize, nullptr, firstPageOffset, newId);
+  std::shared_ptr<MemoryPagesPool> mpp;
+  try {
+    mpp = std::make_shared<MemoryPagesPool>(pageSize, pageNumber, &(((char*)baseAddress)[offset]), blockSize, nullptr, firstPageOffset, newId);
+  }
+  catch (int err) {
+    theLog.log(LogErrorSupport_(3230), "Can not create memory pool from bank: error %d", err);
+  }
+  catch (...) {
+    theLog.log(LogErrorSupport_(3230), "Can not create memory pool from bank");
+  }
+  return mpp;
 }
 
 // a global MemoryBankManager instance

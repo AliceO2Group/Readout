@@ -53,6 +53,10 @@
 #include "ReadoutDatabase.h"
 #endif
 
+#ifdef WITH_READOUTCARD
+#include <ReadoutCard/Version.h>
+#endif
+
 #include <atomic>
 #include <chrono>
 #include <fcntl.h>
@@ -374,7 +378,7 @@ int Readout::init(int argc, char* argv[])
     theLog.log(LogInfoDevel, "Build time: %s %s", __DATE__, __TIME__);
     theLog.log(LogInfoDevel, "Optional built features enabled:");
     #ifdef WITH_READOUTCARD
-      theLog.log(LogInfoDevel, "READOUTCARD : yes");
+      theLog.log(LogInfoDevel, "READOUTCARD : yes (v%s)", o2::roc::getReadoutCardVersion());
     #else
       theLog.log(LogInfoDevel, "READOUTCARD : no");
     #endif
@@ -1025,10 +1029,12 @@ int Readout::configure(const boost::property_tree::ptree& properties)
 	// equipment-specific method to get preferred NUMA node can not be implemented in a derived class method
 	// because we need info here in the equipment base class before allocating the memory
 	// call corresponding external function
-	extern int getPreferredROCNumaNode(ConfigFile&, std::string);
-	if (!cfgEquipmentType.compare("rorc")) {
-	  numaNode = getPreferredROCNumaNode(cfg, kName);
-	}
+	#ifdef WITH_READOUTCARD
+          extern int getPreferredROCNumaNode(ConfigFile&, std::string);
+	  if (!cfgEquipmentType.compare("rorc")) {
+	    numaNode = getPreferredROCNumaNode(cfg, kName);
+	  }
+        #endif
       } else {
 	// try to convert value to int
 	int n;
@@ -1264,6 +1270,9 @@ void Readout::loopRunning()
 	      gReadoutStats.counters.currentOrbit =  bc->at(0)->getData()->header.timeframeOrbitFirst;
 	      gReadoutStats.counters.notify++;
             }
+          }
+          for(auto const& b : *bc) {
+            updatePageStateFromDataBlockContainerReference(b, MemoryPage::PageState::InConsumer);
           }
         }
 

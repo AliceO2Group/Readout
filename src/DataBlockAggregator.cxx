@@ -11,6 +11,7 @@
 
 #include "DataBlockAggregator.h"
 #include "readoutInfoLogger.h"
+#include "MemoryPagesPool.h"
 #include <inttypes.h>
 
 DataBlockAggregator::DataBlockAggregator(AliceO2::Common::Fifo<DataSetReference>* v_output, std::string name)
@@ -131,6 +132,7 @@ Thread::CallbackResult DataBlockAggregator::executeCallback()
       } catch (...) {
         return Thread::CallbackResult::Error;
       }
+      updatePageStateFromDataBlockContainerReference(b, MemoryPage::PageState::InAggregatorFifoOut);
       bcv->push_back(b);
       output->push(bcv);
       nSlicesOut++;
@@ -146,6 +148,7 @@ Thread::CallbackResult DataBlockAggregator::executeCallback()
       }
       DataBlockContainerReference b = nullptr;
       inputs[i]->pop(b);
+      updatePageStateFromDataBlockContainerReference(b, MemoryPage::PageState::InAggregator);
       nBlocksIn++;
       totalBlocksIn++;
       // printf("Got block %d from dev %d eq %d link %d tf %d\n", (int)(b->getData()->header.blockId), i, (int)(b->getData()->header.equipmentId), (int)(b->getData()->header.linkId), (int)(b->getData()->header.timeframeId));
@@ -175,7 +178,8 @@ Thread::CallbackResult DataBlockAggregator::executeCallback()
 
       if (enableStfBuilding) {
         // buffer timeframes
-        DataBlock* db = bcv->at(0)->getData();
+        DataBlockContainerReference b = bcv->at(0);
+        DataBlock* db = b->getData();
         uint64_t tfId = db->header.timeframeId;
         uint64_t sourceId = (((uint64_t)db->header.equipmentId) << 32) | ((uint64_t)db->header.linkId);
         if (tfId <= lastTimeframeId) {
@@ -189,6 +193,9 @@ Thread::CallbackResult DataBlockAggregator::executeCallback()
           // theLog.log(LogDebugTrace, "aggregate - added tf %lu : source %lX",tfId,sourceId);
         }
       } else {
+        for(auto const& b : *bcv) {
+            updatePageStateFromDataBlockContainerReference(b, MemoryPage::PageState::InAggregatorFifoOut);
+        }
         // push directly out completed slices
         output->push(bcv);
       }
@@ -198,7 +205,9 @@ Thread::CallbackResult DataBlockAggregator::executeCallback()
     }
   }
   // on next iteration, start from a different input to balance equipments emptying order
-  nextIndex = (nextIndex + 1) % nInputs;
+  if (nInputs>1) {
+    nextIndex = (nextIndex + 1) % nInputs;
+  }
 
   // in TF buffering mode, are there some complete timeframes?
   if (enableStfBuilding) {
@@ -213,6 +222,9 @@ Thread::CallbackResult DataBlockAggregator::executeCallback()
         double tmax = it->second.updateTime;
         int ix = 0;
         for (auto const& ss : it->second.sstf) {
+          for(auto const& b : *ss.data) {
+            updatePageStateFromDataBlockContainerReference(b, MemoryPage::PageState::InAggregatorFifoOut);
+          }
           ix++;
           if (ix == (int)it->second.sstf.size()) {
             // this is the last piece of this TF, mark last block as such

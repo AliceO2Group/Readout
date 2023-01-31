@@ -204,6 +204,7 @@ Thread::CallbackResult ReadoutEquipmentCruEmulator::prepareBlocks()
 
     for (offset = 0; offset + cruBlockSize <= bytesAvailableInPage; offset += cruBlockSize) {
 
+      bool isNewTF = 0;
       if ((ls.payloadBytesLeft < 0)) {
         // this is a new HB frame
 
@@ -219,6 +220,7 @@ Thread::CallbackResult ReadoutEquipmentCruEmulator::prepareBlocks()
           nextBc = nextBc % LHCBunches;
           unsigned int nextId = getTimeframeFromOrbit(nextOrbit); // timeframe ID
           if (nextId != nowId) {
+            isNewTF = 1;
             if (offset) {
               // force page change on timeframe boundary
               // printf("TF boundary : %d != %d\n",nextId,nowId);
@@ -271,6 +273,11 @@ Thread::CallbackResult ReadoutEquipmentCruEmulator::prepareBlocks()
       rdh->stopBit = 0;
       rdh->packetCounter = ls.packetCounter;
       ls.packetCounter++;
+      if (isNewTF) {
+        rdh->triggerType = (uint32_t)1 << 11;
+      } else {
+        rdh->triggerType = 0;
+      }
 
       rdh->pagesCounter = ls.HBpagecount;
       if (ls.payloadBytesLeft > 0) {

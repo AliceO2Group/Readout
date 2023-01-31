@@ -31,6 +31,8 @@
 class DataBlockContainer;
 using DataBlockContainerReference = std::shared_ptr<DataBlockContainer>;
 
+class MemoryPagesPool;
+
 class DataBlockContainer
 {
 
@@ -69,6 +71,7 @@ class DataBlockContainer
     return dataBufferSize;
   };
 
+  MemoryPagesPool *memoryPagesPoolPtr = nullptr; // to keep track of owner of this container
 
   static DataBlockContainerReference getChildBlock(DataBlockContainerReference parentBlock, uint64_t v_dataBufferSizeNeeded, uint64_t roundUp = 0) {
     uint64_t bufferSize = v_dataBufferSizeNeeded + sizeof(DataBlock);
@@ -100,6 +103,13 @@ class DataBlockContainer
     return childBlock;
   };
 
+  bool isChildBlock() {
+    return (parentBlock != nullptr);
+  }
+
+  DataBlockContainerReference getParent() {
+    return parentBlock;
+  }
 
  protected:
   DataBlock* data;                 // The DataBlock in use

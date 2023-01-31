@@ -211,7 +211,7 @@ class ConsumerFileRecorder : public Consumer
       }
     }
 
-    // configuration parameter: | consumer-fileRecorder-* | dropEmptyHBFrames | int | 0 | If 1, memory pages are scanned and empty HBframes are discarded, i.e. couples of packets which contain only RDH, the first one with pagesCounter=0 and the second with stop bit set. This setting does not change the content of in-memory data pages, other consumers would still get full data pages with empty packets. This setting is meant to reduce the amount of data recorded for continuous detectors in triggered mode.|
+    // configuration parameter: | consumer-fileRecorder-* | dropEmptyHBFrames | int | 0 | If 1, memory pages are scanned and empty HBframes are discarded, i.e. couples of packets which contain only RDH, the first one with pagesCounter=0 and the second with stop bit set. This setting does not change the content of in-memory data pages, other consumers would still get full data pages with empty packets. This setting is meant to reduce the amount of data recorded for continuous detectors in triggered mode. Use with dropEmptyHBFramesTriggerMask, if some empty frames with specific trigger types need to be kept (eg TF or SOC). |
     cfg.getOptionalValue(cfgEntryPoint + ".dropEmptyHBFrames", dropEmptyHBFrames, 0);
     if (dropEmptyHBFrames) {
       if (recordWithDataBlockHeader) {
@@ -220,6 +220,13 @@ class ConsumerFileRecorder : public Consumer
       }
       theLog.log(LogInfoSupport_(3002), "Some packets with RDH-only payload will not be recorded to file, option dropEmptyHBFrames is enabled");
     }
+
+    // configuration parameter: | consumer-fileRecorder-* | dropEmptyHBFramesTriggerMask | int | 0 | (when using dropEmptyHBFrames = 1) empty HB frames are kept if any bit in RDH TriggerType field matches this pattern (RDHTriggerType & TriggerMask != 0). To be provided as a decimal value: eg 2048 (TF triggers, bit 11), 3584 (TF + SOC + EOC bits 9,10,11). |
+    cfg.getOptionalValue(cfgEntryPoint + ".dropEmptyHBFramesTriggerMask", dropEmptyHBFramesTriggerMask, 0);
+    if ((dropEmptyHBFrames)&&(dropEmptyHBFramesTriggerMask)) {
+      theLog.log(LogInfoSupport_(3002), "Some packets with RDH-only payload will be recorded when their trigger type matches mask 0x%X", dropEmptyHBFramesTriggerMask);
+    }
+
   }
 
   ~ConsumerFileRecorder() {}
@@ -504,14 +511,14 @@ class ConsumerFileRecorder : public Consumer
     };
 
     auto isEmptyHBstop = [&](RdhHandle& h) {
-      if ((h.getStopBit()) && (h.getHeaderSize() == h.getMemorySize())) {
+      if ((h.getStopBit()) && (h.getHeaderSize() == h.getMemorySize()) && ((h.getTriggerType() & (uint32_t)dropEmptyHBFramesTriggerMask) == 0) ) {
         return true;
       }
       return false;
     };
 
     auto isEmptyHBstart = [&](RdhHandle& h) {
-      if ((h.getPagesCounter() == 0) && (h.getHeaderSize() == h.getMemorySize())) {
+      if ((h.getPagesCounter() == 0) && (h.getHeaderSize() == h.getMemorySize()) && ((h.getTriggerType() & (uint32_t)dropEmptyHBFramesTriggerMask) == 0)) {
         return true;
       }
       return false;
@@ -642,6 +649,7 @@ class ConsumerFileRecorder : public Consumer
   int maxFileTF = 0;                  // maximum number of TF to write (in each file)
   int filesMax = 0;                   // maximum number of files to write (for each stream)
   int dropEmptyHBFrames = 0;          // if set, some empty packets are discarded (see logic in code)
+  int dropEmptyHBFramesTriggerMask = 0; // (when using dropEmptyHBFrames = 1) empty HB frames are kept if any bit in RDH TriggerType field matches this pattern. (TriggerType & TriggerMask != 0)
 
   class Packet
   {

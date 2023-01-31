@@ -239,6 +239,7 @@ target_include_directories(objReadoutAggregator PRIVATE ${READOUT_INCLUDE_DIRS})
 # utilities, including memory handling
 add_library(
         objReadoutUtils OBJECT
+        ${SOURCE_DIR}/readoutInfoLogger.cxx
         ${SOURCE_DIR}/ReadoutUtils.cxx
         ${SOURCE_DIR}/RdhUtils.cxx
         ${SOURCE_DIR}/CounterStats.cxx

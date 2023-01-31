@@ -20,6 +20,8 @@
 
 using namespace AliceO2::InfoLogger;
 extern InfoLogger theLog;
+extern InfoLogger::AutoMuteToken theLogTokenCodeWrong;
+#define LOG_CODEWRONG theLog.log(theLogTokenCodeWrong, "unexpected code execution")
 
 #endif //_READOUT_INFOLOGGER_H
 
