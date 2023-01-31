@@ -143,6 +143,13 @@ void dbLog(const std::string &msg) {
   theLog.log(LogInfoDevel_(3012), "%s", msg.c_str());
 }
 
+#ifndef WITH_READOUTCARD
+// dummy function in case ReadoutCard is not available
+int getPreferredROCNumaNode(ConfigFile&, std::string) {
+  return 0;
+}
+#endif
+
 class Readout
 {
 
@@ -1025,7 +1032,9 @@ int Readout::configure(const boost::property_tree::ptree& properties)
 	// equipment-specific method to get preferred NUMA node can not be implemented in a derived class method
 	// because we need info here in the equipment base class before allocating the memory
 	// call corresponding external function
+  #ifdef WITH_READOUTCARD
 	extern int getPreferredROCNumaNode(ConfigFile&, std::string);
+  #endif
 	if (!cfgEquipmentType.compare("rorc")) {
 	  numaNode = getPreferredROCNumaNode(cfg, kName);
 	}
