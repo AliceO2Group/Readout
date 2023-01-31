@@ -1029,10 +1029,12 @@ int Readout::configure(const boost::property_tree::ptree& properties)
 	// equipment-specific method to get preferred NUMA node can not be implemented in a derived class method
 	// because we need info here in the equipment base class before allocating the memory
 	// call corresponding external function
-	extern int getPreferredROCNumaNode(ConfigFile&, std::string);
-	if (!cfgEquipmentType.compare("rorc")) {
-	  numaNode = getPreferredROCNumaNode(cfg, kName);
-	}
+	#ifdef WITH_READOUTCARD
+          extern int getPreferredROCNumaNode(ConfigFile&, std::string);
+	  if (!cfgEquipmentType.compare("rorc")) {
+	    numaNode = getPreferredROCNumaNode(cfg, kName);
+	  }
+        #endif
       } else {
 	// try to convert value to int
 	int n;
