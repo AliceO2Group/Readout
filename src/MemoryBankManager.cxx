@@ -13,6 +13,7 @@
 #include "ReadoutUtils.h"
 #include <unistd.h>
 #include <sys/mman.h>
+#include <thread>
 
 #include "readoutInfoLogger.h"
 
@@ -141,7 +142,34 @@ std::shared_ptr<MemoryPagesPool> MemoryBankManager::getPagedPool(size_t pageSize
   #else
     mlock(blockAddress, blockSize);
   #endif
-  bzero(blockAddress, blockSize);
+  const int nMemThreads = 1;
+  if (nMemThreads <= 1) {
+    bzero(blockAddress, blockSize);
+  } else {
+    // parallel
+    std::thread memThreads[nMemThreads];
+    char *ptr = (char *)blockAddress;
+    char *ptrEnd = (char *)blockAddress + blockSize;
+    const size_t blockUnit = 128 * 1024UL * 1024UL; // block unit = 128MB
+    int nThreads = 0;
+    for (int i = 0; i<nMemThreads; i++) {
+      size_t sz = blockSize / nMemThreads;
+      sz = sz + (blockUnit - ((size_t)ptr + sz) % blockUnit); // round up to next block
+      if ((ptr + sz > ptrEnd) || (i + 1 == nMemThreads)) {
+        sz = ptrEnd - ptr;
+      }
+      theLog.log(LogDebugDevel, "Thread %d  - zero %p - %llu", i, ptr, (unsigned long long)sz);
+      memThreads[i] = std::thread(bzero, ptr, sz);
+      ptr += sz;
+      nThreads++;
+      if (ptr >= ptrEnd) {
+        break;
+      }
+    }
+    for (int i = 0; i < nThreads; i++) {
+      memThreads[i].join();
+    }
+  }
   theLog.log(LogInfoDevel, "Zero memory done");
 
   if (numaNode >= 0) {
