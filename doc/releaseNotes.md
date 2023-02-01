@@ -505,7 +505,7 @@ This file describes the main feature changes for each readout.exe released versi
 ## v2.15.2 - 08/12/2022
 - Added ROC link Id for some log messages, as provided from new superpage metadata link field from ROC library.
 
-## next version
+## v2.16.0 - 01/02/2022
 - Superpage internal metadata not stored at beginning of page but separately in heap, by default. Behavior can be adjusted with MemoryPool::headerReservedSpace.
 - equipment-CruEmulator: set TF trigger type (bit 11) on new TF. Used for dropEmptyHBFramesTriggerMask tests.
 - Updated configuration parameters:
