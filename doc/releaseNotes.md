@@ -505,11 +505,9 @@ This file describes the main feature changes for each readout.exe released versi
 ## v2.15.2 - 08/12/2022
 - Added ROC link Id for some log messages, as provided from new superpage metadata link field from ROC library.
 
-## v2.16.0 - 01/02/2023
+## next version
 - Superpage internal metadata not stored at beginning of page but separately in heap, by default. Behavior can be adjusted with MemoryPool::headerReservedSpace.
 - equipment-CruEmulator: set TF trigger type (bit 11) on new TF. Used for dropEmptyHBFramesTriggerMask tests.
 - Updated configuration parameters:
   - added consumer-fileRecorder-*.dropEmptyHBFramesTriggerMask: when using dropEmptyHBFrames = 1, keep some empty HB frames with trigger type matching given (decimal) mask.
 - Added support for RDHv7. Readout already accepts data from equipments with v7, but still generates data (internal sw generator) with v6, for compatibility with current software downstream.
-- Updated configuration parameters:
-  - added equipment-*.rdhUseFirstOrbit: 1st orbit is used to compute TF ids (by default). Otherwise, 1st orbit assumed to be zero (as done by latest trigger firmware).

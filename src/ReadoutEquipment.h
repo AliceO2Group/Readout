@@ -176,7 +176,6 @@ class ReadoutEquipment
   int cfgRdhUseFirstInPageEnabled = 0; // flag to enable reading of first RDH in page to populate readout headers
   int cfgRdhDumpFirstInPageEnabled = 0;// flag to enable RDH dump of first header in page
   int cfgRdhCheckFirstOrbit = 1;       // flag to enable RDH check of first orbit is the same in all equipments
-  int cfgRdhUseFirstOrbit = 1;         // flag to use first received orbit to compute TF ids
   //int cfgRdhCheckPacketCounterContiguous = 1; // flag to enable checking if RDH packetCounter value contiguous (done link-by-link)
   int cfgRdhCheckDetectorField = 0; // flag to enable checking for changes in detector field
   double cfgTfRateLimit = 0;           // TF rate limit, to throttle data readout

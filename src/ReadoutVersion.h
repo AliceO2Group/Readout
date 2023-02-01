@@ -9,5 +9,5 @@
 // granted to it by virtue of its status as an Intergovernmental Organization
 // or submit itself to any jurisdiction.
 
-#define READOUT_VERSION "2.16.0"
+#define READOUT_VERSION "2.15.2"
 
