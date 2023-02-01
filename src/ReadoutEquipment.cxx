@@ -141,9 +141,11 @@ ReadoutEquipment::ReadoutEquipment(ConfigFile& cfg, std::string cfgEntryPoint, b
   cfg.getOptionalValue<int>(cfgEntryPoint + ".rdhDumpFirstInPageEnabled", cfgRdhDumpFirstInPageEnabled);
   // configuration parameter: | equipment-* | rdhCheckFirstOrbit | int | 1 | If set, it is checked that the first orbit of all equipments and links is the same. If not, run is stopped. |
   cfg.getOptionalValue<int>(cfgEntryPoint + ".rdhCheckFirstOrbit", cfgRdhCheckFirstOrbit);
+  // configuration parameter: | equipment-* | rdhUseFirstOrbit | int | 1 | If set, first orbit received is used to compute timeframe ids. Otherwise, 0 is taken as first orbit for first timeframe. |
+  cfg.getOptionalValue<int>(cfgEntryPoint + ".rdhUseFirstOrbit", cfgRdhUseFirstOrbit);
   // configuration parameter: | equipment-* | rdhCheckDetectorField | int | 0 | If set, the detector field is checked and changes reported. |
   cfg.getOptionalValue<int>(cfgEntryPoint + ".rdhCheckDetectorField", cfgRdhCheckDetectorField);  
-  theLog.log(LogInfoDevel_(3002), "RDH settings: rdhCheckEnabled=%d rdhDumpEnabled=%d rdhDumpErrorEnabled=%d rdhDumpWarningEnabled=%d rdhUseFirstInPageEnabled=%d rdhCheckFirstOrbit=%d rdhCheckDetectorField=%d", cfgRdhCheckEnabled, cfgRdhDumpEnabled, cfgRdhDumpErrorEnabled, cfgRdhDumpWarningEnabled, cfgRdhUseFirstInPageEnabled, cfgRdhCheckFirstOrbit, cfgRdhCheckDetectorField);
+  theLog.log(LogInfoDevel_(3002), "RDH settings: rdhCheckEnabled=%d rdhDumpEnabled=%d rdhDumpErrorEnabled=%d rdhDumpWarningEnabled=%d rdhUseFirstInPageEnabled=%d rdhCheckFirstOrbit=%d rdhUseFirstOrbit=%d rdhCheckDetectorField=%d", cfgRdhCheckEnabled, cfgRdhDumpEnabled, cfgRdhDumpErrorEnabled, cfgRdhDumpWarningEnabled, cfgRdhUseFirstInPageEnabled, cfgRdhCheckFirstOrbit, cfgRdhUseFirstOrbit, cfgRdhCheckDetectorField);
 
   // configuration parameter: | equipment-* | ctpMode | int | 0 | If set, the detector field (CTP run mask) is checked. Incoming data is discarded until a new bit is set, and discarded again after this bit is unset. Automatically implies rdhCheckDetectorField=1 and rdhCheckDetectorField=1. |
   cfg.getOptionalValue<int>(cfgEntryPoint + ".ctpMode", cfgCtpMode);
@@ -626,18 +628,22 @@ void ReadoutEquipment::finalCounters()
 uint64_t ReadoutEquipment::getTimeframeFromOrbit(uint32_t hbOrbit)
 {
   if (!isDefinedFirstTimeframeHbOrbitBegin) {
-    firstTimeframeHbOrbitBegin = hbOrbit;
+    if (cfgRdhUseFirstOrbit) {
+      firstTimeframeHbOrbitBegin = hbOrbit;
+    } else {
+      firstTimeframeHbOrbitBegin = 0;
+    }
     isDefinedFirstTimeframeHbOrbitBegin = 1;
     bool isOk = true;
     gReadoutStats.mutex.lock();
     if (gReadoutStats.counters.firstOrbit == undefinedOrbit) {
-      gReadoutStats.counters.firstOrbit = firstTimeframeHbOrbitBegin;
+      gReadoutStats.counters.firstOrbit = hbOrbit;
       gReadoutStats.counters.notify++;
-    } else if (gReadoutStats.counters.firstOrbit != firstTimeframeHbOrbitBegin) {
+    } else if (gReadoutStats.counters.firstOrbit != hbOrbit) {
       isOk = false;
     }
     gReadoutStats.mutex.unlock();
-    theLog.log(LogInfoDevel_(3011), "Equipment %s : first HB orbit = %X", name.c_str(), (unsigned int)firstTimeframeHbOrbitBegin);
+    theLog.log(LogInfoDevel_(3011), "Equipment %s : first HB orbit = %X", name.c_str(), (unsigned int)hbOrbit);
     if (!isOk) {
       if (cfgRdhCheckFirstOrbit) {
         theLog.log(LogErrorSupport_(3241), "Equipment %s : first HB orbit is different from other equipments", name.c_str());
