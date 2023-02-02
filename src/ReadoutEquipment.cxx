@@ -143,6 +143,8 @@ ReadoutEquipment::ReadoutEquipment(ConfigFile& cfg, std::string cfgEntryPoint, b
   cfg.getOptionalValue<int>(cfgEntryPoint + ".rdhCheckFirstOrbit", cfgRdhCheckFirstOrbit);
   // configuration parameter: | equipment-* | rdhCheckDetectorField | int | 0 | If set, the detector field is checked and changes reported. |
   cfg.getOptionalValue<int>(cfgEntryPoint + ".rdhCheckDetectorField", cfgRdhCheckDetectorField);  
+  // configuration parameter: | equipment-* | rdhCheckTrigger | int | 0 | If set, the RDH trigger counters are checked for consistency. |
+  cfg.getOptionalValue<int>(cfgEntryPoint + ".rdhCheckTrigger", cfgRdhCheckTrigger);
   theLog.log(LogInfoDevel_(3002), "RDH settings: rdhCheckEnabled=%d rdhDumpEnabled=%d rdhDumpErrorEnabled=%d rdhDumpWarningEnabled=%d rdhUseFirstInPageEnabled=%d rdhCheckFirstOrbit=%d rdhCheckDetectorField=%d", cfgRdhCheckEnabled, cfgRdhDumpEnabled, cfgRdhDumpErrorEnabled, cfgRdhDumpWarningEnabled, cfgRdhUseFirstInPageEnabled, cfgRdhCheckFirstOrbit, cfgRdhCheckDetectorField);
 
   // configuration parameter: | equipment-* | ctpMode | int | 0 | If set, the detector field (CTP run mask) is checked. Incoming data is discarded until a new bit is set, and discarded again after this bit is unset. Automatically implies rdhCheckDetectorField=1 and rdhCheckDetectorField=1. |
@@ -845,6 +847,14 @@ int ReadoutEquipment::processRdh(DataBlockContainerReference& block)
         }
         equipmentLinksData[linkId].firstOrbit = orbitId;
         equipmentLinksData[linkId].firstOrbitIsDefined = 1;
+
+        if (cfgRdhCheckTrigger) {
+          // first data from link should be SOC or SOT trigger type
+          if (! (h.getTriggerTypeStruct().SOC || h.getTriggerTypeStruct().SOT)) {
+            theLog.log(LogErrorSupport_(3241), "Equipment %s : first RDH of link %d is not SOC or SOT, trigger type = 0x%X", name.c_str(), linkId, h.getTriggerTypeStruct().word0);
+          }
+        }
+
       }
     }
   }
@@ -938,6 +948,22 @@ int ReadoutEquipment::processRdh(DataBlockContainerReference& block)
           break; // stop checking this page
 	}
       }
+
+      // check trigger counters
+      if (cfgRdhCheckTrigger) {
+        if (h.getTriggerTypeStruct().TF) {
+          // TF boundary should be aligned with TF length
+          if (h.getHbOrbit() % timeframePeriodOrbits) {
+            if (cfgRdhDumpErrorEnabled) {
+              theLog.log(logRdhErrorsToken, "Equipment %d Link %d RDH %d @ 0x%X : TriggerType TF bit set, but orbit 0x%08X not aligned with TF period = %d", id, (int)blockHeader.linkId, rdhIndexInPage, (unsigned int)pageOffset, (int)h.getTriggerOrbit(), (int)timeframePeriodOrbits);
+              isPageError = 1;
+            }
+            statsRdhCheckStreamErr++;
+            break; // stop checking this page
+          }
+        }
+      }
+
       /*
       // check packetCounter is contiguous
       if (cfgRdhCheckPacketCounterContiguous) {
