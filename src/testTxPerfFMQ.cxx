@@ -53,6 +53,16 @@ int main()
   double msgRate = 3168;
   size_t sequenceTime = 15; // duration of each sequence
 
+  double lhcrate = 11246; // orbit rate
+  double dataRate = 10000.0 * 1024 * 1024; // total rate byte/s
+  int tflen = 128;
+  int nlinks = 48;
+  double hbfSize = dataRate / (nlinks * lhcrate); // hbf bytes per link
+
+  msgRate = lhcrate / tflen;
+  msgParts = tflen * nlinks;
+  size_t msgPartSize = (size_t)hbfSize;
+
   char* buf = (char*)memoryBuffer->GetData();
   size_t ix = 0;
 
@@ -74,13 +84,14 @@ int main()
   std::vector<FairMQMessagePtr> msgs;
   msgs.reserve(msgParts);
 
-  printf("starting sequence for %lus : rate = %.0lfHz, %lu parts per message,\n", sequenceTime, msgRate, msgParts);
+  printf("starting sequence for %lus : rate = %.0lfHz, %d bytes * %lu parts per message, throughput = %f B/s\n", sequenceTime, msgRate, (int)msgPartSize, msgParts, dataRate);
   for (size_t i = 0; i < msgMax; i++) {
     msgs.clear();
 
     for (size_t im = 0; im < msgParts; im++) {
-      msgSize = 100 + (size_t)CPUt;
+      msgSize = msgPartSize;
       void* dataPtr = (void*)(&buf[ix]);
+      ((size_t *)dataPtr)[0] = CPUt;
       void* hint = (void*)i;
       ix += msgSize;
       if (ix >= bufferSize) {
