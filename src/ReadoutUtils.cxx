@@ -135,7 +135,11 @@ std::string NumberOfBytesToString(double value, const char* suffix, int base)
   if (suffix == nullptr) {
     suffix = "";
   }
-  snprintf(bufStr, sizeof(bufStr) - 1, "%.03lf %s%s", scaledValue, prefixes[prefixIndex], suffix);
+  const char *binary = "";
+  if (base == 1024) {
+    binary="i"; // cf wiki mebibytes
+  }
+  snprintf(bufStr, sizeof(bufStr) - 1, "%.03lf %s%s%s", scaledValue, prefixes[prefixIndex], binary, suffix);
   return std::string(bufStr);
 }
 
