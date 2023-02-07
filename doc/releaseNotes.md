@@ -517,3 +517,5 @@ This file describes the main feature changes for each readout.exe released versi
   - added equipemnt-*.rdhCheckTrigger: when set, enables some consistency checks on trigger counters, as follows:
     - Trigger type TF should happen only on orbits % TF period = 0.
     - First trigger received on each link should be SOC or SOT.
+  - added equipment-cruemulator-*.PayloadSizeStdev: generate payload with random size (gaussian distribution mean=PayloadSize sigma=PayloadSizeStdev).
+  - added equipment-cruemulator-*.linkThroughput: set incoming link data throughput (in Gbps).
