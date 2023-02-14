@@ -40,6 +40,7 @@
 #ifdef WITH_ZMQ
 #include "ZmqServer.hxx"
 #endif
+#undef WITH_LOGBOOK
 
 #ifdef WITH_CONFIG
 #include <Configuration/ConfigurationFactory.h>
