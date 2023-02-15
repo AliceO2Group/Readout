@@ -46,9 +46,11 @@ int getKeyValuePairsFromString(const std::string& input, std::map<std::string, s
 // returns 0 on success, -1 on error
 int getIntegerListFromString(const std::string& input, std::vector<int>& output);
 
-// parse a string of coma-separated strings into a vector
+// parse a string of coma-separated strings into a vector of strings
+// can specify a different characacter separator
+// blank characters are trimmed from output strings
 // returns 0 on success, -1 on error
-int getListFromString(const std::string& input, std::vector<std::string>& output);
+int getListFromString(const std::string& input, std::vector<std::string>& output, const char separator = ',');
 
 // function to convert a value in bytes to a prefixed number 3+3 digits
 // suffix is the "base unit" to add after calculated prefix, e.g. Byte-> kBytes
