@@ -358,7 +358,7 @@ int ReadoutEquipmentZmq::tfClientCallback(void* msg, int msgSize)
     tfUpdateTime = time(NULL);
     if (tfUpdateTimeWarning) {
       tfUpdateTimeWarning = 0;
-      theLog.log(LogInfoSupport_(3236), "New TF id received from TF server");
+      theLog.log(LogInfoDevel_(3236), "New TF id received from TF server");
     }
     if (maxTf == 0) {
       // that's the first TF

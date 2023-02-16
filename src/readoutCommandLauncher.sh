@@ -3,10 +3,9 @@
 # invoked by o2-readout-exe
 # if launched without argument, read commands from stdin line by line
 
-# ensure log output not going to stdout
-unset O2_INFOLOGGER_MODE
+# ensure log output not going to stdout, all goes to stderr
 
-LOG="/opt/o2-InfoLogger/bin/o2-infologger-log -oFacility=readout -oLevel=11 -oErrorCode=3013"
+LOG="eval >&2 echo"
 CMD="'$*'"
 
 if [ "$1" == "" ]; then
@@ -15,14 +14,14 @@ if [ "$1" == "" ]; then
   while read line
   do
     $LOG "Executing command $line"
-    eval $line 2>&1 | $LOG -x -oSeverity=Debug
+    >&2 eval $line
 
     if [ 0 -eq ${PIPESTATUS[0]} ]; then
       echo "ok"
       $LOG "Command ok"
     else
       echo "error"
-      $LOG -oSeverity=Error "Command error"
+      $LOG "Command error"
     fi
   done
   $LOG "Exiting command launcher"
@@ -31,7 +30,7 @@ if [ "$1" == "" ]; then
 else
 
   $LOG "Executing command $CMD"
-  $@ 2>&1 | $LOG -x -oSeverity=Debug
+  >&2 $@
 
   if [ 0 -eq ${PIPESTATUS[0]} ]; then
     echo "ok"
@@ -39,7 +38,7 @@ else
     exit 0
   else
     echo "error"
-    $LOG -oSeverity=Error "Command error"
+    $LOG "Command error"
     exit 1
   fi
 

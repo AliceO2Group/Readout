@@ -519,3 +519,4 @@ This file describes the main feature changes for each readout.exe released versi
     - First trigger received on each link should be SOC or SOT.
   - added equipment-cruemulator-*.PayloadSizeStdev: generate payload with random size (gaussian distribution mean=PayloadSize sigma=PayloadSizeStdev).
   - added equipment-cruemulator-*.linkThroughput: set incoming link data throughput (in Gbps).
+- Minor logging updates.
