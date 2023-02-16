@@ -93,6 +93,7 @@ set configurationParametersDescriptor {
 | equipment-* | rdhCheckDetectorField | int | 0 | If set, the detector field is checked and changes reported. |
 | equipment-* | rdhCheckEnabled | int | 0 | If set, data pages are parsed and RDH headers checked. Errors are reported in logs. |
 | equipment-* | rdhCheckFirstOrbit | int | 1 | If set, it is checked that the first orbit of all equipments and links is the same. If not, run is stopped. |
+| equipment-* | rdhCheckTrigger | int | 0 | If set, the RDH trigger counters are checked for consistency. |
 | equipment-* | rdhDumpEnabled | int | 0 | If set, data pages are parsed and RDH headers summary printed on console. Setting a negative number will print only the first N pages.|
 | equipment-* | rdhDumpErrorEnabled | int | 1 | If set, a log message is printed for each RDH header error found.|
 | equipment-* | rdhDumpFirstInPageEnabled | int | 0 | If set, the first RDH in each data page is logged. Setting a negative number will printit only for the first N pages. |
@@ -110,9 +111,11 @@ set configurationParametersDescriptor {
 | equipment-cruemulator-* | feeId | int | 0 | Front-End Electronics Id, used for FEE Id field in RDH. |
 | equipment-cruemulator-* | HBperiod | int | 1 | Interval between 2 HeartBeat triggers, in number of LHC orbits. |
 | equipment-cruemulator-* | linkId | int | 0 | Id of first link. If numberOfLinks>1, ids will range from linkId to linkId+numberOfLinks-1. |
+| equipment-cruemulator-* | linkThroughput | double | 3.2 | The data throughput of each link, in Gbps. |
 | equipment-cruemulator-* | maxBlocksPerPage | int | 0 | [obsolete- not used]. Maximum number of blocks per page. |
 | equipment-cruemulator-* | numberOfLinks | int | 1 | Number of GBT links simulated by equipment. |
 | equipment-cruemulator-* | PayloadSize | int | 64k | Maximum payload size for each trigger. Actual size is randomized, and then split in a number of (cruBlockSize) packets. |
+| equipment-cruemulator-* | PayloadSizeStdev | double | 0.0 | Standard deviation of randomized PayloadSize (no unit, as a fraction of PayloadSize). |
 | equipment-cruemulator-* | systemId | int | 19 | System Id, used for System Id field in RDH. By default, using the TEST code. |
 | equipment-cruemulator-* | triggerRate | double | 0 | If set, the HB frame rate is limited to given value in Hz (1 HBF per data page). |
 | equipment-dummy-* | eventMaxSize | bytes | 128k | Maximum size of randomly generated event. |

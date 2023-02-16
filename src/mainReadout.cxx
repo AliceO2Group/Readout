@@ -32,6 +32,8 @@
 #include <sys/wait.h>
 #include <string>
 #include <charconv>
+#include <atomic>
+#include <filesystem>
 
 #include "DataBlock.h"
 #include "DataBlockContainer.h"
@@ -40,6 +42,7 @@
 #ifdef WITH_ZMQ
 #include "ZmqServer.hxx"
 #endif
+#undef WITH_LOGBOOK
 
 #ifdef WITH_CONFIG
 #include <Configuration/ConfigurationFactory.h>
@@ -147,6 +150,50 @@ void dbLog(const std::string &msg) {
   theLog.log(LogInfoDevel_(3012), "%s", msg.c_str());
 }
 
+// an object running a thread redirecting from a file descriptor to infologger
+// the file descriptor should be valid for the lifetime of the object
+class TheLogRedirection {
+  public:
+    TheLogRedirection(int fd, std::string name, int errcode) {
+      this->fd = fd;
+      this->name = name;
+      this->errcode = errcode;
+      shutdownRequest = 0;
+      std::function<void(void)> f = std::bind(&TheLogRedirection::run, this);
+      th = std::make_unique<std::thread>(f);
+    };
+   ~TheLogRedirection() {
+     shutdownRequest = 1;
+     if (th != nullptr) {
+       th->join();
+       th = nullptr;
+     }
+   }
+  private:
+    int fd = -1; // the file descriptor to monitor
+    std::string name; // name used as header for the output logs
+    int errcode = 0; // an error code to be used for output messages
+    std::unique_ptr<std::thread> th; // a thread reading from fd and injecting to theLog
+    std::atomic<int> shutdownRequest; // flag to terminate thread
+    void run() {
+      setThreadName((std::string("log-") + name).c_str());
+      if (fd>=0) {
+        // thread loop
+        LineBuffer b;
+        while (!shutdownRequest) {
+          std::string result;
+          if (b.appendFromFileDescriptor(fd, 100)) {
+            break;
+          }
+          while (!b.getNextLine(result)) {
+            theLog.log(LogInfoDevel_(errcode), "%s: %s", name.c_str(), result.c_str());
+          }
+        }
+      }
+      theLog.log(LogInfoDevel_(errcode),"%s: logs completed", name.c_str());
+    }
+};
+
 class Readout
 {
 
@@ -190,11 +237,13 @@ class Readout
   int cfgMaxMsgError; // maximum number of error messages before stopping run
   int cfgMaxMsgWarning; // maximum number of warning messages before stopping run
   int cfgCustomCommandsEnabled = 0; // when set, a sub-process bash is launched to execute custom commands
-  std::string cfgCustomCommandsShell = "o2-readout-command-launcher"; // or leave empty for raw bash commands
+  std::string cfgCustomCommandsShell = "/bin/sh o2-readout-command-launcher";
   std::map<std::string,std::string> customCommands; // map of state / command pairs to be executed
   pid_t customCommandsShellPid = 0; // pid of shell for custom commands
   int customCommandsShellFdIn = -1; // input to shell
   int customCommandsShellFdOut = -1; // output from shell
+  int customCommandsShellFdErr = -1; // err from shell
+  std::unique_ptr<TheLogRedirection> customCommandsShellLog; // thread redirecting shell stderr to infologger
   void executeCustomCommand(const char *stateChange); // execute a custom command for given state transition, if any
 
   // runtime entities
@@ -215,8 +264,6 @@ class Readout
 
   bool isError = 0;                   // flag set to 1 when error has been detected
   bool logFirstError = 0;             // flag set to 1 after 1 error reported from iterateCheck/iterateRunning procedures
-  std::vector<std::string> strErrors; // errors backlog
-  std::mutex mutexErrors;             // mutex to guard access to error variables
 
 #ifdef WITH_LOGBOOK
   std::unique_ptr<bookkeeping::BookkeepingInterface> logbookHandle; // handle to logbook
@@ -359,9 +406,9 @@ int Readout::init(int argc, char* argv[])
   gReadoutStats.counters.state = stringToUint64("standby");
   int readoutStatsErr = gReadoutStats.startPublish(cfgStatsPublishAddress, cfgStatsPublishInterval);
   if (readoutStatsErr == 0) {
-    initLogs.push_back({LogInfoSupport, "Started Stats publish @ " + cfgStatsPublishAddress});
+    initLogs.push_back({LogInfoDevel, "Started Stats publish @ " + cfgStatsPublishAddress});
   } else if (readoutStatsErr > 0) {  
-    initLogs.push_back({LogWarningSupport_(3236), "Failed to start Stats publish"});
+    initLogs.push_back({LogWarningDevel_(3236), "Failed to start Stats publish"});
   } //otherwise: disabled
   
   // configure signal handlers for clean exit
@@ -453,38 +500,62 @@ int Readout::init(int argc, char* argv[])
   // init shell for custom commands
   if (cfgCustomCommandsEnabled) {
     for (;;) {
-      int p_stdin[2], p_stdout[2];
+      int p_stdin[2], p_stdout[2], p_stderr[2];
       pid_t pid;
 
-      if (pipe(p_stdin) != 0 || pipe(p_stdout) != 0) break;
-      pid = fork();
+      if (pipe(p_stdin) != 0 || pipe(p_stdout) != 0 || pipe(p_stderr) != 0) break;
 
+      // create shell launching command
+      std::vector<std::string> shellArgvStrings;
+      getListFromString(cfgCustomCommandsShell, shellArgvStrings, ' ');
+      if (shellArgvStrings.size()<1) {
+        break;
+      }
+      theLog.log(LogInfoDevel_(3013), "Executing %s", cfgCustomCommandsShell.c_str());
+
+      pid = fork();
       if (pid < 0) {
         break;
       } else if (pid == 0) {
         dup2(p_stdin[0], STDIN_FILENO);
         dup2(p_stdout[1], STDOUT_FILENO);
+        dup2(p_stderr[1], STDERR_FILENO);
 	close(p_stdin[0]);
 	close(p_stdin[1]);
 	close(p_stdout[0]);
 	close(p_stdout[1]);
-        execl("/bin/sh","sh", cfgCustomCommandsShell.c_str(), NULL);
+        close(p_stderr[0]);
+        close(p_stderr[1]);
+
+        std::vector<const char*> argv;
+        std::string filename = std::filesystem::path(shellArgvStrings[0]).filename();
+        argv.push_back(filename.c_str());
+        for(unsigned int i = 1; i< shellArgvStrings.size(); i++) {
+          argv.push_back(shellArgvStrings[i].c_str());
+        }
+        argv.push_back(NULL);
+        fprintf(stderr, "%s\n", shellArgvStrings[0].c_str());
+        execv(shellArgvStrings[0].c_str(), (char* const*)&argv[0]);
+        fprintf(stderr, "Failed to start shell for custom commands: %s\n", strerror(errno));
         exit(1);
       }
       close(p_stdin[0]);
       close(p_stdout[1]);
+      close(p_stderr[1]);
       customCommandsShellFdIn = p_stdin[1];
       customCommandsShellFdOut = p_stdout[0];
+      customCommandsShellFdErr = p_stderr[0];
       customCommandsShellPid = pid;
       break;
     }
     if (customCommandsShellPid) {
-      theLog.log(LogInfoDevel_(3013), "Shell started for custom commands - pid %d", (int)customCommandsShellPid);
+      // create a thread to redirect stderr shell output
+      customCommandsShellLog = std::make_unique<TheLogRedirection>(customCommandsShellFdErr, "shell", 3013);
+      theLog.log(LogInfoDevel_(3013), "Process started for custom commands - pid %d", (int)customCommandsShellPid);
     } else {
       cfgCustomCommandsEnabled = 0;
     }
   }
-
   // print some built-in constants
   if (cfgVerbose) {
     // theLog.log(LogInfoDevel, "DataBlockHeader size = %d", (int)sizeof(DataBlockHeader));
@@ -528,7 +599,7 @@ int Readout::configure(const boost::property_tree::ptree& properties)
 #endif
     }
   } catch (std::string err) {
-    theLog.log(LogErrorSupport_(3100), "%s", err.c_str());
+    theLog.log(LogErrorSupport_(3100), "Failed to read config: %s", err.c_str());
     return -1;
   }
 
@@ -599,7 +670,9 @@ int Readout::configure(const boost::property_tree::ptree& properties)
       theLog.log(LogWarningDevel_(3102), "Failed to parse custom commands");
       customCommands.clear();
     } else {
-      theLog.log(LogInfoDevel_(3013), "Registered custom commands:");
+      if (customCommands.size()) {
+        theLog.log(LogInfoDevel_(3013), "Registered custom commands:");
+      }
       for (const auto &kv : customCommands) {
 	theLog.log(LogInfoDevel_(3013), "%s : %s", kv.first.c_str(), kv.second.c_str());
       }
@@ -1596,6 +1669,10 @@ Readout::~Readout() {
       theLog.log(LogInfoDevel_(3013), "Killing %d", (int)customCommandsShellPid);
       kill(customCommandsShellPid, SIGKILL);
     }
+    if (customCommandsShellFdErr >= 0) {
+      customCommandsShellLog = nullptr;
+      close(customCommandsShellFdErr);
+    }
   }
 
   #ifdef WITH_DB
@@ -1614,7 +1691,9 @@ void Readout::executeCustomCommand(const char *stateChange) {
       fsync(customCommandsShellFdIn);
       LineBuffer b;
       const int cmdTimeout = 10000; // 10s timeout
-      b.appendFromFileDescriptor(customCommandsShellFdOut, cmdTimeout);
+      if (b.appendFromFileDescriptor(customCommandsShellFdOut, cmdTimeout)) {
+        theLog.log(LogInfoDevel_(3013), "Command launcher unavailable"); // EOF
+      }
       std::string result;
       if (b.getNextLine(result) == 0) {
         theLog.log(LogInfoDevel_(3013), "Command executed: %s", result.c_str());

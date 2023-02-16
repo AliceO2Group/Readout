@@ -135,7 +135,11 @@ std::string NumberOfBytesToString(double value, const char* suffix, int base)
   if (suffix == nullptr) {
     suffix = "";
   }
-  snprintf(bufStr, sizeof(bufStr) - 1, "%.03lf %s%s", scaledValue, prefixes[prefixIndex], suffix);
+  const char *binary = "";
+  if (base == 1024) {
+    binary="i"; // cf wiki mebibytes
+  }
+  snprintf(bufStr, sizeof(bufStr) - 1, "%.03lf %s%s%s", scaledValue, prefixes[prefixIndex], binary, suffix);
   return std::string(bufStr);
 }
 
@@ -197,17 +201,17 @@ bool isSimpleString(const std::string &str) {
 }
 
 
-int getListFromString(const std::string& input, std::vector<std::string>& output)
+int getListFromString(const std::string& input, std::vector<std::string>& output, const char separator)
 {
   // coma-separated list of simple strings
   std::istringstream f(input);
   std::string s;
-  while (std::getline(f, s, ',')) {
+  while (std::getline(f, s, separator)) {
     // trim
     const std::string blanks = "\t\n\v\f\r ";
     s.erase(s.find_last_not_of(blanks) + 1);
     s.erase(0, s.find_first_not_of(blanks));
-    output.push_back(s);
+    output.push_back(std::move(s));
   }
   return 0;
 }

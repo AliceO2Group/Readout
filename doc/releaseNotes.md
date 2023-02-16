@@ -511,3 +511,12 @@ This file describes the main feature changes for each readout.exe released versi
 - Updated configuration parameters:
   - added consumer-fileRecorder-*.dropEmptyHBFramesTriggerMask: when using dropEmptyHBFrames = 1, keep some empty HB frames with trigger type matching given (decimal) mask.
 - Added support for RDHv7. Readout already accepts data from equipments with v7, but still generates data (internal sw generator) with v6, for compatibility with current software downstream.
+
+## v2.16.1 - 16/02/2022
+- Updated configuration parameters:
+  - added equipemnt-*.rdhCheckTrigger: when set, enables some consistency checks on trigger counters, as follows:
+    - Trigger type TF should happen only on orbits % TF period = 0.
+    - First trigger received on each link should be SOC or SOT.
+  - added equipment-cruemulator-*.PayloadSizeStdev: generate payload with random size (gaussian distribution mean=PayloadSize sigma=PayloadSizeStdev).
+  - added equipment-cruemulator-*.linkThroughput: set incoming link data throughput (in Gbps).
+- Minor logging updates.

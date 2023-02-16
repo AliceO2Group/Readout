@@ -1,5 +1,5 @@
 #ifdef WITH_LOGBOOK
-#include <BookkeepingApiCpp/BookkeepingFactory.h>
+#include <BookkeepingApi/BkpClientFactory.h>
 #endif
 
 #include <stdio.h>
@@ -15,31 +15,29 @@ int main(int argc, char **argv) {
     setenv("O2_INFOLOGGER_MODE", "stdout", 1);
     InfoLogger theLog;
 
-    const char *cfgLogbookUrl="http://localhost:4000/api";
-    const char *cfgLogbookApiToken="";
+    const char *cfgLogbookUrl="localhost:4001";
       
-    if (argc>2) {
+    if (argc>1) {
       cfgLogbookUrl=argv[1];
-      cfgLogbookApiToken=argv[2];
     }
 
-    std::unique_ptr<bookkeeping::BookkeepingInterface> logbookHandle;
-    logbookHandle = bookkeeping::getApiInstance(cfgLogbookUrl, cfgLogbookApiToken);
+    try {
+      theLog.log("Create handle");
+      auto logbookHandle = o2::bkp::api::BkpClientFactory::create(cfgLogbookUrl);
       
-    std::string occRole = "flp-test";
-    unsigned int occRunNumber = 1;
+      std::string occRole = "flp-test";
+      unsigned int occRunNumber = 1;
     
-    std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-    logbookHandle->runStart(occRunNumber, now, now, "readout", RunType::TECHNICAL, 0, 0, 0, false, false, false, "normal");
-    logbookHandle->flpAdd(occRole, "localhost", occRunNumber);
-	
-    theLog.log("Updating");
-    for (int i=0; i<10; i++) {      
-      logbookHandle->flpUpdateCounters(occRole, occRunNumber, i,i,i,i);
-      sleep(1);
+      theLog.log("Updating");
+      for (int i=0; i<10; i++) {      
+        logbookHandle->flp()->updateReadoutCountersByFlpNameAndRunNumber(occRole, occRunNumber, i,i,i,i);
+        sleep(1);
+      }
+      theLog.log("Done updating");
     }
-    theLog.log("Done updating");
-  
+    catch(const std::runtime_error &err) {
+      theLog.log("Error: %s",err.what());
+    }
   #endif
   return 0;
 }

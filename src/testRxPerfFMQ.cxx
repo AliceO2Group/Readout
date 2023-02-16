@@ -93,8 +93,7 @@ int main()
         int nPart = msgParts.Size();
         msgNewPart += nPart;
         for (auto const& mm : msgParts) {
-          // bad trick: TX CPU used (in previous second) encoded in message size
-          txCPU = mm->GetSize() - 100;
+          txCPU = ((size_t *)mm->GetData())[0];
           break;
         }
 

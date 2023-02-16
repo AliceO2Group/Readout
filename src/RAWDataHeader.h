@@ -504,6 +504,7 @@ typedef struct _RAWDataHeaderV6 {
 
 } RAWDataHeaderV6;
 
+// as defined in https://gitlab.cern.ch/AliceO2Group/wp6-doc/-/blob/master/rdh/RDHv7.md
 typedef struct _RAWDataHeaderV7 {
   // 32-bits words
 
@@ -639,6 +640,36 @@ typedef struct _RAWDataHeaderV7 {
   };
 
 } RAWDataHeaderV7;
+
+// definition of triggerType RDH field
+typedef struct _RDHTriggerType {
+  union {
+    uint32_t word0 = 0;
+    struct {
+      uint32_t ORBIT : 1;
+      uint32_t HB : 1;
+      uint32_t HBr : 1;
+      uint32_t HC : 1;
+      uint32_t PhT : 1;
+      uint32_t PP : 1;
+      uint32_t Cal : 1;
+      uint32_t SOT : 1;
+      uint32_t EOT : 1;
+      uint32_t SOC : 1;
+      uint32_t EOC : 1;
+      uint32_t TF : 1;
+      uint32_t FErst : 1;
+      uint32_t RT : 1;
+      uint32_t RS : 1;
+      uint32_t spare : 12;
+      uint32_t LHCgap1 : 1;
+      uint32_t LHCgap2 : 1;
+      uint32_t TPCsync : 1;
+      uint32_t TPCrst : 1;
+      uint32_t TOF : 1;
+    };
+  };
+} RDHTriggerType;
 
 using RAWDataHeader = RAWDataHeaderV6;
 

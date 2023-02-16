@@ -12,6 +12,8 @@
 #include <Common/Fifo.h>
 #include <Common/Timer.h>
 #include <stdlib.h>
+#include <random>
+#include <cmath>
 
 #include "RAWDataHeader.h"
 #include "ReadoutEquipment.h"
@@ -54,6 +56,11 @@ class ReadoutEquipmentCruEmulator : public ReadoutEquipment
 
   double cfgEmptyHbRatio = 0.0;   // amount of empty HB frames
   int cfgPayloadSize = 64 * 1024; // maximum payload size, randomized
+  double cfgPayloadSizeStdev = 0.0; // standard deviation of randomized payload size
+
+  std::random_device payloadRd{};
+  std::mt19937 payloadGen{payloadRd()};
+  std::normal_distribution<double> payloadDistrib{};
 
   double cfgTriggerRate = 0.0; // if set, generate blocks at given rate instead of continuously
   unsigned long long nBlocksPerLink = 0; // number of blocks sent
@@ -93,7 +100,9 @@ ReadoutEquipmentCruEmulator::ReadoutEquipmentCruEmulator(ConfigFile& cfg, std::s
   // configuration parameter: | equipment-cruemulator-* | HBperiod | int | 1 | Interval between 2 HeartBeat triggers, in number of LHC orbits. |
   // configuration parameter: | equipment-cruemulator-* | EmptyHbRatio | double | 0 | Fraction of empty HBframes, to simulate triggered detectors. |
   // configuration parameter: | equipment-cruemulator-* | PayloadSize | int | 64k | Maximum payload size for each trigger. Actual size is randomized, and then split in a number of (cruBlockSize) packets. |
+  // configuration parameter: | equipment-cruemulator-* | PayloadSizeStdev | double | 0.0 | Standard deviation of randomized PayloadSize (no unit, as a fraction of PayloadSize). |
   // configuration parameter: | equipment-cruemulator-* | triggerRate | double | 0 | If set, the HB frame rate is limited to given value in Hz (1 HBF per data page). |
+  // configuration parameter: | equipment-cruemulator-* | linkThroughput | double | 3.2 | The data throughput of each link, in Gbps. |
   cfg.getOptionalValue<int>(cfgEntryPoint + ".maxBlocksPerPage", cfgMaxBlocksPerPage, (int)0);
   cfg.getOptionalValue<int>(cfgEntryPoint + ".cruBlockSize", cruBlockSize, (int)8192);
   cfg.getOptionalValue<int>(cfgEntryPoint + ".numberOfLinks", cfgNumberOfLinks, (int)1);
@@ -105,10 +114,12 @@ ReadoutEquipmentCruEmulator::ReadoutEquipmentCruEmulator(ConfigFile& cfg, std::s
   cfg.getOptionalValue<int>(cfgEntryPoint + ".HBperiod", cfgHBperiod);
   cfg.getOptionalValue<double>(cfgEntryPoint + ".EmptyHbRatio", cfgEmptyHbRatio);
   cfg.getOptionalValue<int>(cfgEntryPoint + ".PayloadSize", cfgPayloadSize);
+  cfg.getOptionalValue<double>(cfgEntryPoint + ".PayloadSizeStdev", cfgPayloadSizeStdev);
   cfg.getOptionalValue<double>(cfgEntryPoint + ".triggerRate", cfgTriggerRate);
+  cfg.getOptionalValue<double>(cfgEntryPoint + ".linkThroughput", cfgGbtLinkThroughput);
 
   // log config summary
-  theLog.log(LogInfoDevel_(3002), "Equipment %s: maxBlocksPerPage=%d cruBlockSize=%d numberOfLinks=%d systemId=%d cruId=%d dpwId=%d feeId=%d linkId=%d HBperiod=%d EmptyHbRatio=%f PayloadSize=%d TriggerRate=%f", name.c_str(), cfgMaxBlocksPerPage, cruBlockSize, cfgNumberOfLinks, cfgSystemId, cfgCruId, cfgDpwId, cfgFeeId, cfgLinkId, cfgHBperiod, cfgEmptyHbRatio, cfgPayloadSize, cfgTriggerRate);
+  theLog.log(LogInfoDevel_(3002), "Equipment %s: maxBlocksPerPage=%d cruBlockSize=%d numberOfLinks=%d systemId=%d cruId=%d dpwId=%d feeId=%d linkId=%d HBperiod=%d EmptyHbRatio=%f PayloadSize=%d PayloadSizeStdev=%f TriggerRate=%f linkThroughput=%f", name.c_str(), cfgMaxBlocksPerPage, cruBlockSize, cfgNumberOfLinks, cfgSystemId, cfgCruId, cfgDpwId, cfgFeeId, cfgLinkId, cfgHBperiod, cfgEmptyHbRatio, cfgPayloadSize, cfgPayloadSizeStdev, cfgTriggerRate, cfgGbtLinkThroughput);
 
   // initialize array of pending blocks (to be filled with data)
   pendingBlocks.resize(cfgNumberOfLinks);
@@ -120,8 +131,11 @@ ReadoutEquipmentCruEmulator::ReadoutEquipmentCruEmulator(ConfigFile& cfg, std::s
   }
 
   // init parameters
-  bcStep = (int)(LHCBCRate * ((cruBlockSize - sizeof(o2::Header::RAWDataHeader)) * 1.0 / (cfgGbtLinkThroughput * 1024 * 1024 * 1024 / 8)));
+  bcStep = (int)ceil(LHCBCRate * (double)(cfgPayloadSize + sizeof(o2::Header::RAWDataHeader) * ceil(cfgPayloadSize * 1.0 / (cruBlockSize - sizeof(o2::Header::RAWDataHeader)))) * 8 / (cfgGbtLinkThroughput * 1000 * 1000 * 1000));
   theLog.log(LogInfoDevel_(3002), "Equipment %s: using block rate = %d BC", name.c_str(), bcStep);
+
+  // random payload distribution
+  payloadDistrib = std::normal_distribution<> (cfgPayloadSize, cfgPayloadSizeStdev * cfgPayloadSize);
 }
 
 ReadoutEquipmentCruEmulator::~ReadoutEquipmentCruEmulator() {}
@@ -243,7 +257,10 @@ Thread::CallbackResult ReadoutEquipmentCruEmulator::prepareBlocks()
         } else {
           // HB with random payload size
           ls.isEmpty = 0;
-          ls.payloadBytesLeft = cfgPayloadSize * (rand() * 1.0 / RAND_MAX);
+          ls.payloadBytesLeft = std::round(payloadDistrib(payloadGen));
+          if (ls.payloadBytesLeft < 0 ) {
+            ls.payloadBytesLeft = 0;
+          }
         }
 
       } else {

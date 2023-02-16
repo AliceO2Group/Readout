@@ -71,7 +71,7 @@ find_package(FairMQ)
 find_package(ZLIB)
 find_package(RDMA)
 find_package(Occ)
-find_package(BookkeepingApiCpp)
+find_package(BookkeepingApi)
 find_package(ZMQ)
 find_package(MySQL)
 #find_package(gperftools)
@@ -116,13 +116,13 @@ else ()
 endif(Occ_FOUND)
 
 # check Bookkeeping
-if (BookkeepingApiCpp_FOUND)
-  get_target_property(BookkeepingApiCpp_INCLUDES BookkeepingApiCpp INTERFACE_INCLUDE_DIRECTORIES)
-#  get_target_property(BookkeepingApiCpp_LIBRARIES BookkeepingApiCpp INTERFACE_LINK_LIBRARIES)
-  message(STATUS "Bookkeeping found")
+if (BookkeepingApi_FOUND)
+  get_target_property(BookkeepingApi_INCLUDES AliceO2::BookkeepingApi INTERFACE_INCLUDE_DIRECTORIES)
+  get_target_property(BookkeepingApi_LIBRARIES AliceO2::BookkeepingApi INTERFACE_LINK_LIBRARIES)
+  message(STATUS "Bookkeeping found: ${BookkeepingApi_INCLUDES} ${BookkeepingApi_LIBRARIES}")
 else ()
   message(STATUS "Bookkeeping not found, corresponding features will be disabled.")
-endif(BookkeepingApiCpp_FOUND)
+endif(BookkeepingApi_FOUND)
 
 # check ZMQ
 if(${ZMQ_FOUND})
@@ -149,7 +149,7 @@ endif()
 
 
 # add flags to enable optional features in Readout, based on available dependencies
-add_compile_definitions($<$<BOOL:${Numa_FOUND}>:WITH_NUMA> $<$<BOOL:${RDMA_FOUND}>:WITH_RDMA> $<$<BOOL:${Configuration_FOUND}>:WITH_CONFIG> $<$<BOOL:${FairMQ_FOUND}>:WITH_FAIRMQ> $<$<BOOL:${Occ_FOUND}>:WITH_OCC> $<$<BOOL:${BookkeepingApiCpp_FOUND}>:WITH_LOGBOOK> $<$<BOOL:${ZMQ_FOUND}>:WITH_ZMQ> $<$<BOOL:${MYSQL_FOUND}>:WITH_DB> $<$<BOOL:${ReadoutCard_FOUND}>:WITH_READOUTCARD> $<$<BOOL:${gperftools_FOUND}>:WITH_GPERFTOOLS>)
+add_compile_definitions($<$<BOOL:${Numa_FOUND}>:WITH_NUMA> $<$<BOOL:${RDMA_FOUND}>:WITH_RDMA> $<$<BOOL:${Configuration_FOUND}>:WITH_CONFIG> $<$<BOOL:${FairMQ_FOUND}>:WITH_FAIRMQ> $<$<BOOL:${Occ_FOUND}>:WITH_OCC> $<$<BOOL:${BookkeepingApi_FOUND}>:WITH_LOGBOOK> $<$<BOOL:${ZMQ_FOUND}>:WITH_ZMQ> $<$<BOOL:${MYSQL_FOUND}>:WITH_DB> $<$<BOOL:${ReadoutCard_FOUND}>:WITH_READOUTCARD> $<$<BOOL:${gperftools_FOUND}>:WITH_GPERFTOOLS>)
 
 # define include directories
 set(READOUT_INCLUDE_DIRS
@@ -161,7 +161,7 @@ set(READOUT_INCLUDE_DIRS
  ${Configuration_INCLUDE_DIRS}
  ${FairMQ_INCLUDE_DIRS}
  ${Occ_INCLUDE_DIRS}
- ${BookkeepingApiCpp_INCLUDES}
+ ${BookkeepingApi_INCLUDES}
 )
 
 # define liraries to be linked
@@ -173,7 +173,7 @@ set(READOUT_LINK_LIBRARIES
   $<$<BOOL:${Configuration_FOUND}>:AliceO2::Configuration>
   $<$<BOOL:${FairMQ_FOUND}>:FairMQ::FairMQ>
   $<$<BOOL:${Occ_FOUND}>:AliceO2::Occ>
-  $<$<BOOL:${BookkeepingApiCpp_FOUND}>:BookkeepingApiCpp>
+  $<$<BOOL:${BookkeepingApi_FOUND}>:AliceO2::BookkeepingApi>
 )
 if(Numa_FOUND)
   list(APPEND READOUT_LINK_LIBRARIES ${Numa_LIBRARIES})
@@ -460,7 +460,7 @@ add_executable(
 )
 
 # a minimal test program to check Bookkeeping library
-if (BookkeepingApiCpp_FOUND)
+if (BookkeepingApi_FOUND)
 add_executable(
         o2-readout-test-lib-bookkeeping
 	${SOURCE_DIR}/testBookkeeping.cxx
@@ -488,7 +488,7 @@ endif()
 if (${ZMQ_FOUND})
   list (APPEND executables o2-readout-test-zmq-client o2-readout-test-zmq-server o2-readout-eventdump)
 endif()
-if (BookkeepingApiCpp_FOUND)
+if (BookkeepingApi_FOUND)
   list (APPEND executables o2-readout-test-lib-bookkeeping)
 endif()
 if (MYSQL_FOUND)

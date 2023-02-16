@@ -58,6 +58,7 @@ class RdhHandle
   inline uint32_t getTriggerOrbit() { return (uint32_t)rdhPtr->triggerOrbit; }
   inline uint32_t getTriggerBC() { return (uint32_t)rdhPtr->triggerBC; }
   inline uint32_t getTriggerType() { return (uint32_t)rdhPtr->triggerType; }
+  inline o2::Header::RDHTriggerType getTriggerTypeStruct() { o2::Header::RDHTriggerType tt; tt.word0 = rdhPtr->triggerType; return tt; }
   inline uint16_t getCruId() { return (uint16_t)rdhPtr->cruId; }
   inline uint8_t getEndPointId() { return (uint8_t)rdhPtr->dpwId; }
   inline uint32_t getDetectorField() { return (uint32_t)rdhPtr->detectorField; }
