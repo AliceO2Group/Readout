@@ -11,6 +11,8 @@ The *receiverFMQ-\** section defines parameters for the test receiverFMQ.exe pro
 
 Please see the provided example configuration files to see how they are usually arranged.
 
+It is possible to define some default parameters to be used in all matching sections by creating a section which name ends with "-\*" and containing some key-value pairs. These pairs are applied to all sections with similar names. Existing key-value pairs are not overwritten, but are defined according to these defaults if they don't exist. It can be useful to create multiple equipments with similar settings.
+
 ## Parameter types
 
 The following table describes the types used in the configuration, giving:

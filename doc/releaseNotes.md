@@ -520,3 +520,6 @@ This file describes the main feature changes for each readout.exe released versi
   - added equipment-cruemulator-*.PayloadSizeStdev: generate payload with random size (gaussian distribution mean=PayloadSize sigma=PayloadSizeStdev).
   - added equipment-cruemulator-*.linkThroughput: set incoming link data throughput (in Gbps).
 - Minor logging updates.
+
+## nect version
+- Updated configuration syntax: section names ending with "-*" can be used to define default parameters. They are applied to all section with similar names. Existing key-value pairs are not overwritten, but are defined according to defaults if they don't exist. For example, it is possible to define the TFperiod for all equipments by adding a section named "equipment-*" with "TFperiod=32".
