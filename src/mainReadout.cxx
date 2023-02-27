@@ -476,6 +476,7 @@ int Readout::init(int argc, char* argv[])
     #else
       theLog.log(LogInfoDevel, "GPERFTOOLS : no");
     #endif
+    theLog.log(LogInfoDevel, "Working directory: %s", std::filesystem::current_path().c_str());
   }
 
   // report cached logs
