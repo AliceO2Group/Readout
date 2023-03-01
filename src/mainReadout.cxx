@@ -968,7 +968,7 @@ int Readout::configure(const boost::property_tree::ptree& properties)
     // skip disabled
     int enabled = 1;
     // configuration parameter: | consumer-* | enabled | int | 1 | Enable (value=1) or disable (value=0) the consumer. |
-    enabled = cfg.getOptionalValue<int>(kName + ".enabled", enabled);
+    cfg.getOptionalValue<int>(kName + ".enabled", enabled);
     if (!enabled) {
       continue;
     }
