@@ -170,7 +170,6 @@ The parameters related to 3rd-party libraries are described here for convenience
 | readout | fairmqConsoleSeverity | int | -1 | Select amount of FMQ messages with fair::Logger::SetConsoleSeverity(). Value as defined in Severity enum defined from FairLogger/Logger.h. Use -1 to leave current setting. |
 | readout | flushConsumerTimeout | double | 1 | Time in seconds to wait before stopping the consumers (ie wait allocated pages released). 0 means stop immediately. |
 | readout | flushEquipmentTimeout | double | 1 | Time in seconds to wait for data once the equipments are stopped. 0 means stop immediately. |
-| readout | logbookApiToken | string | | The token to be used for the logbook API. |
 | readout | logbookEnabled | int | 0 | When set, the logbook is enabled and populated with readout stats at runtime. |
 | readout | logbookUpdateInterval | int | 30 | Amount of time (in seconds) between logbook publish updates. |
 | readout | logbookUrl | string | | The address to be used for the logbook API. |

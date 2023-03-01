@@ -42,14 +42,13 @@
 #ifdef WITH_ZMQ
 #include "ZmqServer.hxx"
 #endif
-#undef WITH_LOGBOOK
 
 #ifdef WITH_CONFIG
 #include <Configuration/ConfigurationFactory.h>
 #endif
 
 #ifdef WITH_LOGBOOK
-#include <BookkeepingApiCpp/BookkeepingFactory.h>
+#include <BookkeepingApi/BkpClientFactory.h>
 #endif
 
 #ifdef WITH_DB
@@ -266,7 +265,7 @@ class Readout
   bool logFirstError = 0;             // flag set to 1 after 1 error reported from iterateCheck/iterateRunning procedures
 
 #ifdef WITH_LOGBOOK
-  std::unique_ptr<bookkeeping::BookkeepingInterface> logbookHandle; // handle to logbook
+  std::unique_ptr<o2::bkp::api::BkpClient> logbookHandle; // handle to logbook
 #endif
 #ifdef WITH_DB
   std::unique_ptr<ReadoutDatabase> dbHandle; // handle to readout database
@@ -290,18 +289,20 @@ void Readout::publishLogbookStats()
   if (logbookHandle != nullptr) {
     bool isOk = false;
     try {
-      // interface: https://github.com/AliceO2Group/Bookkeeping/blob/master/cpp-api-client/src/BookkeepingApi.h
+      // interface: https://github.com/AliceO2Group/Bookkeeping/tree/main/cxx-client/include/BookkeepingApi
       if (testLogbook) {
         // in test mode, create a dummy run entry in logbook
         if (occRole.length() == 0) { occRole = "flp-test"; }
 	if (occRunNumber == 0) { occRunNumber = 999999999; }
         theLog.log(LogInfoDevel_(3210), "Logbook in test mode: create run number/flp %d / %s", (int)occRunNumber, occRole.c_str());
+        /*
 	std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
         logbookHandle->runStart(occRunNumber, now, now, "readout", RunType::TECHNICAL, 0, 0, 0, false, false, false, "normal");
         logbookHandle->flpAdd(occRole, "localhost", occRunNumber);
+        */
 	testLogbook=0;
       }
-      logbookHandle->flpUpdateCounters(occRole, occRunNumber, (int64_t)gReadoutStats.counters.numberOfSubtimeframes, (int64_t)gReadoutStats.counters.bytesReadout, (int64_t)gReadoutStats.counters.bytesRecorded, (int64_t)gReadoutStats.counters.bytesFairMQ);
+      logbookHandle->flp()->updateReadoutCountersByFlpNameAndRunNumber(occRole, occRunNumber, (int64_t)gReadoutStats.counters.numberOfSubtimeframes, (int64_t)gReadoutStats.counters.bytesReadout, (int64_t)gReadoutStats.counters.bytesRecorded, (int64_t)gReadoutStats.counters.bytesFairMQ);
       isOk = true;
     } catch (const std::exception& ex) {
       theLog.log(LogErrorDevel_(3210), "Failed to update logbook: %s", ex.what());
@@ -846,11 +847,9 @@ int Readout::configure(const boost::property_tree::ptree& properties)
 #else
     // configuration parameter: | readout | logbookUrl | string | | The address to be used for the logbook API. |
     cfg.getOptionalValue<std::string>("readout.logbookUrl", cfgLogbookUrl);
-    // configuration parameter: | readout | logbookApiToken | string | | The token to be used for the logbook API. |
-    cfg.getOptionalValue<std::string>("readout.logbookApiToken", cfgLogbookApiToken);
 
     theLog.log(LogInfoDevel, "Logbook enabled, %ds update interval, using URL = %s", cfgLogbookUpdateInterval, cfgLogbookUrl.c_str());
-    logbookHandle = bookkeeping::getApiInstance(cfgLogbookUrl, cfgLogbookApiToken);
+    logbookHandle = o2::bkp::api::BkpClientFactory::create(cfgLogbookUrl);
     if (logbookHandle == nullptr) {
       theLog.log(LogErrorSupport_(3210), "Failed to create handle to logbook");
     }
