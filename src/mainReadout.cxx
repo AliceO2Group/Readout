@@ -42,14 +42,13 @@
 #ifdef WITH_ZMQ
 #include "ZmqServer.hxx"
 #endif
-#undef WITH_LOGBOOK
 
 #ifdef WITH_CONFIG
 #include <Configuration/ConfigurationFactory.h>
 #endif
 
 #ifdef WITH_LOGBOOK
-#include <BookkeepingApiCpp/BookkeepingFactory.h>
+#include <BookkeepingApi/BkpClientFactory.h>
 #endif
 
 #ifdef WITH_DB
@@ -266,7 +265,7 @@ class Readout
   bool logFirstError = 0;             // flag set to 1 after 1 error reported from iterateCheck/iterateRunning procedures
 
 #ifdef WITH_LOGBOOK
-  std::unique_ptr<bookkeeping::BookkeepingInterface> logbookHandle; // handle to logbook
+  std::unique_ptr<o2::bkp::api::BkpClient> logbookHandle; // handle to logbook
 #endif
 #ifdef WITH_DB
   std::unique_ptr<ReadoutDatabase> dbHandle; // handle to readout database
@@ -290,18 +289,20 @@ void Readout::publishLogbookStats()
   if (logbookHandle != nullptr) {
     bool isOk = false;
     try {
-      // interface: https://github.com/AliceO2Group/Bookkeeping/blob/master/cpp-api-client/src/BookkeepingApi.h
+      // interface: https://github.com/AliceO2Group/Bookkeeping/tree/main/cxx-client/include/BookkeepingApi
       if (testLogbook) {
         // in test mode, create a dummy run entry in logbook
         if (occRole.length() == 0) { occRole = "flp-test"; }
 	if (occRunNumber == 0) { occRunNumber = 999999999; }
         theLog.log(LogInfoDevel_(3210), "Logbook in test mode: create run number/flp %d / %s", (int)occRunNumber, occRole.c_str());
+        /*
 	std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
         logbookHandle->runStart(occRunNumber, now, now, "readout", RunType::TECHNICAL, 0, 0, 0, false, false, false, "normal");
         logbookHandle->flpAdd(occRole, "localhost", occRunNumber);
+        */
 	testLogbook=0;
       }
-      logbookHandle->flpUpdateCounters(occRole, occRunNumber, (int64_t)gReadoutStats.counters.numberOfSubtimeframes, (int64_t)gReadoutStats.counters.bytesReadout, (int64_t)gReadoutStats.counters.bytesRecorded, (int64_t)gReadoutStats.counters.bytesFairMQ);
+      logbookHandle->flp()->updateReadoutCountersByFlpNameAndRunNumber(occRole, occRunNumber, (int64_t)gReadoutStats.counters.numberOfSubtimeframes, (int64_t)gReadoutStats.counters.bytesReadout, (int64_t)gReadoutStats.counters.bytesRecorded, (int64_t)gReadoutStats.counters.bytesFairMQ);
       isOk = true;
     } catch (const std::exception& ex) {
       theLog.log(LogErrorDevel_(3210), "Failed to update logbook: %s", ex.what());
@@ -476,6 +477,7 @@ int Readout::init(int argc, char* argv[])
     #else
       theLog.log(LogInfoDevel, "GPERFTOOLS : no");
     #endif
+    theLog.log(LogInfoDevel, "Working directory: %s", std::filesystem::current_path().c_str());
   }
 
   // report cached logs
@@ -603,6 +605,9 @@ int Readout::configure(const boost::property_tree::ptree& properties)
     return -1;
   }
 
+  // TODO
+  // save config somewhere ?
+
   // apply provided occ properties over loaded configuration
   // with function to overwrtie configuration tree t1 with (selected) content of t2
   auto mergeConfig = [&](boost::property_tree::ptree& t1, const boost::property_tree::ptree& t2) {
@@ -618,7 +623,7 @@ int Readout::configure(const boost::property_tree::ptree& properties)
           // check for a consumer with same fairmq channel
           for (auto kName : ConfigFileBrowser(&cfg, "consumer-")) {
             std::string cfgType;
-            cfgType = cfg.getValue<std::string>(kName + ".consumerType");
+            cfg.getOptionalValue<std::string>(kName + ".consumerType", cfgType);
             if (cfgType == "FairMQChannel") {
               std::string cfgChannelName;
               cfg.getOptionalValue<std::string>(kName + ".fmq-name", cfgChannelName);
@@ -659,6 +664,43 @@ int Readout::configure(const boost::property_tree::ptree& properties)
     }
   };
   mergeConfig(cfg.get(), properties);
+
+  // merge default trees
+  const char *defaultTag = "-*";
+  // if a section ends with above string, its parameters are copied to all matching section names, when these parameters are not already defined there
+  // append configuration tree t1 with content of t2 (existing leaves in t1 not overwritten by same ones from t2)
+  auto appendConfig = [&](boost::property_tree::ptree& t1, boost::property_tree::ptree& t2) {
+    for (boost::property_tree::ptree::iterator it = t2.begin(); it != t2.end();++it) {
+      if (!t1.get_child_optional(it->first)) {
+        //printf("set %s = %s\n", it->first.c_str(),it->second.data().c_str());
+        t1.put_child( it->first, it->second );
+      }
+    }
+  };
+  // function returns true when end of string matches tag
+  auto isEndOfStringMatching = [&](const std::string &s, const char* tag) {
+    if (s.length()<=strlen(tag)) return false;
+    if (s.substr(s.length()-strlen(tag)) != tag) return false;
+    return true;
+  };
+  for (boost::property_tree::ptree::iterator pos = cfg.get().begin(); pos != cfg.get().end();) {    
+    const std::string section = pos->first;
+    if (!isEndOfStringMatching(section, defaultTag)) {
+      ++pos;
+      continue;
+    }
+    auto smatch = section.substr(0,section.length()-strlen(defaultTag));
+    for (boost::property_tree::ptree::iterator pos2 = cfg.get().begin(); pos2 != cfg.get().end();++pos2) {
+      if (pos2 == pos) continue; // do not self-overwrite
+      const std::string section2 = pos2->first;
+      if (section2.compare(0,smatch.length(),smatch)) continue; // mismatch
+      if (isEndOfStringMatching(section2, defaultTag)) continue; // do not overwrite other defaults sections
+      theLog.log(LogInfoDevel_(3002), "Updating configuration section [%s] with defaults from [%s]", pos2->first.c_str(), pos->first.c_str());
+      appendConfig(pos2->second,pos->second);
+    }
+    // delete section with defaults, to avoid it is used further
+    pos = cfg.get().erase(pos);
+  }
 
   // extract optional configuration parameters
   // configuration parameter: | readout | customCommands | string | | List of key=value pairs defining some custom shell commands to be executed at before/after state change commands. |
@@ -805,11 +847,9 @@ int Readout::configure(const boost::property_tree::ptree& properties)
 #else
     // configuration parameter: | readout | logbookUrl | string | | The address to be used for the logbook API. |
     cfg.getOptionalValue<std::string>("readout.logbookUrl", cfgLogbookUrl);
-    // configuration parameter: | readout | logbookApiToken | string | | The token to be used for the logbook API. |
-    cfg.getOptionalValue<std::string>("readout.logbookApiToken", cfgLogbookApiToken);
 
     theLog.log(LogInfoDevel, "Logbook enabled, %ds update interval, using URL = %s", cfgLogbookUpdateInterval, cfgLogbookUrl.c_str());
-    logbookHandle = bookkeeping::getApiInstance(cfgLogbookUrl, cfgLogbookApiToken);
+    logbookHandle = o2::bkp::api::BkpClientFactory::create(cfgLogbookUrl);
     if (logbookHandle == nullptr) {
       theLog.log(LogErrorSupport_(3210), "Failed to create handle to logbook");
     }
@@ -846,11 +886,8 @@ int Readout::configure(const boost::property_tree::ptree& properties)
   for (auto kName : ConfigFileBrowser(&cfg, "bank-")) {
     // skip disabled
     int enabled = 1;
-    try {
-      // configuration parameter: | bank-* | enabled | int | 1 | Enable (1) or disable (0) the memory bank. |
-      enabled = cfg.getValue<int>(kName + ".enabled");
-    } catch (...) {
-    }
+    // configuration parameter: | bank-* | enabled | int | 1 | Enable (1) or disable (0) the memory bank. |
+    cfg.getOptionalValue<int>(kName + ".enabled", enabled);
     if (!enabled) {
       continue;
     }
@@ -868,13 +905,9 @@ int Readout::configure(const boost::property_tree::ptree& properties)
     // bank type
     // configuration parameter: | bank-* | type | string| | Support used to allocate memory. Possible values: malloc, MemoryMappedFile. |
     std::string cfgType = "";
-    try {
-      cfgType = cfg.getValue<std::string>(kName + ".type");
-    } catch (...) {
-      theLog.log(LogErrorSupport_(3100), "Skipping memory bank %s:  no type specified", kName.c_str());
-      continue;
-    }
+    cfg.getOptionalValue<std::string>(kName + ".type", cfgType);
     if (cfgType.length() == 0) {
+      theLog.log(LogErrorSupport_(3100), "Skipping memory bank %s:  no type specified", kName.c_str());
       continue;
     }
 
@@ -934,11 +967,8 @@ int Readout::configure(const boost::property_tree::ptree& properties)
 
     // skip disabled
     int enabled = 1;
-    try {
-      // configuration parameter: | consumer-* | enabled | int | 1 | Enable (value=1) or disable (value=0) the consumer. |
-      enabled = cfg.getValue<int>(kName + ".enabled");
-    } catch (...) {
-    }
+    // configuration parameter: | consumer-* | enabled | int | 1 | Enable (value=1) or disable (value=0) the consumer. |
+    cfg.getOptionalValue<int>(kName + ".enabled", enabled);
     if (!enabled) {
       continue;
     }
@@ -957,7 +987,11 @@ int Readout::configure(const boost::property_tree::ptree& properties)
     try {
       // configuration parameter: | consumer-* | consumerType | string |  | The type of consumer to be instanciated. One of:stats, FairMQDevice, DataSampling, FairMQChannel, fileRecorder, checker, processor, tcp. |
       std::string cfgType = "";
-      cfgType = cfg.getValue<std::string>(kName + ".consumerType");
+      cfg.getOptionalValue<std::string>(kName + ".consumerType", cfgType);
+      if (cfgType.length() == 0) {
+        theLog.log(LogErrorSupport_(3100), "Skipping consumer %s:  no type specified", kName.c_str());
+        continue;
+      }
       theLog.log(LogInfoDevel, "Configuring consumer %s: %s", kName.c_str(), cfgType.c_str());
 
       #ifdef WITH_NUMA
@@ -1090,7 +1124,12 @@ int Readout::configure(const boost::property_tree::ptree& properties)
 
     // configuration parameter: | equipment-* | equipmentType | string |  | The type of equipment to be instanciated. One of: dummy, rorc, cruEmulator |
     std::string cfgEquipmentType = "";
-    cfgEquipmentType = cfg.getValue<std::string>(kName + ".equipmentType");
+    cfg.getOptionalValue<std::string>(kName + ".equipmentType", cfgEquipmentType);
+    if (cfgEquipmentType.length() == 0) {
+      theLog.log(LogErrorSupport_(3100), "Skipping equipment %s:  no type specified", kName.c_str());
+      continue;
+    }
+
     theLog.log(LogInfoDevel, "Configuring equipment %s: %s", kName.c_str(), cfgEquipmentType.c_str());
 
     #ifdef WITH_NUMA
