@@ -545,3 +545,51 @@ void MemoryPage::reportPageStates() {
   }
   printf("\n");
 }
+
+std::string MemoryPagesPool::getDetailedStats() {
+  std::string report;
+  int count[MemoryPage::PageState::Undefined] = {};
+  report += "#";
+  report += std::to_string(getId());
+  report += " ";
+
+  for(const auto &p : pages) {
+    count[p.currentPageState]++;
+  }
+  for (int i=0; i<MemoryPage::PageState::Undefined; i++) {
+    char frac[12];
+    snprintf(frac, sizeof(frac), "%.1f", count[i] * 100.0 / pages.size());
+    report += MemoryPage::getPageStateString((MemoryPage::PageState)i);
+    //report += std::to_string(i);
+    report += ": ";
+    report += frac;
+    report += " %   ";
+  }
+  report+='\n';
+  for(const auto &p : pages) {
+    char s='o';
+    switch(p.currentPageState) {
+      case MemoryPage::Idle:
+        s='.'; break;
+      case MemoryPage::Allocated:
+        s='a'; break;
+      case MemoryPage::InROC:
+        s='C'; break;
+      case MemoryPage::InAggregator:
+        s='A'; break;
+      case MemoryPage::InFMQ:
+        s='F'; break;
+      default:
+        break;
+    }
+    report += s;
+  }
+  report+='\n';
+
+  return report;
+}
+
+// todo:
+// add FMQ release rate
+// start/stop/start -> reorder pages in pool FIFO
+// or even on-the-fly, if there i ?

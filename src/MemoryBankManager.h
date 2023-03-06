@@ -22,6 +22,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <thread>
 
 #include "MemoryBank.h"
 #include "MemoryPagesPool.h"
@@ -70,6 +71,11 @@ class MemoryBankManager
   std::vector<bankDescriptor> banks; // list of registered memory banks
   std::mutex bankMutex;              // instance mutex to handle concurrent access to public methods
   int poolIndex = -1;                // an increasing index used to assign a unique id to memory pools
+
+  std::unique_ptr<std::thread> monitorTh; // monitor thread
+  std::atomic<int> monitorThShutdown; // flag to terminate monitor thread
+  void monitorThLoop(); // function launched in monitor thread
+  std::vector<std::shared_ptr<MemoryPagesPool>> pools; // reference to existing page pools, for monitoring purpose
 };
 
 // a global MemoryBankManager instance

@@ -14,12 +14,26 @@
 #include <unistd.h>
 #include <sys/mman.h>
 #include <thread>
+#include <Common/Timer.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+
 
 #include "readoutInfoLogger.h"
 
-MemoryBankManager::MemoryBankManager() {}
+MemoryBankManager::MemoryBankManager() {
+  std::function<void(void)> f = std::bind(&MemoryBankManager::monitorThLoop, this);
+  monitorThShutdown = 0;
+  monitorTh=std::make_unique<std::thread>(f);
+}
 
-MemoryBankManager::~MemoryBankManager() {}
+MemoryBankManager::~MemoryBankManager() {
+  if (monitorTh!=nullptr) {
+    monitorThShutdown = 	1;
+    monitorTh->join();
+    monitorTh = nullptr;
+  }
+}
 
 int MemoryBankManager::addBank(std::shared_ptr<MemoryBank> bankPtr, std::string name)
 {
@@ -37,6 +51,12 @@ int MemoryBankManager::addBank(std::shared_ptr<MemoryBank> bankPtr, std::string 
   }
 
   return 0;
+}
+
+std::string getMonitorFifoPath(int id) {
+  char fn[128];
+  snprintf(fn,sizeof(fn),"/tmp/readout-monitor-pool-%d",id);
+  return fn;
 }
 
 std::shared_ptr<MemoryPagesPool> MemoryBankManager::getPagedPool(size_t pageSize, size_t pageNumber, std::string bankName, size_t firstPageOffset, size_t blockAlign, int numaNode)
@@ -191,6 +211,13 @@ std::shared_ptr<MemoryPagesPool> MemoryBankManager::getPagedPool(size_t pageSize
   std::shared_ptr<MemoryPagesPool> mpp;
   try {
     mpp = std::make_shared<MemoryPagesPool>(pageSize, pageNumber, &(((char*)baseAddress)[offset]), blockSize, nullptr, firstPageOffset, newId);
+    if (mpp != nullptr) {
+      // create FIFO for monitoring
+      mkfifo(getMonitorFifoPath(newId).c_str(), S_IRUSR | S_IWUSR | S_IRGRP| S_IROTH);
+      // keep reference to created pool for monitoring purpose
+      std::unique_lock<std::mutex> lock(bankMutex);
+      pools.push_back(mpp);
+    }
   }
   catch (int err) {
     theLog.log(LogErrorSupport_(3230), "Can not create memory pool from bank: error %d", err);
@@ -220,6 +247,9 @@ int MemoryBankManager::getMemoryRegions(std::vector<memoryRange>& ranges)
 void MemoryBankManager::reset()
 {
   std::unique_lock<std::mutex> lock(bankMutex);
+  // release references to page pools
+  pools.clear();
+  // release banks
   for (auto& it : banks) {
     int useCount = it.bank.use_count();
     theLog.log(LogInfoDevel_(3008), "Releasing bank %s%s", it.name.c_str(), (useCount == 1) ? "" : "warning - still in use elsewhere !");
@@ -228,3 +258,25 @@ void MemoryBankManager::reset()
   poolIndex = -1;
 }
 
+void MemoryBankManager::monitorThLoop() {
+  AliceO2::Common::Timer t;
+  t.reset(200000);
+  for(;!monitorThShutdown.load();) {
+    if (t.isTimeout()) {
+      std::unique_lock<std::mutex> lock(bankMutex);
+      for (auto& it : pools) {
+        // it->getId()
+        //printf("%s\n", it->getDetailedStats().c_str());
+        FILE *fp=fopen(getMonitorFifoPath(it->getId()).c_str(),"w+");
+        if (fp!=NULL) {
+        //\e[3J
+          fprintf(fp,"\ec%s\n\n", it->getDetailedStats().c_str());
+          fclose(fp);
+        }
+      }
+      t.increment();
+    } else {
+      std::this_thread::sleep_for(std::chrono::microseconds(10000));
+    }
+  }
+}

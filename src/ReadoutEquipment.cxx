@@ -336,7 +336,7 @@ ReadoutEquipment::~ReadoutEquipment()
 
   // check if mempool still referenced
   if (!mp.unique()) {
-    theLog.log(LogInfoDevel_(3008), "Equipment %s :  mempool still has %d references\n", name.c_str(), (int)mp.use_count());
+    theLog.log(LogInfoDevel_(3008), "Equipment %s :  mempool still has %d references", name.c_str(), (int)mp.use_count());
   }
 
   if (fpDataPagesLog != nullptr) {
