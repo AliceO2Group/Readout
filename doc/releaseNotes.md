@@ -505,14 +505,14 @@ This file describes the main feature changes for each readout.exe released versi
 ## v2.15.2 - 08/12/2022
 - Added ROC link Id for some log messages, as provided from new superpage metadata link field from ROC library.
 
-## v2.16.0 - 01/02/2022
+## v2.16.0 - 01/02/2023
 - Superpage internal metadata not stored at beginning of page but separately in heap, by default. Behavior can be adjusted with MemoryPool::headerReservedSpace.
 - equipment-CruEmulator: set TF trigger type (bit 11) on new TF. Used for dropEmptyHBFramesTriggerMask tests.
 - Updated configuration parameters:
   - added consumer-fileRecorder-*.dropEmptyHBFramesTriggerMask: when using dropEmptyHBFrames = 1, keep some empty HB frames with trigger type matching given (decimal) mask.
 - Added support for RDHv7. Readout already accepts data from equipments with v7, but still generates data (internal sw generator) with v6, for compatibility with current software downstream.
 
-## v2.16.1 - 16/02/2022
+## v2.16.1 - 16/02/2023
 - Updated configuration parameters:
   - added equipemnt-*.rdhCheckTrigger: when set, enables some consistency checks on trigger counters, as follows:
     - Trigger type TF should happen only on orbits % TF period = 0.
@@ -521,11 +521,11 @@ This file describes the main feature changes for each readout.exe released versi
   - added equipment-cruemulator-*.linkThroughput: set incoming link data throughput (in Gbps).
 - Minor logging updates.
 
-## v2.17.0 - 01/03/2022
+## v2.17.0 - 01/03/2023
 - Updated configuration syntax: section names ending with `-*` can be used to define default parameters. They are applied to all section with similar names. Existing key-value pairs are not overwritten, but are defined according to defaults if they don't exist. For example, it is possible to define the TFperiod for all equipments by adding a section named `[equipment-*]` with `TFperiod=32`.
 - Updated readout to new bookkeeping API.
 
-## v2.17.1 - 08/03/2022
+## v2.17.1 - 08/03/2023
 - Updated configuration parameters:
   - added equipment-*.dropPagesWithError: if set, the pages with RDH errors are discarded (requires rdhCheckEnabled or rdhUseFirstInPage). This may be used if downstream software is not robust to RDH errors.
 - Disabled unused RDMA features (still available by switch in CMake)
