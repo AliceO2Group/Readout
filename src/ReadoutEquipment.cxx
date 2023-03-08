@@ -1031,11 +1031,12 @@ int ReadoutEquipment::processRdh(DataBlockContainerReference& block)
   if (isPageError) {
     if (saveErrorPagesCount < cfgSaveErrorPagesMax) {
       saveErrorPagesCount++;
-      std::string fn = cfgSaveErrorPagesPath + "/readout.superpage." + std::to_string(saveErrorPagesCount) + ".raw";
-      theLog.log(LogInfoSupport, "Equipment %d : saving superpage %p with errors to disk : %s (%d bytes)", id, blockData, fn.c_str(), blockHeader.dataSize);
+      char fn[256];
+      snprintf(fn, 256, "%s/readout-t%d-eq%d-superpage.%d.raw", cfgSaveErrorPagesPath.c_str(), (int)time(NULL), (int)id, (int)saveErrorPagesCount);
+      theLog.log(LogInfoSupport, "Equipment %d : saving superpage %p with errors to disk : %s (%d bytes)", id, blockData, fn, blockHeader.dataSize);
       FILE *fp;
       bool success = 0;
-      fp = fopen(fn.c_str(), "wb");
+      fp = fopen(fn, "wb");
       if (fp != nullptr) {
         if (fwrite(blockData, blockHeader.dataSize, 1, fp) == 1) {
 	  success = 1;
