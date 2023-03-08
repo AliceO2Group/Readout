@@ -22,17 +22,10 @@
 #include "readoutInfoLogger.h"
 
 MemoryBankManager::MemoryBankManager() {
-  std::function<void(void)> f = std::bind(&MemoryBankManager::monitorThLoop, this);
-  monitorThShutdown = 0;
-  monitorTh=std::make_unique<std::thread>(f);
 }
 
 MemoryBankManager::~MemoryBankManager() {
-  if (monitorTh!=nullptr) {
-    monitorThShutdown = 	1;
-    monitorTh->join();
-    monitorTh = nullptr;
-  }
+  stopMonitoring();
 }
 
 int MemoryBankManager::addBank(std::shared_ptr<MemoryBank> bankPtr, std::string name)
@@ -53,9 +46,12 @@ int MemoryBankManager::addBank(std::shared_ptr<MemoryBank> bankPtr, std::string 
   return 0;
 }
 
-std::string getMonitorFifoPath(int id) {
+std::string MemoryBankManager::getMonitorFifoPath(int id) {
+  if (id < 0) {
+    return monitorPath;
+  }
   char fn[128];
-  snprintf(fn,sizeof(fn),"/tmp/readout-monitor-pool-%d",id);
+  snprintf(fn,sizeof(fn),"%s-%d", monitorPath.c_str(), id);
   return fn;
 }
 
@@ -256,11 +252,12 @@ void MemoryBankManager::reset()
   }
   banks.clear();
   poolIndex = -1;
+  stopMonitoring();
 }
 
 void MemoryBankManager::monitorThLoop() {
   AliceO2::Common::Timer t;
-  t.reset(200000);
+  t.reset(1000000.0 / monitorUpdateRate);
   for(;!monitorThShutdown.load();) {
     if (t.isTimeout()) {
       std::unique_lock<std::mutex> lock(bankMutex);
@@ -278,5 +275,32 @@ void MemoryBankManager::monitorThLoop() {
     } else {
       std::this_thread::sleep_for(std::chrono::microseconds(10000));
     }
+  }
+}
+
+
+void MemoryBankManager::startMonitoring(double v_updateRate, const char* v_monitorPath) {
+  if (monitorTh != nullptr) {
+    stopMonitoring();
+  }
+  if (v_updateRate <= 0) {
+    return;
+  }
+  monitorUpdateRate = v_updateRate;
+  if ((v_monitorPath != nullptr) && (strlen(v_monitorPath) != 0)) {
+    monitorPath = v_monitorPath;
+  } else {
+    monitorPath = monitorPathDefault;
+  }
+  std::function<void(void)> f = std::bind(&MemoryBankManager::monitorThLoop, this);
+  monitorThShutdown = 0;
+  monitorTh=std::make_unique<std::thread>(f);
+}
+
+void MemoryBankManager::stopMonitoring() {
+  if (monitorTh != nullptr) {
+    monitorThShutdown = 1;
+    monitorTh->join();
+    monitorTh = nullptr;
   }
 }

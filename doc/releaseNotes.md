@@ -529,3 +529,4 @@ This file describes the main feature changes for each readout.exe released versi
 - Updated configuration parameters:
   - added equipment-*.dropPagesWithError: if set, the pages with RDH errors are discarded (requires rdhCheckEnabled or rdhUseFirstInPage). This may be used if downstream software is not robust to RDH errors.
 - Disabled unused RDMA features (still available by switch in CMake)
+- Added feature for memory banks real time monitoring. Enabled by setting membanksMonitorRate in /etc/o2.d/readout-defaults.cfg. Output (high-rate text) can be seen locally in real time with `tail -f /tmp/readout-monitor-mempool-(id)`. The status of each page in the bank is displayed.
