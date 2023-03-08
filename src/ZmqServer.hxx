@@ -9,6 +9,9 @@
 // granted to it by virtue of its status as an Intergovernmental Organization
 // or submit itself to any jurisdiction.
 
+#ifndef _ZMQSERVER_H
+#define _ZMQSERVER_H
+
 #include <atomic>
 #include <memory>
 #include <string>
@@ -40,3 +43,4 @@ class ZmqServer
   void run();                       // code executed in separate thread
 };
 
+#endif

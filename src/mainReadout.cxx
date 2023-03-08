@@ -346,6 +346,8 @@ int Readout::init(int argc, char* argv[])
   const std::string cfgDefaultsEntryPoint = "readout"; // entry point for default configuration variables (e.g. section named [readout])
   std::string cfgStatsPublishAddress; // address where to publish readout stats, eg "tcp://127.0.0.1:6008"
   double cfgStatsPublishInterval = 5.0; // interval for readout stats publish, in seconds
+  std::string cfgMembanksMonitorPath = ""; // path to memory banks monitor output
+  double cfgMembanksMonitorRate = 0.0; // rate of memory banks monitor updates
   try {
     cfgDefaults.load(cfgDefaultsPath.c_str());
     initLogs.push_back({LogInfoDevel, "Defaults loaded from " + cfgDefaultsPath});
@@ -357,6 +359,8 @@ int Readout::init(int argc, char* argv[])
     cfgDefaults.getOptionalValue<double>(cfgDefaultsEntryPoint + ".statsPublishInterval", cfgStatsPublishInterval, cfgStatsPublishInterval);
     cfgDefaults.getOptionalValue<std::string>(cfgDefaultsEntryPoint + ".db", cfgDatabaseCxParams);
     cfgDefaults.getOptionalValue<int>(cfgDefaultsEntryPoint + ".customCommandsEnabled", cfgCustomCommandsEnabled);
+    cfgDefaults.getOptionalValue<std::string>(cfgDefaultsEntryPoint + ".membanksMonitorPath", cfgMembanksMonitorPath, cfgMembanksMonitorPath);
+    cfgDefaults.getOptionalValue<double>(cfgDefaultsEntryPoint + ".membanksMonitorRate", cfgMembanksMonitorRate, cfgMembanksMonitorRate);
   }
   catch(...) {
     //initLogs.push_back({LogWarningSupport_(3100), std::string("Error loading defaults")});
@@ -412,6 +416,11 @@ int Readout::init(int argc, char* argv[])
     initLogs.push_back({LogWarningDevel_(3236), "Failed to start Stats publish"});
   } //otherwise: disabled
   
+  if (cfgMembanksMonitorRate > 0) {
+    theMemoryBankManager.startMonitoring(cfgMembanksMonitorRate, cfgMembanksMonitorPath.c_str());
+    initLogs.push_back({LogInfoDevel, "Started MemoryBanks monitor @ " + std::to_string(cfgMembanksMonitorRate) + " Hz : " + theMemoryBankManager.getMonitorFifoPath(-1) + "..."});
+  }
+
   // configure signal handlers for clean exit
   struct sigaction signalSettings;
   bzero(&signalSettings, sizeof(signalSettings));

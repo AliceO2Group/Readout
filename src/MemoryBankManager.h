@@ -22,6 +22,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <thread>
 
 #include "MemoryBank.h"
 #include "MemoryPagesPool.h"
@@ -66,10 +67,22 @@ class MemoryBankManager
   // reset bank manager in fresh state, in particular: clear all banks
   void reset();
 
+  void startMonitoring(double updateRate, const char* monitorPath = ""); // starts monitoring at given updateRate and output path
+  void stopMonitoring(); // stop monitoring
+  std::string getMonitorFifoPath(int id); // return full path to monitor pipe for given pool index
+
  private:
   std::vector<bankDescriptor> banks; // list of registered memory banks
   std::mutex bankMutex;              // instance mutex to handle concurrent access to public methods
   int poolIndex = -1;                // an increasing index used to assign a unique id to memory pools
+
+  std::unique_ptr<std::thread> monitorTh; // monitor thread
+  std::atomic<int> monitorThShutdown; // flag to terminate monitor thread
+  void monitorThLoop(); // function launched in monitor thread
+  std::vector<std::shared_ptr<MemoryPagesPool>> pools; // reference to existing page pools, for monitoring purpose
+  double monitorUpdateRate = 0; // monitoring period, in Hz
+  const char *monitorPathDefault = "/tmp/readout-monitor-mempool";
+  std::string monitorPath = monitorPathDefault; // prefix path to output monitoring pipes. "-%d" (bank number) added to it and fifo created.
 };
 
 // a global MemoryBankManager instance

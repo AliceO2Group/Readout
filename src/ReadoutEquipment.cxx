@@ -145,7 +145,9 @@ ReadoutEquipment::ReadoutEquipment(ConfigFile& cfg, std::string cfgEntryPoint, b
   cfg.getOptionalValue<int>(cfgEntryPoint + ".rdhCheckDetectorField", cfgRdhCheckDetectorField);  
   // configuration parameter: | equipment-* | rdhCheckTrigger | int | 0 | If set, the RDH trigger counters are checked for consistency. |
   cfg.getOptionalValue<int>(cfgEntryPoint + ".rdhCheckTrigger", cfgRdhCheckTrigger);
-  theLog.log(LogInfoDevel_(3002), "RDH settings: rdhCheckEnabled=%d rdhDumpEnabled=%d rdhDumpErrorEnabled=%d rdhDumpWarningEnabled=%d rdhUseFirstInPageEnabled=%d rdhCheckFirstOrbit=%d rdhCheckDetectorField=%d", cfgRdhCheckEnabled, cfgRdhDumpEnabled, cfgRdhDumpErrorEnabled, cfgRdhDumpWarningEnabled, cfgRdhUseFirstInPageEnabled, cfgRdhCheckFirstOrbit, cfgRdhCheckDetectorField);
+  // configuration parameter: | equipment-* | dropPagesWithError | int | 0 | If set, the pages with RDH errors are discarded (requires rdhCheckEnabled or rdhUseFirstInPage). |
+  cfg.getOptionalValue<int>(cfgEntryPoint + ".dropPagesWithError", cfgDropPagesWithError);
+  theLog.log(LogInfoDevel_(3002), "RDH settings: rdhCheckEnabled=%d rdhDumpEnabled=%d rdhDumpErrorEnabled=%d rdhDumpWarningEnabled=%d rdhUseFirstInPageEnabled=%d rdhCheckFirstOrbit=%d rdhCheckDetectorField=%d dropPagesWithError=%d", cfgRdhCheckEnabled, cfgRdhDumpEnabled, cfgRdhDumpErrorEnabled, cfgRdhDumpWarningEnabled, cfgRdhUseFirstInPageEnabled, cfgRdhCheckFirstOrbit, cfgRdhCheckDetectorField, cfgDropPagesWithError);
 
   // configuration parameter: | equipment-* | ctpMode | int | 0 | If set, the detector field (CTP run mask) is checked. Incoming data is discarded until a new bit is set, and discarded again after this bit is unset. Automatically implies rdhCheckDetectorField=1 and rdhCheckDetectorField=1. |
   cfg.getOptionalValue<int>(cfgEntryPoint + ".ctpMode", cfgCtpMode);
@@ -336,7 +338,7 @@ ReadoutEquipment::~ReadoutEquipment()
 
   // check if mempool still referenced
   if (!mp.unique()) {
-    theLog.log(LogInfoDevel_(3008), "Equipment %s :  mempool still has %d references\n", name.c_str(), (int)mp.use_count());
+    theLog.log(LogInfoDevel_(3008), "Equipment %s :  mempool still has %d references", name.c_str(), (int)mp.use_count());
   }
 
   if (fpDataPagesLog != nullptr) {
@@ -430,7 +432,14 @@ Thread::CallbackResult ReadoutEquipment::threadCallback(void* arg)
 
 	// handle RDH-formatted data
 	if (ptr->cfgRdhUseFirstInPageEnabled) {
-          ptr->processRdh(nextBlock);
+          if ((ptr->processRdh(nextBlock)) && ptr->cfgDropPagesWithError) {
+            // drop pages with error when configured to do so
+            ptr->statsRdhCheckPagesDropped++;
+            static InfoLogger::AutoMuteToken logPageErrorDrop(LogWarningSupport_(3235), 10, 60);
+            theLog.log(logPageErrorDrop, "Equipment %s : page with RDH error has been discarded (total: %llu)", ptr->name.c_str(), ptr->statsRdhCheckPagesDropped);
+            nextBlock = nullptr;
+            continue;
+          }
 	}
 
         // discard data immediately if configured to do so
@@ -593,6 +602,7 @@ void ReadoutEquipment::initCounters()
   statsRdhCheckOk = 0;
   statsRdhCheckErr = 0;
   statsRdhCheckStreamErr = 0;
+  statsRdhCheckPagesDropped = 0;
 
   statsNumberOfTimeframes = 0;
 
@@ -621,7 +631,8 @@ void ReadoutEquipment::initCounters()
 void ReadoutEquipment::finalCounters()
 {
   if (cfgRdhCheckEnabled) {
-    theLog.log(LogInfoDevel_(3003), "Equipment %s : %llu timeframes, RDH checks %llu ok, %llu errors, %llu stream inconsistencies", name.c_str(), statsNumberOfTimeframes, statsRdhCheckOk, statsRdhCheckErr, statsRdhCheckStreamErr);
+    theLog.log(LogInfoDevel_(3003), "Equipment %s : %llu timeframes, RDH checks %llu ok, %llu errors, %llu stream inconsistencies, %llu pages with error dropped",
+      name.c_str(), statsNumberOfTimeframes, statsRdhCheckOk, statsRdhCheckErr, statsRdhCheckStreamErr, statsRdhCheckPagesDropped);
   }
 };
 
@@ -1037,7 +1048,7 @@ int ReadoutEquipment::processRdh(DataBlockContainerReference& block)
     }
   }
   
-  return 0;
+  return isPageError;
 }
 
 void ReadoutEquipment::abortThread() {

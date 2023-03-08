@@ -203,6 +203,7 @@ class ReadoutEquipment
   int saveErrorPagesCount; // counter for number of pages dumped so far
   std::string cfgDataPagesLogPath; // path to write to disk a summary for each data page received
   FILE *fpDataPagesLog = nullptr; // handle to data page log file
+  int cfgDropPagesWithError = 0; // if set, pages with RDH errors are dropped by readout
   
  protected:
   // get timeframe from orbit
@@ -218,6 +219,7 @@ class ReadoutEquipment
   unsigned long long statsRdhCheckOk = 0;        // number of RDH structs which have passed check ok
   unsigned long long statsRdhCheckErr = 0;       // number of RDH structs which have not passed check
   unsigned long long statsRdhCheckStreamErr = 0; // number of inconsistencies in RDH stream (e.g. ids/timing compared to previous RDH)
+  unsigned long long statsRdhCheckPagesDropped = 0; // number of pages discarded because of RDH errors (when configured to do so)
 };
 
 std::unique_ptr<ReadoutEquipment> getReadoutEquipmentDummy(ConfigFile& cfg, std::string cfgEntryPoint);

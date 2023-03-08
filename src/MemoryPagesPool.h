@@ -129,6 +129,7 @@ class MemoryPagesPool
   bool isPageValid(void* page); // check to see if a page address is valid
 
   std::string getStats(); // return a string summarizing memory pool usage statistics
+  std::string getDetailedStats(); // return detailed stats
 
   // an optional user-provided logging function for all memory pool related ops (including warnings on low)
   typedef std::function<void(const std::string &)> LogCallback;

@@ -524,3 +524,9 @@ This file describes the main feature changes for each readout.exe released versi
 ## v2.17.0 - 01/03/2022
 - Updated configuration syntax: section names ending with `-*` can be used to define default parameters. They are applied to all section with similar names. Existing key-value pairs are not overwritten, but are defined according to defaults if they don't exist. For example, it is possible to define the TFperiod for all equipments by adding a section named `[equipment-*]` with `TFperiod=32`.
 - Updated readout to new bookkeeping API.
+
+## v2.17.1 - 08/03/2022
+- Updated configuration parameters:
+  - added equipment-*.dropPagesWithError: if set, the pages with RDH errors are discarded (requires rdhCheckEnabled or rdhUseFirstInPage). This may be used if downstream software is not robust to RDH errors.
+- Disabled unused RDMA features (still available by switch in CMake)
+- Added feature for memory banks real time monitoring. Enabled by setting membanksMonitorRate in /etc/o2.d/readout-defaults.cfg. Output (high-rate text) can be seen locally in real time with `tail -f /tmp/readout-monitor-mempool-(id)`. The status of each page in the bank is displayed.
