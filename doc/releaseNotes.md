@@ -524,3 +524,7 @@ This file describes the main feature changes for each readout.exe released versi
 ## v2.17.0 - 01/03/2022
 - Updated configuration syntax: section names ending with `-*` can be used to define default parameters. They are applied to all section with similar names. Existing key-value pairs are not overwritten, but are defined according to defaults if they don't exist. For example, it is possible to define the TFperiod for all equipments by adding a section named `[equipment-*]` with `TFperiod=32`.
 - Updated readout to new bookkeeping API.
+
+## next version
+- Updated configuration parameters:
+  - added equipment-*.dropPagesWithError: if set, the pages with RDH errors are discarded (requires rdhCheckEnabled or rdhUseFirstInPage). This may be used if downstream software is not robust to RDH errors.
