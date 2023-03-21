@@ -452,7 +452,7 @@ class ConsumerFMQchannel : public Consumer
     }
     
     if (TFdropped) {
-      theLog.log(LogInfoSupport_(3300), "Consumer %s - %llu incomplete TF dropped", name.c_str(), (unsigned long long)TFdropped);
+      theLog.log(LogInfoSupport_(3235), "Consumer %s - %llu incomplete TF dropped", name.c_str(), (unsigned long long)TFdropped);
     }
 
     // release in reverse order
@@ -944,7 +944,7 @@ int ConsumerFMQchannel::DDformatMessage(DataSetReference &bc, DDMessage &ddm) {
 
   nIncompleteHBF += HBFincomplete;
   if ((HBFincomplete) && (dropIncomplete)) {
-    static InfoLogger::AutoMuteToken tokenTFdropped(LogWarningSupport_(3300));
+    static InfoLogger::AutoMuteToken tokenTFdropped(LogWarningSupport_(3235));
     TFdropped++;
     theLog.log(tokenTFdropped, "%s eq %d link %d : TF %d dropped (total: %llu)", this->name.c_str(), (int)stfHeader->equipmentId, (int)stfHeader->linkId, (int)stfHeader->timeframeId, (unsigned long long)TFdropped);
     return -1;
