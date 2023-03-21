@@ -197,6 +197,10 @@ ReadoutEquipmentPlayer::~ReadoutEquipmentPlayer()
 
 DataBlockContainerReference ReadoutEquipmentPlayer::getNextBlock()
 {
+  if (!isDataOn) {
+    return nullptr;
+  }
+
   // query memory pool for a free block
   DataBlockContainerReference nextBlock = nullptr;
   try {
