@@ -1098,6 +1098,7 @@ int ConsumerFMQchannel::DDformatMessage(DataSetReference &bc, DDMessage &ddm) {
 
 int ConsumerFMQchannel::DDsendMessage(DDMessage &ddm) {
   // send the messages
+  // TODO: use a timeout to avoid non-blocking ???
   if (sendingChannel->Send(ddm.messagesToSend) >= 0) {
     gReadoutStats.counters.bytesFairMQ += ddm.subTimeframeTotalSize;
     gReadoutStats.counters.timeframeIdFairMQ = ddm.stfHeader->timeframeId;
