@@ -178,7 +178,7 @@ class ConsumerFMQchannel : public Consumer
   }
   
   // pool of threads for the processing
-  int nwThreads = 0;
+  int nwThreads = 1;
   int wThreadFifoSize = 0;
 
   struct DDMessage {
@@ -412,6 +412,9 @@ class ConsumerFMQchannel : public Consumer
 
     // configuration parameter: | consumer-FairMQChannel-* | threads | int | 0 | If set, a pool of thread is created for the data processing. |
     cfg.getOptionalValue<int>(cfgEntryPoint + ".threads", nwThreads);
+    if (nwThreads) {
+      theLog.log(LogInfoDevel_(3008), "Using %d threads for DD formatting", nwThreads);
+    }
     if (nwThreads) {
       wThreadFifoSize = 88 / nwThreads; // 1s of buffer
       wThreads.resize(nwThreads);
@@ -1194,8 +1197,12 @@ int ConsumerFMQchannel::DDformatMessage(DataSetReference &bc, DDMessage &ddm) {
 
 int ConsumerFMQchannel::DDsendMessage(DDMessage &ddm) {
   // send the messages
-  // TODO: use a timeout to avoid non-blocking ???
-  if (sendingChannel->Send(ddm.messagesToSend) >= 0) {
+  int err;
+  while (!wThreadShutdown) {
+    err = sendingChannel->Send(ddm.messagesToSend, 500);
+    if (err>=0) break;
+  }
+  if ( err >= 0) {
     gReadoutStats.counters.bytesFairMQ += ddm.subTimeframeTotalSize;
     gReadoutStats.counters.timeframeIdFairMQ = ddm.stfHeader->timeframeId;
     gReadoutStats.counters.notify++;
