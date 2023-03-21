@@ -157,6 +157,7 @@ class ConsumerFMQchannel : public Consumer
   bool enableStfSuperpage = false; // optimized stf transport: minimize STF packets
   bool enableRawFormatDatablock = false;
   int enablePackedCopy = 1; // default mode for repacking of page overlapping HBF. 0 = one page per copy, 1 = change page on TF only
+  int dropIncomplete = 0; // TF with missing packets are discarded
 
   std::shared_ptr<MemoryBank> memBank; // a dedicated memory bank allocated by FMQ mechanism
   std::shared_ptr<MemoryPagesPool> mp; // a memory pool from which to allocate data pages
@@ -167,6 +168,8 @@ class ConsumerFMQchannel : public Consumer
   CounterStats repackSizeStats; // keep track of page size used when repacking
   uint64_t nPagesUsedForRepack = 0; // count pages used for repack
   uint64_t nPagesUsedInput = 0; // count pages received
+  uint64_t nIncompleteHBF = 0; // count incomplete HBF
+  uint64_t TFdropped = 0; // number of TF dropped
 
   // custom log function for memory pool
   void mplog(const std::string &msg) {
@@ -175,7 +178,7 @@ class ConsumerFMQchannel : public Consumer
   }
   
   // pool of threads for the processing
-  int nwThreads = 0;
+  int nwThreads = 1;
   int wThreadFifoSize = 0;
 
   struct DDMessage {
@@ -237,6 +240,12 @@ class ConsumerFMQchannel : public Consumer
       disableSending = true;
     } else {
       gReadoutStats.isFairMQ = 1; // enable FMQ stats
+    }
+
+    // configuration parameter: | consumer-FairMQChannel-* | dropIncomplete | int | 0 | If set, TF with incomplete HBF (i.e. HBF having missing packets) are discarded. |
+    cfg.getOptionalValue<int>(cfgEntryPoint + ".dropIncomplete", dropIncomplete, dropIncomplete);
+    if (dropIncomplete) {
+      theLog.log(LogInfoDevel_(3002), "TF with incomplete HBF will be discarded");
     }
 
     // configuration parameter: | consumer-FairMQChannel-* | enableRawFormat | int | 0 | If 0, data is pushed 1 STF header + 1 part per HBF. If 1, data is pushed in raw format without STF headers, 1 FMQ message per data page. If 2, format is 1 STF header + 1 part per data page.|
@@ -404,6 +413,9 @@ class ConsumerFMQchannel : public Consumer
     // configuration parameter: | consumer-FairMQChannel-* | threads | int | 0 | If set, a pool of thread is created for the data processing. |
     cfg.getOptionalValue<int>(cfgEntryPoint + ".threads", nwThreads);
     if (nwThreads) {
+      theLog.log(LogInfoDevel_(3008), "Using %d threads for DD formatting", nwThreads);
+    }
+    if (nwThreads) {
       wThreadFifoSize = 88 / nwThreads; // 1s of buffer
       wThreads.resize(nwThreads);
       wThreadShutdown = 0;
@@ -439,6 +451,10 @@ class ConsumerFMQchannel : public Consumer
       theLog.log(LogInfoDevel_(3003), "Consumer %s - STFB repacking statistics ... number: %" PRIu64 " average page size: %" PRIu64 " max page size: %" PRIu64 " repacked/received = %" PRIu64 "/%" PRIu64 " = %.1f%%", name.c_str(), repackSizeStats.getCount(), (uint64_t)repackSizeStats.getAverage(), repackSizeStats.getMaximum(), nPagesUsedForRepack, nPagesUsedInput, nPagesUsedForRepack * 100.0 / nPagesUsedInput);
     }
     
+    if (TFdropped) {
+      theLog.log(LogInfoSupport_(3235), "Consumer %s - %llu incomplete TF dropped", name.c_str(), (unsigned long long)TFdropped);
+    }
+
     // release in reverse order
     mp = nullptr;
     memoryBuffer = nullptr; // warning: data range may still be referenced in memory bank manager
@@ -657,6 +673,7 @@ class ConsumerFMQchannel : public Consumer
 	
      wThreadOutput msglist;
      msglist = std::make_shared<std::vector<DDMessage>>();
+     bool dropEntireTFonError = 0; // when set, the whole TF is dropped in case of issue on one link
      if (msglist == nullptr) {
        isError = 1;
      } else {
@@ -666,10 +683,14 @@ class ConsumerFMQchannel : public Consumer
 	 msglist->emplace_back();
 	 if (DDformatMessage(bc, msglist->back())!=0) {
            isError = 1;
-           break;
+           msglist->pop_back();
+           if (dropEntireTFonError) break;
 	 }
        }
-       if (!isError) {
+       // ensure end-of-timeframe flag is set for last message
+       msglist->back().stfHeader->lastTFMessage = 1;
+       // send msg
+       if ((!isError)||(!dropEntireTFonError)) {
 	 if (wThreads[thIx].output->push(std::move(msglist))) {
            isError = 1;
 	 } else {
@@ -783,6 +804,50 @@ int ConsumerFMQchannel::DDformatMessage(DataSetReference &bc, DDMessage &ddm) {
   unsigned int lastHBid = -1;
   int isFirst = true;
   int ix = 0;
+  static InfoLogger::AutoMuteToken tokenHBF(LogWarningSupport_(3004));
+  uint16_t HBFpagescounterFirst = 0; // pages counter for first RDH in HBF
+  uint16_t HBFpagescounterLast = 0; // pages counter for last RDH in HBF
+  int HBFpagescounter = 0; // number of pages in current HBF
+  int HBFstop = 0; // number of stop bits for current HBF
+  int HBFstopLast = 0; // stop bit value for last RDH in HBF
+  int HBFisOk = 1;
+  int HBFisFirst = 1;
+  int HBFincomplete = 0;
+  std::string HBFerr;
+  int HBFerrid = 0;
+  auto HBFincrerr = [&] () {
+    HBFerr += " (" + std::to_string(++HBFerrid) + ") ";
+  };
+  auto checkLastHB = [&] () {
+    if (HBFisFirst) {
+      return; // no HBF seen so far
+    }
+    if (HBFstop != 1) {
+      HBFincrerr();
+      HBFerr += "wrong number of stop bits: " + std::to_string((int)HBFstop);
+      HBFisOk = 0;
+    }
+    if (HBFstopLast != 1) {
+      HBFincrerr();
+      HBFerr += "no stop bit on last RDH";
+      HBFisOk = 0;
+    }
+    //printf("HB 0x%X = %d pages\n",(int)lastHBid, (int)HBFpagescounter);
+
+    if (!HBFisOk) {
+      HBFincomplete++;
+      theLog.log(tokenHBF, "TF%d equipment %d link %d HBF 0x%X is incomplete: %s", (int)stfHeader->timeframeId, (int)stfHeader->equipmentId, (int)stfHeader->linkId, (int)lastHBid, HBFerr.c_str());
+    }
+
+    // reset counters
+    HBFpagescounter = 0;
+    HBFstop = 0;
+    HBFisOk = 1;
+    HBFisFirst = 1;
+    HBFerrid = 0;
+    HBFerr = "";
+  };
+
   for (auto& br : *bc) {
     ix++;
     DataBlock* b = br->getData();
@@ -830,6 +895,8 @@ int ConsumerFMQchannel::DDformatMessage(DataSetReference &bc, DDMessage &ddm) {
       // printf("checking %p : %d\n",b,offset);
       o2::Header::RAWDataHeader* rdh = (o2::Header::RAWDataHeader*)&b->data[offset];
       if (rdh->heartbeatOrbit != lastHBid) {
+        // this is a new HBF, finalize checks of previous one and reset
+        checkLastHB();
         lastHBid = rdh->heartbeatOrbit;
         // printf("offset %d - HBid=%d\n",offset,lastHBid);
       }
@@ -839,6 +906,27 @@ int ConsumerFMQchannel::DDformatMessage(DataSetReference &bc, DDMessage &ddm) {
         // dumpRDH(rdh);
         // printf("block %p : offset %d = %p\n",b,offset,rdh);
       }
+
+      uint16_t HBFpagescounterNew = (uint16_t)rdh->pagesCounter;
+      if (HBFisFirst) {
+        HBFpagescounterFirst = HBFpagescounterNew;
+        HBFisFirst = 0;
+        if (HBFpagescounterFirst != 0) {
+          HBFincrerr();
+          HBFerr += "first pagesCounter not zero: " + std::to_string((int)HBFpagescounterFirst);
+        }
+      } else {
+        if (HBFpagescounterNew != HBFpagescounterLast + 1) {
+          HBFincrerr();
+          HBFerr += "pagesCounter jump from " + std::to_string((int)HBFpagescounterLast)+ " to " + std::to_string( (int)HBFpagescounterNew);
+          HBFisOk = 0;
+        }
+      }
+      HBFpagescounter++;
+      HBFpagescounterLast = HBFpagescounterNew;
+      HBFstop += rdh->stopBit;
+      HBFstopLast = rdh->stopBit;
+
       uint16_t offsetNextPacket = rdh->offsetNextPacket;
       if (offsetNextPacket == 0) {
         break;
@@ -850,6 +938,17 @@ int ConsumerFMQchannel::DDformatMessage(DataSetReference &bc, DDMessage &ddm) {
   headerBlock->getData()->header.dataSize=sizeof(SubTimeframe);
   ddm.subTimeframeTotalSize += ddm.subTimeframeDataSize;
   ddm.subTimeframeFMQSize = 0;
+
+  // this is a new HBF, finalize checks of previous one
+  checkLastHB();
+
+  nIncompleteHBF += HBFincomplete;
+  if ((HBFincomplete) && (dropIncomplete)) {
+    static InfoLogger::AutoMuteToken tokenTFdropped(LogWarningSupport_(3235));
+    TFdropped++;
+    theLog.log(tokenTFdropped, "%s eq %d link %d : TF %d dropped (total: %llu)", this->name.c_str(), (int)stfHeader->equipmentId, (int)stfHeader->linkId, (int)stfHeader->timeframeId, (unsigned long long)TFdropped);
+    return -1;
+  }
   
   // printf("TF %d link %d = %d blocks \n",(int)stfHeader->timeframeId,(int)stfHeader->linkId,(int)bc->size());
 
@@ -1098,7 +1197,12 @@ int ConsumerFMQchannel::DDformatMessage(DataSetReference &bc, DDMessage &ddm) {
 
 int ConsumerFMQchannel::DDsendMessage(DDMessage &ddm) {
   // send the messages
-  if (sendingChannel->Send(ddm.messagesToSend) >= 0) {
+  int err;
+  while (!wThreadShutdown) {
+    err = sendingChannel->Send(ddm.messagesToSend, 500);
+    if (err>=0) break;
+  }
+  if ( err >= 0) {
     gReadoutStats.counters.bytesFairMQ += ddm.subTimeframeTotalSize;
     gReadoutStats.counters.timeframeIdFairMQ = ddm.stfHeader->timeframeId;
     gReadoutStats.counters.notify++;
@@ -1128,6 +1232,7 @@ int ConsumerFMQchannel::processForDataDistribution(DataSetReference& bc) {
     if (DDformatMessage(bc, msg)) {
       isError = 1;
     } else {
+      // sending now means flag for end-of-timeframe might be missing if something happens with next message
       if (DDsendMessage(msg)) {
         isError = 1;
       }

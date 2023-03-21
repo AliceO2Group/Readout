@@ -309,7 +309,8 @@ int main(int argc, const char** argv)
   unsigned long long nMsgParts = 0;
   unsigned long long nBytes = 0;
   unsigned long long nTF = 0;
-  unsigned long long lastTFid = 0;
+  unsigned long long lastTFid = undefinedTimeframeId;
+  bool flagLastTFMessage = 0;
   bool isMultiPart = false;
 
   double copyRatio = 0;
@@ -382,12 +383,18 @@ int main(int argc, const char** argv)
                 }
               }
 	      if (stf->timeframeId != lastTFid) {
-	        if ((lastTFid) && (stf->timeframeId != lastTFid + 1)) {
-		  theLog.log(LogWarningSupport_(3237), "Non-continuous TF id ordering: was %d now %d", (int)lastTFid, (int)stf->timeframeId );
-		}
+	        if (lastTFid != undefinedTimeframeId) {
+                  if ((lastTFid) && (stf->timeframeId != lastTFid + 1)) {
+		    theLog.log(LogWarningSupport_(3237), "Non-continuous TF id ordering: was %d now %d", (int)lastTFid, (int)stf->timeframeId );
+		  }
+                  if (flagLastTFMessage != 1) {
+                    theLog.log(LogWarningSupport_(3237), "TF id changed without lastTFMessage set in TF %d", (int)lastTFid);
+                  }
+                }
 	        lastTFid = stf->timeframeId;
 	        nTF++;
 	      }
+              flagLastTFMessage = stf->lastTFMessage;
             } else {
               if ((numberOfHBF != 0) && (stf->isRdhFormat)) {
                 // then we have 1 part per HBF
@@ -402,7 +409,7 @@ int main(int argc, const char** argv)
                   RdhHandle h(((uint8_t*)data) + pageOffset);
 
                   if (dumpNext) {
-                    printf("Receiving TF %d CRU %d.%d link %d : %d HBf\n", (int)stf->timeframeId, (int)h.getCruId(), (int)h.getEndPointId(), (int)stf->linkId, numberOfHBF);
+                    printf("Receiving TF %d CRU %d.%d link %d : %d HBf %c\n", (int)stf->timeframeId, (int)h.getCruId(), (int)h.getEndPointId(), (int)stf->linkId, numberOfHBF, (int)stf->lastTFMessage ? '*' : '.' );
                     dumpNext = false;
                   }
 

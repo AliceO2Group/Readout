@@ -533,3 +533,10 @@ This file describes the main feature changes for each readout.exe released versi
 
 ## v2.17.2 - 08/03/2023
 - Updated naming of files saved to disk when equipment-*.saveErrorPagesMax is set. Now includes timestamp, equipment id, and file counter: e.g. /tmp/readout-t1678288819-eq1-superpage.1.raw
+
+## v2.18.0 - 21/03/2023
+- Updated configuration parameters:
+  - added consumer-FairMQchannel.dropIncomplete: when set, TF with incomplete HBF are discarded.
+- Minor internal changes (not for users):
+  - equipment-player: stop generating data at beginning of EOR, for faster flushing.
+  - consumer.FairMQchannel: using thread mode by default for DD formatting (still 1 thread by default, but better data checks than without threading mode). Using non-blocking FMQ send for faster handling of EOR if no process on the other side.
