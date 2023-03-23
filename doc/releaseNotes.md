@@ -540,3 +540,7 @@ This file describes the main feature changes for each readout.exe released versi
 - Minor internal changes (not for users):
   - equipment-player: stop generating data at beginning of EOR, for faster flushing.
   - consumer.FairMQchannel: using thread mode by default for DD formatting (still 1 thread by default, but better data checks than without threading mode). Using non-blocking FMQ send for faster handling of EOR if no process on the other side.
+
+## v2.18.1 - 23/03/2023
+- Optimized EOR sequence in case FMQ stuck, as per timeout readout.flushConsumerTimeout definition. Pending data are discarded.
+- Moved FMQ repack stats logs at STOP instead of RESET.

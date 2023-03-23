@@ -200,11 +200,13 @@ class ConsumerFMQchannel : public Consumer
     std::unique_ptr<AliceO2::Common::Fifo<wThreadInput>> input;
     std::unique_ptr<AliceO2::Common::Fifo<wThreadOutput>> output;
     std::unique_ptr<std::thread> thread;
+    bool isRunning;
   };
   std::vector<wThread> wThreads;
   int wThreadShutdown = 0;
   const int wThreadSleepTime = 1000; // sleep time in microseconds.   
   std::unique_ptr<std::thread> senderThread; // this one empties the output FIFOs of the wThreads
+  bool senderThreadIsRunning;
   int wThreadIxWrite = 0; // push data round-robin in wThreads
   int wThreadIxRead = 0; // read data round-robin in wThreads
   void cleanupThreads() {
@@ -224,10 +226,14 @@ class ConsumerFMQchannel : public Consumer
       nwThreads = 0;
     }
   }
+  std::atomic<uint64_t> nTFdiscardedEOR = 0;
   
   int processForDataDistribution(DataSetReference& bc);
  
  public:
+
+  int start();
+  int stop();
 
   ConsumerFMQchannel(ConfigFile& cfg, std::string cfgEntryPoint) : Consumer(cfg, cfgEntryPoint)
   {
@@ -445,16 +451,6 @@ class ConsumerFMQchannel : public Consumer
     // stop threads
     cleanupThreads();
   
-    // log memory pool statistics
-    if (mp!=nullptr) {
-      theLog.log(LogInfoDevel_(3003), "Consumer %s - memory pool statistics ... %s", name.c_str(), mp->getStats().c_str());
-      theLog.log(LogInfoDevel_(3003), "Consumer %s - STFB repacking statistics ... number: %" PRIu64 " average page size: %" PRIu64 " max page size: %" PRIu64 " repacked/received = %" PRIu64 "/%" PRIu64 " = %.1f%%", name.c_str(), repackSizeStats.getCount(), (uint64_t)repackSizeStats.getAverage(), repackSizeStats.getMaximum(), nPagesUsedForRepack, nPagesUsedInput, nPagesUsedForRepack * 100.0 / nPagesUsedInput);
-    }
-    
-    if (TFdropped) {
-      theLog.log(LogInfoSupport_(3235), "Consumer %s - %llu incomplete TF dropped", name.c_str(), (unsigned long long)TFdropped);
-    }
-
     // release in reverse order
     mp = nullptr;
     memoryBuffer = nullptr; // warning: data range may still be referenced in memory bank manager
@@ -643,6 +639,19 @@ class ConsumerFMQchannel : public Consumer
        break;
      }
 
+     if (!isRunning) {
+       // when not running, empty incoming buffer and get ready to start
+       wThreadInput tf;
+       while ( wThreads[thIx].input->pop(tf) == 0) {
+         nTFdiscardedEOR++;
+       }
+       pushCount = 0;
+       wThreads[thIx].isRunning = 0;
+       usleep(wThreadSleepTime);
+       continue;
+     }
+     wThreads[thIx].isRunning = 1;
+
      // wait that there is a slot in outgoing FIFO
      if (wThreads[thIx].output->isFull()) {
        usleep(wThreadSleepTime);
@@ -716,6 +725,22 @@ class ConsumerFMQchannel : public Consumer
        break;
      }
      
+     if (!isRunning) {
+       // when not running, empty output buffer and get ready to start
+       for (thIx = 0; thIx < nwThreads; thIx++) {
+         wThreadOutput msglist;
+         while ( wThreads[thIx].output->pop(msglist) == 0) {
+           nTFdiscardedEOR++;
+         }
+       }
+       thIx = 0;
+       lastTimeframeId = undefinedTimeframeId;
+       senderThreadIsRunning = 0;
+       usleep(wThreadSleepTime);
+       continue;
+     }
+     senderThreadIsRunning = 1;
+
      // get a TF from FIFO
      wThreadOutput msglist;
      if (wThreads[thIx].output->pop(msglist) != 0) {
@@ -748,9 +773,12 @@ class ConsumerFMQchannel : public Consumer
        if (DDsendMessage(msg)) {
          // sending failed
 	 isError = 1;
-      }
+       }
      }
      if (isError) {
+       if (!isRunning) {
+         nTFdiscardedEOR++; // account for this one at EOR flush
+       }
        totalPushError++;
      }
 
@@ -1198,8 +1226,8 @@ int ConsumerFMQchannel::DDformatMessage(DataSetReference &bc, DDMessage &ddm) {
 int ConsumerFMQchannel::DDsendMessage(DDMessage &ddm) {
   // send the messages
   int err;
-  while (!wThreadShutdown) {
-    err = sendingChannel->Send(ddm.messagesToSend, 500);
+  while ((!wThreadShutdown) && (isRunning)) {
+    err = sendingChannel->Send(ddm.messagesToSend, 1 + wThreadSleepTime / 100);
     if (err>=0) break;
   }
   if ( err >= 0) {
@@ -1207,7 +1235,10 @@ int ConsumerFMQchannel::DDsendMessage(DDMessage &ddm) {
     gReadoutStats.counters.timeframeIdFairMQ = ddm.stfHeader->timeframeId;
     gReadoutStats.counters.notify++;
   } else {
-    theLog.log(LogErrorSupport_(3233), "Sending failed");
+    if ((!wThreadShutdown) && (isRunning)) {
+      static InfoLogger::AutoMuteToken logtokenfmq(LogWarningSupport_(3233), 1, 60);
+      theLog.log(logtokenfmq, "FMQ sending failed");
+    }
     return -1;
   }
 
@@ -1316,6 +1347,74 @@ int ConsumerFMQchannel::processForDataDistribution(DataSetReference& bc) {
   return 0;
 }
 
+int ConsumerFMQchannel::start() {
+  nTFdiscardedEOR = 0;
+
+  repackSizeStats.reset();
+  nPagesUsedForRepack = 0;
+  nPagesUsedInput = 0;
+  nIncompleteHBF = 0;
+  TFdropped = 0;
+
+  return Consumer::start();
+}
+int ConsumerFMQchannel::stop() {
+  nTFdiscardedEOR = 0;
+  isRunning = 0;
+  double timeout = 1.0; // 1s should be enough, it was tested that FMQ usually release pages every 0.5s
+
+  theLog.log(LogInfoDevel_(3003), "Consumer %s - cleaning up pending data, timeout = %.2fs", name.c_str(), timeout);
+
+  AliceO2::Common::Timer stopTimer;
+  stopTimer.reset(timeout * 1000000); // in microseconds
+
+  // wait for threads for a minimum time
+  while (!stopTimer.isTimeout()) {
+    usleep(wThreadSleepTime); // first leave a chance to update isRunning flag
+    int nRunning = 0;
+    for (auto& w : wThreads) {
+      if (w.thread != nullptr) {
+        nRunning += w.isRunning;
+      }
+    }
+    if (!nRunning) {
+      break;
+    }
+  }
+  if (senderThread) {
+    senderThreadIsRunning=1; // ensure we do another iteration now that working threads cleaned
+    while (!stopTimer.isTimeout()) {
+      usleep(wThreadSleepTime); // first leave a chance to update isRunning flag
+      if (!senderThreadIsRunning) {
+        break;
+      }
+    }
+  }
+  // FMQ release is asynchronous... wait until all pages released
+  if (gReadoutStats.counters.pagesPendingFairMQ.load() != 0) {
+    theLog.log(LogInfoDevel_(3003), "Consumer %s - waiting FMQ to release %" PRIu64 " pages", name.c_str(), gReadoutStats.counters.pagesPendingFairMQ.load());
+  }
+  while (!stopTimer.isTimeout()) {
+    if (gReadoutStats.counters.pagesPendingFairMQ.load() == 0) break;
+    usleep(wThreadSleepTime);
+  }
+
+  // report
+  theLog.log(LogInfoDevel_(3003), "Consumer %s - discarded %" PRIu64 " TFs from buffer at End Of Run", name.c_str(), nTFdiscardedEOR.load());
+
+  // log memory pool statistics
+  if (mp!=nullptr) {
+    theLog.log(LogInfoDevel_(3003), "Consumer %s - memory pool statistics ... %s", name.c_str(), mp->getStats().c_str());
+    theLog.log(LogInfoDevel_(3003), "Consumer %s - STFB repacking statistics ... number: %" PRIu64 " average page size: %" PRIu64 " max page size: %" PRIu64 " repacked/received = %" PRIu64 "/%" PRIu64 " = %.1f%%", name.c_str(), repackSizeStats.getCount(), (uint64_t)repackSizeStats.getAverage(), repackSizeStats.getMaximum(), nPagesUsedForRepack, nPagesUsedInput, nPagesUsedForRepack * 100.0 / nPagesUsedInput);
+  }
+
+  if (TFdropped) {
+    theLog.log(LogInfoSupport_(3235), "Consumer %s - %llu incomplete TF dropped", name.c_str(), (unsigned long long)TFdropped);
+  }
+
+  // wait threads completed
+  return Consumer::stop();
+}
 
 std::unique_ptr<Consumer> getUniqueConsumerFMQchannel(ConfigFile& cfg, std::string cfgEntryPoint) { return std::make_unique<ConsumerFMQchannel>(cfg, cfgEntryPoint); }
 

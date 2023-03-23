@@ -32,6 +32,7 @@ class Consumer
   // Function called just before starting data taking. Data will soon start to flow in.
   virtual int start()
   {
+    isRunning = 1;
     totalPushSuccess = 0;
     totalPushError = 0;
     totalBlocksFiltered = 0;
@@ -42,6 +43,7 @@ class Consumer
   // Function called just after stopping data taking, after the last call to pushData(). Not called before input FIFO empty.
   virtual int stop()
   {
+    isRunning = 0;
     theLog.log(LogInfoDevel_(3003), "Push statistics for %s: %llu err / %llu total (DataSets), %llu/%llu filtered (DataBlocks)",
       this->name.c_str(), totalPushError.load(), totalPushError.load() + totalPushSuccess.load(), totalBlocksFiltered.load(), totalBlocksUnfiltered.load() + totalBlocksFiltered.load());
     return 0;
@@ -65,6 +67,7 @@ class Consumer
   // if link in list of included filters, or included filters list empty: 1
   // empty datablocks are always excluded
   bool isDataBlockFilterOk(const DataBlock&);
+  bool isRunning = 0;                         // flag to indicate running state
 
  private:
   bool filterLinksEnabled = 0;                // when set, defines a filter link
