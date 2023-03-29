@@ -157,6 +157,7 @@ class ConsumerFMQchannel : public Consumer
   bool enableStfSuperpage = false; // optimized stf transport: minimize STF packets
   bool enableRawFormatDatablock = false;
   int enablePackedCopy = 1; // default mode for repacking of page overlapping HBF. 0 = one page per copy, 1 = change page on TF only
+  int checkIncomplete = 0; // TF are checked to detect missing packets
   int dropIncomplete = 0; // TF with missing packets are discarded
 
   std::shared_ptr<MemoryBank> memBank; // a dedicated memory bank allocated by FMQ mechanism
@@ -248,10 +249,16 @@ class ConsumerFMQchannel : public Consumer
       gReadoutStats.isFairMQ = 1; // enable FMQ stats
     }
 
+    // configuration parameter: | consumer-FairMQChannel-* | checkIncomplete | int | 0 | If set, readout checks for the completeness of HBF and issues warnings. Set automatically when dropIncomplete=1. |
+    cfg.getOptionalValue<int>(cfgEntryPoint + ".checkIncomplete", checkIncomplete, checkIncomplete);
+
     // configuration parameter: | consumer-FairMQChannel-* | dropIncomplete | int | 0 | If set, TF with incomplete HBF (i.e. HBF having missing packets) are discarded. |
     cfg.getOptionalValue<int>(cfgEntryPoint + ".dropIncomplete", dropIncomplete, dropIncomplete);
     if (dropIncomplete) {
+      checkIncomplete = 1;
       theLog.log(LogInfoDevel_(3002), "TF with incomplete HBF will be discarded");
+    } else if (checkIncomplete) {
+      theLog.log(LogInfoDevel_(3002), "TF with incomplete HBF will be checked");
     }
 
     // configuration parameter: | consumer-FairMQChannel-* | enableRawFormat | int | 0 | If 0, data is pushed 1 STF header + 1 part per HBF. If 1, data is pushed in raw format without STF headers, 1 FMQ message per data page. If 2, format is 1 STF header + 1 part per data page.|
@@ -847,6 +854,7 @@ int ConsumerFMQchannel::DDformatMessage(DataSetReference &bc, DDMessage &ddm) {
     HBFerr += " (" + std::to_string(++HBFerrid) + ") ";
   };
   auto checkLastHB = [&] () {
+    if (!checkIncomplete) return;
     if (HBFisFirst) {
       return; // no HBF seen so far
     }
@@ -935,25 +943,27 @@ int ConsumerFMQchannel::DDformatMessage(DataSetReference &bc, DDMessage &ddm) {
         // printf("block %p : offset %d = %p\n",b,offset,rdh);
       }
 
-      uint16_t HBFpagescounterNew = (uint16_t)rdh->pagesCounter;
-      if (HBFisFirst) {
-        HBFpagescounterFirst = HBFpagescounterNew;
-        HBFisFirst = 0;
-        if (HBFpagescounterFirst != 0) {
-          HBFincrerr();
-          HBFerr += "first pagesCounter not zero: " + std::to_string((int)HBFpagescounterFirst);
+      if (checkIncomplete) {
+        uint16_t HBFpagescounterNew = (uint16_t)rdh->pagesCounter;
+        if (HBFisFirst) {
+          HBFpagescounterFirst = HBFpagescounterNew;
+          HBFisFirst = 0;
+          if (HBFpagescounterFirst != 0) {
+            HBFincrerr();
+            HBFerr += "first pagesCounter not zero: " + std::to_string((int)HBFpagescounterFirst);
+          }
+        } else {
+          if (HBFpagescounterNew != HBFpagescounterLast + 1) {
+            HBFincrerr();
+            HBFerr += "pagesCounter jump from " + std::to_string((int)HBFpagescounterLast)+ " to " + std::to_string( (int)HBFpagescounterNew);
+            HBFisOk = 0;
+          }
         }
-      } else {
-        if (HBFpagescounterNew != HBFpagescounterLast + 1) {
-          HBFincrerr();
-          HBFerr += "pagesCounter jump from " + std::to_string((int)HBFpagescounterLast)+ " to " + std::to_string( (int)HBFpagescounterNew);
-          HBFisOk = 0;
-        }
+        HBFpagescounter++;
+        HBFpagescounterLast = HBFpagescounterNew;
+        HBFstop += rdh->stopBit;
+        HBFstopLast = rdh->stopBit;
       }
-      HBFpagescounter++;
-      HBFpagescounterLast = HBFpagescounterNew;
-      HBFstop += rdh->stopBit;
-      HBFstopLast = rdh->stopBit;
 
       uint16_t offsetNextPacket = rdh->offsetNextPacket;
       if (offsetNextPacket == 0) {

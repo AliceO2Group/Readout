@@ -30,6 +30,7 @@ set configurationParametersDescriptor {
 | consumer-* | numaNode | int | -1 | If set (>=0), memory / thread will try to use given NUMA node. |
 | consumer-* | stopOnError | int | 0 | If 1, readout will stop automatically on consumer error. |
 | consumer-data-sampling-* | address | string | ipc:///tmp/readout-pipe-1 | Address of the data sampling. |
+| consumer-FairMQChannel-* | checkIncomplete | int | 0 | If set, readout checks for the completeness of HBF and issues warnings. Set automatically when dropIncomplete=1. |
 | consumer-FairMQChannel-* | checkResources | string | | Check beforehand if unmanaged region would fit in given list of resources. Comma-separated list of items to be checked: eg /dev/shm, MemFree, MemAvailable. (any filesystem path, and any /proc/meminfo entry).|
 | consumer-FairMQChannel-* | disableSending | int | 0 | If set, no data is output to FMQ channel. Used for performance test to create FMQ shared memory segment without pushing the data. |
 | consumer-FairMQChannel-* | dropIncomplete | int | 0 | If set, TF with incomplete HBF (i.e. HBF having missing packets) are discarded. |

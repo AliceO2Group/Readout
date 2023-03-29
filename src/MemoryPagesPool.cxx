@@ -589,6 +589,27 @@ std::string MemoryPagesPool::getDetailedStats() {
   return report;
 }
 
+void MemoryPagesPool::getDetailedStats(Stats &s) {
+  s.id = id;
+  s.t0 = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count()/1000000.0;
+  auto now = std::chrono::steady_clock::now();
+  std::unique_lock<std::mutex> lock(pagesAvailableMutexPush);
+  s.states.resize(pages.size());
+  for(unsigned int ix = 0 ; ix < pages.size(); ix++) {
+    auto ps = pages[ix].currentPageState;
+    s.states[ix].state = ps;
+    double t = 0;
+    if (ps != MemoryPage::PageState::Undefined) {
+      if (pages[ix].pageStateTimes[(int)ps].t0IsValid) {
+        t = (std::chrono::duration<double>(now - pages[ix].pageStateTimes[(int)ps].t0)).count();
+      }
+    }
+    s.states[ix].timeInCurrentState = t;
+  }
+  s.t1 = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count()/1000000.0;
+}
+
+
 // todo:
 // add FMQ release rate
 // start/stop/start -> reorder pages in pool FIFO

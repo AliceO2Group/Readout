@@ -131,6 +131,20 @@ class MemoryPagesPool
   std::string getStats(); // return a string summarizing memory pool usage statistics
   std::string getDetailedStats(); // return detailed stats
 
+  struct PageStat {
+    MemoryPage::PageState state; // the current state of given page
+    float timeInCurrentState; //the time (seconds) since the page is in current state
+  };
+
+  struct Stats {
+    int id; // pool id
+    double t0; // beginning of query
+    double t1; // end of query
+    std::vector<PageStat> states; // state of each page
+  };
+
+  void getDetailedStats(Stats &s); // get detailed stats
+
   // an optional user-provided logging function for all memory pool related ops (including warnings on low)
   typedef std::function<void(const std::string &)> LogCallback;
 
