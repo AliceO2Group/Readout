@@ -548,3 +548,6 @@ This file describes the main feature changes for each readout.exe released versi
 ## v2.18.2 - 29/03/2023
 - Updated configuration parameters:
   - added consumer-FairMQchannel.checkIncomplete: when set, TF with incomplete HBF are detected and warnings issued. Off by default (in particular, check is currently not valid for DDL detector). In previous v2.18 versions, this check was enabled by default.
+
+## v2.18.3 - 05/04/2023
+- Fixed bug introduced in v2.18.0 causing crash when overlapping HBF copy buffer empty.

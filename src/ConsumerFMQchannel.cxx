@@ -703,10 +703,12 @@ class ConsumerFMQchannel : public Consumer
            if (dropEntireTFonError) break;
 	 }
        }
-       // ensure end-of-timeframe flag is set for last message
-       msglist->back().stfHeader->lastTFMessage = 1;
        // send msg
        if ((!isError)||(!dropEntireTFonError)) {
+         // ensure end-of-timeframe flag is set for last message
+         if (msglist->size()) {
+           msglist->back().stfHeader->lastTFMessage = 1;
+         }
 	 if (wThreads[thIx].output->push(std::move(msglist))) {
            isError = 1;
 	 } else {
