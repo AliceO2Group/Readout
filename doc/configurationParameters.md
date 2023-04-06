@@ -69,7 +69,8 @@ The parameters related to 3rd-party libraries are described here for convenience
 | consumer-FairMQChannel-* | memoryPoolNumberOfPages | int | 100 | c.f. same parameter in bank-*. |
 | consumer-FairMQChannel-* | memoryPoolPageSize | bytes | 128k | c.f. same parameter in bank-*. |
 | consumer-FairMQChannel-* | sessionName | string | default | Name of the FMQ session. c.f. FairMQ::FairMQChannel.h |
-| consumer-FairMQChannel-* | threads | int | 0 | If set, a pool of thread is created for the data processing. |
+| consumer-FairMQChannel-* | threads | int | 0 | If set, a pool of threads is created for the data processing. |
+| consumer-FairMQChannel-* | threadsFifoSize | int | 0 | Incoming FIFO size for processing threads. By default, value is guessed. |
 | consumer-FairMQChannel-* | unmanagedMemorySize | bytes |  | Size of the memory region to be created. c.f. FairMQ::FairMQUnmanagedRegion.h. If not set, no special FMQ memory region is created. |
 | consumer-fileRecorder-* | bytesMax | bytes | 0 | Maximum number of bytes to write to each file. Data pages are never truncated, so if writing the full page would exceed this limit, no data from that page is written at all and file is closed. If zero (default), no maximum size set.|
 | consumer-fileRecorder-* | dataBlockHeaderEnabled | int | 0 | Enable (1) or disable (0) the writing to file of the internal readout header (Readout DataBlock.h) between the data pages, to easily navigate through the file without RDH decoding. If disabled, the raw data pages received from CRU are written without further formatting. |

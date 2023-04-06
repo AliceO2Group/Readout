@@ -423,13 +423,13 @@ class ConsumerFMQchannel : public Consumer
     cfg.getOptionalValue<int>(cfgEntryPoint + ".enablePackedCopy", enablePackedCopy);
     theLog.log(LogInfoDevel_(3008), "Packed copy enabled = %d", enablePackedCopy);
 
-    // configuration parameter: | consumer-FairMQChannel-* | threads | int | 0 | If set, a pool of thread is created for the data processing. |
+    // configuration parameter: | consumer-FairMQChannel-* | threads | int | 0 | If set, a pool of threads is created for the data processing. |
     cfg.getOptionalValue<int>(cfgEntryPoint + ".threads", nwThreads);
     if (nwThreads) {
-      theLog.log(LogInfoDevel_(3008), "Using %d threads for DD formatting", nwThreads);
-    }
-    if (nwThreads) {
-      wThreadFifoSize = 88 / nwThreads; // 1s of buffer
+      // configuration parameter: | consumer-FairMQChannel-* | threadsFifoSize | int | 0 | Incoming FIFO size for processing threads. By default, value is guessed. |
+      wThreadFifoSize = memoryPoolNumberOfPages / nwThreads; // by default, enough slots to store all pages from this pool
+      cfg.getOptionalValue<int>(cfgEntryPoint + ".threadsFifoSize", wThreadFifoSize);
+      theLog.log(LogInfoDevel_(3008), "Using %d threads for DD formatting, FIFO size = %d", nwThreads, wThreadFifoSize);
       wThreads.resize(nwThreads);
       wThreadShutdown = 0;
       int isError = 0;
