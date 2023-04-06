@@ -707,7 +707,8 @@ class ConsumerFMQchannel : public Consumer
        if ((!isError)||(!dropEntireTFonError)) {
          // ensure end-of-timeframe flag is set for last message
          if (msglist->size()) {
-           msglist->back().stfHeader->lastTFMessage = 1;
+           // TODO: add a warning + option to force set bit
+           //msglist->back().stfHeader->lastTFMessage = 1;
          }
 	 if (wThreads[thIx].output->push(std::move(msglist))) {
            isError = 1;
