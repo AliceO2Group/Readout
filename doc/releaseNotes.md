@@ -552,9 +552,9 @@ This file describes the main feature changes for each readout.exe released versi
 ## v2.18.3 - 05/04/2023
 - Fixed bug introduced in v2.18.0 causing crash when overlapping HBF copy buffer empty.
 
-## v2.18.4 - 06/06/2023
+## v2.18.4 - 06/04/2023
 - Updated configuration parameters:
   - added consumer-FairMQchannel.threadsFifoSize
 
-## next
+## v2.18.5 - 17/05/2023
 - Fixed bug causing crash in some conditions of buffer empty. Related to same feature (dropIncomplete) as issue fixed in v2.18.3. Different corner case, involving threads, and not always happening.
