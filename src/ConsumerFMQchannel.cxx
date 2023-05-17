@@ -763,7 +763,7 @@ class ConsumerFMQchannel : public Consumer
        thIx = 0;
      }
 
-     if (msglist == nullptr) {
+     if ((msglist == nullptr)||(msglist->size()==0)) {
        // this can happen when an empty item is pushed (in case there was an error processing it)
        // in order to keep all FIFOs in sync round robin
        continue;

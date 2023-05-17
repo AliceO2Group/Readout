@@ -555,3 +555,6 @@ This file describes the main feature changes for each readout.exe released versi
 ## v2.18.4 - 06/06/2023
 - Updated configuration parameters:
   - added consumer-FairMQchannel.threadsFifoSize
+
+## next
+- Fixed bug causing crash in some conditions of buffer empty. Related to same feature (dropIncomplete) as issue fixed in v2.18.3. Different corner case, involving threads, and not always happening.
