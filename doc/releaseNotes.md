@@ -558,3 +558,6 @@ This file describes the main feature changes for each readout.exe released versi
 
 ## v2.18.5 - 17/05/2023
 - Fixed bug causing crash in some conditions of buffer empty. Related to same feature (dropIncomplete) as issue fixed in v2.18.3. Different corner case, involving threads, and not always happening.
+
+## next version
+- o2-readout-test-fmq-memory: more options.
