@@ -198,13 +198,71 @@ class Readout
 
  public:
   ~Readout();
-  int init(int argc, char* argv[]);
-  int configure(const boost::property_tree::ptree& properties);
-  int reset(); // as opposed to configure()
-  int start();
-  int stop(); // as opposed to start()
-  int iterateRunning();
-  int iterateCheck();
+
+  // protected calls catching all exceptions
+  int init(int argc, char* argv[]) {
+    try {
+      return _init(argc, argv);
+    }
+    catch (const std::exception& e) {
+      theLog.log(LogErrorSupport_(3245), "Exception : %s", e.what());
+    }
+    return -1;
+  }
+  int configure(const boost::property_tree::ptree& properties) {
+    try {
+      return _configure(properties);
+    }
+    catch (const std::exception& e) {
+      theLog.log(LogErrorSupport_(3245), "Exception : %s", e.what());
+    }
+    return -1;
+  }
+  int reset() { // as opposed to configure()
+    try {
+      return _reset();
+    }
+    catch (const std::exception& e) {
+      theLog.log(LogErrorSupport_(3245), "Exception : %s", e.what());
+    }
+    return -1;
+  }
+  int start() {
+    try {
+      return _start();
+    }
+    catch (const std::exception& e) {
+      theLog.log(LogErrorSupport_(3245), "Exception : %s", e.what());
+    }
+    return -1;
+  }
+  int stop() { // as opposed to start()
+    try {
+      return _stop();
+    }
+    catch (const std::exception& e) {
+      theLog.log(LogErrorSupport_(3245), "Exception : %s", e.what());
+    }
+    return -1;
+  }
+  int iterateRunning() {
+    try {
+      return _iterateRunning();
+    }
+    catch (const std::exception& e) {
+      theLog.log(LogErrorSupport_(3245), "Exception : %s", e.what());
+    }
+    return -1;
+  }
+  int iterateCheck() {
+    try {
+      return _iterateCheck();
+    }
+    catch (const std::exception& e) {
+      theLog.log(LogErrorSupport_(3245), "Exception : %s", e.what());
+    }
+    return -1;
+  }
 
   void loopRunning(); // called in state "running"
 
@@ -213,6 +271,14 @@ class Readout
   int cfgTimeStop = 0;         // time at which STOP should be executed in standalone mode
 
  private:
+  int _init(int argc, char* argv[]);
+  int _configure(const boost::property_tree::ptree& properties);
+  int _reset(); // as opposed to configure()
+  int _start();
+  int _stop(); // as opposed to start()
+  int _iterateRunning();
+  int _iterateCheck();
+
   ConfigFile cfg;
   const char* cfgFileURI = "";
   const char* cfgFileEntryPoint = ""; // where in the config tree to look for
@@ -330,7 +396,7 @@ void Readout::publishLogbookStats()
 #endif
 }
 
-int Readout::init(int argc, char* argv[])
+int Readout::_init(int argc, char* argv[])
 {
   setThreadName(nullptr);
     
@@ -577,7 +643,7 @@ int Readout::init(int argc, char* argv[])
 
 //#include <boost/property_tree/json_parser.hpp>
 
-int Readout::configure(const boost::property_tree::ptree& properties)
+int Readout::_configure(const boost::property_tree::ptree& properties)
 {
   theLog.log(LogInfoSupport_(3005), "Readout executing CONFIGURE");
   gReadoutStats.counters.state = stringToUint64("> conf");
@@ -1249,7 +1315,7 @@ int Readout::configure(const boost::property_tree::ptree& properties)
   return 0;
 }
 
-int Readout::start()
+int Readout::_start()
 {
   theLog.resetMessageCount();
   theLog.log(LogInfoSupport_(3005), "Readout executing START");
@@ -1359,6 +1425,7 @@ void Readout::loopRunning()
   //ProfilerStart(gperfOutputFile.c_str());
 #endif
 
+  try {
   for (;;) {
     if ((!isRunning) && ((cfgFlushEquipmentTimeout <= 0) || (stopTimer.isTimeout()))) {
       break;
@@ -1423,6 +1490,10 @@ void Readout::loopRunning()
       usleep(1000);
     }
   }
+  }
+  catch (const std::exception& e) {
+    theLog.log(LogErrorSupport_(3245), "Exception : %s", e.what());
+  }
 
 #ifdef CALLGRIND
   CALLGRIND_STOP_INSTRUMENTATION;
@@ -1437,7 +1508,7 @@ void Readout::loopRunning()
   theLog.log(LogInfoDevel, "Exiting main loop");
 }
 
-int Readout::iterateCheck()
+int Readout::_iterateCheck()
 {
   usleep(100000);
   for (auto&& readoutDevice : readoutDevices) {
@@ -1465,7 +1536,7 @@ int Readout::iterateCheck()
   return 0;
 }
 
-int Readout::iterateRunning()
+int Readout::_iterateRunning()
 {
   usleep(100000);
   // printf("running time: %.2f\n",startTimer.getTime());
@@ -1492,7 +1563,7 @@ int Readout::iterateRunning()
   return 0;
 }
 
-int Readout::stop()
+int Readout::_stop()
 {
 
   theLog.log(LogInfoSupport_(3005), "Readout executing STOP");
@@ -1593,7 +1664,7 @@ int Readout::stop()
   return 0;
 }
 
-int Readout::reset()
+int Readout::_reset()
 {
 
   theLog.log(LogInfoSupport_(3005), "Readout executing RESET");

@@ -52,5 +52,6 @@
   { 3242, "Database error", nullptr},
   { 3243, "Control problem", nullptr},
   { 3244, "Should not happen problem", nullptr},
+  { 3245, "Unhandled exception", nullptr},
 */
 
