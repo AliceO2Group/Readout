@@ -1640,6 +1640,10 @@ int Readout::reset()
 
   theLog.log(LogInfoDevel, "Releasing readout devices");
   for (size_t i = 0, size = readoutDevices.size(); i != size; ++i) {
+    if (readoutDevices[i] != nullptr) {
+      // ensure readout equipment threads stopped before releasing resources
+      readoutDevices[i]->abortThread();
+    }
     readoutDevices[i] = nullptr; // effectively deletes the device
   }
   readoutDevices.clear();

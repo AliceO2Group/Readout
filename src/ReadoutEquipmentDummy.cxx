@@ -58,7 +58,9 @@ ReadoutEquipmentDummy::ReadoutEquipmentDummy(ConfigFile& cfg, std::string cfgEnt
   }
 }
 
-ReadoutEquipmentDummy::~ReadoutEquipmentDummy() {}
+ReadoutEquipmentDummy::~ReadoutEquipmentDummy() {
+  abortThread();
+}
 
 DataBlockContainerReference ReadoutEquipmentDummy::getNextBlock()
 {

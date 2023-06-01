@@ -187,6 +187,7 @@ ReadoutEquipmentPlayer::ReadoutEquipmentPlayer(ConfigFile& cfg, std::string cfgE
 
 ReadoutEquipmentPlayer::~ReadoutEquipmentPlayer()
 {
+  abortThread();
   fpLock.lock();
   if (fp != nullptr) {
     fclose(fp);

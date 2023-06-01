@@ -138,7 +138,9 @@ ReadoutEquipmentCruEmulator::ReadoutEquipmentCruEmulator(ConfigFile& cfg, std::s
   payloadDistrib = std::normal_distribution<> (cfgPayloadSize, cfgPayloadSizeStdev * cfgPayloadSize);
 }
 
-ReadoutEquipmentCruEmulator::~ReadoutEquipmentCruEmulator() {}
+ReadoutEquipmentCruEmulator::~ReadoutEquipmentCruEmulator() {
+  abortThread();
+}
 
 Thread::CallbackResult ReadoutEquipmentCruEmulator::prepareBlocks()
 {

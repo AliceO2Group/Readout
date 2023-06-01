@@ -195,7 +195,9 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile& cfg, std::string name) : 
   isInitialized = true;
 }
 
-ReadoutEquipmentRORC::~ReadoutEquipmentRORC() {}
+ReadoutEquipmentRORC::~ReadoutEquipmentRORC() {
+    abortThread();
+}
 
 Thread::CallbackResult ReadoutEquipmentRORC::prepareBlocks()
 {
