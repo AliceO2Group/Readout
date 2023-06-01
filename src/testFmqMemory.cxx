@@ -72,6 +72,7 @@ int fmqMemLock = 1;	// lock FMQ region
 int fmqMemZero = 0;	// zero FMQ region
 int nLoops = 1;         // number of test loops
 int memWaitRelease = 0;	// amount of time to keep the memory before releasing it
+int fmqChannelId = 0;  // id used to name the channel. If -1, use PID.
 
 int main(int argc, char* argv[]) {
 
@@ -105,6 +106,8 @@ int main(int argc, char* argv[]) {
       nLoops = atoi(v);
     } else if (strcmp(k, "memWaitRelease") == 0) {
       memWaitRelease = atoi(v);
+    } else if (strcmp(k, "fmqChannelId") == 0) {
+      fmqChannelId = atoi(v);
     } else {
       printf("unknown option %s\n", k);
       return -1;
@@ -140,10 +143,14 @@ int main(int argc, char* argv[]) {
   FairMQUnmanagedRegionPtr memoryBuffer = nullptr;
   FairMQProgOptions fmqOptions;
 
-  log("Create FMQ channel");
+  if (fmqChannelId == -1) {
+    fmqChannelId = (int)getpid();
+  }
+  auto chname = "readout-test-" + std::to_string(fmqChannelId);
+  log("Create FMQ channel (%s)", chname.c_str());
   // random name: use fair::mq::tools::Uuid()
-  transportFactory = FairMQTransportFactory::CreateTransportFactory("shmem", "readout-test", &fmqOptions);
-  sendingChannel = std::make_unique<FairMQChannel>("readout-test", "pair", transportFactory);
+  transportFactory = FairMQTransportFactory::CreateTransportFactory("shmem", chname, &fmqOptions);
+  sendingChannel = std::make_unique<FairMQChannel>(chname, "pair", transportFactory);
   WAITHERE;
 
   log("Get unmanaged memory (lock=%s, zero=%s)", fmqMemLock ? "yes" : "no", fmqMemZero ? "yes" : "no");
