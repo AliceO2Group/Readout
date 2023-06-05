@@ -193,6 +193,7 @@ ReadoutEquipmentZmq::ReadoutEquipmentZmq(ConfigFile& cfg, std::string cfgEntryPo
 
 ReadoutEquipmentZmq::~ReadoutEquipmentZmq()
 {
+  abortThread();
 
   // stopping snapshot thread
   if (snapshotThread != nullptr) {
