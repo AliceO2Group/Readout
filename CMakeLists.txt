@@ -75,6 +75,7 @@ find_package(BookkeepingApi)
 find_package(ZMQ)
 find_package(MySQL)
 #find_package(gperftools)
+find_package(SDL)
 
 # extract include directories from targets
 get_target_property(InfoLogger_INCLUDE_DIRS AliceO2::InfoLogger INTERFACE_INCLUDE_DIRECTORIES)
@@ -147,9 +148,18 @@ if(${gperftools_FOUND})
   message(STATUS "gperftools enabled")
 endif()
 
+# check SDL
+if(SDL_FOUND)
+  message(
+    STATUS
+    "SDL found: ${SDL_INCLUDE_DIRS} ${SDL_LIBRARIES}")
+  else ()
+    message(STATUS "SDL not found, corresponding features will be disabled.")
+endif()
+
 
 # add flags to enable optional features in Readout, based on available dependencies
-add_compile_definitions($<$<BOOL:${Numa_FOUND}>:WITH_NUMA> $<$<BOOL:${RDMA_FOUND}>:WITH_RDMA> $<$<BOOL:${Configuration_FOUND}>:WITH_CONFIG> $<$<BOOL:${FairMQ_FOUND}>:WITH_FAIRMQ> $<$<BOOL:${Occ_FOUND}>:WITH_OCC> $<$<BOOL:${BookkeepingApi_FOUND}>:WITH_LOGBOOK> $<$<BOOL:${ZMQ_FOUND}>:WITH_ZMQ> $<$<BOOL:${MYSQL_FOUND}>:WITH_DB> $<$<BOOL:${ReadoutCard_FOUND}>:WITH_READOUTCARD> $<$<BOOL:${gperftools_FOUND}>:WITH_GPERFTOOLS>)
+add_compile_definitions($<$<BOOL:${Numa_FOUND}>:WITH_NUMA> $<$<BOOL:${RDMA_FOUND}>:WITH_RDMA> $<$<BOOL:${Configuration_FOUND}>:WITH_CONFIG> $<$<BOOL:${FairMQ_FOUND}>:WITH_FAIRMQ> $<$<BOOL:${Occ_FOUND}>:WITH_OCC> $<$<BOOL:${BookkeepingApi_FOUND}>:WITH_LOGBOOK> $<$<BOOL:${ZMQ_FOUND}>:WITH_ZMQ> $<$<BOOL:${MYSQL_FOUND}>:WITH_DB> $<$<BOOL:${ReadoutCard_FOUND}>:WITH_READOUTCARD> $<$<BOOL:${gperftools_FOUND}>:WITH_GPERFTOOLS> $<$<BOOL:${SDL_FOUND}>:WITH_SDL>)
 
 # define include directories
 set(READOUT_INCLUDE_DIRS
@@ -332,6 +342,9 @@ endif()
 # executables
 ###################################################
 
+# list of executables build (to be completed depending on dependencies found)
+set(executables o2-readout-exe o2-readout-receiver o2-readout-test-fmq-tx o2-readout-test-fmq-rx o2-readout-test-fmq-perf-tx o2-readout-test-fmq-perf-rx o2-readout-test-memorybanks o2-readout-rawreader o2-readout-test-lib-monitoring)
+
 # o2-readout-exe : main executable
 add_executable(
 	o2-readout-exe
@@ -428,7 +441,6 @@ add_executable(
 	o2-readout-eventdump
         ${SOURCE_DIR}/eventDump.cxx
 	$<TARGET_OBJECTS:objReadoutUtils>
-	
 )
 
 # a process to monitor stats of remote readout processes
@@ -441,6 +453,17 @@ add_executable(
 target_include_directories(o2-readout-monitor PRIVATE ${READOUT_INCLUDE_DIRS})
 target_link_libraries(o2-readout-monitor PRIVATE AliceO2::InfoLogger AliceO2::Common ${ZMQ_LIBRARIES})
 
+if(SDL_FOUND AND ZMQ_FOUND)
+# a process to monitor memory of remote readout processes
+add_executable(
+	o2-readout-monitor-memory
+        ${SOURCE_DIR}/readoutMemoryMonitor.cxx
+)
+target_include_directories(o2-readout-monitor-memory PRIVATE ${READOUT_INCLUDE_DIRS})
+target_link_libraries(o2-readout-monitor-memory PRIVATE AliceO2::InfoLogger AliceO2::Common ${ZMQ_LIBRARIES} $<$<BOOL:${SDL_FOUND}>:${SDL_LIBRARIES}> SDL2)
+list (APPEND executables o2-readout-monitor-memory)
+endif()
+
 # a process to admin readout database
 if (MYSQL_FOUND)
 add_executable(
@@ -449,6 +472,7 @@ add_executable(
 	$<TARGET_OBJECTS:objReadoutDatabase>
 )
 target_include_directories(o2-readout-admin-db PRIVATE ${READOUT_INCLUDE_DIRS})
+list (APPEND executables o2-readout-admin-db)
 endif()
 
 endif()
@@ -481,7 +505,6 @@ if (NOT FairMQ_FOUND)
 endif ()
 
 # set include and libraries for all
-set(executables o2-readout-exe o2-readout-receiver o2-readout-test-fmq-tx o2-readout-test-fmq-rx o2-readout-test-fmq-perf-tx o2-readout-test-fmq-perf-rx o2-readout-test-memorybanks o2-readout-rawreader o2-readout-test-lib-monitoring)
 if (ReadoutCard_FOUND)
   list (APPEND executables o2-readout-test-roc o2-readout-test-roc-find)
 endif()
@@ -490,9 +513,6 @@ if (${ZMQ_FOUND})
 endif()
 if (BookkeepingApi_FOUND)
   list (APPEND executables o2-readout-test-lib-bookkeeping)
-endif()
-if (MYSQL_FOUND)
-  list (APPEND executables o2-readout-admin-db)
 endif()
 foreach (exe ${executables})
 	target_include_directories(${exe} PRIVATE ${READOUT_INCLUDE_DIRS})

@@ -61,3 +61,10 @@ The grand-total for the shared memory block is therefore typically: `((128 * (nu
 Which makes, for a FLP with 3 CRUs, 12 links per end-point, 5GB/s data throughput, 0.5s aggregator STF timeout, .25M page size and 30% safety margin: 
 ( (128 * 3 * 2 * 12 * 0.25 + 0.5 * 5000 ) * 1.2 + 42000 ) * 1.3 = 62 GB
 
+
+## Checking runtime memory status
+
+The current usage of the data pages can be checked at runtime with a command such as:
+`o2-readout-monitor-memory tcp://127.0.0.1:50002`
+
+ provided that the parameters `membanksMonitorRate` is defined in `readout-defaults.cfg`.
