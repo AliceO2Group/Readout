@@ -193,6 +193,68 @@ class TheLogRedirection {
     }
 };
 
+// an object running a thread to publish data to logbook
+// this allows isolating blocking calls to the bookkeeping api
+#ifdef WITH_LOGBOOK
+class LogbookThread {
+  public:
+    LogbookThread(std::unique_ptr<o2::bkp::api::BkpClient> h) {
+      this->logbookHandle = std::move(h);
+      shutdownRequest = 0;
+      publishRequest = 0;
+      std::function<void(void)> f = std::bind(&LogbookThread::run, this);
+      th = std::make_unique<std::thread>(f);
+    };
+   ~LogbookThread() {
+     shutdownRequest = 1;
+     if (th != nullptr) {
+       th->join();
+       th = nullptr;
+     }
+   };
+   int publishStats() {
+     if (logbookHandle == nullptr) return __LINE__; // fail if no connection
+     if (publishRequest.load()) return __LINE__; // fail if request already pending
+     publishRequest = 1;
+     return 0;
+   };
+  private:
+    std::unique_ptr<o2::bkp::api::BkpClient> logbookHandle; // handle to logbook
+    std::unique_ptr<std::thread> th; // a thread reading from fd and injecting to theLog
+    std::atomic<int> shutdownRequest; // flag to terminate thread
+    std::atomic<int> publishRequest; // flag to ask thread to publish current values
+    void run() {
+      setThreadName("logbook");
+      // thread loop, 10Hz
+      while (!shutdownRequest && (logbookHandle != nullptr)) {
+        if (publishRequest.load() == 1) {
+          bool isOk = false;
+          try {
+            // interface: https://github.com/AliceO2Group/Bookkeeping/tree/main/cxx-client/include/BookkeepingApi
+            logbookHandle->flp()->updateReadoutCountersByFlpNameAndRunNumber(
+              occRole, occRunNumber,
+              (int64_t)gReadoutStats.counters.numberOfSubtimeframes, (int64_t)gReadoutStats.counters.bytesReadout, (int64_t)gReadoutStats.counters.bytesRecorded, (int64_t)gReadoutStats.counters.bytesFairMQ
+            );
+            isOk = true;
+          } catch (const std::exception& ex) {
+            theLog.log(LogErrorDevel_(3210), "Failed to update logbook: %s", ex.what());
+          } catch (...) {
+            theLog.log(LogErrorDevel_(3210), "Failed to update logbook: unknown exception");
+          }
+          if (!isOk) {
+            // closing logbook immediately
+            logbookHandle = nullptr;
+            theLog.log(LogErrorSupport_(3210), "Logbook now disabled");
+            break;
+          }
+          publishRequest = 0;
+        }
+        usleep(100000);
+      }
+    }
+};
+#endif
+
 class Readout
 {
 
@@ -331,8 +393,9 @@ class Readout
   bool logFirstError = 0;             // flag set to 1 after 1 error reported from iterateCheck/iterateRunning procedures
 
 #ifdef WITH_LOGBOOK
-  std::unique_ptr<o2::bkp::api::BkpClient> logbookHandle; // handle to logbook
+  std::unique_ptr<LogbookThread> theLogbookThread; // handle to logbook
 #endif
+
 #ifdef WITH_DB
   std::unique_ptr<ReadoutDatabase> dbHandle; // handle to readout database
 #endif
@@ -351,37 +414,12 @@ bool testLogbook = false; // flag for logbook test mode
 
 void Readout::publishLogbookStats()
 {
+  //  gReadoutStats.print();
+
 #ifdef WITH_LOGBOOK
-  if (logbookHandle != nullptr) {
-    bool isOk = false;
-    try {
-      // interface: https://github.com/AliceO2Group/Bookkeeping/tree/main/cxx-client/include/BookkeepingApi
-      if (testLogbook) {
-        // in test mode, create a dummy run entry in logbook
-        if (occRole.length() == 0) { occRole = "flp-test"; }
-	if (occRunNumber == 0) { occRunNumber = 999999999; }
-        theLog.log(LogInfoDevel_(3210), "Logbook in test mode: create run number/flp %d / %s", (int)occRunNumber, occRole.c_str());
-        /*
-	std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-        logbookHandle->runStart(occRunNumber, now, now, "readout", RunType::TECHNICAL, 0, 0, 0, false, false, false, "normal");
-        logbookHandle->flpAdd(occRole, "localhost", occRunNumber);
-        */
-	testLogbook=0;
-      }
-      logbookHandle->flp()->updateReadoutCountersByFlpNameAndRunNumber(occRole, occRunNumber, (int64_t)gReadoutStats.counters.numberOfSubtimeframes, (int64_t)gReadoutStats.counters.bytesReadout, (int64_t)gReadoutStats.counters.bytesRecorded, (int64_t)gReadoutStats.counters.bytesFairMQ);
-      isOk = true;
-    } catch (const std::exception& ex) {
-      theLog.log(LogErrorDevel_(3210), "Failed to update logbook: %s", ex.what());
-    } catch (...) {
-      theLog.log(LogErrorDevel_(3210), "Failed to update logbook: unknown exception");
-    }
-    if (!isOk) {
-      // closing logbook immediately
-      logbookHandle = nullptr;
-      theLog.log(LogErrorSupport_(3210), "Logbook now disabled");
-    }
+  if (theLogbookThread != nullptr) {
+    theLogbookThread->publishStats();
   }
-//  gReadoutStats.print();
 #endif
 
 #ifdef WITH_DB
@@ -924,9 +962,11 @@ int Readout::_configure(const boost::property_tree::ptree& properties)
     cfg.getOptionalValue<std::string>("readout.logbookUrl", cfgLogbookUrl);
 
     theLog.log(LogInfoDevel, "Logbook enabled, %ds update interval, using URL = %s", cfgLogbookUpdateInterval, cfgLogbookUrl.c_str());
-    logbookHandle = o2::bkp::api::BkpClientFactory::create(cfgLogbookUrl);
+    auto logbookHandle = o2::bkp::api::BkpClientFactory::create(cfgLogbookUrl);
     if (logbookHandle == nullptr) {
       theLog.log(LogErrorSupport_(3210), "Failed to create handle to logbook");
+    } else {
+      theLogbookThread = std::make_unique<LogbookThread>(std::move(logbookHandle));
     }
 #endif
   }
@@ -1731,7 +1771,7 @@ int Readout::_reset()
 
 #ifdef WITH_LOGBOOK
   // closing logbook
-  logbookHandle = nullptr;
+  theLogbookThread = nullptr;
 #endif
 
 #ifdef WITH_ZMQ
@@ -2112,7 +2152,6 @@ int main(int argc, char* argv[])
       } else if (theState == States::Configured) {
         if (theCommand == Commands::Start) {
           occRunNumber++;
-          printf("run number = %d\n", occRunNumber);
           err = theReadout->start();
           if (err) {
             newState = States::Error;
@@ -2223,6 +2262,7 @@ int main(int argc, char* argv[])
 
     // loop for testing, single iteration in normal conditions
     for (int i = 0; i < nloop; i++) {
+      occRunNumber++;
       err = theReadout->start();
       if (err) {
         return err;

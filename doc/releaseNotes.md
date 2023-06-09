@@ -563,3 +563,7 @@ This file describes the main feature changes for each readout.exe released versi
 - o2-readout-test-fmq-memory: more options.
 - Added protection against unhandled exceptions (e.g. from ReadoutCard).
 - Added protection against unexpected state machine transitions (e.g. ECS sending RESET while STARTING).
+
+## next version
+- Added a separate thread to call bookkeeping API functions, so that data flow is not affected in case they are blocking.
+- o2-readout-test-lib-bookkeeping: more options.
