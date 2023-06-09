@@ -17,7 +17,6 @@ Following table describe the parameters of the `[readout]` section.
 
 | Parameter name  | Type | Default value | Description |
 |--|--|--|--|
-
 | memLock | int | 0 | Defines the memory swapping policy. If set, all readout memory is locked in RAM with mlockall() |
 | readoutExe | string | | If set, overwrites the current running executable with the one at given path. Used for tests. |
 | readoutConfig | string | | If set with readoutExe, launch the new exe with this parameter as argument. Used for tests. |
