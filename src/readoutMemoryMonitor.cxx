@@ -199,13 +199,13 @@ int main(int argc, char** argv)
             }
             auto stats = ((MemoryPagesPool::Stats *)msgBuffer[1+p*2]);
             unsigned int npages = msgSize[2+p*2] / sizeof(MemoryPagesPool::PageStat);
-            printf("%d %d: %f - %f - %u\n",p, stats->id, stats->t0,stats->t1,npages);
+            //printf("%d %d: %f - %f - %u\n",p, stats->id, stats->t0,stats->t1,npages);
             auto ps = (MemoryPagesPool::PageStat*)msgBuffer[2+p*2];
             int c = 0;
             for (unsigned int k = 0; k<npages; k++) {
               if (ps[k].state != MemoryPage::PageState::Idle) c++;
             }
-            printf("busy pages = %d / %u\n",c,npages);
+            //printf("busy pages = %d / %u\n",c,npages);
           }
 
           if (isOk) {                    
@@ -216,17 +216,17 @@ int main(int argc, char** argv)
 	  SDL_SetRenderDrawColor(hRenderer, 0, 0, 0, 0);
           SDL_RenderClear(hRenderer);
           
-          printf("%d,%d\n", szx,szy);
+          //printf("%d,%d\n", szx,szy);
 
           int border=10;
           // one column per pool
           int cw=(szx-(nPools+1)*border)/nPools;
           int cy=szy-2*border;
-          printf("cw,cy= %d, %d\n",cw, cy);
+          //printf("cw,cy= %d, %d\n",cw, cy);
           for (unsigned int p=0; p<nPools; p++) {
             int ox=border+(border+cw)*p;
             int oy=border;
-            printf("ox,oy= %d, %d\n",ox, oy);
+            //printf("ox,oy= %d, %d\n",ox, oy);
             SDL_SetRenderDrawColor(hRenderer, 0, 0, 255, 255);
             SDL_Rect r = {ox,oy,cw,cy};
             SDL_RenderDrawRect(hRenderer, &r);
@@ -239,12 +239,12 @@ int main(int argc, char** argv)
             unsigned int sq=(cw-2*bb)*(cy-2*bb);
             unsigned int pxk = (int)sqrt(sq/npages);
             pxk=6;
-            printf("pxk=%d\n",pxk);
+            //printf("pxk=%d\n",pxk);
             unsigned int npl = (cw-bb) / pxk;
             for (unsigned int k = 0; k<npages; k++) {
               switch (ps[k].state) {
               case MemoryPage::PageState::Idle:
-                SDL_SetRenderDrawColor(hRenderer, 32, 32, 32, 255);
+                SDL_SetRenderDrawColor(hRenderer, 48, 48, 48, 255);
                 break;
               case MemoryPage::PageState::InROC:
                 SDL_SetRenderDrawColor(hRenderer, 0, 255, 255, 255);
@@ -292,7 +292,7 @@ int main(int argc, char** argv)
 
 
         if (SDL_PollEvent(&event)) {
-            printf("event type=%d\n",(int)event.type);
+            //printf("event type=%d\n",(int)event.type);
             shutdown=1;
             switch (event.type) {
             case SDL_QUIT:

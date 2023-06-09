@@ -18,6 +18,9 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
+#ifdef WITH_ZMQ
+#include <zmq.h>
+#endif
 
 #include "readoutInfoLogger.h"
 
@@ -258,6 +261,55 @@ void MemoryBankManager::reset()
 void MemoryBankManager::monitorThLoop() {
   AliceO2::Common::Timer t;
   t.reset(1000000.0 / monitorUpdateRate);
+  MemoryPagesPool::Stats mps;
+
+#ifdef WITH_ZMQ
+  void* zmqContext = nullptr;
+  void* zmqHandle = nullptr;
+  bool zmqEnabled = 1;
+  void zmqCleanup();
+  int zmqError = 0;
+  std::string zmqPort = "tcp://127.0.0.1:50002";
+  try {
+    zmqContext = zmq_ctx_new();
+    if (zmqContext == nullptr) {
+      zmqError = zmq_errno();
+      throw __LINE__;
+    }
+
+    zmqHandle = zmq_socket(zmqContext, ZMQ_PUB);
+    if (zmqHandle == nullptr) {
+      zmqError = zmq_errno();
+      throw __LINE__;
+    }
+
+    const int cfgZmqLinger = 1000;
+    zmqError = zmq_setsockopt(zmqHandle, ZMQ_LINGER, (void*)&cfgZmqLinger, sizeof(cfgZmqLinger)); // close timeout
+    if (zmqError) {
+      throw __LINE__;
+    }
+
+    zmqError = zmq_bind(zmqHandle, zmqPort.c_str());
+    if (zmqError) {
+      throw __LINE__;
+    }
+
+    zmqEnabled = 1;
+
+  } catch (int lineErr) {
+    if (zmqError) {
+      theLog.log(LogErrorDevel, "ZeroMQ error @%d : (%d) %s", lineErr, zmqError, zmq_strerror(zmqError));
+    } else {
+      theLog.log(LogErrorDevel, "Error @%d", lineErr);
+    }
+    // ZMQ unavailable does not cause consumer to fail starting
+    theLog.log(LogErrorDevel, "Memory banks manager: ZMQ stats publishing disabled");
+  }
+  if (zmqEnabled) {
+    theLog.log(LogInfoDevel, "Memory banks manager: ZMQ stats publishing enabled on %s", zmqPort.c_str());
+  }
+#endif
+
   for(;!monitorThShutdown.load();) {
     if (t.isTimeout()) {
       std::unique_lock<std::mutex> lock(bankMutex);
@@ -271,6 +323,34 @@ void MemoryBankManager::monitorThLoop() {
           fclose(fp);
         }
       }
+#ifdef WITH_ZMQ
+      if (zmqEnabled) {
+        int msgSize =  0;
+        uint32_t numberOfPools = pools.size();
+        zmq_send(zmqHandle, &numberOfPools, sizeof(numberOfPools), ZMQ_SNDMORE);
+        for (auto& it : pools) {
+          it->getDetailedStats(mps);
+          zmq_send(zmqHandle, &mps, sizeof(mps), ZMQ_SNDMORE);
+          zmq_send(zmqHandle, &mps.states[0], sizeof(mps.states[0]) * mps.states.size(), ZMQ_SNDMORE);
+          msgSize += (int)(sizeof(mps) + sizeof(mps.states[0]) * mps.states.size());
+        }
+        uint32_t trailer = 0xF00F;
+        zmq_send(zmqHandle, &trailer, sizeof(trailer), ZMQ_DONTWAIT);
+        msgSize += (int)(sizeof(numberOfPools) +  sizeof(trailer));
+        //theLog.log(LogDebugDevel, "mem monitor: published %d bytes", msgSize);
+      }
+#endif
+      /*
+      for (auto& it : pools) {
+        it->getDetailedStats(mps);
+        printf("pool %d : %f - %f = %f\n", mps.id, mps.t1, mps.t0, mps.t1-mps.t0);
+        for (unsigned int i=0; i<10; i++) {
+          if (i>=mps.states.size()) break;
+          printf("%d %s %.6f\n",i,MemoryPage::getPageStateString(mps.states[i].state), mps.states[i].timeInCurrentState);
+        }
+      }
+      */
+
       t.increment();
     } else {
       std::this_thread::sleep_for(std::chrono::microseconds(10000));
