@@ -44,7 +44,9 @@ ReadoutStats::~ReadoutStats() {
     publishThread->join();
     publishThread = nullptr;
   }
+  #ifdef WITH_ZMQ
   zmqCleanup();
+  #endif
 }
 
 void ReadoutStats::reset(bool lightReset)
@@ -93,9 +95,8 @@ uint64_t stringToUint64(const char* in)
 
 int ReadoutStats::startPublish(const std::string &cfgZmqPublishAddress, double cfgZmqPublishInterval) {
 
-  if (zmqEnabled) return __LINE__;
-
   #ifdef WITH_ZMQ
+  if (zmqEnabled) return __LINE__;
 
   // default ZMQ settings for data monitoring
   int cfg_ZMQ_CONFLATE = 0; // buffer last message only
@@ -157,6 +158,9 @@ int ReadoutStats::startPublish(const std::string &cfgZmqPublishAddress, double c
   } else {
     return -1; //disabled
   }
+  #else
+  (void)cfgZmqPublishAddress;
+  (void)cfgZmqPublishInterval;
   #endif
 
   publishNow();
@@ -182,7 +186,9 @@ void ReadoutStats::zmqCleanup() {
 
 int ReadoutStats::stopPublish() {
   publishNow();
+  #ifdef WITH_ZMQ
   zmqCleanup();
+  #endif
   return 0;
 }
 
