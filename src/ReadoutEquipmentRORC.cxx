@@ -232,7 +232,7 @@ Thread::CallbackResult ReadoutEquipmentRORC::prepareBlocks()
       // check CRU FIFO status - but only after first loop, otherwise would be empty yet
       if (!channel->areSuperpageFifosHealthy()) {
 	static InfoLogger::AutoMuteToken logToken(LogWarningSupport_(3235), 5, 60);
-	theLog.log(logToken, "Equipment %s: ROC memory fifo not healthy", name.c_str());
+	theLog.log(logToken, "Equipment %s: ROC is lacking data pages", name.c_str());
       }
     }
   }
