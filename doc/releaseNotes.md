@@ -564,7 +564,9 @@ This file describes the main feature changes for each readout.exe released versi
 - Added protection against unhandled exceptions (e.g. from ReadoutCard).
 - Added protection against unexpected state machine transitions (e.g. ECS sending RESET while STARTING).
 
-## next version
+## v2.20.0 - 12/06/2023
 - Added a separate thread to call bookkeeping API functions, so that data flow is not affected in case they are blocking.
 - o2-readout-test-lib-bookkeeping: more options.
 - Added o2-readout-monitor-memory: to view in real time state of data pages.
+- Added consistency check of orbit vs timestamp when large gas in TF ids detected.
+- Updated configuration parameters documentation.
