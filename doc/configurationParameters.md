@@ -2,7 +2,7 @@
 
 This document describes all the configuration parameters that can be set in readout.
 
-Some parameters control the behavior of readout as soon as it starts, and valid for the lifetime of the process. (1)
+Some parameters control the behavior of readout as soon as it starts, and are valid for the lifetime of the process. (1)
 
 Other parameters (2) are set whenever the control state-machine receives the CONFIGURE command (or shortly after startup when running o2-readout-exe outside from the ECS workflow, typically from the command line) and until the RESET command.
 The corresponding parameters usually come from a local file or from a central reposity, as provided by the O2 system.
@@ -11,20 +11,20 @@ They can be reloaded several time during the lifetime of the process.
 
 # Readout defaults (1)
 
-These are defined in local file `/etc/o2.d/readout-default.cfg`, which is loaded on `o2-readout-exe` startup (if file exists). They are valid for the lifetime of the o2-readout-exe process. There is usually no need for users to edit these settings. The file format is '.ini' style, with `[sections]` and `key=value` pairs.
+These are defined in local file `/etc/o2.d/readout-default.cfg`, which is loaded on `o2-readout-exe` startup (if the file exists). They are valid for the lifetime of the o2-readout-exe process. There is usually no need for users to edit these settings. The file format is '.ini' style, with `[sections]` and `key=value` pairs.
 
-Following table describe the parameters of the `[readout]` section.
+Following table describes the parameters of the `[readout]` section.
 
 | Parameter name  | Type | Default value | Description |
 |--|--|--|--|
 | memLock | int | 0 | Defines the memory swapping policy. If set, all readout memory is locked in RAM with mlockall() |
 | readoutExe | string | | If set, overwrites the current running executable with the one at given path. Used for tests. |
 | readoutConfig | string | | If set with readoutExe, launch the new exe with this parameter as argument. Used for tests. |
-| statsPublishAddress | string | | If set, address where to publish readout stats, eg "tcp://127.0.0.1:6008". Connect to this service with o2-readout-monitor. |
+| statsPublishAddress | string | | If set, address where to publish readout stats, eg "tcp://127.0.0.1:6008" (o2-readout-monitor should listen there). |
 | statsPublishInterval | string | | If set, interval for readout stats publish, in seconds. |
 | db | string | | If set, defines connection parameters to a MySQL database in the form 'user:password@host/dbname'. Runtime statistics are stored in a table. Structure can be created with o2-readout-admin-db. |
 | customCommandsEnabled | int | 0 | If set, custom commands are enabled, i.e. launching external scripts at some specific state transitions. See customCommands keyword below. |
-| membanksMonitorPath | string | | Path to memory banks monitor output (a local file FIFO, to be connected with o2-readout-monitor). |
+| membanksMonitorPath | string | | Path to memory banks monitor output (a local file FIFO, to be connected with o2-readout-monitor-memory). |
 | membanksMonitorRate | double | 0 | Rate (in Hertz) at which to publish memory status. |
 
 
