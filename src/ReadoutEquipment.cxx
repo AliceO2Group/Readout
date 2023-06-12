@@ -487,12 +487,20 @@ Thread::CallbackResult ReadoutEquipment::threadCallback(void* arg)
 	}
 
         static InfoLogger::AutoMuteToken logTFdiscontinuityToken(LogWarningSupport_(3004), 10, 60);
+        static InfoLogger::AutoMuteToken logTFdiscontinuityTokenError(LogErrorSupport_(3004), 10, 60);
 
 	ptr->statsNumberOfTimeframes++;
 	// detect gaps in TF id continuity
 	if (tfId != ptr->lastTimeframe + 1) {
 	  if (ptr->cfgRdhDumpWarningEnabled) {
             theLog.log(logTFdiscontinuityToken, "Non-contiguous timeframe IDs %llu ... %llu", (unsigned long long)ptr->lastTimeframe, (unsigned long long)tfId);
+            // check if difference is large and orbit consistant with timestamp
+            double now = ptr->firstTimeframeTimestamp.getTime();
+            double dt = (nextBlock->getData()->header.orbitFirstInBlock - ptr->firstTimeframeHbOrbitBegin) * 1.0 / ptr->LHCOrbitRate; // diff in orbit / orbit rate = should be close to current timestamp
+            uint32_t expected = ptr->firstTimeframeHbOrbitBegin + (uint32_t)(now * ptr->LHCOrbitRate);
+            if (fabs(dt - now) > 10) {
+              theLog.log(logTFdiscontinuityTokenError, "Orbit 0x%X seems inconsistent from expected ~0x%X (orbit rate %u, elapsed time %.1fs)", (int)nextBlock->getData()->header.orbitFirstInBlock, expected, ptr->LHCOrbitRate, now);
+            }
 	  }
 	}
 	ptr->lastTimeframe = tfId;
@@ -640,6 +648,7 @@ uint64_t ReadoutEquipment::getTimeframeFromOrbit(uint32_t hbOrbit)
 {
   if (!isDefinedFirstTimeframeHbOrbitBegin) {
     firstTimeframeHbOrbitBegin = hbOrbit;
+    firstTimeframeTimestamp.reset();
     isDefinedFirstTimeframeHbOrbitBegin = 1;
     bool isOk = true;
     gReadoutStats.mutex.lock();
@@ -730,6 +739,7 @@ int ReadoutEquipment::tagDatablockFromRdh(RdhHandle& h, DataBlockHeader& bh)
     }
   }
   getTimeframeOrbitRange(tfId, bh.timeframeOrbitFirst, bh.timeframeOrbitLast);
+  bh.orbitFirstInBlock = hbOrbit;
   bh.timeframeOrbitFirst -= bh.orbitOffset;
   bh.timeframeOrbitLast -= bh.orbitOffset;
   // printf("TF %d eq %d link %d : orbits %X - %X\n", (int)bh.timeframeId, (int)bh.equipmentId, (int)bh.linkId, (int)bh.timeframeOrbitFirst, (int)bh.timeframeOrbitLast);

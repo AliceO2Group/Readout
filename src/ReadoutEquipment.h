@@ -156,6 +156,7 @@ class ReadoutEquipment
   unsigned long long statsNumberOfTimeframes = 0; // number of timeframes read out
   uint32_t firstTimeframeHbOrbitBegin = 0;        // HbOrbit of beginning of first timeframe
   bool isDefinedFirstTimeframeHbOrbitBegin = 0;
+  AliceO2::Common::Timer firstTimeframeTimestamp; // timestamp of first timeframe/orbit received, for consistency checks
 
   AliceO2::Common::Timer timeframeClock; // timeframe id should be increased at each clock cycle
   uint64_t currentTimeframe = 0;         // id of current timeframe

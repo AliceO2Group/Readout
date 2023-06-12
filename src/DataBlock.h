@@ -62,6 +62,7 @@ struct DataBlockHeader {
   uint32_t timeframeOrbitLast;  ///< from timeframe
   uint8_t flagEndOfTimeframe;   ///< flag to signal this is the last TF block
   uint8_t isRdhFormat;          ///< flag set when payload is RDH-formatted
+  uint32_t orbitFirstInBlock;   ///< the first orbit in this block
   uint32_t orbitOffset;         ///< set when RDH orbits should be added given offset to match TFid
   uint32_t memorySize;          ///< size in memory of current block
 
@@ -70,10 +71,10 @@ struct DataBlockHeader {
 
 // Version of this header
 // with DB marker for DataBlock start, 1st byte in header little-endian
-const uint32_t DataBlockVersion = 0x0004DBDB;
+const uint32_t DataBlockVersion = 0x0005DBDB;
 
 // DataBlockHeader instance with all default fields
-const DataBlockHeader defaultDataBlockHeader = { .headerVersion = DataBlockVersion, .headerSize = sizeof(DataBlockHeader), .dataSize = 0, .blockId = undefinedBlockId, .pipelineId = undefinedBlockId, .timeframeId = undefinedTimeframeId, .runNumber = undefinedRunNumber, .systemId = undefinedSystemId, .feeId = undefinedFeeId, .equipmentId = undefinedEquipmentId, .linkId = undefinedLinkId, .timeframeOrbitFirst = undefinedOrbit, .timeframeOrbitLast = undefinedOrbit, .flagEndOfTimeframe = 0, .isRdhFormat = 1, .orbitOffset = undefinedOrbit, .memorySize = 0, .userSpace = { 0 } };
+const DataBlockHeader defaultDataBlockHeader = { .headerVersion = DataBlockVersion, .headerSize = sizeof(DataBlockHeader), .dataSize = 0, .blockId = undefinedBlockId, .pipelineId = undefinedBlockId, .timeframeId = undefinedTimeframeId, .runNumber = undefinedRunNumber, .systemId = undefinedSystemId, .feeId = undefinedFeeId, .equipmentId = undefinedEquipmentId, .linkId = undefinedLinkId, .timeframeOrbitFirst = undefinedOrbit, .timeframeOrbitLast = undefinedOrbit, .flagEndOfTimeframe = 0, .isRdhFormat = 1, .orbitFirstInBlock = undefinedOrbit, .orbitOffset = undefinedOrbit, .memorySize = 0, .userSpace = { 0 } };
 
 // DataBlock
 // Pair of header + payload data
