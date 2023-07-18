@@ -570,3 +570,6 @@ This file describes the main feature changes for each readout.exe released versi
 - Added o2-readout-monitor-memory: to view in real time state of data pages.
 - Added consistency check of orbit vs timestamp when large gas in TF ids detected.
 - Updated configuration parameters documentation.
+
+## next version
+- When running from the command line, the environment variable O2_RUN can be used to set the run number. It is set to 0 by default, i.e. undefined run number.

@@ -382,6 +382,14 @@ In all replay modes, ReadoutEquipmentPlayer does not support LZ4 files or files 
 Readout can cope with input files containing data from multiple CRUs. The data pages will be split and tagged accordingly to the RDH fields (respecting the "1 single link per page" CRU specification).
 
 
+### Bookkeeping
+
+Readout can store runtime statistics in O2 Bookeeping. See the readout.logbook* configuration variables.
+At runtime, the run number is provided by the O2 Control System when executing the START command.
+When running from the command line, a run number can be set using the O2_RUN environment variable.
+In interactive mode, the value is automatically incremented with successive START/STOP sequences.
+
+
 ### Frequently asked questions
 
 The [howto guide](howto.md) documents some typical use cases and will be extended according to users feedback.
