@@ -363,6 +363,7 @@ int main(int argc, const char** argv)
                   "STF:\n \
 		version: %d\n \
 		timeframeId: %d\n \
+		runNumber: %d\n \
 		systemId: %d\n \
 		feeId: %d\n \
 		equipmentId: %d\n \
@@ -370,6 +371,7 @@ int main(int argc, const char** argv)
 		lastTFMessage: %d\n",
                   (int)stf->version,
                   (int)stf->timeframeId,
+                  (int)stf->runNumber,
                   (int)stf->systemId,
                   (int)stf->feeId,
                   (int)stf->equipmentId,

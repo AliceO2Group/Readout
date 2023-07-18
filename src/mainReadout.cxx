@@ -142,7 +142,7 @@ static void signalHandler(int signalId)
 
 // some globals needed in other components
 std::string occRole;     // OCC role name
-tRunNumber occRunNumber = 0; // OCC run number
+tRunNumber occRunNumber = undefinedRunNumber; // OCC run number
 
 // a general purpose log function for DB
 void dbLog(const std::string &msg) {
@@ -228,24 +228,27 @@ class LogbookThread {
       // thread loop, 10Hz
       while (!shutdownRequest && (logbookHandle != nullptr)) {
         if (publishRequest.load() == 1) {
-          bool isOk = false;
-          try {
-            // interface: https://github.com/AliceO2Group/Bookkeeping/tree/main/cxx-client/include/BookkeepingApi
-            logbookHandle->flp()->updateReadoutCountersByFlpNameAndRunNumber(
-              occRole, occRunNumber,
-              (int64_t)gReadoutStats.counters.numberOfSubtimeframes, (int64_t)gReadoutStats.counters.bytesReadout, (int64_t)gReadoutStats.counters.bytesRecorded, (int64_t)gReadoutStats.counters.bytesFairMQ
-            );
-            isOk = true;
-          } catch (const std::exception& ex) {
-            theLog.log(LogErrorDevel_(3210), "Failed to update logbook: %s", ex.what());
-          } catch (...) {
-            theLog.log(LogErrorDevel_(3210), "Failed to update logbook: unknown exception");
-          }
-          if (!isOk) {
-            // closing logbook immediately
-            logbookHandle = nullptr;
-            theLog.log(LogErrorSupport_(3210), "Logbook now disabled");
-            break;
+          // publishing to logbook makes sense only if a run number defined
+          if (occRunNumber != undefinedRunNumber) {
+            bool isOk = false;
+            try {
+              // interface: https://github.com/AliceO2Group/Bookkeeping/tree/main/cxx-client/include/BookkeepingApi
+              logbookHandle->flp()->updateReadoutCountersByFlpNameAndRunNumber(
+                occRole, occRunNumber,
+                (int64_t)gReadoutStats.counters.numberOfSubtimeframes, (int64_t)gReadoutStats.counters.bytesReadout, (int64_t)gReadoutStats.counters.bytesRecorded, (int64_t)gReadoutStats.counters.bytesFairMQ
+              );
+              isOk = true;
+            } catch (const std::exception& ex) {
+              theLog.log(LogErrorDevel_(3210), "Failed to update logbook: %s", ex.what());
+            } catch (...) {
+              theLog.log(LogErrorDevel_(3210), "Failed to update logbook: unknown exception");
+            }
+            if (!isOk) {
+              // closing logbook immediately
+              logbookHandle = nullptr;
+              theLog.log(LogErrorSupport_(3210), "Logbook now disabled");
+              break;
+            }
           }
           publishRequest = 0;
         }
@@ -1357,6 +1360,17 @@ int Readout::_configure(const boost::property_tree::ptree& properties)
 
 int Readout::_start()
 {
+  // set run number for logs
+  theLogContext.setField(InfoLoggerContext::FieldName::Run, std::to_string(occRunNumber)); // this works also for undefinedRunNumber, 0 -> empty field in log API
+  theLog.setContext(theLogContext);
+  if (occRunNumber != undefinedRunNumber) {
+    setenv(envRunNumber, std::to_string(occRunNumber).c_str(), 1);
+    theLog.log(LogInfoDevel, "Run number %d", (int)occRunNumber);
+  } else {
+    unsetenv(envRunNumber);
+    theLog.log(LogInfoDevel, "Run number not defined");
+  }
+
   theLog.resetMessageCount();
   theLog.log(LogInfoSupport_(3005), "Readout executing START");
   gReadoutStats.reset(1);
@@ -1706,6 +1720,9 @@ int Readout::_stop()
 
 int Readout::_reset()
 {
+  // reset run number for logs
+  theLogContext.setField(InfoLoggerContext::FieldName::Run, "");
+  theLog.setContext(theLogContext);
 
   theLog.log(LogInfoSupport_(3005), "Readout executing RESET");
   gReadoutStats.counters.state = stringToUint64("> reset");
@@ -1914,15 +1931,6 @@ class ReadoutOCCStateMachine : public RuntimeControlledObject
     }
     // set run number
     occRunNumber = this->getRunNumber();
-    theLogContext.setField(InfoLoggerContext::FieldName::Run, std::to_string(occRunNumber));
-    theLog.setContext(theLogContext);
-    if (occRunNumber != 0) {
-      setenv(envRunNumber, std::to_string(occRunNumber).c_str(), 1);
-      theLog.log(LogInfoDevel, "Run number %d", (int)occRunNumber);
-    } else {
-      unsetenv(envRunNumber);
-      theLog.log(LogInfoDevel, "Run number not defined");
-    }
     return theReadout->start();
   }
 
@@ -1986,6 +1994,17 @@ class ReadoutOCCStateMachine : public RuntimeControlledObject
   std::unique_ptr<Readout> theReadout = nullptr;
 };
 #endif
+
+// increment run number based on initial settings from env
+void incrementRunNumber() {
+  if (occRunNumber != undefinedRunNumber) {
+    occRunNumber++;
+  } else {
+    if (getenv(envRunNumber) != nullptr) {
+      occRunNumber = atoi(getenv(envRunNumber));
+    }
+  }
+}
 
 // the main program loop
 int main(int argc, char* argv[])
@@ -2151,7 +2170,7 @@ int main(int argc, char* argv[])
         }
       } else if (theState == States::Configured) {
         if (theCommand == Commands::Start) {
-          occRunNumber++;
+          incrementRunNumber();
           err = theReadout->start();
           if (err) {
             newState = States::Error;
@@ -2234,7 +2253,7 @@ int main(int argc, char* argv[])
       return err;
     }
 
-    int nloop = 1; // number of start/stop loop to execute
+    int nloop = 3; // number of start/stop loop to execute
 
     auto logTimeGuard = [&](const std::string command, int t) {
       if (t) {
@@ -2262,7 +2281,7 @@ int main(int argc, char* argv[])
 
     // loop for testing, single iteration in normal conditions
     for (int i = 0; i < nloop; i++) {
-      occRunNumber++;
+      incrementRunNumber();
       err = theReadout->start();
       if (err) {
         return err;
