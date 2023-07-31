@@ -334,6 +334,7 @@ class Readout
   bool standaloneMode = false; // flag set when readout running in standalone mode (auto state machines)
   int cfgTimeStart = 0;        // time at which START should be executed in standalone mode
   int cfgTimeStop = 0;         // time at which STOP should be executed in standalone mode
+  int cfgNumberOfRuns = 1;           // number of START/STOP loops to execute
 
  private:
   int _init(int argc, char* argv[]);
@@ -902,6 +903,9 @@ int Readout::_configure(const boost::property_tree::ptree& properties)
 
     // configuration parameter: | readout | timeStop | string | | In standalone mode, time at which to execute stop. If not set, on int/term/quit signal. |
     scanTime("readout.timeStop", cfgTimeStop);
+
+    // configuration parameter: | readout | numberOfRuns | int | 1 | In standalone mode, number of runs to execute (ie START/STOP cycles). |
+    cfg.getOptionalValue<int>("readout.numberOfRuns", cfgNumberOfRuns);
   }
 
   cfgMaxMsgError = 0;
@@ -2253,7 +2257,8 @@ int main(int argc, char* argv[])
       return err;
     }
 
-    int nloop = 3; // number of start/stop loop to execute
+    int nloop = theReadout->cfgNumberOfRuns; // number of start/stop loop to execute
+    theLog.log("Will execute %d START/STOP cycle", nloop);
 
     auto logTimeGuard = [&](const std::string command, int t) {
       if (t) {
