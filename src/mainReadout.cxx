@@ -408,7 +408,7 @@ class Readout
   void publishLogbookStats();          // publish current readout counters to logbook
   AliceO2::Common::Timer logbookTimer; // timer to handle readout logbook publish interval
 
-  uint64_t maxTimeframeId;
+  uint64_t currentTimeframeId = undefinedTimeframeId;
   uint64_t countTimeframeId;
 
 #ifdef WITH_ZMQ
@@ -1395,7 +1395,7 @@ int Readout::_start()
   #endif
   publishLogbookStats();
   logbookTimer.reset(cfgLogbookUpdateInterval * 1000000);
-  maxTimeframeId = 0;
+  currentTimeframeId = undefinedTimeframeId;
   countTimeframeId = 0;
 
   // execute custom command
@@ -1504,29 +1504,30 @@ void Readout::loopRunning()
         if (bc->size() > 0) {
           if (bc->at(0)->getData() != nullptr) {
             uint64_t newTimeframeId = bc->at(0)->getData()->header.timeframeId;
-            if (cfgTfRateLimitMode == 1) {
-              // use number of TF instead of computed TF id. Useful when replaying files with jumps in TF ids.
-              newTimeframeId = countTimeframeId + 1;
-            }
-            // are we complying with maximum TF rate ?
-            if (cfgTfRateLimit > 0) {
-              if (newTimeframeId > floor(startTimer.getTime() * cfgTfRateLimit) + 1) {
-                usleep(1000);
-                continue;
+            if (newTimeframeId != currentTimeframeId) {
+              // beginning of new TF detected: are we complying with maximum TF rate ?
+              if (cfgTfRateLimit > 0) {
+                uint64_t maxTimeframes = floor(startTimer.getTime() * cfgTfRateLimit) + 1; // number of TF allowed at this point
+                // mode 0: compare with TFid
+                // mode 1: use number of TF instead of computed TF id. Useful when replaying files with jumps in TF ids.
+                if (    ((cfgTfRateLimitMode == 0) && (newTimeframeId > maxTimeframes))
+                     || ((cfgTfRateLimitMode == 1) && (countTimeframeId >= maxTimeframes)) ) {
+                  usleep(1000);
+                  continue;
+                }
               }
-            }
-            countTimeframeId++;
-            if (newTimeframeId > maxTimeframeId) {
-              maxTimeframeId = newTimeframeId;
+              countTimeframeId++;
+              currentTimeframeId = newTimeframeId;
 #ifdef WITH_ZMQ
               if (tfServer) {
-                tfServer->publish(&maxTimeframeId, sizeof(maxTimeframeId));
+                tfServer->publish(&currentTimeframeId, sizeof(currentTimeframeId));
               }
 #endif
               gReadoutStats.counters.numberOfSubtimeframes++;
 	      gReadoutStats.counters.currentOrbit =  bc->at(0)->getData()->header.timeframeOrbitFirst;
 	      gReadoutStats.counters.notify++;
             }
+            // printf("Pushing TF #%d = %d\n", (int)countTimeframeId, (int)newTimeframeId);
           }
           for(auto const& b : *bc) {
             updatePageStateFromDataBlockContainerReference(b, MemoryPage::PageState::InConsumer);

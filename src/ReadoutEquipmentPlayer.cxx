@@ -55,7 +55,8 @@ class ReadoutEquipmentPlayer : public ReadoutEquipment
 
   uint32_t orbitOffset = 0; // to be applied to orbit after 1st loop
   int cfgUpdateOrbits = 1; // when set, all RDHs are modified to update orbit, according to orbitOffset
-
+  int cfgAutoTimeframeId = 0; // when set, TFids are generated incrementally instead of taken from RDH BC.
+  
   void copyFileDataToPage(void* page); // fill given page with file data according to current settings
 };
 
@@ -102,6 +103,8 @@ ReadoutEquipmentPlayer::ReadoutEquipmentPlayer(ConfigFile& cfg, std::string cfgE
   cfg.getOptionalValue<int>(cfgEntryPoint + ".autoChunkLoop", autoChunkLoop, 0);
   // configuration parameter: | equipment-player-* | updateOrbits | int | 1 | When set, trigger orbit counters in all RDH are modified for iterations after the first one (in file loop replay mode), so that they keep increasing. |
   cfg.getOptionalValue<int>(cfgEntryPoint + ".updateOrbits", cfgUpdateOrbits, 1);
+  // configuration parameter: | equipment-player-* | autoTimeframeId | int | 0 | When set, timeframe IDs are generated incrementally instead of being computed from trigger orbit counters. Useful to replay files with unordered / gap between TF. BC still used to detect boundaries between TFs. |
+  cfg.getOptionalValue<int>(cfgEntryPoint + ".autoTimeframeId", cfgAutoTimeframeId, 0);
 
   // log config summary
   theLog.log(LogInfoDevel_(3002), "Equipment %s: using data source file=%s preLoad=%d fillPage=%d autoChunk=%d autoChunkLoop=%d updateOrbits=%d", name.c_str(), filePath.c_str(), preLoad, fillPage, autoChunk, autoChunkLoop, cfgUpdateOrbits);
