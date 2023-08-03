@@ -571,7 +571,7 @@ This file describes the main feature changes for each readout.exe released versi
 - Added consistency check of orbit vs timestamp when large gas in TF ids detected.
 - Updated configuration parameters documentation.
 
-## next version
+## v2.21.0 - 03/08/2023
 - When running from the command line, the environment variable O2_RUN can be used to set the run number. It is set to 0 by default, i.e. undefined run number.
 - Updated configuration parameters:
   - added readout.numberOfRuns: in standalone mode, number of START/STOP cycles to execute (used for testing).
