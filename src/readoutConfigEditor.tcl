@@ -76,6 +76,7 @@ set configurationParametersDescriptor {
 | consumer-zmq-* | maxRate | int| 0 | Maximum number of pages to publish per second. The associated memory copy has an impact on cpu load, so this should be limited when one does not use all the data (eg for eventDump). |
 | consumer-zmq-* | pagesPerBurst | int | 1 | Number of consecutive pages guaranteed to be part of each publish sequence. The maxRate limit is checked at the end of each burst. |
 | consumer-zmq-* | zmqOptions | string |  | Additional ZMQ options, as a comma-separated list of key=value pairs. Possible keys: ZMQ_CONFLATE, ZMQ_IO_THREADS, ZMQ_LINGER, ZMQ_SNDBUF, ZMQ_SNDHWM, ZMQ_SNDTIMEO. |
+| equipment-* | autoTimeframeId | int | 0 | When set, timeframe IDs are generated incrementally instead of being computed from trigger orbit counters. Useful to replay files with unordered / gap between TF. BC still used to detect boundaries between TFs. |
 | equipment-* | blockAlign | bytes | 2M | Alignment of the beginning of the big memory block from which the pool is created. Pool will start at a multiple of this value. Each page will then begin at a multiple of memoryPoolPageSize from the beginning of big block. |
 | equipment-* | consoleStatsUpdateTime | double | 0 | If set, number of seconds between printing statistics on console. |
 | equipment-* | ctpMode | int | 0 | If set, the detector field (CTP run mask) is checked. Incoming data is discarded until a new bit is set, and discarded again after this bit is unset. Automatically implies rdhCheckDetectorField=1 and rdhCheckDetectorField=1. |
@@ -156,8 +157,10 @@ set configurationParametersDescriptor {
 | readout | maxMsgError | int | 0 | If non-zero, maximum number of error messages allowed while running. Readout stops when threshold is reached. |
 | readout | maxMsgWarning | int | 0 | If non-zero, maximum number of error messages allowed while running. Readout stops when threshold is reached. |
 | readout | memoryPoolStatsEnabled | int | 0 | Global debugging flag to enable statistics on memory pool usage (printed to stdout when pool released). |
+| readout | numberOfRuns | int | 1 | In standalone mode, number of runs to execute (ie START/STOP cycles). |
 | readout | rate | double | -1 | Data rate limit, per equipment, in Hertz. -1 for unlimited. |
 | readout | tfRateLimit | double | 0 | When set, the output is limited to a given timeframe rate. |
+| readout | tfRateLimitMode | int | 0 | Defines the source for TF rate limit: 0 = use TF id, 1 = use number of TF. |
 | readout | timeframeServerUrl | string | | The address to be used to publish current timeframe, e.g. to be used as reference clock for other readout instances. |
 | readout | timeStart | string | | In standalone mode, time at which to execute start. If not set, immediately. |
 | readout | timeStop | string | | In standalone mode, time at which to execute stop. If not set, on int/term/quit signal. |

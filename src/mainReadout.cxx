@@ -334,6 +334,7 @@ class Readout
   bool standaloneMode = false; // flag set when readout running in standalone mode (auto state machines)
   int cfgTimeStart = 0;        // time at which START should be executed in standalone mode
   int cfgTimeStop = 0;         // time at which STOP should be executed in standalone mode
+  int cfgNumberOfRuns = 1;           // number of START/STOP loops to execute
 
  private:
   int _init(int argc, char* argv[]);
@@ -357,6 +358,7 @@ class Readout
   double cfgAggregatorSliceTimeout;
   double cfgAggregatorStfTimeout;
   double cfgTfRateLimit;
+  int cfgTfRateLimitMode;
   int cfgLogbookEnabled;
   std::string cfgLogbookUrl;
   std::string cfgLogbookApiToken;
@@ -406,7 +408,8 @@ class Readout
   void publishLogbookStats();          // publish current readout counters to logbook
   AliceO2::Common::Timer logbookTimer; // timer to handle readout logbook publish interval
 
-  uint64_t maxTimeframeId;
+  uint64_t currentTimeframeId = undefinedTimeframeId;
+  uint64_t countTimeframeId;
 
 #ifdef WITH_ZMQ
   std::unique_ptr<ZmqServer> tfServer;
@@ -902,6 +905,9 @@ int Readout::_configure(const boost::property_tree::ptree& properties)
 
     // configuration parameter: | readout | timeStop | string | | In standalone mode, time at which to execute stop. If not set, on int/term/quit signal. |
     scanTime("readout.timeStop", cfgTimeStop);
+
+    // configuration parameter: | readout | numberOfRuns | int | 1 | In standalone mode, number of runs to execute (ie START/STOP cycles). |
+    cfg.getOptionalValue<int>("readout.numberOfRuns", cfgNumberOfRuns);
   }
 
   cfgMaxMsgError = 0;
@@ -934,6 +940,9 @@ int Readout::_configure(const boost::property_tree::ptree& properties)
   // configuration parameter: | readout | tfRateLimit | double | 0 | When set, the output is limited to a given timeframe rate. |
   cfgTfRateLimit = 0;
   cfg.getOptionalValue<double>("readout.tfRateLimit", cfgTfRateLimit);
+  // configuration parameter: | readout | tfRateLimitMode | int | 0 | Defines the source for TF rate limit: 0 = use TF id, 1 = use number of TF. |
+  cfgTfRateLimitMode = 0;
+  cfg.getOptionalValue<int>("readout.tfRateLimitMode", cfgTfRateLimitMode);
 
   // configuration parameter: | readout | disableTimeframes | int | 0 | When set, all timeframe related features are disabled (this may supersede other config parameters). |
   cfgDisableTimeframes = 0;
@@ -1386,7 +1395,8 @@ int Readout::_start()
   #endif
   publishLogbookStats();
   logbookTimer.reset(cfgLogbookUpdateInterval * 1000000);
-  maxTimeframeId = 0;
+  currentTimeframeId = undefinedTimeframeId;
+  countTimeframeId = 0;
 
   // execute custom command
   executeCustomCommand("preSTART");
@@ -1494,24 +1504,30 @@ void Readout::loopRunning()
         if (bc->size() > 0) {
           if (bc->at(0)->getData() != nullptr) {
             uint64_t newTimeframeId = bc->at(0)->getData()->header.timeframeId;
-            // are we complying with maximum TF rate ?
-            if (cfgTfRateLimit > 0) {
-              if (newTimeframeId > floor(startTimer.getTime() * cfgTfRateLimit) + 1) {
-                usleep(1000);
-                continue;
+            if (newTimeframeId != currentTimeframeId) {
+              // beginning of new TF detected: are we complying with maximum TF rate ?
+              if (cfgTfRateLimit > 0) {
+                uint64_t maxTimeframes = floor(startTimer.getTime() * cfgTfRateLimit) + 1; // number of TF allowed at this point
+                // mode 0: compare with TFid
+                // mode 1: use number of TF instead of computed TF id. Useful when replaying files with jumps in TF ids.
+                if (    ((cfgTfRateLimitMode == 0) && (newTimeframeId > maxTimeframes))
+                     || ((cfgTfRateLimitMode == 1) && (countTimeframeId >= maxTimeframes)) ) {
+                  usleep(1000);
+                  continue;
+                }
               }
-            }
-            if (newTimeframeId > maxTimeframeId) {
-              maxTimeframeId = newTimeframeId;
+              countTimeframeId++;
+              currentTimeframeId = newTimeframeId;
 #ifdef WITH_ZMQ
               if (tfServer) {
-                tfServer->publish(&maxTimeframeId, sizeof(maxTimeframeId));
+                tfServer->publish(&currentTimeframeId, sizeof(currentTimeframeId));
               }
 #endif
               gReadoutStats.counters.numberOfSubtimeframes++;
 	      gReadoutStats.counters.currentOrbit =  bc->at(0)->getData()->header.timeframeOrbitFirst;
 	      gReadoutStats.counters.notify++;
             }
+            // printf("Pushing TF #%d = %d\n", (int)countTimeframeId, (int)newTimeframeId);
           }
           for(auto const& b : *bc) {
             updatePageStateFromDataBlockContainerReference(b, MemoryPage::PageState::InConsumer);
@@ -2253,7 +2269,8 @@ int main(int argc, char* argv[])
       return err;
     }
 
-    int nloop = 3; // number of start/stop loop to execute
+    int nloop = theReadout->cfgNumberOfRuns; // number of start/stop loop to execute
+    theLog.log("Will execute %d START/STOP cycle", nloop);
 
     auto logTimeGuard = [&](const std::string command, int t) {
       if (t) {

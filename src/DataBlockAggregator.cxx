@@ -292,16 +292,14 @@ int DataBlockSlicer::appendBlock(DataBlockContainerReference const& block, doubl
     }
   }
 
-  // theLog.log(LogDebugTrace, "slicer %p append block eq %d link %d for tf %d",
-  //   this,(int)sourceId.equipmentId,(int)sourceId.linkId,(int)tfId);
+  // theLog.log(LogDebugTrace, "slicer %p append block eq %d link %d for tf %d", this,(int)sourceId.equipmentId,(int)sourceId.linkId,(int)tfId);
   PartialSlice& s = partialSlices[sourceId];
 
   if (s.currentDataSet != nullptr) {
-    // theLog.log(LogDebugTrace, "slice size = %d chunks",partialSlices[linkId].currentDataSet->size()); if ((partialSlices[linkId].tfId!=tfId)||(partialSlices[linkId].currentDataSet->size()>2))
-    // {
+    // theLog.log(LogDebugTrace, "slice size = %d chunks",(int)s.currentDataSet->size());
     if ((s.tfId != tfId) || (tfId == undefinedTimeframeId)) {
       // the current slice is complete
-      // theLog.log(LogDebugTrace, "slicer %p TF %d eq %d link %d is complete (%d blocks)",this, (int)s.tfId,(int)sourceId.equipmentId,(int)sourceId.linkId,s.currentDataSet->size());
+      // theLog.log(LogDebugTrace, "slicer %p TF %d eq %d link %d is complete (%d blocks)",this, (int)s.tfId,(int)sourceId.equipmentId,(int)sourceId.linkId,(int)s.currentDataSet->size());
       slices.push(s.currentDataSet);
       s.currentDataSet = nullptr;
     }
@@ -316,7 +314,7 @@ int DataBlockSlicer::appendBlock(DataBlockContainerReference const& block, doubl
   s.currentDataSet->push_back(block);
   s.tfId = tfId;
   s.lastUpdateTime = timestamp;
-  // printf(" %d,%d -> %d blocks\n",s.sourceId.equipmentId,s.sourceId.linkId,s.currentDataSet->size());
+  // printf(" %d,%d -> %d blocks\n",(int)sourceId.equipmentId,(int)sourceId.linkId,(int)s.currentDataSet->size());
   return s.currentDataSet->size();
 }
 
@@ -340,6 +338,7 @@ DataSetReference DataBlockSlicer::getSlice(bool includeIncomplete)
     bcv = slices.front();
     slices.pop();
   }
+  // printf("getSlice -> %p\n", bcv.get());
   return bcv;
 }
 
