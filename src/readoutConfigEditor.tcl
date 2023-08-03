@@ -159,6 +159,7 @@ set configurationParametersDescriptor {
 | readout | numberOfRuns | int | 1 | In standalone mode, number of runs to execute (ie START/STOP cycles). |
 | readout | rate | double | -1 | Data rate limit, per equipment, in Hertz. -1 for unlimited. |
 | readout | tfRateLimit | double | 0 | When set, the output is limited to a given timeframe rate. |
+| readout | tfRateLimitMode | int | 0 | Defines the source for TF rate limit: 0 = use TF id, 1 = use number of TF. |
 | readout | timeframeServerUrl | string | | The address to be used to publish current timeframe, e.g. to be used as reference clock for other readout instances. |
 | readout | timeStart | string | | In standalone mode, time at which to execute start. If not set, immediately. |
 | readout | timeStop | string | | In standalone mode, time at which to execute stop. If not set, on int/term/quit signal. |

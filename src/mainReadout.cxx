@@ -358,6 +358,7 @@ class Readout
   double cfgAggregatorSliceTimeout;
   double cfgAggregatorStfTimeout;
   double cfgTfRateLimit;
+  int cfgTfRateLimitMode;
   int cfgLogbookEnabled;
   std::string cfgLogbookUrl;
   std::string cfgLogbookApiToken;
@@ -408,6 +409,7 @@ class Readout
   AliceO2::Common::Timer logbookTimer; // timer to handle readout logbook publish interval
 
   uint64_t maxTimeframeId;
+  uint64_t countTimeframeId;
 
 #ifdef WITH_ZMQ
   std::unique_ptr<ZmqServer> tfServer;
@@ -938,6 +940,9 @@ int Readout::_configure(const boost::property_tree::ptree& properties)
   // configuration parameter: | readout | tfRateLimit | double | 0 | When set, the output is limited to a given timeframe rate. |
   cfgTfRateLimit = 0;
   cfg.getOptionalValue<double>("readout.tfRateLimit", cfgTfRateLimit);
+  // configuration parameter: | readout | tfRateLimitMode | int | 0 | Defines the source for TF rate limit: 0 = use TF id, 1 = use number of TF. |
+  cfgTfRateLimitMode = 0;
+  cfg.getOptionalValue<int>("readout.tfRateLimitMode", cfgTfRateLimitMode);
 
   // configuration parameter: | readout | disableTimeframes | int | 0 | When set, all timeframe related features are disabled (this may supersede other config parameters). |
   cfgDisableTimeframes = 0;
@@ -1391,6 +1396,7 @@ int Readout::_start()
   publishLogbookStats();
   logbookTimer.reset(cfgLogbookUpdateInterval * 1000000);
   maxTimeframeId = 0;
+  countTimeframeId = 0;
 
   // execute custom command
   executeCustomCommand("preSTART");
@@ -1498,6 +1504,10 @@ void Readout::loopRunning()
         if (bc->size() > 0) {
           if (bc->at(0)->getData() != nullptr) {
             uint64_t newTimeframeId = bc->at(0)->getData()->header.timeframeId;
+            if (cfgTfRateLimitMode == 1) {
+              // use number of TF instead of computed TF id. Useful when replaying files with jumps in TF ids.
+              newTimeframeId = countTimeframeId + 1;
+            }
             // are we complying with maximum TF rate ?
             if (cfgTfRateLimit > 0) {
               if (newTimeframeId > floor(startTimer.getTime() * cfgTfRateLimit) + 1) {
@@ -1505,6 +1515,7 @@ void Readout::loopRunning()
                 continue;
               }
             }
+            countTimeframeId++;
             if (newTimeframeId > maxTimeframeId) {
               maxTimeframeId = newTimeframeId;
 #ifdef WITH_ZMQ
