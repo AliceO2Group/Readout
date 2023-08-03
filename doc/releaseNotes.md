@@ -575,4 +575,5 @@ This file describes the main feature changes for each readout.exe released versi
 - When running from the command line, the environment variable O2_RUN can be used to set the run number. It is set to 0 by default, i.e. undefined run number.
 - Updated configuration parameters:
   - added readout.numberOfRuns: in standalone mode, number of START/STOP cycles to execute (used for testing).
-  - added readout.tfRateLimitMode: can be set to 1 to use number of TF instead of computed TF id. Useful when replaying files with jumps in TF ids.
+  - added readout.tfRateLimitMode: can be set to 1 to use number of TF instead of computed TF id for rate throttling. Useful when replaying files with jumps in TF ids. (not needed with autoTimeframeId)
+  - added equipment.autoTimeframeId: to force incremental timeframe IDs. Useful when replaying files with jumps in TF ids. BC still used to detect boundaries between TFs.

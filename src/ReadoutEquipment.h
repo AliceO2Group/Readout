@@ -184,6 +184,9 @@ class ReadoutEquipment
   int cfgDisableTimeframes = 0;        // When set, all TF features disabled
   RateRegulator TFregulator;           // clock counter for TF rate checks
   DataBlockContainerReference throttlePendingBlock; // in case TF rate limit was reached, a block may be set aside for later (when it belongs to next TF)
+  int cfgAutoTimeframeId = 0; // when set, TFids are generated incrementally instead of taken from RDH BC.
+  uint64_t autoTimeframeIdLatestFromBC = undefinedTimeframeId; // latest TFid (computed from BC)
+  uint64_t autoTimeframeIdCounter = 0; // TFid counter for sequence
 
   bool isRdhEquipment = false; // to be set true for RDH equipments
 
