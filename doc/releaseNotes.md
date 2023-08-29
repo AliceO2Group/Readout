@@ -578,5 +578,7 @@ This file describes the main feature changes for each readout.exe released versi
   - added readout.tfRateLimitMode: can be set to 1 to use number of TF instead of computed TF id for rate throttling. Useful when replaying files with jumps in TF ids. (not needed with autoTimeframeId)
   - added equipment.autoTimeframeId: to force incremental timeframe IDs. Useful when replaying files with jumps in TF ids. BC still used to detect boundaries between TFs.
 
-## next version
+## v2.21.1 - 29/08/2023
 - o2-readout-rawreader: added options logOff and dumpOrbitStats.
+- Bookkeeping: final stats publish at end of run is synchronous.
+- Monitoring: added buffers statistics in bytes: readout.bufferUsage.bytes (in addition to existing readout.bufferUsage.value, as a percentage)
