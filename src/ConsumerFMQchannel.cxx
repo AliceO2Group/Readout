@@ -25,7 +25,7 @@
 
 #ifdef WITH_FAIRMQ
 
-#include <fairmq/FairMQDevice.h>
+#include <fairmq/Device.h>
 #include <fairmq/FairMQMessage.h>
 #include <fairmq/FairMQTransportFactory.h>
 #include <fairmq/tools/Unique.h>
@@ -415,6 +415,7 @@ class ConsumerFMQchannel : public Consumer
       mp -> setWarningCallback(std::bind(&ConsumerFMQchannel::mplog, this, std::placeholders::_1));
       if ((mp->getId() >= 0) && (mp->getId() < ReadoutStatsMaxItems)) {
 	mp -> setBufferStateVariable(&gReadoutStats.counters.bufferUsage[mp->getId()]);
+        gReadoutStats.counters.bufferSize[mp->getId()] = memoryPoolPageSize * memoryPoolNumberOfPages;
       }
     }
     theLog.log(LogInfoDevel_(3008), "Using memory pool [%d]: %d pages x %d bytes", mp->getId(), memoryPoolNumberOfPages, memoryPoolPageSize);

@@ -21,7 +21,7 @@
 #include "CounterStats.h"
 
 //#define ERRLOG(args...) fprintf(stderr,args)
-#define ERRLOG(args...) fprintf(stdout, args)
+#define ERRLOG(args...) if (!logOff) {fprintf(stdout, args);}
 
 int main(int argc, const char* argv[])
 {
@@ -52,6 +52,11 @@ int main(int argc, const char* argv[])
   uint32_t firstTimeframeHbOrbitBegin = 0;
   bool isDefinedFirstTimeframeHbOrbitBegin = 0;
   uint32_t maxOrbit = 0;
+  uint32_t minOrbit = 0;
+  uint32_t firstOrbit = 0;
+
+  bool logOff = 0;
+  bool dumpOrbitStats =0;
 
   // parse input arguments
   // format is a list of key=value pairs
@@ -72,6 +77,8 @@ int main(int argc, const char* argv[])
       "    dumpStats=(int) : if set, some statistics are printed on HBF/TF size.\n"
       "    fileReadVerbose=(int) : if set, more information is printed when reading/decoding file.\n"
       "    timeframePeriodOrbits=(int) : if set, TF id computed (and printed, when dump enabled) for each RDH. Typically, 128 or 256.\n"
+      "    logOff=(int) : if set, logs disabled.\n"
+      "    dumpOrbitStats=(int) : if set, first / min / max orbits are printed after file read.\n"
       "    \n",
       argv[0]);
     return -1;
@@ -124,6 +131,10 @@ int main(int argc, const char* argv[])
       timeframePeriodOrbits = (uint32_t) std::stoi(value);
     } else if (key == "dumpStats") {
       dumpStats = std::stoi(value);
+    } else if (key == "logOff") {
+      logOff = std::stoi(value);
+    } else if (key == "dumpOrbitStats") {
+      dumpOrbitStats = std::stoi(value);
     } else {
       ERRLOG("unknown option %s\n", key.c_str());
     }
@@ -368,6 +379,12 @@ int main(int argc, const char* argv[])
 	  h.computeTimeframeId(firstTimeframeHbOrbitBegin, timeframePeriodOrbits);
         }
 
+        if (RDHBlockCount == 1) {
+          firstOrbit = h.getTriggerOrbit();
+          minOrbit = firstOrbit;
+          maxOrbit = firstOrbit;
+        }
+
         if (dumpRDH) {
           h.dumpRdh(pageOffset + blockOffset, 1);
         }
@@ -422,6 +439,9 @@ int main(int argc, const char* argv[])
 
 	if (h.getTriggerOrbit() > maxOrbit) {
 	  maxOrbit = h.getTriggerOrbit();
+	}
+	if ((h.getTriggerOrbit() < minOrbit) || (minOrbit == 0)) {
+	  minOrbit = h.getTriggerOrbit();
 	}
 
 	unsigned int linkId = h.getLinkId();
@@ -494,6 +514,10 @@ int main(int argc, const char* argv[])
   ERRLOG("%lu bytes\n", fileOffset);
   if (checkContinuousTriggerOrder) {
     ERRLOG("max orbit 0x%X\n", maxOrbit);
+  }
+
+  if (dumpOrbitStats) {
+    printf("Orbits:\t first = 0x%X\tmin = 0x%X\tmax = 0x%X\n", firstOrbit, minOrbit, maxOrbit);
   }
 
   if (dumpStats) {
