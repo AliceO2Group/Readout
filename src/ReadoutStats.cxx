@@ -75,6 +75,8 @@ void ReadoutStats::reset(bool lightReset)
       counters.bufferUsage[i] = -1.0;
     }
   }
+
+  counters.runNumber = undefinedRunNumber;
 }
 
 void ReadoutStats::print()

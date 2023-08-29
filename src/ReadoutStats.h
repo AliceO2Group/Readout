@@ -35,7 +35,7 @@ struct ReadoutStatsCounters {
   std::atomic<uint64_t> bytesReadout;
   std::atomic<uint64_t> bytesRecorded;
   std::atomic<uint64_t> bytesFairMQ;
-   std::atomic<double> timestamp;
+  std::atomic<double> timestamp;
   std::atomic<double> bytesReadoutRate;
   std::atomic<uint64_t> state;
   std::atomic<uint64_t> pagesPendingFairMQ;         // number of pages pending in ConsumerFMQ
@@ -52,10 +52,11 @@ struct ReadoutStatsCounters {
   std::atomic<uint64_t> ddBytesCopied;              // Data Distribution: number of bytes copied (HBF overlapping superpages)
   std::atomic<uint64_t> ddMemoryPendingBytes;       // Data Distribution: number of bytes pending release in ConsumerFMQ (real memory)
   std::atomic<uint64_t> ddPayloadPendingBytes;      // Data Distribution: number of bytes pending release in ConsumerFMQ (payload only, not accounting for memory fragmentation overhead)
+  std::atomic<uint64_t> runNumber;                  // current run number (valid only in running state)
 };
 
 // version number of this struct
-const uint32_t ReadoutStatsCountersVersion = 0xA0000003;
+const uint32_t ReadoutStatsCountersVersion = 0xA0000004;
 
 // need to be able to easily transmit this struct as a whole
 static_assert(std::is_pod<ReadoutStatsCounters>::value);
