@@ -212,38 +212,71 @@ class LogbookThread {
        th = nullptr;
      }
    };
-   int publishStats() {
+   // when timeout is set, ensures the function returns only when bookkeeping operation completed
+   // otherwise, it is done asynchronously later
+   // returns 0 on success, or an error code
+   int publishStats(int timeoutMilliseconds = 0) {
      if (logbookHandle == nullptr) return __LINE__; // fail if no connection
+     AliceO2::Common::Timer timer;
+     if (timeoutMilliseconds > 0) {
+       // wait pending request completed, if any (so that we are sure to push the latest counters)
+       timer.reset(timeoutMilliseconds * 1000);
+       while (publishRequest.load()) {
+         if (timer.isTimeout()) return __LINE__;
+         usleep(1000);
+       }
+     }
      if (publishRequest.load()) return __LINE__; // fail if request already pending
      publishRequest = 1;
+     if (this->verbose) {
+       theLog.log(LogInfoDevel_(3210), "Requested to publish logbook stats");
+     }
+     if (timeoutMilliseconds > 0) {
+       // wait request completed and check status
+       while (publishRequest.load()) {
+         if (timer.isTimeout()) return __LINE__;
+         usleep(1000);
+       }
+       if (!publishSuccess.load()) {
+         return __LINE__;
+       }
+     }
      return 0;
    };
+   bool verbose = 0; // flag for extra logs on request/publish
   private:
     std::unique_ptr<o2::bkp::api::BkpClient> logbookHandle; // handle to logbook
     std::unique_ptr<std::thread> th; // a thread reading from fd and injecting to theLog
     std::atomic<int> shutdownRequest; // flag to terminate thread
     std::atomic<int> publishRequest; // flag to ask thread to publish current values
+    std::atomic<int> publishSuccess; // flag to report status of latest publish operation
     void run() {
       setThreadName("logbook");
       // thread loop, 10Hz
       while (!shutdownRequest && (logbookHandle != nullptr)) {
         if (publishRequest.load() == 1) {
+          publishSuccess = 0;
+          // copy current counters
+          ReadoutStatsCounters snapshot;
+          memcpy((void *)&snapshot, (void *)&gReadoutStats.counters, sizeof(snapshot));
           // publishing to logbook makes sense only if a run number defined
-          if (occRunNumber != undefinedRunNumber) {
-            bool isOk = false;
+          if (snapshot.runNumber.load() != undefinedRunNumber) {
             try {
               // interface: https://github.com/AliceO2Group/Bookkeeping/tree/main/cxx-client/include/BookkeepingApi
               logbookHandle->flp()->updateReadoutCountersByFlpNameAndRunNumber(
-                occRole, occRunNumber,
-                (int64_t)gReadoutStats.counters.numberOfSubtimeframes, (int64_t)gReadoutStats.counters.bytesReadout, (int64_t)gReadoutStats.counters.bytesRecorded, (int64_t)gReadoutStats.counters.bytesFairMQ
+                snapshot.source, snapshot.runNumber.load(),
+                (int64_t)snapshot.numberOfSubtimeframes.load(), (int64_t)snapshot.bytesReadout.load(), (int64_t)snapshot.bytesRecorded.load(), (int64_t)snapshot.bytesFairMQ.load()
               );
-              isOk = true;
+              if (this->verbose) {
+                theLog.log(LogInfoDevel_(3210), "Publishing logbook stats: tf = %llu, bytesReadout = %llu", (unsigned long long)snapshot.numberOfSubtimeframes.load(), (unsigned long long)snapshot.bytesReadout.load());
+              }
+              publishSuccess = 1;
             } catch (const std::exception& ex) {
               theLog.log(LogErrorDevel_(3210), "Failed to update logbook: %s", ex.what());
             } catch (...) {
               theLog.log(LogErrorDevel_(3210), "Failed to update logbook: unknown exception");
             }
-            if (!isOk) {
+            if (!publishSuccess.load()) {
               // closing logbook immediately
               logbookHandle = nullptr;
               theLog.log(LogErrorSupport_(3210), "Logbook now disabled");
@@ -405,7 +438,7 @@ class Readout
   std::unique_ptr<ReadoutDatabase> dbHandle; // handle to readout database
 #endif
 
-  void publishLogbookStats();          // publish current readout counters to logbook
+  void publishLogbookStats(int timeout = 0);          // publish current readout counters to logbook. Optional timeout in milliseconds, async op if not set.
   AliceO2::Common::Timer logbookTimer; // timer to handle readout logbook publish interval
 
   uint64_t currentTimeframeId = undefinedTimeframeId;
@@ -418,15 +451,9 @@ class Readout
 
 bool testLogbook = false; // flag for logbook test mode
 
-void Readout::publishLogbookStats()
+void Readout::publishLogbookStats(int timeout)
 {
   //  gReadoutStats.print();
-
-#ifdef WITH_LOGBOOK
-  if (theLogbookThread != nullptr) {
-    theLogbookThread->publishStats();
-  }
-#endif
 
 #ifdef WITH_DB
   if (dbHandle != nullptr) {
@@ -436,6 +463,15 @@ void Readout::publishLogbookStats()
       (int64_t)gReadoutStats.counters.bytesRecorded,
       (int64_t)gReadoutStats.counters.bytesFairMQ
     );
+  }
+#endif
+
+#ifdef WITH_LOGBOOK
+  if (theLogbookThread != nullptr) {
+    int err = theLogbookThread->publishStats(timeout);
+    if ((timeout > 0) && (err)) {
+      theLog.log(LogErrorDevel_(3210), "Logbook publish failed within given time (%d ms)", timeout);
+    }
   }
 #endif
 }
@@ -1384,6 +1420,7 @@ int Readout::_start()
   theLog.log(LogInfoSupport_(3005), "Readout executing START");
   gReadoutStats.reset(1);
   gReadoutStats.counters.state = stringToUint64("> start");
+  gReadoutStats.counters.runNumber = occRunNumber;
   gReadoutStats.counters.notify++;
   gReadoutStats.publishNow();
 
@@ -1713,8 +1750,8 @@ int Readout::_stop()
   // report log statistics
   theLog.log("Errors: %lu Warnings: %lu", theLog.getMessageCount(InfoLogger::Severity::Error), theLog.getMessageCount(InfoLogger::Severity::Warning));
 
-  // publish final logbook statistics
-  publishLogbookStats();
+  // publish final logbook statistics (synchronously with timeout)
+  publishLogbookStats(3000);
 
   // publish some final counters
   theLog.log(LogInfoDevel_(3003), "Final counters: timeframes = %" PRIu64 " readout = %s recorded = %s",
