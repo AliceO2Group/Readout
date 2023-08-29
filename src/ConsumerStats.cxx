@@ -176,8 +176,9 @@ class ConsumerStats : public Consumer
       // buffer stats
       for (int i = 0; i < ReadoutStatsMaxItems; i++) {
 	double r = snapshot.bufferUsage[i].load();
+        uint64_t b = (uint64_t)(r * snapshot.bufferSize[i].load());
 	if (r >= 0) {
-	  sendMetricNoException(Metric{(int)(r*100), "readout.bufferUsage"}.addTag(tags::Key::ID, i));
+	  sendMetricNoException(Metric{"readout.bufferUsage"}.addValue((int)(r*100), "value").addValue(b, "bytes").addTag(tags::Key::ID, i));
 	}
       }
     }

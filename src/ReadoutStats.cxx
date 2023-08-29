@@ -73,6 +73,7 @@ void ReadoutStats::reset(bool lightReset)
   if (!lightReset) {
     for (unsigned int i = 0; i < ReadoutStatsMaxItems; i++) {
       counters.bufferUsage[i] = -1.0;
+      counters.bufferSize[i] = 0;
     }
   }
 
