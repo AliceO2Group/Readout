@@ -227,7 +227,7 @@ ReadoutEquipment::ReadoutEquipment(ConfigFile& cfg, std::string cfgEntryPoint, b
     mp -> setWarningCallback(std::bind(&ReadoutEquipment::mplog, this, std::placeholders::_1));
     if ((mp->getId() >= 0) && (mp->getId() < ReadoutStatsMaxItems)) {
       mp -> setBufferStateVariable(&gReadoutStats.counters.bufferUsage[mp->getId()]);
-      gReadoutStats.counters.bufferSize[mp->getId()] = memoryPoolPageSize * memoryPoolNumberOfPages;
+      gReadoutStats.counters.bufferSize[mp->getId()] = (uint64_t)memoryPoolPageSize * (uint64_t)memoryPoolNumberOfPages;
     }
     theLog.log(LogInfoDevel_(3008), "Using memory pool [%d]: %d pages x %d bytes", mp->getId(), memoryPoolNumberOfPages, memoryPoolPageSize);
 

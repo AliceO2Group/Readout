@@ -582,3 +582,6 @@ This file describes the main feature changes for each readout.exe released versi
 - o2-readout-rawreader: added options logOff and dumpOrbitStats.
 - Bookkeeping: final stats publish at end of run is synchronous.
 - Monitoring: added buffers statistics in bytes: readout.bufferUsage.bytes (in addition to existing readout.bufferUsage.value, as a percentage)
+
+## v2.21.2 - 14/09/2023
+- Monitoring: fix buffer statistics in bytes (wrong values were reported above 4GB because of a 32bit variable).
