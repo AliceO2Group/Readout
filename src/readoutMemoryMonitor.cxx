@@ -197,8 +197,8 @@ int main(int argc, char** argv)
               isOk = 0;
               break;
             }
-            auto stats = ((MemoryPagesPool::Stats *)msgBuffer[1+p*2]);
             unsigned int npages = msgSize[2+p*2] / sizeof(MemoryPagesPool::PageStat);
+            //auto stats = ((MemoryPagesPool::Stats *)msgBuffer[1+p*2]);
             //printf("%d %d: %f - %f - %u\n",p, stats->id, stats->t0,stats->t1,npages);
             auto ps = (MemoryPagesPool::PageStat*)msgBuffer[2+p*2];
             int c = 0;
@@ -231,7 +231,7 @@ int main(int argc, char** argv)
             SDL_Rect r = {ox,oy,cw,cy};
             SDL_RenderDrawRect(hRenderer, &r);
             
-            auto stats = ((MemoryPagesPool::Stats *)msgBuffer[1+p*2]);
+            //auto stats = ((MemoryPagesPool::Stats *)msgBuffer[1+p*2]);
             unsigned int npages = msgSize[2+p*2] / sizeof(MemoryPagesPool::PageStat);
             auto ps = (MemoryPagesPool::PageStat*)msgBuffer[2+p*2];
 
@@ -261,7 +261,7 @@ int main(int argc, char** argv)
               }
               int rx = k % npl;
               int ry = k / npl;
-              SDL_Rect r = {ox+bb+rx*pxk+1,oy+bb+ry*pxk+1,pxk-2,pxk-2};
+              SDL_Rect r = {(int)(ox+bb+rx*pxk+1),(int)(oy+bb+ry*pxk+1),(int)(pxk-2),(int)(pxk-2)};
               SDL_RenderFillRect(hRenderer, &r);
             }
           }
