@@ -235,7 +235,9 @@ class ConsumerStats : public Consumer
       double timeUntilTimeout = monitoringUpdateTimer.getRemainingTime(); // measured in seconds
       if (timeUntilTimeout <= 0) {
         publishStats();
-        monitoringUpdateTimer.increment();
+        monitoringUpdateTimer.increment(true);
+        // ensure a minimum time between consecutive publish
+        usleep(100000);
       } else {
         if (timeUntilTimeout > 1) {
           timeUntilTimeout = 1.0; // avoid a sleep longer than 1s to allow exiting promptly

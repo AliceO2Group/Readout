@@ -585,3 +585,6 @@ This file describes the main feature changes for each readout.exe released versi
 
 ## v2.21.2 - 14/09/2023
 - Monitoring: fix buffer statistics in bytes (wrong values were reported above 4GB because of a 32bit variable).
+
+## v2.21.3 - 05/10/2023
+- Monitoring: fix multiple publish if system stuck for longer than the update period.
