@@ -215,6 +215,9 @@ class ConsumerStats : public Consumer
 
     counterBytesDiff = 0;
     counterBlocksDiff = 0;
+
+    // ensure a minimum time between consecutive publish
+    usleep(10000);
   }
 
   // run a function in a separate thread to publish data regularly, until flag isShutdown is set
@@ -236,8 +239,6 @@ class ConsumerStats : public Consumer
       if (timeUntilTimeout <= 0) {
         publishStats();
         monitoringUpdateTimer.increment(true);
-        // ensure a minimum time between consecutive publish
-        usleep(100000);
       } else {
         if (timeUntilTimeout > 1) {
           timeUntilTimeout = 1.0; // avoid a sleep longer than 1s to allow exiting promptly
