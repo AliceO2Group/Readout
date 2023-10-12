@@ -252,6 +252,8 @@ class ConsumerFileRecorder : public Consumer
     invalidRDH = 0;
     emptyPacketsDropped = 0;
     packetsRecorded = 0;
+
+    silence = 0;
   }
 
   int start()
