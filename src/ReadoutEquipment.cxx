@@ -516,7 +516,8 @@ Thread::CallbackResult ReadoutEquipment::threadCallback(void* arg)
             double dt = (nextBlock->getData()->header.orbitFirstInBlock - ptr->firstTimeframeHbOrbitBegin) * 1.0 / ptr->LHCOrbitRate; // diff in orbit / orbit rate = should be close to current timestamp
             uint32_t expected = ptr->firstTimeframeHbOrbitBegin + (uint32_t)(now * ptr->LHCOrbitRate);
             if (fabs(dt - now) > 10) {
-              theLog.log(logTFdiscontinuityTokenError, "Orbit 0x%X seems inconsistent from expected ~0x%X (orbit rate %u, elapsed time %.1fs)", (int)nextBlock->getData()->header.orbitFirstInBlock, expected, ptr->LHCOrbitRate, now);
+              theLog.log(logTFdiscontinuityTokenError, "Equipment %s link %d - Orbit 0x%X seems inconsistent from expected ~0x%X (orbit rate %u, elapsed time %.1fs)",
+                ptr->name.c_str(), (int)nextBlock->getData()->header.linkId, (int)nextBlock->getData()->header.orbitFirstInBlock, expected, ptr->LHCOrbitRate, now);
             }
 	  }
 	}
@@ -925,7 +926,7 @@ int ReadoutEquipment::processRdh(DataBlockContainerReference& block)
       RdhHandle h(baseAddress + pageOffset);
       rdhIndexInPage++;
 
-      // printf("RDH #%d @ 0x%X : next block @ +%d bytes\n",rdhIndexInPage,(unsigned int)pageOffset,h.getOffsetNextPacket());
+      // printf("RDH %d @ 0x%X : next block @ +%d bytes\n",rdhIndexInPage,(unsigned int)pageOffset,h.getOffsetNextPacket());
 
       if (h.validateRdh(errorDescription)) {
         if ((cfgRdhDumpEnabled) || (cfgRdhDumpErrorEnabled)) {
@@ -939,7 +940,7 @@ int ReadoutEquipment::processRdh(DataBlockContainerReference& block)
         }
         statsRdhCheckErr++;
 	isPageError = 1;
-        theLog.log(logRdhErrorsToken, "Equipment %d RDH #%d @ 0x%X : invalid RDH: %s", id, rdhIndexInPage, (unsigned int)pageOffset, errorDescription.c_str());
+        theLog.log(logRdhErrorsToken, "Equipment %d RDH %d @ 0x%X : invalid RDH: %s", id, rdhIndexInPage, (unsigned int)pageOffset, errorDescription.c_str());
         // stop on first RDH error (should distinguich valid/invalid block length)
         break;
       } else {
@@ -960,7 +961,7 @@ int ReadoutEquipment::processRdh(DataBlockContainerReference& block)
       }
       if (linkId != h.getLinkId()) {
         if (cfgRdhDumpWarningEnabled) {
-          theLog.log(logRdhErrorsToken, "Equipment %d RDH #%d @ 0x%X : inconsistent link ids: %d != %d", id, rdhIndexInPage, (unsigned int)pageOffset, linkId, h.getLinkId());
+          theLog.log(logRdhErrorsToken, "Equipment %d RDH %d @ 0x%X : inconsistent link ids: %d != %d", id, rdhIndexInPage, (unsigned int)pageOffset, linkId, h.getLinkId());
           isPageError = 1;
         }
         statsRdhCheckStreamErr++;
@@ -982,7 +983,7 @@ int ReadoutEquipment::processRdh(DataBlockContainerReference& block)
       if ((isDefinedLastDetectorField[linkId])&&(pageOffset)) {
         if (checkChangesInDetectorField(h, pageOffset)) {
 	   if (cfgRdhDumpWarningEnabled) {
-             theLog.log(logRdhErrorsToken, "Equipment %d Link %d RDH #%d @ 0x%X : detector field changed not at page beginning", id, (int)blockHeader.linkId, rdhIndexInPage, (unsigned int)pageOffset);
+             theLog.log(logRdhErrorsToken, "Equipment %d Link %d RDH %d @ 0x%X : detector field changed not at page beginning", id, (int)blockHeader.linkId, rdhIndexInPage, (unsigned int)pageOffset);
             isPageError = 1;
           }
           statsRdhCheckStreamErr++;
@@ -1014,7 +1015,7 @@ int ReadoutEquipment::processRdh(DataBlockContainerReference& block)
           if (newCount !=
               (uint8_t)(RdhLastPacketCounter[linkId] + (uint8_t)1)) {
             theLog.log(LogDebugTrace,
-                       "RDH #%d @ 0x%X : possible packets dropped for link %d, packetCounter jump from %d to %d",
+                       "RDH %d @ 0x%X : possible packets dropped for link %d, packetCounter jump from %d to %d",
                        rdhIndexInPage, (unsigned int)pageOffset,
                        (int)linkId, (int)RdhLastPacketCounter[linkId],
                        (int)newCount);
@@ -1031,23 +1032,23 @@ int ReadoutEquipment::processRdh(DataBlockContainerReference& block)
 
         // provision for further checks on superpage size
         /*
-        theLog.log(logRdhErrorsToken, "Equipment %d RDH #%d @ 0x%X : offsetNextPacket is null", id, rdhIndexInPage, (unsigned int)pageOffset);
+        theLog.log(logRdhErrorsToken, "Equipment %d RDH %d @ 0x%X : offsetNextPacket is null", id, rdhIndexInPage, (unsigned int)pageOffset);
         statsRdhCheckErr++;
         isPageError = 1;
         break;
       }
       if ((pageOffset + h.getMemorySize() == blockSize)&&(pageOffset + offsetNextPacket == blockSize)) {
         // this is normal end of page: the last packet fills the end of the page
-        theLog.log(logRdhErrorsToken, "Equipment %d RDH #%d @ 0x%X : end packet size ok: offsetNextpacket = %d bytes, memorySize = %d bytes, page = %d bytes", id, rdhIndexInPage, (unsigned int)pageOffset, (int)offsetNextPacket, (int)h.getMemorySize(),  (int)blockSize);
+        theLog.log(logRdhErrorsToken, "Equipment %d RDH %d @ 0x%X : end packet size ok: offsetNextpacket = %d bytes, memorySize = %d bytes, page = %d bytes", id, rdhIndexInPage, (unsigned int)pageOffset, (int)offsetNextPacket, (int)h.getMemorySize(),  (int)blockSize);
         break;
       }
       if ((pageOffset + offsetNextPacket == blockSize)||(pageOffset + h.getMemorySize() == blockSize)) {
-        theLog.log(logRdhErrorsToken, "Equipment %d RDH #%d @ 0x%X : end packet size mismatch: offsetNextpacket = %d bytes, memorySize = %d bytes, page = %d bytes", id, rdhIndexInPage, (unsigned int)pageOffset, (int)offsetNextPacket, (int)h.getMemorySize(),  (int)blockSize);
+        theLog.log(logRdhErrorsToken, "Equipment %d RDH %d @ 0x%X : end packet size mismatch: offsetNextpacket = %d bytes, memorySize = %d bytes, page = %d bytes", id, rdhIndexInPage, (unsigned int)pageOffset, (int)offsetNextPacket, (int)h.getMemorySize(),  (int)blockSize);
         // this is normal end of page: the last packet fills the end of the page
         break;
       }
       if (pageOffset + offsetNextPacket > blockSize) {
-        theLog.log(logRdhErrorsToken, "Equipment %d RDH #%d @ 0x%X : next packet (+ %d bytes) is outside of page (%d bytes)", id, rdhIndexInPage, (unsigned int)pageOffset, (int)offsetNextPacket, (int)blockSize);
+        theLog.log(logRdhErrorsToken, "Equipment %d RDH %d @ 0x%X : next packet (+ %d bytes) is outside of page (%d bytes)", id, rdhIndexInPage, (unsigned int)pageOffset, (int)offsetNextPacket, (int)blockSize);
         statsRdhCheckErr++;
         isPageError = 1;
         */

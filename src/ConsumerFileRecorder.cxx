@@ -197,7 +197,7 @@ class ConsumerFileRecorder : public Consumer
     cfg.getOptionalValue(cfgEntryPoint + ".dataBlockHeaderEnabled", recordWithDataBlockHeader, 0);
     theLog.log(LogInfoDevel_(3002), "Recording internal data block headers = %d", recordWithDataBlockHeader);
 
-    // configuration parameter: | consumer-fileRecorder-* | filesMax | int | 1 | If 1 (default), file splitting is disabled: file is closed whenever a limit is reached on a given recording stream. Otherwise, file splitting is enabled: whenever the current file reaches a limit, it is closed an new one is created (with an incremental name). If <=0, an unlimited number of incremental chunks can be created. If non-zero, it defines the maximum number of chunks. The file name is suffixed with chunk number (by default, ".001, .002, ..." at the end of the file name. One may use "%f" in the file name to define where this incremental file counter is printed. |
+    // configuration parameter: | consumer-fileRecorder-* | filesMax | int | 1 | If 1 (default), file splitting is disabled: file is closed whenever a limit is reached on a given recording stream. Otherwise, file splitting is enabled: whenever the current file reaches a limit, it is closed an new one is created (with an incremental name). If = 0, an unlimited number of incremental chunks can be created. If smaller than zero, it defines the number of chunks to use round-robin, indefinitely. If bigger than zero, it defines the maximum number of chunks. The file name is suffixed with chunk number (by default, ".001, .002, ..." at the end of the file name. One may use "%f" in the file name to define where this incremental file counter is printed. |
     filesMax = 1;
     if (cfg.getOptionalValue<int>(cfgEntryPoint + ".filesMax", filesMax) == 0) {
       if (filesMax == 1) {
@@ -205,8 +205,10 @@ class ConsumerFileRecorder : public Consumer
       } else {
         if (filesMax > 0) {
           theLog.log(LogInfoDevel_(3002), "File splitting enabled - max %d files per stream", filesMax);
-        } else {
+        } else if (filesMax == 0) {
           theLog.log(LogInfoDevel_(3002), "File splitting enabled - unlimited files");
+        } else {
+          theLog.log(LogInfoDevel_(3002), "File splitting enabled - %d files round-robin, indefinitely", (-filesMax) );
         }
       }
     }
@@ -250,6 +252,8 @@ class ConsumerFileRecorder : public Consumer
     invalidRDH = 0;
     emptyPacketsDropped = 0;
     packetsRecorded = 0;
+
+    silence = 0;
   }
 
   int start()
@@ -401,7 +405,11 @@ class ConsumerFileRecorder : public Consumer
     }
 
     // create file handle
-    std::shared_ptr<FileHandle> newHandle = std::make_shared<FileHandle>(newFileName, &theLog, maxFileSize, maxFilePages, maxFileTF);
+    InfoLogger* _theLog = &theLog;
+    if (silence) {
+      _theLog = nullptr;
+    }
+    std::shared_ptr<FileHandle> newHandle = std::make_shared<FileHandle>(newFileName, _theLog, maxFileSize, maxFilePages, maxFileTF);
     if (newHandle == nullptr) {
       return -1;
     }
@@ -483,6 +491,16 @@ class ConsumerFileRecorder : public Consumer
             // let's move to next file chunk
             int fileId = fpUsed->fileId;
             fileId++;
+            if (filesMax<0) {
+              if ((fileId % (-filesMax)) == 1) {
+                fileId = 1;
+                if (!silence) {
+                  // stop logging round-robin creation of files
+		  theLog.logInfo("Recording now continues round-robin on existing files, further iterations will not be logged.");
+                  silence = 1;
+                }
+              }
+            }
             if ((filesMax < 1) || (fileId <= filesMax)) {
               createFile(&fpUsed, sourceId, false, fileId);
             }
@@ -650,6 +668,8 @@ class ConsumerFileRecorder : public Consumer
   int filesMax = 0;                   // maximum number of files to write (for each stream)
   int dropEmptyHBFrames = 0;          // if set, some empty packets are discarded (see logic in code)
   int dropEmptyHBFramesTriggerMask = 0; // (when using dropEmptyHBFrames = 1) empty HB frames are kept if any bit in RDH TriggerType field matches this pattern. (TriggerType & TriggerMask != 0)
+
+  bool silence = 0; // when set, no logs are printed
 
   class Packet
   {
