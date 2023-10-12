@@ -589,6 +589,7 @@ This file describes the main feature changes for each readout.exe released versi
 ## v2.21.3 - 05/10/2023
 - Monitoring: fix multiple publish if system stuck for longer than the update period.
 
-## next version
+## v2.21.4 - 12/10/2023
 - Updated configuration parameters:
   - consumer-fileRecorder-*.filesMax: if negative value, the files are written round-robin indefinitely. For example, if value is -4, there will be files 001 to 004 used as circular buffer. This implies limits are defined with the other parameters (e.g. maximum size, number of tf, or pages).
+- Log messages cosmetics: details in orbits warning, special chars in RDH errors.
