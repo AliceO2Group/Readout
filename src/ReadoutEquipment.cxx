@@ -516,7 +516,8 @@ Thread::CallbackResult ReadoutEquipment::threadCallback(void* arg)
             double dt = (nextBlock->getData()->header.orbitFirstInBlock - ptr->firstTimeframeHbOrbitBegin) * 1.0 / ptr->LHCOrbitRate; // diff in orbit / orbit rate = should be close to current timestamp
             uint32_t expected = ptr->firstTimeframeHbOrbitBegin + (uint32_t)(now * ptr->LHCOrbitRate);
             if (fabs(dt - now) > 10) {
-              theLog.log(logTFdiscontinuityTokenError, "Orbit 0x%X seems inconsistent from expected ~0x%X (orbit rate %u, elapsed time %.1fs)", (int)nextBlock->getData()->header.orbitFirstInBlock, expected, ptr->LHCOrbitRate, now);
+              theLog.log(logTFdiscontinuityTokenError, "Equipment %s link %d - Orbit 0x%X seems inconsistent from expected ~0x%X (orbit rate %u, elapsed time %.1fs)",
+                ptr->name.c_str(), (int)nextBlock->getData()->header.linkId, (int)nextBlock->getData()->header.orbitFirstInBlock, expected, ptr->LHCOrbitRate, now);
             }
 	  }
 	}
