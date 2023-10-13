@@ -145,6 +145,7 @@ set configurationParametersDescriptor {
 | readout | aggregatorSliceTimeout | double | 0 | When set, slices (groups) of pages are flushed if not updated after given timeout (otherwise closed only on beginning of next TF, or on stop). |
 | readout | aggregatorStfTimeout | double | 0 | When set, subtimeframes are buffered until timeout (otherwise, sent immediately and independently for each data source). |
 | readout | customCommands | string | | List of key=value pairs defining some custom shell commands to be executed at before/after state change commands. |
+| readout | defaults | string |  | If set, the corresponding configuration URI is loaded and merged with current readout configuration. Existing parameters in current config are NOT overwritten. |
 | readout | disableAggregatorSlicing | int | 0 | When set, the aggregator slicing is disabled, data pages are passed through without grouping/slicing. |
 | readout | disableTimeframes | int | 0 | When set, all timeframe related features are disabled (this may supersede other config parameters). |
 | readout | exitTimeout | double | -1 | Time in seconds after which the program exits automatically. -1 for unlimited. |

@@ -723,6 +723,47 @@ int Readout::_init(int argc, char* argv[])
 
 //#include <boost/property_tree/json_parser.hpp>
 
+// dump boost ptree on stdout
+void printTree (boost::property_tree::ptree &pt, int level) {
+  if (pt.empty()) {
+    std::cerr << "\""<< pt.data()<< "\"";
+  }
+
+  else {
+    if (level) std::cerr << std::endl;
+    std::cerr << std::string(level*2, ' ') << "{" << std::endl;
+    for (boost::property_tree::ptree::iterator pos = pt.begin(); pos != pt.end();) {
+      std::cerr << std::string((level+1)*2, ' ') << "\"" << pos->first << "\": ";
+      printTree(pos->second, level + 1);
+      ++pos;
+      if (pos != pt.end()) {
+        std::cerr << ",";
+      }
+      std::cerr << std::endl;
+    }
+   std::cerr << std::string(level*2, ' ') << " }";
+  }
+  return;
+}
+
+// merge content of boost ptree pt2 into pt1
+// existing nodes are NOT overwritten
+void mergeTree (boost::property_tree::ptree &pt1, boost::property_tree::ptree &pt2) {
+  // iterate each node in pt2
+  for (boost::property_tree::ptree::iterator pos = pt2.begin(); pos != pt2.end(); ++pos) {
+    auto nodeName = pos->first;
+    // is there a key match in pt1 ?
+    auto sub1 = pt1.get_child_optional(nodeName);
+    if (!sub1) {
+      // no match, insert
+      pt1.put_child(nodeName, pos->second);
+    } else {
+      // match, merge subtrees
+      mergeTree(sub1.get(), pos->second);
+    }
+  }
+}
+
 int Readout::_configure(const boost::property_tree::ptree& properties)
 {
   theLog.log(LogInfoSupport_(3005), "Readout executing CONFIGURE");
@@ -735,29 +776,56 @@ int Readout::_configure(const boost::property_tree::ptree& properties)
 
   // load configuration file
   theLog.log(LogInfoSupport, "Reading configuration from %s %s", cfgFileURI, cfgFileEntryPoint);
-  try {
-    // check URI prefix
-    if (!strncmp(cfgFileURI, "file:", 5)) {
-      // let's use the 'Common' config file library
-      cfg.load(cfgFileURI);
-    } else {
-// otherwise use the Configuration module, if available
-#ifdef WITH_CONFIG
-      try {
-        std::unique_ptr<o2::configuration::ConfigurationInterface> conf = o2::configuration::ConfigurationFactory::getConfiguration(cfgFileURI);
-        boost::property_tree::ptree t = conf->getRecursive(cfgFileEntryPoint);
-        cfg.load(t);
-        // cfg.print();
-      } catch (std::exception& e) {
-        throw std::string(e.what());
+
+  auto loadConfig = [] (const char* cfgFileURI, const char *cfgFileEntryPoint, ConfigFile &cfg) {
+    try {
+      // check URI prefix
+      if (!strncmp(cfgFileURI, "file:", 5)) {
+        // let's use the 'Common' config file library
+        cfg.load(cfgFileURI);
+      } else {
+        // otherwise use the Configuration module, if available
+        #ifdef WITH_CONFIG
+          try {
+            std::unique_ptr<o2::configuration::ConfigurationInterface> conf = o2::configuration::ConfigurationFactory::getConfiguration(cfgFileURI);
+            boost::property_tree::ptree t = conf->getRecursive(cfgFileEntryPoint);
+            cfg.load(t);
+            // cfg.print();
+          } catch (std::exception& e) {
+            throw std::string(e.what());
+          }
+        #else
+          throw std::string("This type of URI is not supported");
+        #endif
       }
-#else
-      throw std::string("This type of URI is not supported");
-#endif
+    } catch (std::string err) {
+      theLog.log(LogErrorSupport_(3100), "Failed to read config: %s", err.c_str());
+      return -1;
     }
-  } catch (std::string err) {
-    theLog.log(LogErrorSupport_(3100), "Failed to read config: %s", err.c_str());
+    return 0;
+  };
+
+  if (loadConfig(cfgFileURI, cfgFileEntryPoint, cfg)) {
     return -1;
+  }
+
+  //printTree(cfg.get(),0);
+
+  // configuration parameter: | readout | defaults | string |  | If set, the corresponding configuration URI is loaded and merged with current readout configuration. Existing parameters in current config are NOT overwritten. |
+
+  // try to load extra defaults, if defined, and merge
+  std::string cfgDefaultsPath = "";
+  if (cfg.getOptionalValue<std::string>("readout.defaults", cfgDefaultsPath) == 0) {
+    ConfigFile cfgDefaults;
+    theLog.log(LogInfoDevel, "Reading configuration defaults from %s %s", cfgDefaultsPath.c_str(), cfgFileEntryPoint);
+    if (loadConfig(cfgDefaultsPath.c_str(), cfgFileEntryPoint, cfgDefaults) == 0) {
+      //printTree(cfgDefaults.get(),0);
+      // merge trees: defaults values used if not defined already
+      mergeTree(cfg.get(), cfgDefaults.get());
+      //printTree(cfg.get(),0);
+    } else {
+     return -1;
+    }
   }
 
   // TODO

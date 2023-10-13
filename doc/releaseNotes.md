@@ -593,3 +593,7 @@ This file describes the main feature changes for each readout.exe released versi
 - Updated configuration parameters:
   - consumer-fileRecorder-*.filesMax: if negative value, the files are written round-robin indefinitely. For example, if value is -4, there will be files 001 to 004 used as circular buffer. This implies limits are defined with the other parameters (e.g. maximum size, number of tf, or pages).
 - Log messages cosmetics: details in orbits warning, special chars in RDH errors.
+
+## next version
+- Updated configuration parameters:
+  - added readout.defaults: if set, the corresponding configuration URI is loaded and merged with current readout configuration. Existing parameters in current config are NOT overwritten. Useful to put in a single place settings which are shared by many configs.
