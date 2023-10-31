@@ -13,9 +13,9 @@
 
 #ifdef WITH_FAIRMQ
 
-#include <fairmq/FairMQDevice.h>
-#include <fairmq/FairMQMessage.h>
-#include <fairmq/FairMQTransportFactory.h>
+#include <fairmq/Device.h>
+#include <fairmq/Message.h>
+#include <fairmq/TransportFactory.h>
 #include <thread>
 #include "ReadoutUtils.h"
 
@@ -89,30 +89,30 @@ class ConsumerFMQ : public Consumer
 
     sender.fChannels = m;
     sender.SetTransport("zeromq");
-    sender.ChangeState(fair::mq::Transition::InitDevice);
+    sender.ChangeStateOrThrow(fair::mq::Transition::InitDevice);
     sender.WaitForState(fair::mq::State::InitializingDevice);
-    sender.ChangeState(fair::mq::Transition::CompleteInit);
+    sender.ChangeStateOrThrow(fair::mq::Transition::CompleteInit);
     sender.WaitForState(fair::mq::State::Initialized);
-    sender.ChangeState(fair::mq::Transition::Bind);
+    sender.ChangeStateOrThrow(fair::mq::Transition::Bind);
     sender.WaitForState(fair::mq::State::Bound);
-    sender.ChangeState(fair::mq::Transition::Connect);
+    sender.ChangeStateOrThrow(fair::mq::Transition::Connect);
     sender.WaitForState(fair::mq::State::DeviceReady);
-    sender.ChangeState(fair::mq::Transition::InitTask);
+    sender.ChangeStateOrThrow(fair::mq::Transition::InitTask);
     sender.WaitForState(fair::mq::State::Ready);
-    sender.ChangeState(fair::mq::Transition::Run);
+    sender.ChangeStateOrThrow(fair::mq::Transition::Run);
 
     //    sender.InteractiveStateLoop();
   }
 
   ~ConsumerFMQ()
   {
-    sender.ChangeState(fair::mq::Transition::Stop);
+    sender.ChangeStateOrThrow(fair::mq::Transition::Stop);
     sender.WaitForState(fair::mq::State::Ready);
-    sender.ChangeState(fair::mq::Transition::ResetTask);
+    sender.ChangeStateOrThrow(fair::mq::Transition::ResetTask);
     sender.WaitForState(fair::mq::State::DeviceReady);
-    sender.ChangeState(fair::mq::Transition::ResetDevice);
+    sender.ChangeStateOrThrow(fair::mq::Transition::ResetDevice);
     sender.WaitForState(fair::mq::State::Idle);
-    sender.ChangeState(fair::mq::Transition::End);
+    sender.ChangeStateOrThrow(fair::mq::Transition::End);
 
     if (deviceThread.joinable()) {
       deviceThread.join();
