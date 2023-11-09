@@ -597,3 +597,6 @@ This file describes the main feature changes for each readout.exe released versi
 ## v2.21.5 - 13/10/2023
 - Updated configuration parameters:
   - added readout.defaults: if set, the corresponding configuration URI is loaded and merged with current readout configuration. Existing parameters in current config are NOT overwritten. Useful to put in a single place settings which are shared by many configs.
+
+## v2.21.6 - 09/11/2023
+- Minor changes: fix compilation warnings, FMQ API.
