@@ -26,8 +26,8 @@
 #ifdef WITH_FAIRMQ
 
 #include <fairmq/Device.h>
-#include <fairmq/FairMQMessage.h>
-#include <fairmq/FairMQTransportFactory.h>
+#include <fairmq/Message.h>
+#include <fairmq/TransportFactory.h>
 #include <fairmq/tools/Unique.h>
 
 #include "RAWDataHeader.h"
