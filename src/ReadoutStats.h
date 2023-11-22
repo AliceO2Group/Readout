@@ -60,7 +60,7 @@ struct ReadoutStatsCounters {
 const uint32_t ReadoutStatsCountersVersion = 0xA0000004;
 
 // need to be able to easily transmit this struct as a whole
-static_assert(std::is_pod<ReadoutStatsCounters>::value);
+static_assert(std::is_standard_layout<ReadoutStatsCounters>::value);
 
 // utility to assign strings to uint64
 uint64_t stringToUint64(const char*);

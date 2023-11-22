@@ -55,7 +55,7 @@ struct DataBlockFMQStats {
   uint64_t dataSizeAccounted;
   uint64_t memorySizeAccounted;
 };
-static_assert(std::is_pod<DataBlockFMQStats>::value, "DataBlockFMQStats is not a POD");
+static_assert(std::is_standard_layout_v<DataBlockFMQStats>, "DataBlockFMQStats is not a POD");
 static_assert(sizeof(DataBlockFMQStats) <= DataBlockHeaderUserSpace, "DataBlockFMQStats does not fit in DataBlock.userSpace");
 
 #define timeNowMicrosec (std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now().time_since_epoch())).count
