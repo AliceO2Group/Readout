@@ -87,8 +87,8 @@ typedef struct {
 const DataBlock defaultDataBlock = { .header = defaultDataBlockHeader, .data = nullptr };
 
 // compile-time checks
-static_assert(std::is_pod<DataBlockHeader>::value, "DataBlockHeader is not a POD");
-static_assert(std::is_pod<DataBlock>::value, "DataBlock is not a POD");
+static_assert(std::is_trivially_copyable<DataBlockHeader>::value, "DataBlockHeader is not a POD");
+static_assert(std::is_trivially_copyable<DataBlock>::value, "DataBlock is not a POD");
 
 #endif /* READOUT_DATABLOCK */
 

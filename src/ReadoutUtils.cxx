@@ -267,6 +267,7 @@ int getStatsFilesystem(unsigned long long &freeBytes, const std::string &path) {
 }
 
 int numaBind(int numaNode) {
+ (void)numaNode;
   #ifdef WITH_NUMA
     struct bitmask* nodemask = nullptr;
     if (numaNode>=0) {
@@ -291,6 +292,8 @@ int numaBind(int numaNode) {
 }
 
 int numaGetNodeFromAddress(void *ptr, int &node) {
+  (void)ptr;
+  (void)node;
   #ifdef WITH_NUMA
     int err;
     node = -1;
