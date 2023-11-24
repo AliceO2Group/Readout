@@ -1215,6 +1215,7 @@ int Readout::_configure(const boost::property_tree::ptree& properties)
     // instanciate consumer of appropriate type
     std::unique_ptr<Consumer> newConsumer = nullptr;
     int cfgNumaNode = -1;
+    (void)cfgNumaNode;
     try {
       // configuration parameter: | consumer-* | consumerType | string |  | The type of consumer to be instanciated. One of:stats, FairMQDevice, DataSampling, FairMQChannel, fileRecorder, checker, processor, tcp. |
       std::string cfgType = "";
