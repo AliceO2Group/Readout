@@ -603,3 +603,6 @@ This file describes the main feature changes for each readout.exe released versi
 
 ## v2.21.7 - 24/11/2023
 - Minor changes: fix for c++20 compatibility.
+
+## v2.21.8 - 29/11/2023
+- Fixed spurious readout warning("TF non-contiguous ordering") when doing Start/Stop/Start with DD is enabled.
