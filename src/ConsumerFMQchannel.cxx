@@ -1370,6 +1370,8 @@ int ConsumerFMQchannel::start() {
   nIncompleteHBF = 0;
   TFdropped = 0;
 
+  currentTimeframeId = undefinedTimeframeId;
+
   return Consumer::start();
 }
 int ConsumerFMQchannel::stop() {
