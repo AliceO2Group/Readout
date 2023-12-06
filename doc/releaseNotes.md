@@ -531,7 +531,7 @@ This file describes the main feature changes for each readout.exe released versi
 - Disabled unused RDMA features (still available by switch in CMake)
 - Added feature for memory banks real time monitoring. Enabled by setting membanksMonitorRate in /etc/o2.d/readout-defaults.cfg. Output (high-rate text) can be seen locally in real time with `tail -f /tmp/readout-monitor-mempool-(id)`. The status of each page in the bank is displayed.
 
-s## v2.17.2 - 08/03/2023
+## v2.17.2 - 08/03/2023
 - Updated naming of files saved to disk when equipment-*.saveErrorPagesMax is set. Now includes timestamp, equipment id, and file counter: e.g. /tmp/readout-t1678288819-eq1-superpage.1.raw
 
 ## v2.18.0 - 21/03/2023
