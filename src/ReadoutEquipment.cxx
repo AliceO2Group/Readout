@@ -438,6 +438,17 @@ Thread::CallbackResult ReadoutEquipment::threadCallback(void* arg)
 	}
         updatePageStateFromDataBlockContainerReference(nextBlock, MemoryPage::PageState::InEquipment);
 
+        // here some test code to artifically corrupt RDH of block X of equipment id Y
+	// used to test error conditions, eg first RDH received is wrong
+        /*
+	int X=1;
+	int Y=33;
+        if ((ptr->currentBlockId==X)&&(ptr->id==Y)) {
+	  o2::Header::RAWDataHeader* h = (o2::Header::RAWDataHeader*) nextBlock->getData()->data;
+	  h->version=99;
+	}
+        */
+
 	// handle RDH-formatted data
 	if (ptr->cfgRdhUseFirstInPageEnabled) {
           if ((ptr->processRdh(nextBlock)) && ptr->cfgDropPagesWithError) {
@@ -852,6 +863,12 @@ int ReadoutEquipment::processRdh(DataBlockContainerReference& block)
 
     if (tagDatablockFromRdh(h, blockHeader) == 0) {
       blockHeader.isRdhFormat = 1;
+    } else {
+      if ((cfgRdhCheckFirstOrbit) && (currentBlockId == 0)) {
+        // if 1st RDH received is wrong, it's the same as a wrong orbit
+        theLog.log(LogErrorSupport_(3241), "Equipment %s : first RDH is wrong", name.c_str());
+        isFatalError++;
+      }
     }
 
     if (cfgRdhDumpFirstInPageEnabled) {
