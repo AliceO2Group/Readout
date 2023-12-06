@@ -607,5 +607,5 @@ s## v2.17.2 - 08/03/2023
 ## v2.21.8 - 29/11/2023
 - Fixed spurious readout warning("TF non-contiguous ordering") when doing Start/Stop/Start with DD is enabled.
 
-## next version
+## v2.21.9 - 06/12/2023
 - When equipment-*-rdhCheckFirstOrbit is set (default), the run is stopped if the first RDH received for an equipment does not passes validation, as in the case when first orbits mismatch.
