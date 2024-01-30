@@ -209,7 +209,6 @@ class ConsumerFMQchannel : public Consumer
   std::unique_ptr<std::thread> senderThread; // this one empties the output FIFOs of the wThreads
   bool senderThreadIsRunning;
   int wThreadIxWrite = 0; // push data round-robin in wThreads
-  int wThreadIxRead = 0; // read data round-robin in wThreads
   void cleanupThreads() {
     if (nwThreads) {
       wThreadShutdown = 1;
@@ -1372,6 +1371,8 @@ int ConsumerFMQchannel::start() {
 
   currentTimeframeId = undefinedTimeframeId;
 
+  wThreadIxWrite = 0;
+
   return Consumer::start();
 }
 int ConsumerFMQchannel::stop() {
@@ -1427,6 +1428,9 @@ int ConsumerFMQchannel::stop() {
   if (TFdropped) {
     theLog.log(LogInfoSupport_(3235), "Consumer %s - %llu incomplete TF dropped", name.c_str(), (unsigned long long)TFdropped);
   }
+
+  // ensure wThread fifos in/out are empty
+  // this is done continuously in the (!isRunning) case of the worker threads and the sender thread
 
   // wait threads completed
   return Consumer::stop();
