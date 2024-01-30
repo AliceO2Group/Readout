@@ -609,3 +609,6 @@ This file describes the main feature changes for each readout.exe released versi
 
 ## v2.21.9 - 06/12/2023
 - When equipment-*-rdhCheckFirstOrbit is set (default), the run is stopped if the first RDH received for an equipment does not passes validation, as in the case when first orbits mismatch.
+
+## v2.22.0 - 30/01/2024
+- consumer-FairMQChannel: fix for DD TF ordering. In case of start/stop/start with parameter threads>1, there were some "non-continuous ordering" warnings due to a missing counter reset.
