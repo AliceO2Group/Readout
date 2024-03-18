@@ -282,7 +282,7 @@ DataBlockContainerReference ReadoutEquipmentPlayer::getNextBlock()
 
             // fill page metadata
             if (pageOffset == 0) {
-              // printf("link %d TF %d\n", (int)currentPacketHeader.linkId,(int)currentPacketHeader.timeframeId);
+              // printf("eq %d link %d TF %d\n", (int)currentPacketHeader.equipmentId, (int)currentPacketHeader.linkId,(int)currentPacketHeader.timeframeId);
               b->header.linkId = currentPacketHeader.linkId;
               b->header.equipmentId = currentPacketHeader.equipmentId;
               b->header.timeframeId = currentPacketHeader.timeframeId;
@@ -292,7 +292,7 @@ DataBlockContainerReference ReadoutEquipmentPlayer::getNextBlock()
             bool changePage = 0;
             if (pageOffset != 0) {
               if ((currentPacketHeader.linkId != lastPacketHeader.linkId) || (currentPacketHeader.equipmentId != lastPacketHeader.equipmentId) || (currentPacketHeader.timeframeId != lastPacketHeader.timeframeId)) {
-                // printf("%d : %d -> %d : %d\n",currentPacketHeader.linkId,currentPacketHeader.timeframeId,lastPacketHeader.linkId,lastPacketHeader.timeframeId);
+                // printf("new page : %d.%d : %d -> %d.%d : %d\n",currentPacketHeader.equipmentId, currentPacketHeader.linkId,(int)currentPacketHeader.timeframeId,lastPacketHeader.equipmentId,lastPacketHeader.linkId,(int)lastPacketHeader.timeframeId);
                 changePage = 1;
               }
             }

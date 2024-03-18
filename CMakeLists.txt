@@ -343,7 +343,7 @@ endif()
 ###################################################
 
 # list of executables build (to be completed depending on dependencies found)
-set(executables o2-readout-exe o2-readout-receiver o2-readout-test-fmq-tx o2-readout-test-fmq-rx o2-readout-test-fmq-perf-tx o2-readout-test-fmq-perf-rx o2-readout-test-memorybanks o2-readout-rawreader o2-readout-test-lib-monitoring)
+set(executables o2-readout-exe o2-readout-receiver o2-readout-test-fmq-tx o2-readout-test-fmq-rx o2-readout-test-fmq-perf-tx o2-readout-test-fmq-perf-rx o2-readout-test-memorybanks o2-readout-rawreader o2-readout-rawmerger o2-readout-test-lib-monitoring)
 
 # o2-readout-exe : main executable
 add_executable(
@@ -408,6 +408,13 @@ add_executable(
 add_executable(
         o2-readout-rawreader
         ${SOURCE_DIR}/readRaw.cxx
+	$<TARGET_OBJECTS:objReadoutUtils>
+)
+
+# a RAW data file merger
+add_executable(
+        o2-readout-rawmerger
+        ${SOURCE_DIR}/exeRawMerger.cxx
 	$<TARGET_OBJECTS:objReadoutUtils>
 )
 

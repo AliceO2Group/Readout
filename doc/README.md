@@ -15,6 +15,7 @@ The following executables, presented with the _nicknames_ used below, are part o
   - [_o2-readout-rawreader_](#rawreader) or _RawReader_: a tool to check validity and inspect content of raw data files recorded by _Readout_.
   - [_o2-readout-receiver_](#receiver) or _Receiver_ : a process to receive data from _Readout_ by FMQ, e.g. for local communication tests when STFB is not available.
   - [_o2-readout-status_] or _ReadoutStatus_: an interactive interface to displaying runtime statistics connected by _Monitor_.
+  - [_o2-readout-rawmmerger_](#rawmerger) or _RawMerger_: a tool to concatenate multiple raw data files in a single file, e.g. for replay by _Readout_.
 
 There are also some readout internal test components, not used in normal runtime conditions, for development and debugging purpose (_o2-readout-test-*_)
 The source code repository is [https://github.com/AliceO2Group/Readout].
@@ -243,7 +244,19 @@ Example launch command:
 o2-readout-rawreader /tmp/data.raw dumpRDH=1 dumpData=-1 | less
 ```
    
+## RawMerger
+
+This is a console utility to merge multiple data files in a single one.
    
+Example launch command:
+
+```
+o2-readout-rawmerger outputFile=/local/replay/2024-02-07-LHC23zzk_544490_50khz_TPC.raw /local/replay/2024-02-07-LHC23zzk_544490_50khz/TPC*.raw
+```
+
+It assumes that all input files have the same trigger orbit sequence in order to create an output file with data grouped by timeframes.
+
+
 ## EventDump
 
 This is an interactive program to check/display content of online data taken with Readout. It needs a special consumer defined in Readout configuration, to publish data pages over ZeroMQ:
