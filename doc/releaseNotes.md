@@ -612,3 +612,6 @@ This file describes the main feature changes for each readout.exe released versi
 
 ## v2.22.0 - 30/01/2024
 - consumer-FairMQChannel: fix for DD TF ordering. In case of start/stop/start with parameter threads>1, there were some "non-continuous ordering" warnings due to a missing counter reset.
+
+## v2.23.0 - 18/03/2024
+- Added o2-readout-rawmerger: a utility to concatenate multiple raw files in a single one, e.g. to replay full detector data from a single FLP.
