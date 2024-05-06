@@ -42,12 +42,19 @@ private:
   uint64_t vRun;
   std::string vRole;
   std::string cxDbName; // name of the database used
+  std::string cxDbUser;
+  std::string cxDbPwd;
+  std::string cxDbHost;
+  time_t lastConnectTime = 0;
+  int reconnectTimeout = 10;
   
   int maxRetry = 20; // number of query retries
   int retryTimeout = 50; // retry interval (milliseconds)
 
   LogCallback theLogCallback;
   void log(const std::string &log);
+
+  int connect();
 
   std::string lastError = ""; // error string of last query, if any
   std::string lastQuery = ""; // last query executed  

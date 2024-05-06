@@ -1,5 +1,6 @@
 #include "ReadoutDatabase.h"
 #include <mysql.h>
+#include <mysql/errmsg.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -8,10 +9,32 @@
 #include <inttypes.h>
 #include <string>
 #include <map>
+#include <time.h>
 
 #if LIBMYSQL_VERSION_ID >= 80000
 typedef bool my_bool;
 #endif
+
+int ReadoutDatabase::connect() {
+  time_t now = time(NULL);
+  if ((lastConnectTime != 0) && (now < lastConnectTime + reconnectTimeout)) return -2;
+  lastConnectTime = now;
+  if (db != nullptr) {
+    mysql_close(db);
+    db = nullptr;
+  }
+  db = mysql_init(nullptr);
+  if (db == nullptr) {
+    return -1;
+  }
+  if (mysql_real_connect(db,cxDbHost.c_str(),cxDbUser.c_str(),cxDbPwd.c_str(),cxDbName.c_str(),0,nullptr,0) == nullptr) {
+    log(std::string("DB connect error :") + mysql_error(db));
+    return -1;
+  }
+  log("DB connected");
+  lastConnectTime = 0;
+  return 0;
+}
 
 ReadoutDatabase::ReadoutDatabase(const char* cx, int v, const LogCallback& cb) {
   verbose = v;
@@ -19,7 +42,6 @@ ReadoutDatabase::ReadoutDatabase(const char* cx, int v, const LogCallback& cb) {
 
   char *db_db=nullptr, *db_user=nullptr, *db_pwd=nullptr, *db_host=nullptr;
   char *p=nullptr,*ptr,*lptr;
-  my_bool reconnect = 1;
     
   if (cx == nullptr) {
     throw __LINE__;
@@ -50,6 +72,7 @@ ReadoutDatabase::ReadoutDatabase(const char* cx, int v, const LogCallback& cb) {
       break;
     }
   }
+  cxDbUser = db_user;
 
   // pwd 
   for (lptr=ptr;*ptr!=0;ptr++) {
@@ -60,6 +83,7 @@ ReadoutDatabase::ReadoutDatabase(const char* cx, int v, const LogCallback& cb) {
       break;
     }
   }
+  cxDbPwd = db_pwd;
 
   // host
   for (lptr=ptr;*ptr!=0;ptr++) {
@@ -70,6 +94,7 @@ ReadoutDatabase::ReadoutDatabase(const char* cx, int v, const LogCallback& cb) {
       break;
     }
   }
+  cxDbHost = db_host;
 
   // db name
   db_db=ptr;
@@ -82,12 +107,7 @@ ReadoutDatabase::ReadoutDatabase(const char* cx, int v, const LogCallback& cb) {
   log("Using database " + std::string(db_db) + "@" + std::string(db_host));
 
   // try to connect
-  if (mysql_real_connect(db,db_host,db_user,db_pwd,db_db,0,nullptr,0)==nullptr) {
-    goto open_failed;
-  }
-
-
-  if (mysql_options(db, MYSQL_OPT_RECONNECT, &reconnect)) {
+  if (this->connect()) {
     goto open_failed;
   }
 
@@ -167,14 +187,27 @@ int ReadoutDatabase::query(int maxRetry, const char *inQuery,...) {
 
   int i;
   for (i=1; i<=maxRetry; i++) {
-    if (mysql_query(db,query)==0)  break;
+    if (mysql_query(db,query) == 0)  break;
     lastError = std::string("DB query error :") + mysql_error(db);
+    log("DB error: " + std::to_string(mysql_errno(db)) + " = " + lastError);
+    if (mysql_errno(db) == CR_SERVER_LOST) {
+      log("DB trying to reconnect");
+      int err = connect();
+      if (err == 0) {
+        continue;
+      } else {
+        if (err == -2) {
+	  log("DB reconnect - need to wait a bit before retry");
+	}
+        return -1;
+      }
+    }
     usleep(retryTimeout);
   }
   if (i > maxRetry) {
     return -1;
   }
-
+  log("DB query success");
   return 0;
 }
 
