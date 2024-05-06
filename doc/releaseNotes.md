@@ -616,5 +616,5 @@ This file describes the main feature changes for each readout.exe released versi
 ## v2.23.0 - 18/03/2024
 - Added o2-readout-rawmerger: a utility to concatenate multiple raw files in a single one, e.g. to replay full detector data from a single FLP.
 
-## next version
+## v2.23.1 - 06/05/2024
 - Fix MySQL 8.0.34 depracation warning for auto-reconnect feature. Functionnality re-implemented locally.
