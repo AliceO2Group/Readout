@@ -618,3 +618,6 @@ This file describes the main feature changes for each readout.exe released versi
 
 ## v2.23.1 - 06/05/2024
 - Fix MySQL 8.0.34 depracation warning for auto-reconnect feature. Functionnality re-implemented locally.
+
+## next
+- Monitoring: added rolename tag.
