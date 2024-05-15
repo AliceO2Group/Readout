@@ -30,6 +30,7 @@ using namespace o2::monitoring;
 #include <zmq.h>
 #endif
 
+extern std::string occRole;
 extern tRunNumber occRunNumber;
 
 class ConsumerStats : public Consumer
@@ -264,6 +265,7 @@ class ConsumerStats : public Consumer
       theLog.log(LogInfoDevel_(3002), "Monitoring enabled - period %.2fs - using %s", monitoringUpdatePeriod, configURI.c_str());
       monitoringCollector = MonitoringFactory::Get(configURI.c_str());
       monitoringCollector->addGlobalTag(tags::Key::Subsystem, tags::Value::Readout);
+      monitoringCollector->addGlobalTag("rolename", occRole);
 
       // enable process monitoring
       // configuration parameter: | consumer-stats-* | processMonitoringInterval | int | 0 | Period of process monitoring updates (O2 standard metrics). If zero (default), disabled.|
