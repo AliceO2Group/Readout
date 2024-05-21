@@ -621,3 +621,6 @@ This file describes the main feature changes for each readout.exe released versi
 
 ## v2.23.2 - 15/05/2024
 - Monitoring: added rolename tag.
+
+## v2.23.3 - 21/05/2024
+- Bookkeeping: updates are now disabled after 3 failures (1 before). Log messages changed (logbook -> bookkeeping).

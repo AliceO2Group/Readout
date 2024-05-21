@@ -35,7 +35,7 @@
   { 3103, "Inconsistent parameters in configuration.", nullptr},
   { 3104, "Some valid but unsafe configuration parameters are used.", nullptr},
 
-  { 3210, "Logbook problem", nullptr},
+  { 3210, "Bookkeeping problem", nullptr},
   { 3220, "Timeframe server problem", nullptr},
   { 3230, "Memory problem", nullptr},
   { 3231, "Runtime problem", nullptr},

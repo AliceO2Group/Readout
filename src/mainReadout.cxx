@@ -229,7 +229,7 @@ class LogbookThread {
      if (publishRequest.load()) return __LINE__; // fail if request already pending
      publishRequest = 1;
      if (this->verbose) {
-       theLog.log(LogInfoDevel_(3210), "Requested to publish logbook stats");
+       theLog.log(LogInfoDevel_(3210), "Requested to publish bookkeeping stats");
      }
      if (timeoutMilliseconds > 0) {
        // wait request completed and check status
@@ -251,6 +251,8 @@ class LogbookThread {
     std::atomic<int> publishRequest; // flag to ask thread to publish current values
     std::atomic<int> publishSuccess; // flag to report status of latest publish operation
     void run() {
+      int nSuccessiveFailures = 0;
+      const int maxSuccessiveFailures = 3;
       setThreadName("logbook");
       // thread loop, 10Hz
       while (!shutdownRequest && (logbookHandle != nullptr)) {
@@ -268,20 +270,25 @@ class LogbookThread {
                 (int64_t)snapshot.numberOfSubtimeframes.load(), (int64_t)snapshot.bytesReadout.load(), (int64_t)snapshot.bytesRecorded.load(), (int64_t)snapshot.bytesFairMQ.load()
               );
               if (this->verbose) {
-                theLog.log(LogInfoDevel_(3210), "Publishing logbook stats: tf = %llu, bytesReadout = %llu", (unsigned long long)snapshot.numberOfSubtimeframes.load(), (unsigned long long)snapshot.bytesReadout.load());
+                theLog.log(LogInfoDevel_(3210), "Publishing bookkeeping stats: tf = %llu, bytesReadout = %llu", (unsigned long long)snapshot.numberOfSubtimeframes.load(), (unsigned long long)snapshot.bytesReadout.load());
               }
               publishSuccess = 1;
             } catch (const std::exception& ex) {
-              theLog.log(LogErrorDevel_(3210), "Failed to update logbook: %s", ex.what());
+              theLog.log(LogErrorDevel_(3210), "Failed to update bookkeeping: %s", ex.what());
             } catch (...) {
-              theLog.log(LogErrorDevel_(3210), "Failed to update logbook: unknown exception");
+              theLog.log(LogErrorDevel_(3210), "Failed to update bookkeeping: unknown exception");
             }
             if (!publishSuccess.load()) {
-              // closing logbook immediately
-              logbookHandle = nullptr;
-              theLog.log(LogErrorSupport_(3210), "Logbook now disabled");
-              break;
-            }
+              nSuccessiveFailures++;
+	      if (nSuccessiveFailures >= maxSuccessiveFailures) {
+                // closing logbook immediately
+                logbookHandle = nullptr;
+                theLog.log(LogErrorSupport_(3210), "Bookkeeping updates now disabled, after %d consecutive failures", nSuccessiveFailures);
+                break;
+              }
+            } else {
+	      nSuccessiveFailures = 0;
+	    }
           }
           publishRequest = 0;
         }
@@ -470,7 +477,7 @@ void Readout::publishLogbookStats(int timeout)
   if (theLogbookThread != nullptr) {
     int err = theLogbookThread->publishStats(timeout);
     if ((timeout > 0) && (err)) {
-      theLog.log(LogErrorDevel_(3210), "Logbook publish failed within given time (%d ms)", timeout);
+      theLog.log(LogErrorDevel_(3210), "Bookkeeping publish failed within given time (%d ms)", timeout);
     }
   }
 #endif
@@ -1072,7 +1079,7 @@ int Readout::_configure(const boost::property_tree::ptree& properties)
 
   if (cfgLogbookEnabled) {
 #ifndef WITH_LOGBOOK
-    theLog.log(LogErrorDevel_(3210), "Logbook enabled in configuration, but feature not available in this build");
+    theLog.log(LogErrorDevel_(3210), "Bookkeeping enabled in configuration, but feature not available in this build");
 #else
     // configuration parameter: | readout | logbookUrl | string | | The address to be used for the logbook API. |
     cfg.getOptionalValue<std::string>("readout.logbookUrl", cfgLogbookUrl);
@@ -1080,7 +1087,7 @@ int Readout::_configure(const boost::property_tree::ptree& properties)
     theLog.log(LogInfoDevel, "Logbook enabled, %ds update interval, using URL = %s", cfgLogbookUpdateInterval, cfgLogbookUrl.c_str());
     auto logbookHandle = o2::bkp::api::BkpClientFactory::create(cfgLogbookUrl);
     if (logbookHandle == nullptr) {
-      theLog.log(LogErrorSupport_(3210), "Failed to create handle to logbook");
+      theLog.log(LogErrorSupport_(3210), "Failed to create handle to bookkeeping");
     } else {
       theLogbookThread = std::make_unique<LogbookThread>(std::move(logbookHandle));
     }
