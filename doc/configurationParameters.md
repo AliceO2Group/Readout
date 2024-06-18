@@ -192,6 +192,8 @@ The parameters related to 3rd-party libraries are described here for convenience
 | equipment-rorc-* | dataSource | string | Internal | This parameter selects the data source used by ReadoutCard, c.f. AliceO2::roc::Parameters. It can be for CRU one of Fee, Ddg, Internal and for CRORC one of Fee, SIU, DIU, Internal. |
 | equipment-rorc-* | debugStatsEnabled | int | 0 | If set, enable extra statistics about internal buffers status. (printed to stdout when stopping) |
 | equipment-rorc-* | firmwareCheckEnabled | int | 1 | If set, RORC driver checks compatibility with detected firmware. Use 0 to bypass this check (eg new fw version not yet recognized by ReadoutCard version). |
+| equipment-rorc-* | firmwareVersionsAllowed | string | | Comma-separated list of ROC firmware versions allowed (6-digit hash). If empty, all are allowed. |
+| equipment-rorc-* | firmwareVersionsDenied | string | e4a5a46e | Comma-separated list of ROC firmware versions denied  (6-digit hash), i.e. which would cause configuration to abort. |
 | equipment-zmq-* | address | string | | Address of remote server to connect, eg tcp://remoteHost:12345. |
 | equipment-zmq-* | mode | string | stream | Possible values: stream (1 input ZMQ message = 1 output data page), snapshot (last ZMQ message = one output data page per TF). |
 | equipment-zmq-* | timeframeClientUrl | string | | The address to be used to retrieve current timeframe. When set, data is published only once for each TF id published by remote server. |
