@@ -112,6 +112,22 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile& cfg, std::string name) : 
       theLog.log(LogInfoDevel_(3002), "Bypassing RORC firmware compatibility check");
     }
 
+    // configuration parameter: | equipment-rorc-* | firmwareVersionsDenied | string | e4a5a46e | Comma-separated list of ROC firmware versions denied  (6-digit hash), i.e. which would cause configuration to abort. |
+    std::string cfgFirmwareVersionsDenied = "e4a5a46e";
+    std::vector<std::string> cfgFirmwareVersionsDeniedList;
+    cfg.getOptionalValue<std::string>(name + ".firmwareVersionsDenied", cfgFirmwareVersionsDenied);
+    if (cfgFirmwareVersionsDenied != "") {
+      getListFromString(cfgFirmwareVersionsDenied, cfgFirmwareVersionsDeniedList);
+    }
+
+    // configuration parameter: | equipment-rorc-* | firmwareVersionsAllowed | string | | Comma-separated list of ROC firmware versions allowed (6-digit hash). If empty, all are allowed. |
+    std::string cfgFirmwareVersionsAllowed = "";
+    std::vector<std::string> cfgFirmwareVersionsAllowedList;
+    cfg.getOptionalValue<std::string>(name + ".firmwareVersionsAllowed", cfgFirmwareVersionsAllowed);
+    if (cfgFirmwareVersionsAllowed != "") {
+      getListFromString(cfgFirmwareVersionsAllowed, cfgFirmwareVersionsAllowedList);
+    }
+
     // configuration parameter: | equipment-rorc-* | debugStatsEnabled | int | 0 | If set, enable extra statistics about internal buffers status. (printed to stdout when stopping) |
     cfg.getOptionalValue<int>(name + ".debugStatsEnabled", cfgDebugStatsEnabled);
 
@@ -178,6 +194,27 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile& cfg, std::string name) : 
     std::string infoFirmwareVersion = channel->getFirmwareInfo().value_or("unknown");
     std::string infoCardId = channel->getCardId().value_or("unknown");
     theLog.log(LogInfoDevel_(3010), "Equipment %s : PCI %s @ NUMA node %d, serial number %s, firmware version %s, card id %s", name.c_str(), infoPciAddress.c_str(), infoNumaNode, infoSerialNumber.c_str(), infoFirmwareVersion.c_str(), infoCardId.c_str());
+
+    // check firmware version ok
+    bool isFwOk = true;
+    for(const auto &fw: cfgFirmwareVersionsDeniedList) {
+      if (infoFirmwareVersion == fw) {
+        isFwOk = false;
+        break;
+      }
+    }
+    if (cfgFirmwareVersionsAllowedList.size() && isFwOk) {
+      isFwOk = false;
+      for(const auto &fw: cfgFirmwareVersionsAllowedList) {
+	if (infoFirmwareVersion == fw) {
+          isFwOk = true;
+	  break;
+	}
+      }
+    }
+    if (!isFwOk) {
+      BOOST_THROW_EXCEPTION(ReadoutEquipmentRORCException() << ErrorInfo::Message("This firmware version is not allowed"));
+    }
 
     // todo: log parameters ?
 

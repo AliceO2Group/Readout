@@ -624,3 +624,7 @@ This file describes the main feature changes for each readout.exe released versi
 
 ## v2.23.3 - 21/05/2024
 - Bookkeeping: updates are now disabled after 3 failures (1 before). Log messages changed (logbook -> bookkeeping).
+
+## next version
+- Updated configuration parameters:
+  - equipment-rorc-*: added parameters firmwareVersionsDenied and firmwareVersionsAllowed, to enforce the check of firmware for specific versions. By default, v3.10.0 (e4a5a46e) is denied and all other allowed: it is the default version in CRU flash and should be updated to a more recent one at boot time.
