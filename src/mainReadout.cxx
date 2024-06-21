@@ -932,6 +932,97 @@ int Readout::_configure(const boost::property_tree::ptree& properties)
     pos = cfg.get().erase(pos);
   }
 
+  // resolve "symlinks"
+  int cfgLinksErrors = 0;
+  struct ConfigCache {
+    std::string URI;
+    std::string EntryPoint;
+    std::unique_ptr<ConfigFile> cfg;
+  };
+  std::vector<ConfigCache> cfgCache;
+  int nSubstitutions = 0;
+  std::function<void(boost::property_tree::ptree &, const std::string &)> resolveLinks;
+  resolveLinks = [&resolveLinks, &cfgLinksErrors, &cfgCache, &loadConfig, &nSubstitutions](boost::property_tree::ptree &pt, const std::string &key) -> void {
+    if (pt.empty()) {
+      std::string value = pt.data();
+      const std::string keywordLink = "@LINK";
+      if (value.compare(0, keywordLink.length(), keywordLink) == 0) {
+        // this is a symlink
+	// extract reference
+	// syntax: @LINK,URI,EntryPoint,Path
+        std::vector<std::string> linkArgs;
+        getListFromString(value, linkArgs, ',');
+	if (linkArgs.size() != 4) {
+          theLog.log(LogErrorSupport_(3102), "Failed to parse link: %s = %s", key.c_str(), value.c_str());
+	  cfgLinksErrors++;
+	  return;
+	}
+	const char* cfgLinkUri = linkArgs[1].c_str();
+	const char* cfgLinkEntryPoint = linkArgs[2].c_str();
+	const char* cfgLinkPath = linkArgs[3].c_str();
+	// search for file in cache
+	unsigned int ix = 0;
+	for(;ix < cfgCache.size(); ix++) {
+	  if ((cfgCache[ix].URI == cfgLinkUri) && (cfgCache[ix].EntryPoint == cfgLinkEntryPoint)) {
+	    break;
+	  }
+	}
+	if (ix == cfgCache.size()) {
+	  // no match in cache, add it
+	  try {
+            auto cfg = std::make_unique<ConfigFile>();
+            if (cfg==nullptr) {
+	      throw __LINE__;
+	    }
+            if (loadConfig(cfgLinkUri, cfgLinkEntryPoint, *cfg)) {
+	      throw __LINE__;
+	    }
+	    cfgCache.push_back({cfgLinkUri, cfgLinkEntryPoint, std::move(cfg)});
+	  }
+	  catch(...) {
+	    theLog.log(LogErrorSupport_(3102), "Failed to load linked configuration %s %s", cfgLinkUri, cfgLinkEntryPoint);
+	    cfgLinksErrors++;
+	    return;
+	  }
+          theLog.log(LogInfoSupport, "Reading linked configuration from %s %s", cfgLinkUri, cfgLinkEntryPoint);
+	}
+	// at this stage we now have a valid config in cache at index ix
+	// get value from linked config
+	std::string linkValue;
+        if (cfgCache[ix].cfg->getOptionalValue<std::string>(cfgLinkPath, linkValue)) {
+	    theLog.log(LogErrorSupport_(3102), "Failed to get link value: %s = %s", key.c_str(), value.c_str());
+	    cfgLinksErrors++;
+	    return;
+	}
+        theLog.log(LogInfoDevel_(3002), "Link substituted %s : %s -> %s", key.c_str(), value.c_str(), linkValue.c_str());
+	pt.data() = linkValue;
+	nSubstitutions++;
+      }
+      return;
+    }
+    for (boost::property_tree::ptree::iterator pos = pt.begin(); pos != pt.end();++pos) {
+      //printf("%s\n", pos->first.c_str());
+      resolveLinks(pos->second, pos->first.c_str());
+    }
+  };
+  int maxLoops = 5;
+  for (int i = 0; i <= maxLoops; i++) {
+    if (i == maxLoops) {
+      theLog.log(LogErrorSupport_(3100), "Links not fully resolved after %d iterations, there might be some circular dependencies in the configuration", maxLoops);
+      break;
+    }
+    nSubstitutions = 0;
+    resolveLinks(cfg.get(),"");
+    if (nSubstitutions == 0) {
+      break;
+    }
+  }
+  if (cfgLinksErrors) {
+    theLog.log(LogErrorSupport_(3100), "Some links in the configuration could not be resolved");
+    return -1;
+  }
+
+
   // extract optional configuration parameters
   // configuration parameter: | readout | customCommands | string | | List of key=value pairs defining some custom shell commands to be executed at before/after state change commands. |
   if (customCommandsShellPid) {
