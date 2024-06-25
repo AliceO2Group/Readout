@@ -629,6 +629,6 @@ This file describes the main feature changes for each readout.exe released versi
 - Updated configuration parameters:
   - equipment-rorc-*: added parameters firmwareVersionsDenied and firmwareVersionsAllowed, to enforce the check of firmware for specific versions. By default, v3.10.0 (e4a5a46e) is denied and all other allowed: it is the default version in CRU flash and should be updated to a more recent one at boot time.
 
-## next version
+## v2.25.0 - 25/06/2024
 - Updated configuration parameters:
   - Values can be a link to a value stored in another file.
