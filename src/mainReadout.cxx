@@ -994,7 +994,7 @@ int Readout::_configure(const boost::property_tree::ptree& properties)
 	    cfgLinksErrors++;
 	    return;
 	}
-        theLog.log(LogInfoDevel_(3002), "Link substituted %s : %s -> %s", key.c_str(), value.c_str(), linkValue.c_str());
+        theLog.log(LogInfoDevel_(3002), "Link substituted : %s = %s -> %s", key.c_str(), value.c_str(), linkValue.c_str());
 	pt.data() = linkValue;
 	nSubstitutions++;
       }
@@ -1009,6 +1009,7 @@ int Readout::_configure(const boost::property_tree::ptree& properties)
   for (int i = 0; i <= maxLoops; i++) {
     if (i == maxLoops) {
       theLog.log(LogErrorSupport_(3100), "Links not fully resolved after %d iterations, there might be some circular dependencies in the configuration", maxLoops);
+      cfgLinksErrors++;
       break;
     }
     nSubstitutions = 0;
