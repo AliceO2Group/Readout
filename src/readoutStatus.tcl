@@ -48,34 +48,41 @@ if {$configError} {
 package require Tk
 
 set flps {
-CPV alio2-cr1-flp 162 162 ""
-EMC alio2-cr1-flp 146 147 ""
-FDD alio2-cr1-flp 201 201 ""
-FT0 alio2-cr1-flp 200 200 ""
-FV0 alio2-cr1-flp 180 180 ""
-HMP alio2-cr1-flp 160 161 ""
-ITS alio2-cr1-flp 187 198 ""
-MCH alio2-cr1-flp 148 158 ""
-MFT alio2-cr1-flp 182 186 ""
-MID alio2-cr1-flp 159 159 ""
-PHS alio2-cr1-flp 164 165 ""
-TOF alio2-cr1-flp 178 179 ""
-TPC alio2-cr1-flp 001 144 ""
-TRD alio2-cr1-flp 166 177 ""
-ZDC alio2-cr1-flp 181 181 ""
-CTP alio2-cr1-flp 163 163 ""
-TST alio2-cr1-mvs 01 02 ""
+CPV alio2-cr1-flp 162 162 {} ""
+EMC alio2-cr1-flp 146 147 {} ""
+FDD alio2-cr1-flp 201 201 {} ""
+FT0 alio2-cr1-flp 200 200 {} ""
+FV0 alio2-cr1-flp 180 180 {} ""
+HMP alio2-cr1-flp 160 161 {} ""
+ITS alio2-cr1-flp 187 198 {203} ""
+MCH alio2-cr1-flp 148 158 {} ""
+MFT alio2-cr1-flp 182 186 {} ""
+MID alio2-cr1-flp 159 159 {} ""
+PHS alio2-cr1-flp 164 165 {} ""
+TOF alio2-cr1-flp 178 179 {} ""
+TPC alio2-cr1-flp 001 144 {} ""
+TRD alio2-cr1-flp 166 177 {} ""
+ZDC alio2-cr1-flp 181 181 {} ""
+CTP alio2-cr1-flp 163 163 {} ""
+TST alio2-cr1-flp 204 204 {} ""
 }
 
 set detectors {}
 set nix 0
-foreach {det host imin imax comment} $flps {
+foreach {det host imin imax iplus comment} $flps {
   if {[lsearch $det $detectors]<0} {
     lappend detectors ${det}
 	set v_nflp($det) 0
   }
   set nz [string length $imin]
+  set listi {}
   for {set i $imin} {$i <= $imax} {incr i} {
+    lappend listi $i
+  }
+  foreach i $iplus {
+    lappend listi $i
+  }
+  foreach i $listi {
     set id [format "%0${nz}d" $i]
     set h [join [list ${host} ${id}] ""]
     set n [format "%0${nz}d" $i]
