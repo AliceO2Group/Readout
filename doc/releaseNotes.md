@@ -632,3 +632,6 @@ This file describes the main feature changes for each readout.exe released versi
 ## v2.25.0 - 25/06/2024
 - Updated configuration parameters:
   - Values can be a link to a value stored in another file.
+
+## v2.25.1 - 26/06/224
+- o2-readout-status: updated list of P2 FLPs.
