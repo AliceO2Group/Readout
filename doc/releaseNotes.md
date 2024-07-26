@@ -635,3 +635,7 @@ This file describes the main feature changes for each readout.exe released versi
 
 ## v2.25.1 - 26/06/224
 - o2-readout-status: updated list of P2 FLPs.
+
+## v2.26.0 - 26/07/2024
+- Error reporting: fatal error messages logged to operator when there is a state transition error. The first error (if any) that happened is added to the message.
+  This covers the cases of (among many others): wrong CRU fw version, inconsistent first orbits, no links enabled.
