@@ -38,6 +38,7 @@
 #include "DataBlock.h"
 #include "DataBlockContainer.h"
 #include "DataSet.h"
+#include "readoutErrorCodes.h"
 
 #ifdef WITH_ZMQ
 #include "ZmqServer.hxx"
@@ -314,59 +315,50 @@ class Readout
     }
     return -1;
   }
-  int configure(const boost::property_tree::ptree& properties) {
+
+  // Wrapper function to catch exception and report fatal errors
+  int executeFunction(std::string actionName, std::function<int()> f) {
+    // theLog.log(LogDebugDevel, "Calling function for %s",actionName.c_str());
+    int err = -1;
     try {
-      return _configure(properties);
+      err = f();
     }
     catch (const std::exception& e) {
       theLog.log(LogErrorSupport_(3245), "Exception : %s", e.what());
     }
-    return -1;
+    if (err) {
+      std::vector<std::string> m;
+      theLog.historyGetSummary(m);
+      std::string reason = "Readout failed in " + actionName + ". Please check previous messages.";
+      if (m.size()) {
+        reason += " First error logged was " + m[0];
+      }
+      theLog.log(LogFatalOps, "%s", reason.c_str());
+    }
+    return err;
+  }
+
+  int configure(const boost::property_tree::ptree& properties) {
+    theLog.historyReset(1);
+    return executeFunction("CONFIGURE", std::bind(&Readout::_configure, this, properties));
   }
   int reset() { // as opposed to configure()
-    try {
-      return _reset();
-    }
-    catch (const std::exception& e) {
-      theLog.log(LogErrorSupport_(3245), "Exception : %s", e.what());
-    }
-    return -1;
+    theLog.historyReset(1);
+    return executeFunction("RESET", std::bind(&Readout::_reset, this));
   }
   int start() {
-    try {
-      return _start();
-    }
-    catch (const std::exception& e) {
-      theLog.log(LogErrorSupport_(3245), "Exception : %s", e.what());
-    }
-    return -1;
+    theLog.historyReset(1);
+    return executeFunction("START", std::bind(&Readout::_start, this));
   }
   int stop() { // as opposed to start()
-    try {
-      return _stop();
-    }
-    catch (const std::exception& e) {
-      theLog.log(LogErrorSupport_(3245), "Exception : %s", e.what());
-    }
-    return -1;
+    theLog.historyReset(1);
+    return executeFunction("STOP", std::bind(&Readout::_stop, this));
   }
   int iterateRunning() {
-    try {
-      return _iterateRunning();
-    }
-    catch (const std::exception& e) {
-      theLog.log(LogErrorSupport_(3245), "Exception : %s", e.what());
-    }
-    return -1;
+    return executeFunction("RUNNING", std::bind(&Readout::_iterateRunning, this));
   }
   int iterateCheck() {
-    try {
-      return _iterateCheck();
-    }
-    catch (const std::exception& e) {
-      theLog.log(LogErrorSupport_(3245), "Exception : %s", e.what());
-    }
-    return -1;
+    return executeFunction("CHECK", std::bind(&Readout::_iterateCheck, this));
   }
 
   void loopRunning(); // called in state "running"
@@ -2261,6 +2253,9 @@ int main(int argc, char* argv[])
   // initialize logging
   theLogContext.setField(InfoLoggerContext::FieldName::Facility, "readout");
   theLog.setContext(theLogContext);
+  for(const auto &c : readoutErrorCodes) {
+    theLog.registerErrorCodes({ {std::get<0>(c),  std::get<1>(c) } });
+  }
 
   // create readout instance
   std::unique_ptr<Readout> theReadout = std::make_unique<Readout>();

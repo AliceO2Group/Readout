@@ -14,7 +14,13 @@
 // cf infoLogger/infoLoggerErrorCodes.h
 // Definitions below should be copied there
 
-/*
+
+#include <tuple>
+#include <vector>
+#include <string>
+
+const std::vector<std::tuple<int, const char *, const char *>> readoutErrorCodes = {
+
   { 3001, "Trace for readout process status", nullptr},
   { 3002, "Trace for readout configuration", nullptr},
   { 3003, "Trace for readout counters", nullptr},
@@ -53,5 +59,5 @@
   { 3243, "Control problem", nullptr},
   { 3244, "Should not happen problem", nullptr},
   { 3245, "Unhandled exception", nullptr},
-*/
 
+  };
