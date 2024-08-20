@@ -953,12 +953,12 @@ int ReadoutEquipment::processRdh(DataBlockContainerReference& block)
           printf("\n");
           printf("Page 0x%p + %ld\n%s\n", (void*)baseAddress, pageOffset, errorDescription.c_str());
           h.dumpRdh(pageOffset, 1);
-          errorDescription.clear();
         }
         statsRdhCheckErr++;
 	isPageError = 1;
         theLog.log(logRdhErrorsToken, "Equipment %d RDH %d @ 0x%X : invalid RDH: %s", id, rdhIndexInPage, (unsigned int)pageOffset, errorDescription.c_str());
         // stop on first RDH error (should distinguich valid/invalid block length)
+	errorDescription.clear();
         break;
       } else {
         statsRdhCheckOk++;
