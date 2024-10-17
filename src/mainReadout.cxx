@@ -317,7 +317,7 @@ class Readout
   }
 
   // Wrapper function to catch exception and report fatal errors
-  int executeFunction(std::string actionName, std::function<int()> f) {
+  int executeFunction(std::string actionName, std::function<int()> f, int plusZeroIsFatal = 1, int minusZeroIsFatal = 1) {
     // theLog.log(LogDebugDevel, "Calling function for %s",actionName.c_str());
     int err = -1;
     try {
@@ -326,7 +326,7 @@ class Readout
     catch (const std::exception& e) {
       theLog.log(LogErrorSupport_(3245), "Exception : %s", e.what());
     }
-    if (err) {
+    if ( ((err<0)&&(minusZeroIsFatal)) || ((err>0)&&(plusZeroIsFatal)) ) {
       std::vector<std::string> m;
       theLog.historyGetSummary(m);
       std::string reason = "Readout failed in " + actionName + ". Please check previous messages.";
@@ -355,7 +355,7 @@ class Readout
     return executeFunction("STOP", std::bind(&Readout::_stop, this));
   }
   int iterateRunning() {
-    return executeFunction("RUNNING", std::bind(&Readout::_iterateRunning, this));
+    return executeFunction("RUNNING", std::bind(&Readout::_iterateRunning, this), 0, 1); // special handling of positive error code: not fatal
   }
   int iterateCheck() {
     return executeFunction("CHECK", std::bind(&Readout::_iterateCheck, this));
