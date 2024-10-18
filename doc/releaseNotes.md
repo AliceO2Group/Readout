@@ -642,3 +642,6 @@ This file describes the main feature changes for each readout.exe released versi
 
 ## v2.26.1 - 20/08/2024
 - Fixed missing details in "invalid RDH" log messages.
+
+## v2.26.2 - 18/10/2024
+- Fixed spurious fatal log message when stopping a readout process by system signal (when running outside of ECS control, e.g. CTP readout server).
