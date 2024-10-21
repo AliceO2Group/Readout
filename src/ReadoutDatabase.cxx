@@ -1,6 +1,6 @@
 #include "ReadoutDatabase.h"
 #include <mysql.h>
-#include <mysql/errmsg.h>
+#include <errmsg.h> // from mysql
 #include <string.h>
 #include <stdlib.h>
 #include <stdarg.h>
