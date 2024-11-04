@@ -322,3 +322,51 @@ void setThreadName(const char* name) {
     (void)name;
   #endif
 }
+
+
+// @brief Splits a URI string into its scheme and the rest of the URI.
+//
+// This function parses a given URI and separates it into two parts:
+// 1. The scheme (including the colon and double slashes if present)
+// 2. The rest of the URI
+//
+// The function handles the following cases:
+// - URIs with "://" (e.g., "http://", "consul-ini://")
+// - URIs with only ":" (e.g., "file:")
+// - File URIs with varying numbers of slashes (e.g., "file:", "file:/", "file:///")
+// - URIs without a scheme
+//
+// @param uri The input URI string to be split.
+// @return A std::pair where:
+//         - first: The scheme part of the URI (including ":" or "://")
+//         - second: The rest of the URI after the scheme
+//         If no scheme is found, first will be empty and second will contain the entire input string.
+//
+// @note The function does not validate the URI format beyond identifying the scheme.
+//       It assumes the input is a well-formed URI string.
+//
+// @example
+//   auto [scheme, rest] = splitURI("http://example.com");
+//   // scheme = "http://", rest = "example.com"
+//
+//   auto [scheme, rest] = splitURI("file:///path/to/file");
+//   // scheme = "file://", rest = "/path/to/file"
+//
+// This code was generated with the assistance of GitLab Duo Chat, an AI-powered coding assistant.
+
+std::pair<std::string, std::string> splitURI(const std::string& uri) {
+    constexpr std::string_view double_slash = "://";
+    auto double_slash_pos = uri.find(double_slash);
+    if (double_slash_pos != std::string::npos) {
+        std::string scheme = uri.substr(0, double_slash_pos + double_slash.length());
+        std::string rest = uri.substr(double_slash_pos + double_slash.length());
+        return {std::move(scheme), std::move(rest)};
+    }
+    auto single_colon_pos = uri.find(':');
+    if (single_colon_pos != std::string::npos) {
+        std::string scheme = uri.substr(0, single_colon_pos + 1);
+        std::string rest = uri.substr(single_colon_pos + 1);
+        return {std::move(scheme), std::move(rest)};
+    }
+    return {"", uri};  // No scheme found, return empty scheme and the whole string as rest
+}
