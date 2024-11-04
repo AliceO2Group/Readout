@@ -934,7 +934,7 @@ int Readout::_configure(const boost::property_tree::ptree& properties)
   std::vector<ConfigCache> cfgCache;
   int nSubstitutions = 0;
   std::function<void(boost::property_tree::ptree &, const std::string &)> resolveLinks;
-  resolveLinks = [&resolveLinks, &cfgLinksErrors, &cfgCache, &loadConfig, &nSubstitutions](boost::property_tree::ptree &pt, const std::string &key) -> void {
+  resolveLinks = [&resolveLinks, &cfgLinksErrors, &cfgCache, &loadConfig, &nSubstitutions, this](boost::property_tree::ptree &pt, const std::string &key) -> void {
     if (pt.empty()) {
       std::string value = pt.data();
       const std::string keywordLink = "@LINK";
@@ -952,6 +952,18 @@ int Readout::_configure(const boost::property_tree::ptree& properties)
 	const char* cfgLinkUri = linkArgs[1].c_str();
 	const char* cfgLinkEntryPoint = linkArgs[2].c_str();
 	const char* cfgLinkPath = linkArgs[3].c_str();
+
+        // check if link URI starts with a relative path - and if so, compute address from current URI
+        // https://en.wikipedia.org/wiki/Uniform_Resource_Identifier
+        // theLog.log(LogInfoSupport, "Resolving %s / %s", cfgFileURI, cfgLinkUri);
+        std::string resolvedUri;
+        if (!strncmp(cfgLinkUri, "../", 3) || !strncmp(cfgLinkUri, "./", 2)) {
+	  std::pair<std::string, std::string> splitPath = splitURI(cfgFileURI);
+          resolvedUri = splitPath.first + std::filesystem::path((std::filesystem::path(splitPath.second).parent_path().string() + "/" + cfgLinkUri)).lexically_normal().string();
+          theLog.log(LogInfoSupport, "Using relative path: %s -> %s", cfgLinkUri, resolvedUri.c_str());
+          cfgLinkUri = resolvedUri.c_str();
+	}
+
 	// search for file in cache
 	unsigned int ix = 0;
 	for(;ix < cfgCache.size(); ix++) {
