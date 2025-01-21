@@ -649,6 +649,6 @@ This file describes the main feature changes for each readout.exe released versi
 ## v2.26.3 - 22/10/2024
 - Minor release for osx compatibility.
 
-## v2.27.0 - 21/01/2024
+## v2.27.0 - 21/01/2025
 - Added symbolic links with relative path in configuration. See @LINK syntax.
 - Fixed o2-readout-config-generator for RHEL9 compatibility.
