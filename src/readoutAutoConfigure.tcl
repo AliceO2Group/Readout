@@ -152,28 +152,17 @@ if {[llength $ldev]==0} {
 }
 
 # get memory configuration
-
-if {[catch {set hugeOutput [exec hugeadm --pool-list]} err]} {
-  doLog "hugeadm failed: $err"
-  exit 1
-}
-set hugeOutputLines [split $hugeOutput "\n"]
+set nHuge1G 0
+set nHuge1Gfile "/sys/kernel/mm/hugepages/hugepages-1048576kB/nr_hugepages"
 if {[catch {
-  set hugeHeader "Size  Minimum  Current  Maximum  Default"
-  if {[string trim [lindex $hugeOutputLines 0]]!=$hugeHeader} {
-    # throw only in tcl 8.7... but if not it generates an error anyway, which is what we want
-    throw
-  }
-  for {set i 1} {$i<[llength $hugeOutputLines]} {incr i} {
-    set l [lindex $hugeOutputLines $i]
-    set size [string trim [string range $l 0 11]]
-    set min [string trim [string range $l 12 20]]
-    set current [string trim [string range $l 21 29]]
-    set max [string trim [string range $l 30 38]]
-    lappend lmem "$size" "$current"
+  set nHugeFd [open $nHuge1Gfile "r"]
+  gets $nHugeFd line
+  close $nHugeFd
+  if {[scan $line "%d" nHuge1G]!=1} {
+    doLog "Failed to parse $nHuge1Gfile"
   }
 } err]} {
-  doLog "Failed to parse hugeadm output: $err"
+  doLog "Failed to get number of hugepages: $err"
 }
 
 
@@ -202,9 +191,10 @@ if {[catch {
     throw
   }
   set l [lindex $memOutputLines 1]
-  set memTotal [string trim [string range $l 7 18]]
-  set memUsed [string trim [string range $l 19 30]]
-  set memFree [string trim [string range $l 31 42]]
+  set theWords [regexp -all -inline {\S+} $l]
+  set memTotal [lindex $theWords 1]
+  set memUsed [lindex $theWords 2]
+  set memFree [lindex $theWords 3]
 } err]} {
   doLog "Failed to parse free output: $err"
 }
@@ -226,13 +216,7 @@ if {$numaNodes==0} {
 }
 
 doLog "Memory available (hugepages):"
-set nHuge1G 0
-foreach {pageSize pagesAvailable} $lmem {
- doLog "  $pagesAvailable * $pageSize bytes"
- if {$pageSize==1073741824} {
-   set nHuge1G $pagesAvailable
- }
-}
+doLog "  $nHuge1G * 1048576kB"
 if {$nHuge1G==0} {
   doLog "1G pages should not be zero"
   incr err

@@ -17,6 +17,9 @@
 #include <stdint.h>
 #include <string>
 #include <vector>
+#include <string_view>
+#include <utility>
+
 
 #include "RAWDataHeader.h"
 
@@ -84,6 +87,9 @@ int numaGetNodeFromAddress(void *ptr, int &node);
 
 // function to set a name for current thread
 void setThreadName(const char*name);
+
+// function to split string into URI / path
+std::pair<std::string, std::string> splitURI(const std::string& uri);
 
 // end of _READOUTUTILS_H
 #endif

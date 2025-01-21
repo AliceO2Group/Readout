@@ -143,8 +143,13 @@ General settings are defined in section `[readout]`.
 Section names ending with `-*` can be used to define default parameters. They are applied to all section with similar names. Existing key-value pairs are not overwritten, but are defined according to defaults if they don't exist. For example, it is possible to define the TFperiod for all equipments by adding a section named `[equipment-*]` with `TFperiod=32`.
 
 Values can be symbolic links to a value stored in another configuration file. The syntax is: @LINK,URI,entryPoint,path
-For example: @LINK,file:/local/readout-test-config-link1.cfg,,bank.size
-Parameters are similar to the command-line arguments of o2-readout-exe, see ```Usage``` below.
+The URI can be absolute (file:, consul-ini://) or relative (./, ../) to the current configuration URI used by o2-readout-exe (whatever the backend).
+For example:
+  - @LINK,file:/local/readout-test-config-link1.cfg,,bank.size
+  - @LINK,consul-ini://alio2-cr1-hv-mvs00.cern.ch:8500/o2/components/readout/ANY/any/readout-global-params,,bank.size
+  - @LINK,./readout-test-config-link1.cfg,,bank.size
+  - @LINK,../readout-test-config-link1.cfg,,bank.size
+Parameters URI and entryPoint are similar to the command-line arguments of o2-readout-exe, see ```Usage``` below.
 Files are cached, i.e. the corresponding configuration tree is loaded only once if several values use a link to the same URI/entryPoint.
 Links substitutions are done at the end of the configuration tree aggregation (sections merging, etc).
 It is done recursively (up to 5 iterations, after which it fails to avoid circular dependencies).
