@@ -11,7 +11,7 @@ They can be reloaded several time during the lifetime of the process.
 
 # Readout defaults (1)
 
-These are defined in local file `/etc/o2.d/readout-default.cfg`, which is loaded on `o2-readout-exe` startup (if the file exists). They are valid for the lifetime of the o2-readout-exe process. There is usually no need for users to edit these settings. The file format is '.ini' style, with `[sections]` and `key=value` pairs.
+These are defined in local file `/etc/o2.d/readout/readout-defaults.cfg`, which is loaded on `o2-readout-exe` startup (if the file exists). They are valid for the lifetime of the o2-readout-exe process. There is usually no need for users to edit these settings. The file format is '.ini' style, with `[sections]` and `key=value` pairs.
 
 Following table describes the parameters of the `[readout]` section.
 

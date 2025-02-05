@@ -6,7 +6,7 @@
 # [readout-monitor]
 # outputFormat=1
 
-set configFile "/etc/o2.d/readout-defaults.cfg"
+set configFile "/etc/o2.d/readout/readout-defaults.cfg"
 set configSection "readout-monitor"
 
 # defaults

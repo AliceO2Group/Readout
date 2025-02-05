@@ -13,4 +13,4 @@
 
 #pragma once
 
-const std::string cfgDefaultsPath = "file:/etc/o2.d/readout-defaults.cfg"; // path to default configuration file
+const std::string cfgDefaultsPath = "file:/etc/o2.d/readout/readout-defaults.cfg"; // path to default configuration file
