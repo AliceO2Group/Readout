@@ -649,6 +649,9 @@ This file describes the main feature changes for each readout.exe released versi
 ## v2.26.3 - 22/10/2024
 - Minor release for osx compatibility.
 
-## v2.27.0 - 21/01/2024
+## v2.27.0 - 21/01/2025
 - Added symbolic links with relative path in configuration. See @LINK syntax.
 - Fixed o2-readout-config-generator for RHEL9 compatibility.
+
+## v2.27.1 - 12/02/2025
+- Path of configuration file from which defaults are loaded on startup has been changed to /etc/o2.d/readout/readout-defaults.cfg (it was in /etc/o2.d before, now changing to standard subdirectory location).

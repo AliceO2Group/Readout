@@ -20,7 +20,7 @@ fileName=/tmp/data_%f.raw
 
 ## How to launch custom commands on start/stop
 
-First, custom command shells must be enabled in the default readout settings `/etc/o2.d/readout-defaults.cfg`:
+First, custom command shells must be enabled in the default readout settings `/etc/o2.d/readout/readout-defaults.cfg`:
 ```
 [readout]
 ...

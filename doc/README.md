@@ -124,7 +124,7 @@ The configuration source is provided as a startup argument (see 'Usage' below).
 
 Some of the configuration parameters may be overwritten at runtime by OCC, when readout is launched from AliECS. For example, the FairMQ parameters for the StfBuilder connection are set dynamically in the configure step. This is done for the consumer with matching `fmq-name=readout`.
 
-Some of the configuration parameters may be loaded on startup from `/etc/o2.d/readout-defaults`.
+Some of the configuration parameters may be loaded on startup from `/etc/o2.d/readout/readout-defaults.cfg`.
 
 
 #### File syntax
