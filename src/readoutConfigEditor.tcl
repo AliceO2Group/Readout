@@ -107,7 +107,7 @@ set configurationParametersDescriptor {
 | equipment-* | saveErrorPagesMax | int | 0 | If set, pages found with data error are saved to disk up to given maximum. |
 | equipment-* | saveErrorPagesPath | string |  | Path where to save data pages with errors (when feature enabled). |
 | equipment-* | stopOnError | int | 0 | If 1, readout will stop automatically on equipment error. |
-| equipment-* | TFperiod | int | 128 | Duration of a timeframe, in number of LHC orbits. |
+| equipment-* | TFperiod | int | 32 | Duration of a timeframe, in number of LHC orbits. |
 | equipment-* | verbose | int | 0 | If set, extra debug messages may be logged. |
 | equipment-cruemulator-* | cruBlockSize | int | 8192 | Size of a RDH block. |
 | equipment-cruemulator-* | cruId | int | 0 | CRU Id, used for CRU Id field in RDH. |

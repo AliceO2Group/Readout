@@ -655,3 +655,7 @@ This file describes the main feature changes for each readout.exe released versi
 
 ## v2.27.1 - 12/02/2025
 - Path of configuration file from which defaults are loaded on startup has been changed to /etc/o2.d/readout/readout-defaults.cfg (it was in /etc/o2.d before, now changing to standard subdirectory location).
+
+## next version
+- Updated configuration parameters:
+  - equipment.TFperiod is now set to 32 by default, instead of 128 previously. This is the duration of a timeframe, in number of LHC orbits. The new value corresponds to what is used in production.

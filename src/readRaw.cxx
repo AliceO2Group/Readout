@@ -76,7 +76,7 @@ int main(int argc, const char* argv[])
       "    dumpDataInline=(int) : if set, each packet raw content is printed (hex dump style).\n"
       "    dumpStats=(int) : if set, some statistics are printed on HBF/TF size.\n"
       "    fileReadVerbose=(int) : if set, more information is printed when reading/decoding file.\n"
-      "    timeframePeriodOrbits=(int) : if set, TF id computed (and printed, when dump enabled) for each RDH. Typically, 128 or 256.\n"
+      "    timeframePeriodOrbits=(int) : if set, TF id computed (and printed, when dump enabled) for each RDH. Typically, 32 or 128.\n"
       "    logOff=(int) : if set, logs disabled.\n"
       "    dumpOrbitStats=(int) : if set, first / min / max orbits are printed after file read.\n"
       "    \n",
