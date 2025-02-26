@@ -573,6 +573,7 @@ int Readout::_init(int argc, char* argv[])
   sigaction(SIGTERM, &signalSettings, NULL);
   sigaction(SIGQUIT, &signalSettings, NULL);
   sigaction(SIGINT, &signalSettings, NULL);
+  signal(SIGPIPE, SIG_IGN);
 
   // log startup and options
   theLog.log(LogInfoSupport_(3001), "Readout " READOUT_VERSION " - process starting, pid %d for role %s", getpid(), occRole.c_str());
