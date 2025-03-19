@@ -23,6 +23,7 @@
 #include "DataSet.h"
 #include "ReadoutUtils.h"
 #include "ReadoutStats.h"
+#include "ReadoutMonitoringQueue.h"
 
 using namespace o2::monitoring;
 
@@ -182,6 +183,12 @@ class ConsumerStats : public Consumer
 	  sendMetricNoException(Metric{"readout.bufferUsage"}.addValue((int)(r*100), "value").addValue(b, "bytes").addTag(tags::Key::ID, i));
 	}
       }
+
+      // publish measurements stored in monitoring queue
+      auto ff = [&] (const ReadoutMonitoringMetric &m) -> void {
+        sendMetricNoException(Metric{m.value, m.name}.addTag(tags::Key::ID, m.tag));
+      };
+      gReadoutMonitoringQueue.execute(ff);
     }
 
 #ifdef WITH_ZMQ

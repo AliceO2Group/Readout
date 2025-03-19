@@ -79,6 +79,7 @@
 #include "ReadoutVersion.h"
 #include "TtyChecker.h"
 #include "ReadoutConst.h"
+#include "ReadoutMonitoringQueue.h"
 
 #ifdef WITH_NUMA
 #include <numa.h>
@@ -773,6 +774,9 @@ int Readout::_configure(const boost::property_tree::ptree& properties)
 
   // reset some flags
   gReadoutStats.isFairMQ = 0; // disable FMQ stats
+
+  // reset monitoring queue
+  gReadoutMonitoringQueue.clear();
 
   // load configuration file
   theLog.log(LogInfoSupport, "Reading configuration from %s %s", cfgFileURI, cfgFileEntryPoint);
