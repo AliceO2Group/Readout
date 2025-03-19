@@ -26,6 +26,7 @@
 #include "ReadoutEquipment.h"
 #include "ReadoutUtils.h"
 #include "readoutInfoLogger.h"
+#include "ReadoutMonitoringQueue.h"
 
 class ReadoutEquipmentRORC : public ReadoutEquipment
 {
@@ -131,6 +132,10 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile& cfg, std::string name) : 
     // configuration parameter: | equipment-rorc-* | debugStatsEnabled | int | 0 | If set, enable extra statistics about internal buffers status. (printed to stdout when stopping) |
     cfg.getOptionalValue<int>(name + ".debugStatsEnabled", cfgDebugStatsEnabled);
 
+    // configuration parameter: | equipment-rorc-* | monitorFirstOrbitEnabled | int | 0 | If set, enable monitoring of RORC first orbit. |
+    int cfgMonitorFirstOrbitEnabled = 0;
+    cfg.getOptionalValue<int>(name + ".monitorFirstOrbitEnabled", cfgMonitorFirstOrbitEnabled);
+
     // get readout memory buffer parameters
     // std::string sMemorySize=cfg.getValue<std::string>(name + ".memoryBufferSize");
     // std::string sPageSize=cfg.getValue<std::string>(name + ".memoryPageSize"); long long
@@ -214,6 +219,11 @@ ReadoutEquipmentRORC::ReadoutEquipmentRORC(ConfigFile& cfg, std::string name) : 
     }
     if (!isFwOk) {
       BOOST_THROW_EXCEPTION(ReadoutEquipmentRORCException() << ErrorInfo::Message("This firmware version is not allowed"));
+    }
+
+    // publish relevant card info
+    if (cfgMonitorFirstOrbitEnabled) {
+      gReadoutMonitoringQueue.push({.name = "readout.RORCfirstOrbit", .tag = id, .value = (uint64_t)channel->getCounterFirstOrbit()});
     }
 
     // todo: log parameters ?

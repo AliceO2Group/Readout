@@ -140,6 +140,7 @@ set configurationParametersDescriptor {
 | equipment-rorc-* | firmwareCheckEnabled | int | 1 | If set, RORC driver checks compatibility with detected firmware. Use 0 to bypass this check (eg new fw version not yet recognized by ReadoutCard version). |
 | equipment-rorc-* | firmwareVersionsAllowed | string | | Comma-separated list of ROC firmware versions allowed (6-digit hash). If empty, all are allowed. |
 | equipment-rorc-* | firmwareVersionsDenied | string | e4a5a46e | Comma-separated list of ROC firmware versions denied  (6-digit hash), i.e. which would cause configuration to abort. |
+| equipment-rorc-* | monitorFirstOrbitEnabled | int | 0 | If set, enable monitoring of RORC first orbit. |
 | equipment-zmq-* | address | string | | Address of remote server to connect, eg tcp://remoteHost:12345. |
 | equipment-zmq-* | mode | string | stream | Possible values: stream (1 input ZMQ message = 1 output data page), snapshot (last ZMQ message = one output data page per TF). |
 | equipment-zmq-* | timeframeClientUrl | string | | The address to be used to retrieve current timeframe. When set, data is published only once for each TF id published by remote server. |
