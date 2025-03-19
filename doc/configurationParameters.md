@@ -161,7 +161,7 @@ The parameters related to 3rd-party libraries are described here for convenience
 | equipment-* | saveErrorPagesMax | int | 0 | If set, pages found with data error are saved to disk up to given maximum. |
 | equipment-* | saveErrorPagesPath | string |  | Path where to save data pages with errors (when feature enabled). |
 | equipment-* | stopOnError | int | 0 | If 1, readout will stop automatically on equipment error. |
-| equipment-* | TFperiod | int | 128 | Duration of a timeframe, in number of LHC orbits. |
+| equipment-* | TFperiod | int | 32 | Duration of a timeframe, in number of LHC orbits. |
 | equipment-* | verbose | int | 0 | If set, extra debug messages may be logged. |
 | equipment-cruemulator-* | cruBlockSize | int | 8192 | Size of a RDH block. |
 | equipment-cruemulator-* | cruId | int | 0 | CRU Id, used for CRU Id field in RDH. |
@@ -194,6 +194,7 @@ The parameters related to 3rd-party libraries are described here for convenience
 | equipment-rorc-* | firmwareCheckEnabled | int | 1 | If set, RORC driver checks compatibility with detected firmware. Use 0 to bypass this check (eg new fw version not yet recognized by ReadoutCard version). |
 | equipment-rorc-* | firmwareVersionsAllowed | string | | Comma-separated list of ROC firmware versions allowed (6-digit hash). If empty, all are allowed. |
 | equipment-rorc-* | firmwareVersionsDenied | string | e4a5a46e | Comma-separated list of ROC firmware versions denied  (6-digit hash), i.e. which would cause configuration to abort. |
+| equipment-rorc-* | monitorFirstOrbitEnabled | int | 0 | If set, enable monitoring of RORC first orbit. |
 | equipment-zmq-* | address | string | | Address of remote server to connect, eg tcp://remoteHost:12345. |
 | equipment-zmq-* | mode | string | stream | Possible values: stream (1 input ZMQ message = 1 output data page), snapshot (last ZMQ message = one output data page per TF). |
 | equipment-zmq-* | timeframeClientUrl | string | | The address to be used to retrieve current timeframe. When set, data is published only once for each TF id published by remote server. |

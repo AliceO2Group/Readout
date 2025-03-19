@@ -258,6 +258,7 @@ add_library(
         ${SOURCE_DIR}/MemoryBank.cxx
         ${SOURCE_DIR}/MemoryBankManager.cxx
         ${SOURCE_DIR}/MemoryPagesPool.cxx
+	${SOURCE_DIR}/ReadoutMonitoringQueue.cxx
 	$<$<BOOL:${ZMQ_FOUND}>:${SOURCE_DIR}/ZmqServer.cxx>
 	$<$<BOOL:${ZMQ_FOUND}>:${SOURCE_DIR}/ZmqClient.cxx>
 )

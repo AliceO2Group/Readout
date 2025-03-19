@@ -57,10 +57,11 @@ class ROCdevice
 
  private:
   std::string bankId = "testROC";
-  size_t bankSize = 2 * 1024 * 1024 * 1024L;
+  size_t bankSize = 1024 * 1024 * 1024L; // buffer siye
 
-  size_t memoryPoolNumberOfPages = 1000;
   size_t memoryPoolPageSize = 2 * 1024 * 1024;
+  size_t memoryPoolNumberOfPages = 10 * int((bankSize / memoryPoolPageSize) / 10); // number of pages fitting in memory, round down to ten
+  const char* memoryPoolType = "malloc";
 
   std::string cardId = "0:0.0";
   int cfgChannelNumber = 0;
@@ -80,7 +81,7 @@ ROCdevice::ROCdevice(std::string id)
 
   bankId += id;
 
-  bank = getMemoryBank(bankSize, "MemoryMappedFile", bankId);
+  bank = getMemoryBank(bankSize, memoryPoolType, bankId);
   theMemoryBankManager.addBank(bank);
   mp = theMemoryBankManager.getPagedPool(memoryPoolPageSize, memoryPoolNumberOfPages, bankId); // pool of pages
 
@@ -91,6 +92,7 @@ ROCdevice::ROCdevice(std::string id)
   params.setCardId(AliceO2::roc::Parameters::cardIdFromString(cardId));
   params.setChannelNumber(cfgChannelNumber);
   params.setDataSource(AliceO2::roc::DataSource::fromString(cfgDataSource));
+  params.setFirmwareCheckEnabled(0);
 
   params.setBufferParameters(AliceO2::roc::buffer_parameters::Memory{ mp->getBaseBlockAddress(), mp->getBaseBlockSize() });
 
@@ -106,6 +108,8 @@ ROCdevice::ROCdevice(std::string id)
   std::string infoFirmwareVersion = channel->getFirmwareInfo().value_or("unknown");
   std::string infoCardId = channel->getCardId().value_or("unknown");
   theLog.log(LogInfoDevel_(3010), "ROC PCI %s @ NUMA node %d, serial number %s, firmware version %s, card id %s", infoPciAddress.c_str(), infoNumaNode, infoSerialNumber.c_str(), infoFirmwareVersion.c_str(), infoCardId.c_str());
+  // test getCounterFirstOrbit()
+  // printf("get = %X\n", (int)(channel->getCounterFirstOrbit()));
 }
 
 ROCdevice::~ROCdevice() {}

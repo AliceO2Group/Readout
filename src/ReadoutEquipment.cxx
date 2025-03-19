@@ -161,8 +161,8 @@ ReadoutEquipment::ReadoutEquipment(ConfigFile& cfg, std::string cfgEntryPoint, b
   cfg.getOptionalValue<int>(cfgEntryPoint + ".verbose", cfgVerbose);
 
   if (!cfgDisableTimeframes) {
-    // configuration parameter: | equipment-* | TFperiod | int | 128 | Duration of a timeframe, in number of LHC orbits. |
-    int cfgTFperiod = 128;
+    // configuration parameter: | equipment-* | TFperiod | int | 32 | Duration of a timeframe, in number of LHC orbits. |
+    int cfgTFperiod = 32;
     cfg.getOptionalValue<int>(cfgEntryPoint + ".TFperiod", cfgTFperiod);
     timeframePeriodOrbits = cfgTFperiod;
 
