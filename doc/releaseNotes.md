@@ -661,3 +661,8 @@ This file describes the main feature changes for each readout.exe released versi
   - equipment.TFperiod is now set to 32 by default, instead of 128 previously. This is the duration of a timeframe, in number of LHC orbits. The new value corresponds to what is used in production.
   - equipment-rorc-*: added parameter monitorFirstOrbitEnabled, to enable reporting to monitoring system the metric "readout.RORCfirstOrbit" on startup, as retrieved from CRU firmware. This is to be used on CTP FLP to detect possibly wrong orbit. A return value of 0xFFFFFFFF indicates the value could not be retrieved.
 - ConsumerStats: added an internal queue to allow pushing spontaneous monitoring measurements (compared to periodic ones) from any readout module.
+
+## v2.28.0 - 05/06/2025
+- Added configuration parameters:
+  - readout.externalSyncServer and readout.externalSyncTimeout, to connect and wait at START for a sync signal sent by o2-readout-sync-server.
+- Added o2-readout-sync-server utility, to generate a sync signal in order to start multiple readout replay instances synchronously. (implemented with ZMQ REQ/REP).
