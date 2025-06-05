@@ -461,6 +461,23 @@ add_executable(
 target_include_directories(o2-readout-monitor PRIVATE ${READOUT_INCLUDE_DIRS})
 target_link_libraries(o2-readout-monitor PRIVATE AliceO2::InfoLogger AliceO2::Common ${ZMQ_LIBRARIES})
 
+# a process to send synchronization signals for replay mode
+add_executable(
+	o2-readout-sync-server
+	${SOURCE_DIR}/syncServer.cxx
+)
+target_include_directories(o2-readout-sync-server PRIVATE ${READOUT_INCLUDE_DIRS})
+target_link_libraries(o2-readout-sync-server PRIVATE AliceO2::InfoLogger AliceO2::Common ${ZMQ_LIBRARIES})
+
+add_executable(
+	o2-readout-test-sync-client
+        ${SOURCE_DIR}/testSyncClient.cxx
+)
+target_include_directories(o2-readout-test-sync-client PRIVATE ${READOUT_INCLUDE_DIRS})
+target_link_libraries(o2-readout-test-sync-client PRIVATE AliceO2::InfoLogger AliceO2::Common ${ZMQ_LIBRARIES})
+
+
+
 if(SDL_FOUND AND ZMQ_FOUND)
 # a process to monitor memory of remote readout processes
 add_executable(

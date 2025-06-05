@@ -398,6 +398,8 @@ class Readout
   int cfgLogbookUpdateInterval;
   std::string cfgDatabaseCxParams;
   std::string cfgTimeframeServerUrl;
+  std::string cfgExternalSyncServer;
+  int cfgExternalSyncTimeout;
   int cfgVerbose = 0;
   int cfgMaxMsgError; // maximum number of error messages before stopping run
   int cfgMaxMsgWarning; // maximum number of warning messages before stopping run
@@ -1209,6 +1211,18 @@ int Readout::_configure(const boost::property_tree::ptree& properties)
 #endif
   }
 
+  // configuration parameter: | readout | externalSyncServer | string | | If set, ZMQ address to request SYNC signal at SOR. |
+  cfg.getOptionalValue<std::string>("readout.externalSyncServer", cfgExternalSyncServer);
+  // configuration parameter: | readout | externalSyncTimeout | int | 3000 | Timeout (in milliseconds) to wait for the SYNC signal at SOR (when externalSyncServer is defined). |
+  cfg.getOptionalValue<int>("readout.externalSyncTimeout", cfgExternalSyncTimeout, 3000);
+  if (cfgExternalSyncServer != "") {
+#ifdef WITH_ZMQ
+    theLog.log(LogInfoDevel_(3002), "External SOR synchronization enabled: server = %s timeout = %dms", cfgExternalSyncServer.c_str(), cfgExternalSyncTimeout);
+#else
+    theLog.log(LogWarningSupport_(3101), "Skipping SOR synchronization - not supported by this build");
+#endif
+  }
+
   #ifdef WITH_FAIRMQ
   // configuration parameter: | readout | fairmqConsoleSeverity | int | -1 | Select amount of FMQ messages with fair::Logger::SetConsoleSeverity(). Value as defined in Severity enum defined from FairLogger/Logger.h. Use -1 to leave current setting. |
   int cfgFairmqConsoleSeverity = -1;
@@ -1591,6 +1605,32 @@ int Readout::_start()
   } else {
     unsetenv(envRunNumber);
     theLog.log(LogInfoDevel, "Run number not defined");
+  }
+
+  if (cfgExternalSyncServer != "") {
+#ifdef WITH_ZMQ
+    // sync barrier here
+    // send a request to remote server and wait for SYNC reply (or timeout) before proceeding
+    theLog.log(LogInfoDevel, "Readout sync starting");
+    std::string msg = std::to_string((int)occRunNumber); // send run number to sync server
+    void* context = zmq_ctx_new();
+    void* socket = zmq_socket(context, ZMQ_REQ);
+    zmq_connect(socket, cfgExternalSyncServer.c_str());
+    int timeout = cfgExternalSyncTimeout; // ms
+    zmq_setsockopt(socket, ZMQ_SNDTIMEO, &timeout, sizeof(timeout)); // for zmq_send
+    zmq_setsockopt(socket, ZMQ_RCVTIMEO, &timeout, sizeof(timeout)); // for zmq_recv
+    zmq_send(socket, msg.c_str(), msg.size(), 0);
+    char buffer[256];
+    int size = zmq_recv(socket, buffer, sizeof(buffer) - 1, 0);
+    if (size == -1) {
+      theLog.log(LogInfoDevel, "Readout sync timeout");
+    } else {
+      buffer[size] = '\0'; // for later use. no use of the reply so far.
+      theLog.log(LogInfoDevel, "Readout sync done");
+    }
+    zmq_close(socket);
+    zmq_ctx_term(context);
+#endif
   }
 
   theLog.resetMessageCount();
