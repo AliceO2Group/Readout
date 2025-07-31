@@ -694,7 +694,7 @@ uint64_t ReadoutEquipment::getTimeframeFromOrbit(uint32_t hbOrbit)
     theLog.log(LogInfoDevel_(3011), "Equipment %s : first HB orbit = %X", name.c_str(), (unsigned int)firstTimeframeHbOrbitBegin);
     if (!isOk) {
       if (cfgRdhCheckFirstOrbit) {
-        theLog.log(LogErrorSupport_(3241), "Equipment %s : first HB orbit is different from other equipments", name.c_str());
+        theLog.log(LogErrorOps_(3241), "Equipment %s : first HB orbit is different from other equipments", name.c_str());
         isFatalError++;
       }
     }
@@ -866,7 +866,7 @@ int ReadoutEquipment::processRdh(DataBlockContainerReference& block)
     } else {
       if ((cfgRdhCheckFirstOrbit) && (currentBlockId == 0)) {
         // if 1st RDH received is wrong, it's the same as a wrong orbit
-        theLog.log(LogErrorSupport_(3241), "Equipment %s : first RDH is wrong", name.c_str());
+        theLog.log(LogErrorOps_(3241), "Equipment %s : first RDH is wrong", name.c_str());
         isFatalError++;
       }
     }
@@ -898,7 +898,7 @@ int ReadoutEquipment::processRdh(DataBlockContainerReference& block)
       if (!equipmentLinksData[linkId].firstOrbitIsDefined) {
         if (orbitId != firstLinkOrbit) {
           if (cfgRdhCheckFirstOrbit) {
-            theLog.log(LogErrorSupport_(3241), "Equipment %s : first HB orbit of link %d is different from first link(%d): 0x%X != 0x%X", name.c_str(), linkId, firstLinkId, orbitId, firstLinkOrbit);
+            theLog.log(LogErrorOps_(3241), "Equipment %s : first HB orbit of link %d is different from first link(%d): 0x%X != 0x%X", name.c_str(), linkId, firstLinkId, orbitId, firstLinkOrbit);
             isFatalError++;
           }
         } else {
