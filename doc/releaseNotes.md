@@ -667,5 +667,5 @@ This file describes the main feature changes for each readout.exe released versi
   - readout.externalSyncServer and readout.externalSyncTimeout, to connect and wait at START for a sync signal sent by o2-readout-sync-server.
 - Added o2-readout-sync-server utility, to generate a sync signal in order to start multiple readout replay instances synchronously. (implemented with ZMQ REQ/REP).
 
-## next
+## v2.28.1 - 31/07/2025
 - Promoted to OPS level the log messages causing a fatal error in "running" state. These are currently the RDH and HB orbit issues in the first timeframe.
